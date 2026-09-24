@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ・共有保存確認テスト</title>
+<style>
+body{margin:0;padding:32px 20px;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;background:#f7f5ef;color:#222}
+main{max-width:560px;margin:0 auto;background:#fff;border:1px solid #d8d2c5;border-radius:18px;padding:24px;box-sizing:border-box}
+h1{font-size:22px;line-height:1.4;margin:0 0 24px}
+.row{margin:18px 0}.label{color:#777;font-size:14px}.value{font-size:24px;font-weight:700;margin-top:4px;word-break:break-all}
+.status{margin-top:22px;padding:14px;border-radius:12px;font-weight:700;background:#f2f0ea}
+.note{margin-top:24px;padding:14px;background:#f2f0ea;border-radius:12px;font-size:14px;line-height:1.7}
+</style>
+</head>
+<body>
+<main>
+<h1>📚 ともたよむ・共有保存確認テスト</h1>
+
+<div class="row">
+  <div class="label">Nコード</div>
+  <div class="value" id="ncode">（確認中）</div>
+</div>
+
+<div class="row">
+  <div class="label">話数</div>
+  <div class="value" id="episode">（確認中）</div>
+</div>
+
+<div class="status" id="status">localStorageを確認中…</div>
+
+<div class="note">
+このページは読み取り専用の実験ページです。<br>
+現在のページ自身のlocalStorageから、<code>tomotaYomu_receive_test</code> を読み出します。<br>
+データの新規保存・ともたよむ本体の変更は行いません。
+</div>
+
+<script>
+(() => {
+  let saved = null;
+
+  try {
+    saved = JSON.parse(localStorage.getItem("tomotaYomu_receive_test") || "null");
+  } catch (e) {
+    saved = null;
+  }
+
+  document.getElementById("ncode").textContent =
+    saved?.ncode || "（データなし）";
+
+  document.getElementById("episode").textContent =
+    saved?.episode || "（データなし）";
+
+  document.getElementById("status").textContent =
+    saved
+      ? "🔎 このページのlocalStorageから保存データを読み出しました"
+      : "🔎 このページのlocalStorageには保存データがありません";
+})();
+</script>
+</main>
+</body>
+</html>
