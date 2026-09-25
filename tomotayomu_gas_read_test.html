@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ともたよむ・GAS読み出しテスト</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;margin:24px;line-height:1.6}
+h1{font-size:22px}
+input,button{font-size:18px;padding:10px}
+input{width:150px}
+button{margin-top:12px}
+#result{margin-top:20px;padding:16px;border-radius:10px;background:#f2f2f2;white-space:pre-wrap;word-break:break-word}
+.note{color:#666;font-size:14px}
+</style>
+</head>
+<body>
+<h1>📚 ともたよむ・GAS読み出しテスト</h1>
+<p>Nコードを入力して、共有倉庫（GAS）から読書位置を読み出します。</p>
+<input id="ncode" value="N0175GW" autocapitalize="characters">
+<br>
+<button id="readButton">GASから読み出す</button>
+<div id="result">まだ読み出していません。</div>
+<p class="note">※このページはテスト専用です。ともたよむ本体のデータは変更しません。</p>
+<script>
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxbvywLmy4aWh-_u_o_iDVDq_7AMxf9K2wPY-BhXphGbnaBp0JZ4R78_eplmYfXH3obHA/exec";
+document.getElementById("readButton").addEventListener("click", async () => {
+  const ncode = document.getElementById("ncode").value.trim().toUpperCase();
+  const result = document.getElementById("result");
+  if (!ncode) { result.textContent = "Nコードを入力してください。"; return; }
+  result.textContent = "⏳ GASに問い合わせ中…";
+  try {
+    const response = await fetch(GAS_URL + "?ncode=" + encodeURIComponent(ncode), {method:"GET"});
+    const text = await response.text();
+    result.textContent = "📨 GASから受信:\n" + text;
+  } catch (error) {
+    result.textContent = "❌ 読み出し失敗\n\n" + error.message + "\n\n※CORSやリダイレクトが原因の可能性があります。";
+  }
+});
+</script>
+</body>
+</html>
