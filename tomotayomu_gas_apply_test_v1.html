@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ・GAS反映テスト v1</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;margin:24px;line-height:1.6;background:#faf8f3}
+h1{font-size:24px}
+button{font-size:18px;padding:12px 18px;margin:12px 0}
+.card{border:1px solid #aaa;border-radius:16px;padding:20px;background:#fff}
+.title{font-size:24px;font-weight:700}
+.meta{margin-top:10px;color:#555}
+.resume{margin-top:18px;font-size:20px;font-weight:700}
+.status{margin-top:18px;padding:16px;border-radius:12px;background:#f0f0f0;white-space:pre-wrap;word-break:break-word}
+.note{color:#666;font-size:14px}
+</style>
+</head>
+<body>
+<h1>📚 ともたよむ・GAS反映テスト v1</h1>
+<p>GASから読書位置を取得し、仮カードへ反映します。</p>
+
+<button id="read">GASから読書位置を取得</button>
+
+<article class="card" data-ncode="N0175GW">
+  <div class="title">転生したら大好きな幼馴染に斬られるモブ役だった。</div>
+  <div class="meta">Nコード：N0175GW</div>
+  <div class="resume">続きから　📖 <span id="current">未取得</span> / 210話</div>
+</article>
+
+<div id="status" class="status">まだ実行していません。</div>
+
+<p class="note">※実験専用。本体データは変更しません。</p>
+
+<script>
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxbvywLmy4aWh-_u_o_iDVDq_7AMxf9K2wPY-BhXphGbnaBp0JZ4R78_eplmYfXH3obHA/exec";
+const NCODE = "N0175GW";
+
+document.getElementById("read").addEventListener("click", async () => {
+  const status = document.getElementById("status");
+  const current = document.getElementById("current");
+
+  status.textContent = "⏳ GASから読書位置を取得中…";
+
+  try {
+    const response = await fetch(
+      GAS_URL + "?ncode=" + encodeURIComponent(NCODE),
+      { method: "GET", cache: "no-store" }
+    );
+
+    const text = await response.text();
+    const match = text.match(/^READ\s+([A-Z0-9]+)\s+(\d+)$/);
+
+    if (!match) {
+      status.textContent = "⚠️ GASの返答を確認しましたが、読書位置を解釈できませんでした。\n\n" + text;
+      return;
+    }
+
+    const receivedNcode = match[1];
+    const episode = match[2];
+
+    if (receivedNcode !== NCODE) {
+      status.textContent = "⚠️ Nコードが一致しません。\n\n" + text;
+      return;
+    }
+
+    current.textContent = episode;
+
+    status.textContent =
+      "✅ GASから受信して、仮カードへ反映しました。\n\n" +
+      text;
+
+  } catch (error) {
+    status.textContent =
+      "❌ GASからの読出しに失敗しました。\n\n" + String(error);
+  }
+});
+</script>
+</body>
+</html>
