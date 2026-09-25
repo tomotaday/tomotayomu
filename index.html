@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#f6f3ed" name="theme-color"/>
-<title>ともたよむ v2.0.8 R18取得確認版</title>
+<title>ともたよむ v2.1.0 本棚構造整理・更新棚折りたたみ版</title>
 <style>
 :root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195}
 *{box-sizing:border-box}
@@ -36,6 +36,11 @@ summary{cursor:pointer}
 .folderCards{display:flex;flex-direction:column;gap:10px}
 </style>
 <style id="v203-fold-style">
+.updateDetails{margin:20px 0 8px}
+.updateDetails>summary{list-style:none;cursor:pointer;font-size:18px;font-weight:700;padding:3px 2px}
+.updateDetails>summary::-webkit-details-marker{display:none}
+.updateDetails>summary::before{content:"▸ ";font-size:15px}
+.updateDetails[open]>summary::before{content:"▾ ";font-size:15px}
 .bookshelfDetails{margin:20px 0 8px}
 .bookshelfDetails>summary{list-style:none;cursor:pointer;font-size:22px;font-weight:800;padding:4px 2px}
 .bookshelfDetails>summary::-webkit-details-marker{display:none}
@@ -53,12 +58,14 @@ summary{cursor:pointer}
 <body>
 <main>
 <h1>ともたよむ</h1>
-<div class="note">v2.0.8 R18取得確認版｜本棚2117作品｜通常170＋R18 1947</div>
+<div class="note">v2.1.0｜本棚構造整理・更新棚折りたたみ版｜本棚2117作品｜通常170＋R18 1947</div>
 <button id="updateBtn" type="button">🔄 更新する</button>
 <div id="apiStatus">初回取得待ち</div>
-<div class="section" id="updateTitle">🆙 更新0</div>
+<details class="updateDetails" open>
+<summary id="updateTitle">🆙 更新0</summary>
 <div class="update-empty" id="updateEmpty">作品はありません。</div>
 <section class="update-list" id="updateList"></section>
+</details>
 <details class="bookshelfDetails" open="">
 <summary>📚 本棚 2117</summary>
 <div id="shelfSections"></div>
