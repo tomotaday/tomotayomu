@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ・GAS直接読出しテスト</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;margin:24px;line-height:1.6}
+h1{font-size:24px}
+input,button{font-size:18px;padding:10px;margin-top:10px}
+button{display:block}
+#result{margin-top:20px;padding:16px;border-radius:12px;background:#f2f2f2;white-space:pre-wrap;word-break:break-word}
+.note{color:#666;font-size:14px}
+</style>
+</head>
+<body>
+<h1>📚 ともたよむ・GAS直接読出しテスト</h1>
+<p>GitHub PagesからGASへ直接問い合わせます。</p>
+
+<input id="ncode" value="N0175GW" autocomplete="off">
+<button id="read">GASから読み出す</button>
+
+<div id="result">まだ実行していません。</div>
+
+<p class="note">※実験専用。本体データは変更しません。</p>
+
+<script>
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxbvywLmy4aWh-_u_o_iDVDq_7AMxf9K2wPY-BhXphGbnaBp0JZ4R78_eplmYfXH3obHA/exec";
+
+document.getElementById("read").addEventListener("click", async () => {
+  const ncode = document.getElementById("ncode").value.trim().toUpperCase();
+  const result = document.getElementById("result");
+
+  if (!ncode) {
+    result.textContent = "Nコードを入力してください。";
+    return;
+  }
+
+  result.textContent = "⏳ GASへ問い合わせ中…";
+
+  try {
+    const response = await fetch(
+      GAS_URL + "?ncode=" + encodeURIComponent(ncode),
+      { method: "GET", cache: "no-store" }
+    );
+
+    const text = await response.text();
+    result.textContent =
+      "✅ GitHub Pages → GAS 直接読出し成功
+
+" + text;
+  } catch (error) {
+    result.textContent =
+      "❌ 直接読出しに失敗しました。
+
+" +
+      String(error) +
+      "
+
+※CORS/リダイレクト等の確認用テストです。";
+  }
+});
+</script>
+</body>
+</html>
