@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>N7262HX API鑑定</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;margin:0;background:#f5f5f5;color:#222}
+main{max-width:720px;margin:0 auto;padding:20px}
+h1{font-size:22px;margin:0 0 8px}.note{font-size:14px;color:#666;line-height:1.6}
+button{width:100%;padding:14px;margin:18px 0;border:0;border-radius:12px;background:#222;color:#fff;font-size:16px}
+section{background:#fff;border-radius:14px;padding:16px;margin-top:12px;box-shadow:0 1px 4px #ddd}
+.row{display:grid;grid-template-columns:180px 1fr;gap:8px;padding:9px 0;border-bottom:1px solid #eee}
+.key{font-weight:700}pre{white-space:pre-wrap;word-break:break-all;font-size:12px;line-height:1.5;background:#f7f7f7;padding:12px;border-radius:10px;overflow:auto}
+.status{font-weight:700}
+</style>
+</head>
+<body>
+<main>
+<h1>🔎 N7262HX API鑑定</h1>
+<div class="note">ともたよむ本体には触れない、独立した検証ページです。<br>R18 なろうAPIから N7262HX の日時情報を取得し、加工せず表示します。</div>
+<button id="run">APIから取得する</button>
+<div id="status" class="status">待機中</div>
+<section>
+<div class="row"><div class="key">作品名</div><div id="title">—</div></div>
+<div class="row"><div class="key">Nコード</div><div id="ncode">—</div></div>
+<div class="row"><div class="key">general_firstup</div><div id="firstup">—</div></div>
+<div class="row"><div class="key">general_lastup</div><div id="lastup">—</div></div>
+<div class="row"><div class="key">novelupdated_at</div><div id="novelupdated">—</div></div>
+<div class="row"><div class="key">updated_at</div><div id="updated">—</div></div>
+<div class="row"><div class="key">general_all_no</div><div id="allno">—</div></div>
+</section>
+<section><h2>取得したAPIデータ</h2><pre id="raw">まだ取得していません。</pre></section>
+</main>
+<script>
+const API_URL="https://api.syosetu.com/novel18api/api/";
+const NCODE="N7262HX";
+function getJSONP(url){
+ return new Promise((resolve,reject)=>{
+  const script=document.createElement("script");
+  const callback="narouAudit_"+Date.now();
+  window[callback]=data=>{delete window[callback];script.remove();resolve(data)};
+  script.onerror=()=>{delete window[callback];script.remove();reject(new Error("API取得失敗"))};
+  script.src=url+"&out=jsonp&callback="+callback;
+  document.body.appendChild(script);
+ });
+}
+document.getElementById("run").addEventListener("click",async()=>{
+ const btn=document.getElementById("run"),status=document.getElementById("status");
+ btn.disabled=true;status.textContent="API取得中…";
+ try{
+  const data=await getJSONP(API_URL+"?ncode="+encodeURIComponent(NCODE));
+  if(!Array.isArray(data)||data.length<2)throw new Error("作品データが取得できませんでした。");
+  const w=data[1];
+  document.getElementById("title").textContent=w.title??"—";
+  document.getElementById("ncode").textContent=w.ncode??"—";
+  document.getElementById("firstup").textContent=w.general_firstup??"—";
+  document.getElementById("lastup").textContent=w.general_lastup??"—";
+  document.getElementById("novelupdated").textContent=w.novelupdated_at??"—";
+  document.getElementById("updated").textContent=w.updated_at??"—";
+  document.getElementById("allno").textContent=w.general_all_no??"—";
+  document.getElementById("raw").textContent=JSON.stringify(w,null,2);
+  status.textContent="取得成功";
+ }catch(e){status.textContent="取得失敗："+e.message;document.getElementById("raw").textContent=String(e)}
+ finally{btn.disabled=false}
+});
+</script>
+</body>
+</html>
