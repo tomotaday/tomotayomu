@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ともたよむ・GAS反映テスト</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;margin:20px;line-height:1.6;background:#fafafa}
+h1{font-size:22px}
+.card{background:white;border:1px solid #ddd;border-radius:14px;padding:16px;margin-top:20px}
+.title{font-size:20px;font-weight:700}
+.progress{font-size:18px;margin-top:10px}
+.status{margin-top:18px;padding:14px;border-radius:10px;background:#f1f1f1;white-space:pre-wrap;word-break:break-word}
+.note{color:#666;font-size:14px}
+</style>
+</head>
+<body>
+<h1>📚 ともたよむ・GAS反映テスト</h1>
+
+<p>GASから読書位置を取得し、仮カードへ反映します。</p>
+
+<div class="card" id="bookCard">
+  <div class="title">転生したら大好きな幼馴染に斬られるモブ役だった。</div>
+  <div>Nコード：N0175GW</div>
+  <div class="progress" id="progress">続きから　📖 未取得 / 210話</div>
+</div>
+
+<div class="status" id="status">⏳ GASから読書位置を取得中…</div>
+
+<p class="note">
+※実験専用です。ともたよむ本体のデータは変更しません。
+</p>
+
+<script>
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxbvywLmy4aWh-_u_o_iDVDq_7AMxf9K2wPY-BhXphGbnaBp0JZ4R78_eplmYfXH3obHA/exec";
+const NCODE = "N0175GW";
+const TOTAL = 210;
+
+async function loadPosition() {
+  const status = document.getElementById("status");
+  const progress = document.getElementById("progress");
+
+  try {
+    const response = await fetch(
+      GAS_URL + "?ncode=" + encodeURIComponent(NCODE),
+      { method: "GET" }
+    );
+
+    const text = (await response.text()).trim();
+    const match = text.match(/^READ\s+([A-Z0-9]+)\s+(\d+)$/);
+
+    if (!match) {
+      status.textContent = "❌ GASから想定外の返答：\n" + text;
+      return;
+    }
+
+    const episode = match[2];
+    progress.textContent = "続きから　📖 " + episode + " / " + TOTAL + "話";
+    status.textContent = "✅ GASから受信して、仮カードへ反映しました。\n" + text;
+  } catch (error) {
+    status.textContent =
+      "❌ GAS読み出し失敗\n\n" + error.message;
+  }
+}
+
+loadPosition();
+</script>
+</body>
+</html>
