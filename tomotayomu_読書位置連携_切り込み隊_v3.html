@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ともたよむ 読書位置連携 切り込み隊 v3</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;margin:0;padding:18px;background:#f6f6f6;color:#222}
+h1{font-size:20px;margin:0 0 8px}
+.card{background:#fff;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 2px 8px #0001}
+.label{font-size:12px;color:#666}
+.big{font-size:28px;font-weight:700;margin:4px 0}
+button{font-size:16px;padding:11px 15px;border:0;border-radius:12px;background:#222;color:#fff;margin:4px 0}
+button.copy{background:#1769aa}
+pre{white-space:pre-wrap;word-break:break-all;font-size:12px;line-height:1.45;margin:8px 0}
+.ok{font-weight:700}
+</style>
+</head>
+<body>
+<h1>🧪 ともたよむ 読書位置連携・切り込み隊 v3</h1>
+
+<div class="card">
+<div class="label">目的</div>
+<div>GASの読書位置を受信し、<strong>「GAS → 解析 → 読書位置反映 → 復帰」</strong>を診断する。</div>
+</div>
+
+<div class="card">
+<div class="label">対象Nコード</div>
+<div class="big" id="ncode">—</div>
+<div>URLの <code>?ncode=</code> から取得</div>
+</div>
+
+<div class="card">
+<div class="label">読書位置</div>
+<div class="big"><span id="current">—</span>話 / <span id="total">—</span>話</div>
+<div id="state">待機中</div>
+</div>
+
+<div class="card">
+<div class="label">GAS応答</div>
+<pre id="raw">まだ確認していません</pre>
+</div>
+
+<div class="card">
+<div class="label">解析結果</div>
+<pre id="inspect">まだ確認していません</pre>
+</div>
+
+<div class="card">
+<button id="check">🔄 この作品のGASを確認</button>
+<button class="copy" id="copy">📋 ししょー用に結果をまとめてコピー</button>
+</div>
+
+<div class="card">
+<div class="label">復帰検知</div>
+<div id="returnCount">復帰処理：0回</div>
+<div id="vcCount">visibilitychange：0回</div>
+</div>
+
+<div class="card">
+<div class="label">ログ</div>
+<pre id="log"></pre>
+</div>
+
+<script>
+const VERSION="切り込み隊 v3";
+const GAS_URL="https://script.google.com/macros/s/AKfycbxbvywLmy4aWh-_u_o_iDVDq_7AMxf9K2wPY-BhXphGbnaBp0JZ4R78_eplmYfXH3obHA/exec";
+
+const params=new URLSearchParams(location.search);
+const NCODE=(params.get("ncode")||"").trim().toUpperCase();
+
+let current=Number(localStorage.getItem("tomotayomu_cut_v3_current_"+NCODE)||0);
+let total=Number(localStorage.getItem("tomotayomu_cut_v3_total_"+NCODE)||0);
+let returns=Number(localStorage.getItem("tomotayomu_cut_v3_returns")||0);
+let vc=Number(localStorage.getItem("tomotayomu_cut_v3_vc")||0);
+let lastRaw="";
+let lastStatus="";
+let lastStartedAt="";
+let lastFinishedAt="";
+let lastDuration="";
+let lastParsedCode="";
+let lastParsedEpisode="";
+let lastParseOK=false;
+let lastError="";
+let logs=[];
+
+const $=id=>document.getElementById(id);
+
+function now(){return new Date().toLocaleString();}
+function log(s){
+  const t=new Date().toLocaleTimeString();
+  const line=t+"  "+s;
+  logs.unshift(line);
+  logs=logs.slice(0,80);
+  $("log").textContent=logs.join("\n");
+}
+function render(){
+  $("ncode").textContent=NCODE||"Nコード未指定";
+  $("current").textContent=current||"—";
+  $("total").textContent=total||"—";
+  $("returnCount").textContent="復帰処理："+returns+"回";
+  $("vcCount").textContent="visibilitychange："+vc+"回";
+  if(!NCODE)$("state").textContent="URLに ncode がありません";
+  else if(current)$("state").textContent="読書位置を反映："+current+"話";
+  else $("state").textContent="GAS確認待ち";
+}
+function inspectResponse(text){
+  const trimmed=text.trim();
+  const parts=trimmed.split(/\s+/);
+  let code="", episode="", ok=false;
+  if(parts.length===3 && parts[0]==="READ"){
+    code=parts[1];
+    episode=parts[2];
+    ok=(code===NCODE && /^\\d+$/.test(episode));
+  }
+  lastParsedCode=code;
+  lastParsedEpisode=episode;
+  lastParseOK=ok;
+  $("inspect").textContent=
+    "length = "+text.length+"\n"+
+    "trimmed = "+JSON.stringify(trimmed)+"\n"+
+    "split = "+JSON.stringify(parts)+"\n"+
+    "先頭 = "+JSON.stringify(parts[0]||"")+"\n"+
+    "抽出Nコード = "+JSON.stringify(code)+"\n"+
+    "抽出話数 = "+JSON.stringify(episode)+"\n"+
+    "Nコード一致 = "+(code===NCODE)+"\n"+
+    "話数が整数文字列 = "+(/^\\d+$/.test(episode))+"\n"+
+    "解析成功 = "+ok;
+  return {code,episode,ok};
+}
+async function checkGAS(reason){
+  if(!NCODE){$("state").textContent="Nコード未指定";log("GAS確認中止：ncodeなし");return;}
+  $("state").textContent="GAS確認中…";
+  lastStartedAt=now();
+  lastFinishedAt="";
+  lastDuration="";
+  lastError="";
+  log("GAS確認開始："+reason+" / "+NCODE);
+  const started=performance.now();
+  try{
+    const url=GAS_URL+"?ncode="+encodeURIComponent(NCODE);
+    const res=await fetch(url,{cache:"no-store"});
+    lastStatus=String(res.status)+" "+res.statusText;
+    const text=await res.text();
+    const finished=performance.now();
+    lastFinishedAt=now();
+    lastDuration=(finished-started).toFixed(0)+" ms";
+    lastRaw=text;
+    $("raw").textContent=text;
+    log("GAS応答："+JSON.stringify(text));
+    const p=inspectResponse(text);
+    if(p.ok){
+      current=Number(p.episode);
+      localStorage.setItem("tomotayomu_cut_v3_current_"+NCODE,String(current));
+      $("state").textContent="読書位置を反映："+current+"話";
+      log("読書位置反映："+current+"話");
+    }else{
+      $("state").textContent="GAS応答の解析失敗";
+      log("解析失敗");
+    }
+    render();
+  }catch(e){
+    lastError=String(e);
+    lastStatus="";
+    $("raw").textContent="通信エラー："+e;
+    $("state").textContent="GAS通信エラー";
+    log("GAS通信エラー："+e);
+  }
+}
+function buildReport(){
+  return [
+    "【ともたよむ 読書位置連携・診断結果】",
+    "版："+VERSION,
+    "ページURL："+location.href,
+    "対象Nコード："+NCODE,
+    "",
+    "【読書位置】",
+    "現在表示："+(current||"—"),
+    "総話数："+(total||"—"),
+    "表示状態："+$("state").textContent,
+    "",
+    "【GAS通信】",
+    "GAS URL："+GAS_URL,
+    "HTTP："+(lastStatus||"未取得"),
+    "確認開始："+(lastStartedAt||"未取得"),
+    "確認終了："+(lastFinishedAt||"未取得"),
+    "所要時間："+(lastDuration||"未取得"),
+    "エラー："+(lastError||"なし"),
+    "",
+    "【GAS生応答】",
+    lastRaw||"未取得",
+    "",
+    "【GAS応答解析】",
+    "抽出Nコード："+(lastParsedCode||"なし"),
+    "抽出話数："+(lastParsedEpisode||"なし"),
+    "Nコード一致："+lastParsedCode+" === "+NCODE+" → "+(lastParsedCode===NCODE),
+    "解析成功："+lastParseOK,
+    "",
+    "【復帰検知】",
+    "復帰処理："+returns+"回",
+    "visibilitychange："+vc+"回",
+    "",
+    "【直近ログ】",
+    logs.slice(0,30).join("\n")
+  ].join("\n");
+}
+$("check").addEventListener("click",()=>checkGAS("手動"));
+$("copy").addEventListener("click",async()=>{
+  const report=buildReport();
+  try{
+    await navigator.clipboard.writeText(report);
+    $("state").textContent="診断結果をコピーしました";
+    log("ししょー用診断結果をコピー");
+  }catch(e){
+    const ta=document.createElement("textarea");
+    ta.value=report;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    ta.remove();
+    $("state").textContent="診断結果をコピーしました";
+    log("診断結果をコピー（代替方式）");
+  }
+});
+document.addEventListener("visibilitychange",()=>{
+  vc++;
+  localStorage.setItem("tomotayomu_cut_v3_vc",String(vc));
+  log("visibilitychange："+document.visibilityState);
+  if(document.visibilityState==="visible"){
+    returns++;
+    localStorage.setItem("tomotayomu_cut_v3_returns",String(returns));
+    render();
+    checkGAS("復帰");
+  }
+});
+render();
+log("ページ起動 / ncode="+(NCODE||"なし"));
+if(NCODE)checkGAS("初回表示");
+</script>
+</body>
+</html>
