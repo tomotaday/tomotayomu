@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>ともたよむ 読書位置連携・切り込み隊 v4</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;margin:0;padding:16px;line-height:1.55;background:#f7f7f7;color:#222}
+h1{font-size:20px;margin:0 0 12px}
+.box{background:#fff;border-radius:12px;padding:14px;margin:10px 0;box-shadow:0 1px 4px #ddd}
+.label{font-size:12px;color:#666}
+.value{font-size:18px;font-weight:600;word-break:break-all}
+button{width:100%;padding:12px;border:0;border-radius:10px;font-size:16px;margin-top:8px}
+pre{white-space:pre-wrap;word-break:break-all;font-size:12px;background:#f0f0f0;padding:10px;border-radius:8px}
+.ok{color:#087f23}.err{color:#b00020}
+</style>
+</head>
+<body>
+<h1>📚 ともたよむ 読書位置連携・切り込み隊 v4</h1>
+
+<div class="box">
+  <div class="label">対象Nコード</div>
+  <div id="ncode" class="value">---</div>
+</div>
+
+<div class="box">
+  <div class="label">現在の読書位置</div>
+  <div id="position" class="value">—話 / —話</div>
+  <div id="status">GAS確認待ち</div>
+</div>
+
+<div class="box">
+  <div class="label">GAS生応答</div>
+  <pre id="raw">---</pre>
+</div>
+
+<div class="box">
+  <div class="label">通信状態</div>
+  <div id="http">---</div>
+  <div id="timing">---</div>
+  <div id="error" class="err"></div>
+</div>
+
+<button id="check">🔄 GASを今すぐ確認</button>
+<button id="copy">📋 ししょー用に結果をコピー</button>
+
+<div class="box">
+  <div class="label">復帰検知</div>
+  <div id="returnCount">復帰処理：0回</div>
+  <div id="visibilityCount">visibilitychange：0回</div>
+</div>
+
+<div class="box">
+  <div class="label">直近ログ</div>
+  <pre id="log">---</pre>
+</div>
+
+<script>
+const GAS_URL="https://script.google.com/macros/s/AKfycbxbvywLmy4aWh-_u_o_iDVDq_7AMxf9K2wPY-BhXphGbnaBp0JZ4R78_eplmYfXH3obHA/exec";
+const params=new URLSearchParams(location.search);
+const NCODE=(params.get("ncode")||"").trim().toUpperCase();
+
+let current=0;
+let total="—";
+let returnCount=0;
+let visibilityCount=0;
+let lastRaw="";
+let lastHttp="";
+let lastStart="";
+let lastEnd="";
+let lastMs="";
+let lastError="";
+let logs=[];
+
+const $=id=>document.getElementById(id);
+
+$("ncode").textContent=NCODE||"URLの ?ncode= がありません";
+
+function addLog(s){
+  const t=new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  logs.unshift(t+"  "+s);
+  logs=logs.slice(0,12);
+  $("log").textContent=logs.join("\n");
+}
+
+function render(){
+  $("position").textContent=(current>0?current:"—")+"話 / "+total+"話";
+}
+
+function parseReadResponse(raw){
+  const text=String(raw||"").trim();
+  const parts=text.split(/\s+/);
+
+  // GASの正常応答は「READ N0175GW 99」
+  if(parts.length===3 && parts[0]==="READ"){
+    const ncode=parts[1].toUpperCase();
+    const episode=Number(parts[2]);
+
+    if(ncode===NCODE && Number.isFinite(episode)){
+      current=episode;
+      $("status").textContent="GAS取得成功";
+      $("status").className="ok";
+      render();
+      addLog("解析成功："+ncode+" / "+episode+"話");
+      return true;
+    }
+  }
+
+  $("status").textContent="GAS応答を読書位置として解釈できません";
+  $("status").className="err";
+  addLog("解析失敗");
+  return false;
+}
+
+async function checkGAS(reason){
+  if(!NCODE){
+    $("error").textContent="ncode がありません";
+    return;
+  }
+
+  lastStart=new Date().toLocaleString("ja-JP");
+  const started=performance.now();
+  lastError="";
+  $("error").textContent="";
+  $("status").textContent="GAS確認中…";
+  $("status").className="";
+  addLog("GAS確認開始："+reason+" / "+NCODE);
+
+  try{
+    const url=GAS_URL+"?ncode="+encodeURIComponent(NCODE)+"&_="+Date.now();
+    const res=await fetch(url,{cache:"no-store"});
+    lastHttp=String(res.status);
+    lastRaw=await res.text();
+    const elapsed=Math.round(performance.now()-started);
+    lastMs=elapsed+" ms";
+    lastEnd=new Date().toLocaleString("ja-JP");
+
+    $("http").textContent="HTTP："+lastHttp;
+    $("timing").textContent="所要時間："+lastMs;
+    $("raw").textContent=lastRaw;
+
+    if(res.ok){
+      parseReadResponse(lastRaw);
+    }else{
+      $("status").textContent="GAS通信エラー";
+      $("status").className="err";
+      addLog("HTTP "+lastHttp);
+    }
+  }catch(e){
+    lastError=String(e);
+    lastEnd=new Date().toLocaleString("ja-JP");
+    lastMs=Math.round(performance.now()-started)+" ms";
+    $("status").textContent="GAS通信エラー";
+    $("status").className="err";
+    $("error").textContent=lastError;
+    addLog("通信エラー："+lastError);
+  }
+}
+
+function makeReport(){
+  return [
+    "【ともたよむ 読書位置連携・診断結果】",
+    "版：切り込み隊 v4",
+    "ページURL："+location.href,
+    "対象Nコード："+NCODE,
+    "",
+    "【読書位置】",
+    "現在表示："+(current||"—"),
+    "総話数："+total,
+    "表示状態："+$("status").textContent,
+    "",
+    "【GAS通信】",
+    "GAS URL："+GAS_URL,
+    "HTTP："+(lastHttp||"未確認"),
+    "確認開始："+(lastStart||"未確認"),
+    "確認終了："+(lastEnd||"未確認"),
+    "所要時間："+(lastMs||"未確認"),
+    "エラー："+(lastError||"なし"),
+    "",
+    "【GAS生応答】",
+    lastRaw||"未取得",
+    "",
+    "【復帰検知】",
+    "復帰処理："+returnCount+"回",
+    "visibilitychange："+visibilityCount+"回",
+    "",
+    "【直近ログ】",
+    logs.join("\n")||"なし"
+  ].join("\n");
+}
+
+$("check").addEventListener("click",()=>checkGAS("手動"));
+
+$("copy").addEventListener("click",async()=>{
+  const report=makeReport();
+  try{
+    await navigator.clipboard.writeText(report);
+    addLog("ししょー用診断結果をコピー");
+  }catch(e){
+    const ta=document.createElement("textarea");
+    ta.value=report;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    ta.remove();
+    addLog("ししょー用診断結果をコピー（代替）");
+  }
+});
+
+document.addEventListener("visibilitychange",()=>{
+  visibilityCount++;
+  addLog("visibilitychange："+document.visibilityState);
+  if(document.visibilityState==="visible"){
+    returnCount++;
+    $("returnCount").textContent="復帰処理："+returnCount+"回";
+    checkGAS("復帰");
+  }
+  $("visibilityCount").textContent="visibilitychange："+visibilityCount+"回";
+});
+
+addLog("ページ起動 / ncode="+NCODE);
+checkGAS("初回表示");
+</script>
+</body>
+</html>
