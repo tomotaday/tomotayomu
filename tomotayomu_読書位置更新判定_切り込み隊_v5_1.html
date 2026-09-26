@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ともたよむ 切り込み隊 v5</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;margin:0;background:#f6f7f9;color:#222}
+main{max-width:720px;margin:auto;padding:18px 14px 40px}h1{font-size:22px;margin:0 0 6px}.sub{font-size:13px;color:#666;margin-bottom:16px}
+.card{background:#fff;border-radius:14px;padding:14px;margin:10px 0;box-shadow:0 1px 5px #0001}h2{font-size:16px;margin:0 0 10px}
+.row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid #eee}.row:last-child{border-bottom:0}.label{color:#666}.value{font-weight:600;text-align:right;word-break:break-all}.big{font-size:25px}.ok{color:#087f3f}.warn{color:#a65b00}.ng{color:#b42318}
+button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:8px;font-size:15px;font-weight:700;background:#222;color:#fff}button.secondary{background:#e9edf2;color:#222}
+pre{white-space:pre-wrap;word-break:break-word;background:#f2f3f5;border-radius:10px;padding:10px;font-size:12px;line-height:1.5;max-height:320px;overflow:auto}.small{font-size:12px;color:#666;line-height:1.55}
+</style>
+</head>
+<body>
+<main>
+<h1>🔪 ともたよむ 切り込み隊 v5</h1>
+<div class="sub">N0175GW・最新掲載日時／読書位置／🆙判定 統合試験</div>
+
+<div class="card"><h2>対象作品</h2>
+<div class="row"><span class="label">Nコード</span><span class="value" id="ncode">N0175GW</span></div>
+<div class="row"><span class="label">作品名</span><span class="value" id="title">—</span></div></div>
+
+<div class="card"><h2>作品情報（Narou API）</h2>
+<div class="row"><span class="label">最新掲載日時</span><span class="value" id="lastup">—</span></div>
+<div class="row"><span class="label">最新話数</span><span class="value" id="total">—</span></div>
+<div class="row"><span class="label">API状態</span><span class="value" id="apiStatus">待機中</span></div></div>
+
+<div class="card"><h2>読書位置（GAS）</h2>
+<div class="row"><span class="label">現在位置</span><span class="value big" id="current">—</span></div>
+<div class="row"><span class="label">GAS状態</span><span class="value" id="gasStatus">待機中</span></div></div>
+
+<div class="card"><h2>更新判定</h2>
+<div class="row"><span class="label">前回保存 general_lastup</span><span class="value" id="baseline">—</span></div>
+<div class="row"><span class="label">掲載日時の変化</span><span class="value" id="changed">—</span></div>
+<div class="row"><span class="label">読書位置 vs 最新話</span><span class="value" id="progress">—</span></div>
+<div class="row"><span class="label">最終判定</span><span class="value big" id="judgement">—</span></div></div>
+
+<div class="card"><h2>操作</h2>
+<button id="checkBtn">🔄 API＋GASを確認</button>
+<button id="saveBtn" class="secondary">💾 今回の最新掲載日時を基準として保存</button>
+<button id="clearBtn" class="secondary">🗑 この作品の試験用基準値を削除</button>
+<button id="copyBtn" class="secondary">📋 ししょー用に結果をまとめてコピー</button></div>
+
+<div class="card"><h2>鑑定結果</h2><pre id="diagnostic">まだ確認していません。</pre></div>
+<div class="card"><h2>ログ</h2><pre id="log"></pre></div>
+
+<div class="small">※保存値は本番ともたよむとは別の試験用localStorageです。<br>
+※初回は基準値がないため、API取得後に「基準として保存」を押してください。<br>
+※基準値と同じ場合はGAS確認を行わず、掲載日時が新しくなった作品だけGASを確認します。</div>
+</main>
+
+<script>
+const NCODE=(new URLSearchParams(location.search).get("ncode")||"N0175GW").toUpperCase();
+const API_URL="https://api.syosetu.com/novelapi/api/";
+const GAS_URL="https://script.google.com/macros/s/AKfycbxbvywLmy4aWh-_u_o_iDVDq_7AMxf9K2wPY-BhXphGbnaBp0JZ4R78_eplmYfXH3obHA/exec";
+const KEY="tomotaYomu_cutting_v5_baseline_"+NCODE;
+const $=id=>document.getElementById(id);
+$("ncode").textContent=NCODE;
+let apiData=null,gasData=null,apiRaw="",gasRaw="",apiHttp="—",gasHttp="—",startedAt=null,finishedAt=null,logs=[];
+
+function log(s){const t=new Date().toLocaleTimeString("ja-JP");logs.push(t+" "+s);if(logs.length>40)logs.shift();$("log").textContent=logs.join("\n")}
+function fmtDate(v){if(!v)return"—";const d=new Date(v.replace(" ","T"));if(Number.isNaN(d.getTime()))return v;const p=n=>String(n).padStart(2,"0");return d.getFullYear()+"/"+p(d.getMonth()+1)+"/"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes())+":"+p(d.getSeconds())}
+function loadBaseline(){return localStorage.getItem(KEY)||""}
+function saveBaseline(v){if(v)localStorage.setItem(KEY,v)}
+function clearBaseline(){localStorage.removeItem(KEY)}
+
+function updateJudgement(){
+ const latest=apiData?.general_lastup||"",total=Number(apiData?.general_all_no||0),current=Number(gasData?.episode||0),baseline=loadBaseline();
+ $("baseline").textContent=baseline?fmtDate(baseline):"未保存";
+ if(!latest){$("changed").textContent="判定不能";$("progress").textContent="判定不能";$("judgement").textContent="—";return}
+ if(!baseline){$("changed").textContent="初回（基準値なし）";$("progress").textContent=current&&total?current+" / "+total+"話":"—";$("judgement").textContent="基準値を保存してください";$("judgement").className="value warn big";return}
+ const cmp=latest>baseline?1:latest===baseline?0:-1;
+ $("changed").textContent=cmp>0?"YES（新しい掲載）":cmp===0?"NO（同一）":"異常（今回が過去）";
+ $("changed").className="value "+(cmp>0?"ok":cmp<0?"ng":"");
+ $("progress").textContent=current&&total?current+" / "+total+"話":"GAS確認なし";
+ if(cmp<0){$("judgement").textContent="⚠️ 要確認";$("judgement").className="value ng big"}
+ else if(cmp===0){$("judgement").textContent="更新なし";$("judgement").className="value"}
+ else if(current&&total){const up=current<total;$("judgement").textContent=up?"🆙 更新あり・未読あり":"更新あり・読了";$("judgement").className="value "+(up?"warn":"ok")+" big"}
+ else{$("judgement").textContent="更新あり・GAS未確認";$("judgement").className="value warn big"}
+}
+
+function updateDiagnostic(){
+ const latest=apiData?.general_lastup||"",baseline=loadBaseline(),total=apiData?.general_all_no||"",current=gasData?.episode??"",elapsed=startedAt&&finishedAt?(finishedAt-startedAt)+" ms":"—";
+ $("current").textContent=current===""?"—":current+"話";
+ $("diagnostic").textContent=
+`切り込み隊 v5
+対象Nコード: ${NCODE}
+
+【Narou API】
+HTTP: ${apiHttp}
+general_lastup: ${latest||"なし"}
+表示: ${fmtDate(latest)}
+general_all_no: ${total||"なし"}
+
+【GAS】
+HTTP: ${gasHttp}
+応答: ${gasRaw||"なし"}
+読書位置: ${current===""?"なし":current+"話"}
+
+【保存基準】
+localStorage key:
+${KEY}
+保存値: ${baseline||"未保存"}
+
+【判定】
+掲載日時変化: ${$("changed").textContent}
+読書位置/最新話: ${$("progress").textContent}
+最終判定: ${$("judgement").textContent}
+
+【時間】
+処理時間: ${elapsed}
+
+【エラー】
+API: ${apiHttp==="JSONP"?"なし":$("apiStatus").textContent}
+GAS: ${gasHttp===200?"なし":$("gasStatus").textContent}`;
+}
+
+function fetchApi(){
+ return new Promise((resolve,reject)=>{
+  const old=document.getElementById("narouApiScript"); if(old)old.remove();
+  const cb="tomotaYomuV5_"+Date.now();
+  const script=document.createElement("script");
+  script.id="narouApiScript";
+  window[cb]=data=>{
+   delete window[cb]; script.remove(); apiHttp="JSONP";
+   try{
+    if(!Array.isArray(data)||!data[1])throw new Error("API作品データなし");
+    apiRaw=JSON.stringify(data[1]);
+    resolve(data[1]);
+   }catch(e){reject(e)}
+  };
+  script.onerror=()=>{
+   delete window[cb]; script.remove(); reject(new Error("Narou API JSONP取得失敗"));
+  };
+  script.src=API_URL+"?ncode="+encodeURIComponent(NCODE)+"&of=ncode-general_lastup-general_all_no&out=jsonp&callback="+cb;
+  document.body.appendChild(script);
+  log("API JSONP送信");
+ });
+}
+async function fetchGas(){
+ const r=await fetch(GAS_URL+"?ncode="+encodeURIComponent(NCODE),{cache:"no-store"});gasHttp=r.status;gasRaw=await r.text();
+ if(!r.ok)throw new Error("GAS HTTP "+r.status);
+ const parts=gasRaw.trim().split(/\s+/);
+ if(parts.length>=3&&parts[0]==="READ"&&parts[1].toUpperCase()===NCODE){const ep=Number(parts[2]);if(Number.isFinite(ep))return{episode:ep}}
+ throw new Error("GAS応答解析失敗: "+gasRaw);
+}
+
+async function check(){
+ startedAt=Date.now();$("apiStatus").textContent="取得中…";$("gasStatus").textContent="待機中";log("★ API＋GAS確認");
+ try{
+  apiData=await fetchApi();$("title").textContent=apiData.title||"—";$("lastup").textContent=fmtDate(apiData.general_lastup);$("total").textContent=apiData.general_all_no||"—";$("apiStatus").textContent="API取得成功";
+  log("API OK: "+apiData.general_lastup+" / "+apiData.general_all_no+"話");
+  const baseline=loadBaseline();
+  if(!baseline){$("gasStatus").textContent="初回のためGAS確認を省略";gasData=null;log("基準値なし → GASはまだ確認しない")}
+  else if(apiData.general_lastup>baseline){$("gasStatus").textContent="更新あり → GAS確認中…";gasData=await fetchGas();$("gasStatus").textContent="GAS取得成功";log("GAS OK: "+gasData.episode+"話")}
+  else{$("gasStatus").textContent="掲載日時不変 → GAS確認不要";gasData=null;log("general_lastup不変 → GASアクセスなし")}
+  finishedAt=Date.now();updateJudgement();updateDiagnostic();
+ }catch(e){finishedAt=Date.now();$("gasStatus").textContent=e.message;log("ERROR: "+e.message);updateJudgement();updateDiagnostic()}
+}
+$("checkBtn").addEventListener("click",check);
+$("saveBtn").addEventListener("click",()=>{if(!apiData?.general_lastup){alert("先にAPI＋GASを確認してください。");return}saveBaseline(apiData.general_lastup);log("基準値を保存: "+apiData.general_lastup);updateJudgement();updateDiagnostic()});
+$("clearBtn").addEventListener("click",()=>{clearBaseline();apiData=null;gasData=null;$("baseline").textContent="未保存";$("changed").textContent="—";$("progress").textContent="—";$("judgement").textContent="—";$("judgement").className="value big";log("試験用基準値を削除");updateDiagnostic()});
+$("copyBtn").addEventListener("click",async()=>{updateDiagnostic();const text=$("diagnostic").textContent+"\n\n【ログ】\n"+$("log").textContent;try{await navigator.clipboard.writeText(text);alert("コピーしました。")}catch(e){const ta=document.createElement("textarea");ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();alert("コピーしました。")}});
+window.addEventListener("load",()=>{const b=loadBaseline();$("baseline").textContent=b?fmtDate(b):"未保存";log("v5起動 / 基準値: "+(b?fmtDate(b):"なし"));check()});
+</script>
+</body>
+</html>
