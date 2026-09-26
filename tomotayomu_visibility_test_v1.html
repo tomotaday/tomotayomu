@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ともたよむ 復帰検知テスト</title>
+<style>
+body{margin:0;padding:24px 16px 40px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f7f7f7;color:#222}
+main{max-width:560px;margin:auto}h1{font-size:22px}.lead{line-height:1.6;color:#666}
+.card{background:#fff;border-radius:16px;padding:18px;margin-top:16px;box-shadow:0 2px 10px #0001}
+.status{font-size:20px;font-weight:700;margin-bottom:14px}.row{display:flex;justify-content:space-between;gap:16px;padding:9px 0;border-bottom:1px solid #eee}
+.label{color:#666}.value{text-align:right;font-variant-numeric:tabular-nums}
+button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:14px;font-size:16px;background:#e9e9e9}
+#log{white-space:pre-wrap;line-height:1.5;font-size:13px;color:#555;max-height:260px;overflow:auto}
+</style>
+</head>
+<body>
+<main>
+<h1>📱 ともたよむ 復帰検知テスト</h1>
+<div class="lead">本体には何も接続していません。<br>「ともたよむ → Brave → ともたよむ」の往復で、再表示を検知できるか確認します。</div>
+<section class="card">
+<div id="status" class="status">🟢 待機中</div>
+<div class="row"><span class="label">現在の表示状態</span><span id="visibility" class="value">visible</span></div>
+<div class="row"><span class="label">非表示回数</span><span id="hiddenCount" class="value">0</span></div>
+<div class="row"><span class="label">再表示回数</span><span id="visibleCount" class="value">0</span></div>
+<div class="row"><span class="label">最後の非表示</span><span id="hiddenAt" class="value">—</span></div>
+<div class="row"><span class="label">最後の再表示</span><span id="visibleAt" class="value">—</span></div>
+<button id="reset">テスト結果をリセット</button>
+</section>
+<section class="card"><strong>イベントログ</strong><div id="log" style="margin-top:10px">起動しました。</div></section>
+</main>
+<script>
+"use strict";
+const KEY="tomotaYomu_visibility_test_v1";
+function load(){try{return JSON.parse(localStorage.getItem(KEY))||{hiddenCount:0,visibleCount:0,hiddenAt:"",visibleAt:""}}catch{return{hiddenCount:0,visibleCount:0,hiddenAt:"",visibleAt:""}}}
+function save(s){localStorage.setItem(KEY,JSON.stringify(s))}
+function now(){return new Date().toLocaleString("ja-JP",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"})}
+function render(s){visibility.textContent=document.visibilityState;hiddenCount.textContent=s.hiddenCount;visibleCount.textContent=s.visibleCount;hiddenAt.textContent=s.hiddenAt||"—";visibleAt.textContent=s.visibleAt||"—"}
+function log(m){const l=document.getElementById("log");l.textContent="["+now()+"] "+m+"\n"+l.textContent}
+let s=load();render(s);
+document.addEventListener("visibilitychange",()=>{
+ const t=now();
+ if(document.visibilityState==="hidden"){s.hiddenCount++;s.hiddenAt=t;status.textContent="🟡 非表示を検知";log("hidden を検知しました。")}
+ else{s.visibleCount++;s.visibleAt=t;status.textContent="🟢 再表示を検知 ← ここが重要";log("visible（再表示）を検知しました。")}
+ save(s);render(s);
+});
+reset.addEventListener("click",()=>{s={hiddenCount:0,visibleCount:0,hiddenAt:"",visibleAt:""};save(s);status.textContent="🟢 待機中";document.getElementById("log").textContent="リセットしました。";render(s)});
+</script>
+</body>
+</html>
