@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ともたよむ 読書位置連携 切り込み隊 v1</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;margin:0;padding:18px;background:#f6f6f6;color:#222}
+h1{font-size:20px;margin:0 0 8px}
+.card{background:#fff;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 2px 8px #0001}
+.label{font-size:12px;color:#666}
+.big{font-size:28px;font-weight:700;margin:4px 0}
+button{font-size:16px;padding:11px 15px;border:0;border-radius:12px;background:#222;color:#fff}
+pre{white-space:pre-wrap;word-break:break-all;font-size:12px;line-height:1.45}
+.ok{font-weight:700}
+</style>
+</head>
+<body>
+<h1>🧪 ともたよむ 読書位置連携・切り込み隊 v1</h1>
+
+<div class="card">
+  <div class="label">目的</div>
+  <div>本体へ組み込む前に、<strong>「復帰 → 対象作品だけGAS確認 → 読書位置反映」</strong>を検証する。</div>
+</div>
+
+<div class="card">
+  <div class="label">対象Nコード</div>
+  <div class="big" id="ncode">—</div>
+  <div>URLの <code>?ncode=</code> から取得</div>
+</div>
+
+<div class="card">
+  <div class="label">読書位置</div>
+  <div class="big"><span id="current">—</span>話 / <span id="total">—</span>話</div>
+  <div id="state">待機中</div>
+</div>
+
+<div class="card">
+  <div class="label">GAS応答</div>
+  <pre id="gas">まだ確認していません</pre>
+</div>
+
+<div class="card">
+  <button id="check">🔄 この作品のGASを確認</button>
+</div>
+
+<div class="card">
+  <div class="label">復帰検知</div>
+  <div id="returnCount">復帰処理：0回</div>
+  <div id="vcCount">visibilitychange：0回</div>
+</div>
+
+<div class="card">
+  <div class="label">ログ</div>
+  <pre id="log"></pre>
+</div>
+
+<script>
+const GAS_URL="https://script.google.com/macros/s/AKfycbxbvywLmy4aWh-_u_o_iDVDq_7AMxf9K2wPY-BhXphGbnaBp0JZ4R78_eplmYfXH3obHA/exec";
+
+const params=new URLSearchParams(location.search);
+const NCODE=(params.get("ncode")||"").trim().toUpperCase();
+
+let current=Number(localStorage.getItem("tomotayomu_cut_current_"+NCODE)||0);
+let total=Number(localStorage.getItem("tomotayomu_cut_total_"+NCODE)||0);
+let returns=Number(localStorage.getItem("tomotayomu_cut_returns")||0);
+let vc=Number(localStorage.getItem("tomotayomu_cut_vc")||0);
+
+const $=id=>document.getElementById(id);
+
+function log(s){
+  const t=new Date().toLocaleTimeString();
+  $("log").textContent=t+"  "+s+"\\n"+$("log").textContent;
+}
+
+function render(){
+  $("ncode").textContent=NCODE||"Nコード未指定";
+  $("current").textContent=current||"—";
+  $("total").textContent=total||"—";
+  $("returnCount").textContent="復帰処理："+returns+"回";
+  $("vcCount").textContent="visibilitychange："+vc+"回";
+
+  if(!NCODE){
+    $("state").textContent="URLに ncode がありません";
+    return;
+  }
+  if(current && total && current>=total){
+    $("state").textContent="読了済み（最新話まで到達）";
+  }else if(current && total){
+    $("state").textContent="未読更新あり候補";
+  }else{
+    $("state").textContent="GAS確認待ち";
+  }
+}
+
+async function checkGAS(reason){
+  if(!NCODE){
+    $("state").textContent="Nコード未指定";
+    log("GAS確認中止：ncodeなし");
+    return;
+  }
+
+  $("state").textContent="GAS確認中…";
+  log("GAS確認開始："+reason+" / "+NCODE);
+
+  try{
+    const res=await fetch(
+      GAS_URL+"?ncode="+encodeURIComponent(NCODE),
+      {cache:"no-store"}
+    );
+    const text=await res.text();
+    $("gas").textContent=text;
+    log("GAS応答："+text);
+
+    const m=text.match(/^READ\\s+([A-Z0-9]+)\\s+(\\d+)$/);
+    if(m && m[1]===NCODE){
+      current=Number(m[2]);
+      localStorage.setItem("tomotayomu_cut_current_"+NCODE,String(current));
+      $("state").textContent="読書位置を反映しました";
+      log("読書位置反映："+current+"話");
+    }else{
+      $("state").textContent="GAS応答を読書位置として解釈できません";
+    }
+    render();
+  }catch(e){
+    $("gas").textContent="通信エラー："+e;
+    $("state").textContent="GAS通信エラー";
+    log("GAS通信エラー："+e);
+  }
+}
+
+$("check").addEventListener("click",()=>checkGAS("手動"));
+
+document.addEventListener("visibilitychange",()=>{
+  vc++;
+  localStorage.setItem("tomotayomu_cut_vc",String(vc));
+  log("visibilitychange："+document.visibilityState);
+
+  if(document.visibilityState==="visible"){
+    returns++;
+    localStorage.setItem("tomotayomu_cut_returns",String(returns));
+    render();
+    checkGAS("復帰");
+  }
+});
+
+render();
+log("ページ起動 / ncode="+(NCODE||"なし"));
+
+if(NCODE){
+  checkGAS("初回表示");
+}
+</script>
+</body>
+</html>
