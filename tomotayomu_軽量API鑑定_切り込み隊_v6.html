@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ともたよむ 軽量API鑑定 切り込み隊 v6</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;background:#f7f7f7;color:#222}
+main{max-width:760px;margin:auto;padding:16px}
+h1{font-size:20px;margin:8px 0 4px}
+p{font-size:14px;line-height:1.6}
+.card{background:#fff;border-radius:14px;padding:14px;margin:10px 0;box-shadow:0 1px 4px #ddd}
+button{width:100%;padding:13px;margin:6px 0;border:0;border-radius:12px;font-size:15px;background:#333;color:#fff}
+button.secondary{background:#777}
+pre{white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.5;background:#f1f1f1;padding:12px;border-radius:10px}
+.badge{display:inline-block;padding:4px 8px;border-radius:8px;background:#eee;font-size:12px}
+.ok{font-weight:700}
+</style>
+</head>
+<body>
+<main>
+<h1>🔪 ともたよむ 切り込み隊 v6</h1>
+<p>2117作品の「ncode + general_lastup」軽量取得を測定します。<br>
+GAS・読書位置・更新判定は今回扱いません。</p>
+
+<div class="card">
+<div>通常作品：<span id="normalCount">—</span></div>
+<div>R18作品：<span id="r18Count">—</span></div>
+<div>合計：<span id="totalCount">—</span></div>
+</div>
+
+<div class="card">
+<button id="normalBtn">📡 通常APIを鑑定</button>
+<button id="r18Btn">🔞 R18 APIを鑑定</button>
+<button id="bothBtn">🚀 通常＋R18を連続鑑定</button>
+<button id="copyBtn" class="secondary">📋 ししょー用に結果をコピー</button>
+</div>
+
+<div class="card">
+<div class="badge">通常API</div>
+<pre id="normalResult">未実行</pre>
+</div>
+
+<div class="card">
+<div class="badge">R18 API</div>
+<pre id="r18Result">未実行</pre>
+</div>
+
+<div class="card">
+<div class="badge">総合ログ</div>
+<pre id="log">v6起動</pre>
+</div>
+</main>
+
+<script>
+const NORMAL_CODES = [];
+const R18_CODES = [];
+
+const $ = id => document.getElementById(id);
+const logs = [];
+let normalData = null, r18Data = null;
+
+function log(s){
+  const t=new Date().toLocaleTimeString("ja-JP",{hour12:false});
+  logs.push(t+" "+s);
+  $("log").textContent=logs.join("\n");
+}
+
+function unique(a){return [...new Set(a.map(x=>String(x).trim().toUpperCase()).filter(Boolean))]}
+
+function jsonp(url, callbackName, timeout=20000){
+  return new Promise((resolve,reject)=>{
+    const script=document.createElement("script");
+    let done=false;
+    const timer=setTimeout(()=>finish(new Error("timeout")),timeout);
+    function finish(err,data){
+      if(done)return;
+      done=true;clearTimeout(timer);
+      try{delete window[callbackName]}catch{}
+      script.remove();
+      err?reject(err):resolve(data);
+    }
+    window[callbackName]=data=>finish(null,data);
+    script.onerror=()=>finish(new Error("JSONP load error"));
+    script.src=url;
+    document.body.appendChild(script);
+  });
+}
+
+async function fetchLight(codes, apiBase, label){
+  const list=unique(codes);
+  const started=performance.now();
+  const cb="tomotaYomuV6_"+Math.random().toString(36).slice(2);
+  const url=apiBase+"?"+new URLSearchParams({
+    ncode:list.join("-"),
+    out:"json",
+    of:"n-gl",
+    lim:"500",
+    callback:cb
+  }).toString();
+
+  log(label+" JSONP送信 / "+list.length+"作品");
+  const data=await jsonp(url,cb);
+  const elapsed=Math.round(performance.now()-started);
+  const rows=Array.isArray(data)?data:[];
+  const usable=rows.filter(x=>x && x.ncode);
+  const missing=Math.max(0,list.length-usable.length);
+
+  return {
+    requested:list.length,
+    received:rows.length,
+    usable:usable.length,
+    missing,
+    elapsed,
+    sample:usable.slice(0,10).map(x=>({
+      ncode:x.ncode,
+      general_lastup:x.general_lastup
+    })),
+    rows
+  };
+}
+
+function render(result, label){
+  const lines=[
+    "対象件数: "+result.requested,
+    "API取得件数: "+result.received,
+    "Nコード取得件数: "+result.usable,
+    "取得できなかった件数: "+result.missing,
+    "処理時間: "+result.elapsed+" ms",
+    "",
+    "【先頭10件】",
+    ...result.sample.map(x=>x.ncode+" | "+(x.general_lastup||""))
+  ];
+  $(label==="通常API"?"normalResult":"r18Result").textContent=lines.join("\n");
+}
+
+async function runNormal(){
+  if(!NORMAL_CODES.length){alert("通常作品Nコードがまだ入っていません。");return}
+  try{
+    normalData=await fetchLight(
+      NORMAL_CODES,
+      "https://api.syosetu.com/novelapi/api/",
+      "通常API"
+    );
+    render(normalData,"通常API");
+    log("通常API完了: "+normalData.usable+"/"+normalData.requested+"件 / "+normalData.elapsed+"ms");
+  }catch(e){
+    $("normalResult").textContent="ERROR: "+e.message;
+    log("通常API ERROR: "+e.message);
+  }
+}
+
+async function runR18(){
+  if(!R18_CODES.length){alert("R18作品Nコードがまだ入っていません。");return}
+  try{
+    r18Data=await fetchLight(
+      R18_CODES,
+      "https://api.syosetu.com/novel18api/api/",
+      "R18 API"
+    );
+    render(r18Data,"R18 API");
+    log("R18 API完了: "+r18Data.usable+"/"+r18Data.requested+"件 / "+r18Data.elapsed+"ms");
+  }catch(e){
+    $("r18Result").textContent="ERROR: "+e.message;
+    log("R18 API ERROR: "+e.message);
+  }
+}
+
+function buildCopyText(){
+  return [
+    "ともたよむ 切り込み隊 v6",
+    "",
+    "【対象】",
+    "通常作品: "+NORMAL_CODES.length,
+    "R18作品: "+R18_CODES.length,
+    "合計: "+(NORMAL_CODES.length+R18_CODES.length),
+    "",
+    "【通常API】",
+    normalData?JSON.stringify(normalData,null,2):"未実行",
+    "",
+    "【R18 API】",
+    r18Data?JSON.stringify(r18Data,null,2):"未実行",
+    "",
+    "【ログ】",
+    logs.join("\n")
+  ].join("\n");
+}
+
+async function copyText(){
+  const text=buildCopyText();
+  try{
+    await navigator.clipboard.writeText(text);
+    alert("コピーしました！");
+  }catch{
+    const ta=document.createElement("textarea");
+    ta.value=text;
+    ta.style.position="fixed";ta.style.left="8px";ta.style.top="8px";
+    ta.style.width="calc(100% - 16px)";ta.style.height="70vh";
+    ta.style.zIndex="9999";
+    document.body.appendChild(ta);
+    ta.focus();ta.select();
+    alert("自動コピーできませんでした。表示された全文を長押ししてコピーしてください。");
+  }
+}
+
+$("normalBtn").onclick=runNormal;
+$("r18Btn").onclick=runR18;
+$("bothBtn").onclick=async()=>{await runNormal();await runR18()};
+$("copyBtn").onclick=copyText;
+
+$("normalCount").textContent=NORMAL_CODES.length;
+$("r18Count").textContent=R18_CODES.length;
+$("totalCount").textContent=NORMAL_CODES.length+R18_CODES.length;
+</script>
+</body>
+</html>
