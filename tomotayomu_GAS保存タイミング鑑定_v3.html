@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ GAS保存タイミング鑑定_v3</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;margin:0;padding:20px;line-height:1.6;background:#f7f7f7;color:#222}
+h1{font-size:22px;margin:0 0 4px}.v{font-weight:700;font-size:20px;margin-bottom:14px}
+.box{background:#fff;border-radius:12px;padding:14px;margin:12px 0;box-shadow:0 1px 4px #ccc}
+.label{font-size:13px;color:#666}.value{font-size:20px;font-weight:700;word-break:break-all}
+.log{white-space:pre-wrap;font-size:13px;background:#111;color:#eee;border-radius:8px;padding:10px;max-height:280px;overflow:auto}
+button{font-size:16px;padding:10px 14px;border:0;border-radius:9px;background:#ddd}
+</style>
+</head>
+<body>
+<h1>🧪 ともたよむ GAS保存タイミング鑑定</h1>
+<div class="v">【v3】URLのNコード受け渡し検証</div>
+<div class="box"><div class="label">検証内容</div>
+URLの <b>?ncode=</b> からNコードを受け取り、そのNコードでGASを確認する。</div>
+<div class="box"><div class="label">URLから受け取ったNコード</div><div id="ncode" class="value">確認中…</div></div>
+<div class="box"><div class="label">読書位置</div><div id="current" class="value">-- / 210話</div></div>
+<div class="box"><div class="label">GAS応答</div><div id="gasResult">まだ確認していません</div></div>
+<div class="box"><div class="label">自動確認</div>ページ表示時、およびページ復帰時にGASを確認します。</div>
+<div class="box"><div class="label">手動確認</div><br><button id="manual">GASを今すぐ確認</button></div>
+<div class="box"><div class="label">イベントログ</div><div id="log" class="log"></div></div>
+
+<script>
+const GAS_URL="https://script.google.com/macros/s/AKfycbxbvywLmy4aWh-_u_o_iDVDq_7AMxf9K2wPY-BhXphGbnaBp0JZ4R78_eplmYfXH3obHA/exec";
+const params=new URLSearchParams(location.search);
+const NCODE=(params.get("ncode")||"").trim().toUpperCase();
+let current=0;
+const $=id=>document.getElementById(id);
+$("ncode").textContent=NCODE||"受け取りなし";
+function addLog(msg){$("log").textContent+="["+new Date().toLocaleTimeString()+"] "+msg+"\n";}
+function render(){$("current").textContent=(current||"--")+" / 210話";}
+async function checkGAS(){
+  if(!NCODE){$("gasResult").textContent="ERROR: URLに ncode がありません";addLog("NコードなしのためGAS確認を中止");return;}
+  addLog("★ GAS確認開始: "+NCODE);$("gasResult").textContent="確認中…";
+  try{
+    const res=await fetch(GAS_URL+"?ncode="+encodeURIComponent(NCODE),{cache:"no-store"});
+    const text=await res.text();$("gasResult").textContent=text;addLog("GAS応答: "+text);
+    const m=text.match(/^READ\s+([A-Z0-9]+)\s+(\d+)$/);
+    if(m&&m[1]===NCODE){current=Number(m[2]);if(Number.isFinite(current))render();}
+  }catch(e){$("gasResult").textContent="ERROR "+e;addLog("GAS通信エラー: "+e);}
+}
+$("manual").addEventListener("click",checkGAS);
+document.addEventListener("visibilitychange",()=>{addLog("visibilitychange: "+document.visibilityState);if(document.visibilityState==="visible")checkGAS();});
+addLog("【v3】ページ表示");addLog("URLから受け取ったNコード: "+(NCODE||"なし"));checkGAS();
+</script>
+</body>
+</html>
