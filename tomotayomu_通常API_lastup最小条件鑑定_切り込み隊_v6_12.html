@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ 通常API lastup 最小条件鑑定</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:16px;line-height:1.5}
+button{display:block;width:100%;padding:13px;margin:8px 0;font-size:16px}
+pre{white-space:pre-wrap;background:#f5f5f5;padding:12px;border-radius:10px}
+.small{font-size:13px;color:#666}
+</style>
+</head>
+<body>
+<h2>ともたよむ 通常API lastup 最小条件鑑定</h2>
+<p class="small">
+目的：v6.11で通常APIのlastup検索がtimeoutした原因を、
+「件数」なのか「lastup検索そのもの」なのか切り分ける。
+</p>
+
+<button onclick="runTest(1)">① 1件</button>
+<button onclick="runTest(5)">② 5件</button>
+<button onclick="runTest(20)">③ 20件</button>
+<button onclick="copyLog()">📋 ししょー用に結果をコピー</button>
+<button onclick="clearLog()">🗑 ログ消去</button>
+
+<pre id="log"></pre>
+
+<script>
+const CODES=["N0002IK","N0030HU","N0033BS","N0051GP","N0093BS","N0123IV","N0152GD","N0171DI","N0273BA","N0370LQ","N0397BC","N0442GJ","N0565FN","N0593IQ","N0600JD","N0635GW","N0644GM","N0645GG","N0753HR","N0760HO"];
+const API="https://api.syosetu.com/novelapi/api/";
+const OF="n-gl-ga";
+const TIMEOUT=30000;
+const START_UNIX=Math.floor((Date.now()-48*60*60*1000)/1000);
+const END_UNIX=Math.floor(Date.now()/1000);
+
+function now(){
+  return new Date().toLocaleTimeString("ja-JP",{hour12:false});
+}
+function log(s){
+  document.getElementById("log").textContent += now()+" "+s+"\n";
+}
+function clearLog(){
+  document.getElementById("log").textContent="";
+}
+async function runTest(count){
+  const list=CODES.slice(0,count);
+  log("【"+count+"件テスト開始】");
+  log("Nコード: "+list.join(","));
+  log("API: "+API);
+  log("lastup="+START_UNIX+"-"+END_UNIX+" / of="+OF+" / lim=500 / JSONP");
+  const callback="cb_"+Date.now()+"_"+Math.random().toString(36).slice(2);
+  const params=new URLSearchParams({
+    lastup: START_UNIX+"-"+END_UNIX,
+    of: OF,
+    lim:"500",
+    out:"jsonp",
+    callback:callback
+  });
+  const url=API+"?"+params.toString();
+  const started=performance.now();
+
+  const result=await new Promise(resolve=>{
+    let done=false;
+    const script=document.createElement("script");
+    const timer=setTimeout(()=>finish({ok:false,error:"timeout"}),TIMEOUT);
+
+    function finish(v){
+      if(done)return;
+      done=true;
+      clearTimeout(timer);
+      delete window[callback];
+      script.remove();
+      resolve(v);
+    }
+
+    window[callback]=(data)=>finish({ok:true,data});
+    script.onerror=()=>finish({ok:false,error:"script error"});
+    script.src=url;
+    document.body.appendChild(script);
+  });
+
+  const ms=Math.round(performance.now()-started);
+
+  if(!result.ok){
+    log("❌ ERROR: "+result.error);
+    log("経過時間: "+ms+" ms");
+    log("【テスト終了】");
+    return;
+  }
+
+  const rows=Array.isArray(result.data)?result.data.filter(x=>x&&x.ncode):[];
+  log("✅ SUCCESS");
+  log("経過時間: "+ms+" ms");
+  log("allcount: "+(result.data[0]?.allcount ?? "—"));
+  log("取得作品数: "+rows.length);
+  if(rows.length) log("先頭: "+rows[0].ncode+" / "+(rows[0].general_lastup||"—"));
+  log("【テスト終了】");
+}
+
+async function copyLog(){
+  const text=document.getElementById("log").textContent;
+  try{
+    await navigator.clipboard.writeText(text);
+    alert("コピーしました");
+  }catch(e){
+    alert("コピー失敗: "+e);
+  }
+}
+</script>
+</body>
+</html>
