@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ 通常API lastup ページ分割鑑定 v6.13</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:16px;line-height:1.5}
+button{display:block;width:100%;padding:13px;margin:8px 0;font-size:16px}
+pre{white-space:pre-wrap;background:#f5f5f5;padding:12px;border-radius:10px}
+.small{font-size:13px;color:#666}
+</style>
+</head>
+<body>
+<h2>ともたよむ 通常API lastup ページ分割鑑定 v6.13</h2>
+<p class="small">
+目的：通常APIの lastup 検索について、複数ページ取得が安定して動くかを確認する。
+今回は本棚照合・GAS・2117件照合は行わず、APIのページ分割だけを鑑定する。
+</p>
+
+<button onclick="runPages()">🔎 3ページ取得（st=1 / 501 / 1001）</button>
+<button onclick="runOne(1)">① st=1</button>
+<button onclick="runOne(501)">② st=501</button>
+<button onclick="runOne(1001)">③ st=1001</button>
+<button onclick="copyLog()">📋 ししょー用に結果をコピー</button>
+<button onclick="clearLog()">🗑 ログ消去</button>
+
+<pre id="log"></pre>
+
+<script>
+const API="https://api.syosetu.com/novelapi/api/";
+const OF="n-gl-ga";
+const LIM=500;
+const TIMEOUT=30000;
+const START_UNIX=Math.floor((Date.now()-48*60*60*1000)/1000);
+const END_UNIX=Math.floor(Date.now()/1000);
+
+function now(){
+  return new Date().toLocaleTimeString("ja-JP",{hour12:false});
+}
+function log(s){
+  document.getElementById("log").textContent += now()+" "+s+"\n";
+}
+function clearLog(){
+  document.getElementById("log").textContent="";
+}
+
+async function request(st){
+  const callback="cb_"+Date.now()+"_"+Math.random().toString(36).slice(2);
+  const params=new URLSearchParams({
+    lastup: START_UNIX+"-"+END_UNIX,
+    of: OF,
+    lim:String(LIM),
+    st:String(st),
+    out:"jsonp",
+    callback:callback
+  });
+  const url=API+"?"+params.toString();
+  const started=performance.now();
+
+  return await new Promise(resolve=>{
+    let done=false;
+    const script=document.createElement("script");
+    const timer=setTimeout(()=>finish({ok:false,error:"timeout",ms:Math.round(performance.now()-started)}),TIMEOUT);
+
+    function finish(v){
+      if(done)return;
+      done=true;
+      clearTimeout(timer);
+      delete window[callback];
+      script.remove();
+      resolve(v);
+    }
+
+    window[callback]=(data)=>{
+      const ms=Math.round(performance.now()-started);
+      finish({ok:true,data,ms});
+    };
+    script.onerror=()=>finish({ok:false,error:"script error",ms:Math.round(performance.now()-started)});
+    script.src=url;
+    document.body.appendChild(script);
+  });
+}
+
+async function runOne(st){
+  log("【st="+st+" 開始】");
+  log("API: "+API);
+  log("lastup="+START_UNIX+"-"+END_UNIX+" / of="+OF+" / lim="+LIM+" / JSONP");
+
+  const r=await request(st);
+  if(!r.ok){
+    log("❌ st="+st+" ERROR: "+r.error);
+    log("経過時間: "+r.ms+" ms");
+    log("【st="+st+" テスト終了】");
+    return;
+  }
+
+  const rows=Array.isArray(r.data)?r.data.filter(x=>x&&x.ncode):[];
+  log("✅ st="+st+" SUCCESS");
+  log("経過時間: "+r.ms+" ms");
+  log("allcount: "+(r.data[0]?.allcount ?? "—"));
+  log("取得作品数: "+rows.length);
+  if(rows.length){
+    log("先頭: "+rows[0].ncode+" / "+(rows[0].general_lastup||"—"));
+    log("末尾: "+rows[rows.length-1].ncode+" / "+(rows[rows.length-1].general_lastup||"—"));
+  }
+  log("【st="+st+" テスト終了】");
+}
+
+async function runPages(){
+  log("【3ページ連続テスト開始】");
+  const sts=[1,501,1001];
+  for(const st of sts){
+    await runOne(st);
+  }
+  log("【テスト完了】");
+}
+
+async function copyLog(){
+  const text=document.getElementById("log").textContent;
+  try{
+    await navigator.clipboard.writeText(text);
+    alert("コピーしました");
+  }catch(e){
+    alert("コピー失敗: "+e);
+  }
+}
+</script>
+</body>
+</html>
