@@ -21,7 +21,7 @@ button{border:1px solid #c8c0b5;border-radius:8px;background:transparent;padding
 .card{background:var(--card);border:1px solid #aaa195;border-radius:12px;padding:13px;margin:10px 0}
 .meta{font-size:12px;color:#555;margin-bottom:8px}
 .newMark{font-size:12px}
-h2{font-size:18px;line-height:1.45;margin:0 0 4px}
+h2{font-size:16px;line-height:1.45;font-weight:700;margin:0 0 4px}
 .author,.ncode{font-size:13px;color:#555}
 details{margin-top:9px;font-size:13px}
 summary{cursor:pointer}
@@ -15655,7 +15655,7 @@ function loadJSON(key, fallback) { try { return JSON.parse(localStorage.getItem(
 function saveJSON(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
 function formatDate(v) { if (!v) return "—"; const d = new Date(String(v).replace(" ", "T")); if (isNaN(d)) return String(v).slice(0,10).replaceAll("-","/"); return d.toLocaleString("ja-JP", {year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}); }
 function nowUnix(){ return Math.floor(Date.now()/1000); }
-function setStatus(w) { return Number(w.end) === 1 ? "🟢 連載中" : "🔵 完結"; }
+function setStatus(w) { return String(w.end) === "1" ? "🟢 連載中" : "🔵 完結"; }
 function siteUrl(w) { return w.__r18 ? "https://novel18.syosetu.com/" + String(w.ncode).toLowerCase() + "/" : "https://ncode.syosetu.com/" + String(w.ncode).toLowerCase() + "/"; }
 function readingMap(){ return loadJSON(READ_KEY,{}); }
 function readingFor(n){ const r=readingMap()[String(n).toUpperCase()]; return Number.isFinite(Number(r)) ? Number(r) : null; }
@@ -15709,14 +15709,14 @@ function buildUpdateView(){
 }
 function jsonp(url){ return new Promise((resolve,reject)=>{ const cb="tomotaYomu_v211_"+Date.now()+"_"+Math.random().toString(36).slice(2); const s=document.createElement("script"), timer=setTimeout(()=>{cleanup();reject(new Error("JSONP timeout"))},20000); function cleanup(){clearTimeout(timer);try{s.remove()}catch(e){};try{delete window[cb]}catch(e){window[cb]=undefined}} window[cb]=d=>{cleanup();resolve(d)}; s.onerror=()=>{cleanup();reject(new Error("JSONP load error"))}; s.src=url+"&out=jsonp&callback="+cb+"&_cb="+Date.now(); document.head.appendChild(s); }); }
 function range(a,b){ return Math.floor(a/1000)+"-"+Math.floor(b/1000); }
-async function countRange(base,a,b){ const d=await jsonp(base+"?lastup="+range(a,b)+"&of=n-gl-ga&lim=1&st=1"); return Number(d?.[0]?.allcount||0); }
+async function countRange(base,a,b){ const d=await jsonp(base+"?lastup="+range(a,b)+"&of=n-gl-ga-e-e&lim=1&st=1"); return Number(d?.[0]?.allcount||0); }
 async function collectRange(base,a,b,depth=0){
-  const n=await countRange(base,a,b); if(n===0)return []; if(n<=MAX_ST){ let out=[]; for(let st=1;st<=n;st+=500){ const lim=Math.min(500,n-st+1),d=await jsonp(base+"?lastup="+range(a,b)+"&of=n-gl-ga&lim="+lim+"&st="+st); out.push(...(d||[]).filter(x=>x.ncode)); } return out; }
+  const n=await countRange(base,a,b); if(n===0)return []; if(n<=MAX_ST){ let out=[]; for(let st=1;st<=n;st+=500){ const lim=Math.min(500,n-st+1),d=await jsonp(base+"?lastup="+range(a,b)+"&of=n-gl-ga-e-e&lim="+lim+"&st="+st); out.push(...(d||[]).filter(x=>x.ncode)); } return out; }
   if(depth>20)throw new Error("lastup時間分割上限"); const m=Math.floor((a+b)/2); return (await collectRange(base,a,m,depth+1)).concat(await collectRange(base,m+1,b,depth+1));
 }
 async function fetchByNcodes(apiUrl,ncodes,label){
   const chunks=[]; for(let i=0;i<ncodes.length;i+=400)chunks.push(ncodes.slice(i,i+400)); const results=[];
-  for(let i=0;i<chunks.length;i++){ const chunk=chunks[i]; const d=await jsonp(apiUrl+"?ncode="+encodeURIComponent(chunk.join("-"))+"&of=n-gl-ga&lim=500"); results.push(...(Array.isArray(d)?d.slice(1):[])); }
+  for(let i=0;i<chunks.length;i++){ const chunk=chunks[i]; const d=await jsonp(apiUrl+"?ncode="+encodeURIComponent(chunk.join("-"))+"&of=n-gl-ga-e-e&lim=500"); results.push(...(Array.isArray(d)?d.slice(1):[])); }
   return results;
 }
 function getCardsByNcode(){ const m={}; document.querySelectorAll("#shelf .card").forEach(c=>m[c.dataset.ncode.toUpperCase()]=c); return m; }
