@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ R18 API件数別鑑定 v6.4</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;margin:16px;line-height:1.55}
+h1{font-size:20px}
+button{font-size:16px;padding:10px 12px;margin:4px 4px 4px 0;border-radius:10px;border:1px solid #bbb;background:#fff}
+pre{white-space:pre-wrap;word-break:break-word;background:#f5f5f5;padding:12px;border-radius:10px}
+.note{background:#fff8dc;padding:10px;border-radius:10px}
+</style>
+</head>
+<body>
+<h1>🔪 ともたよむ R18 API件数別鑑定 v6.4</h1>
+<div class="note">R18 APIの「1件・5件・20件」を比較するための切り込み隊。<br>対象は v2.1.0 本棚のR18作品から固定した20作品。<br>GAS・読書位置・localStorage基準値は使用しない。</div>
+<p>
+<button onclick="runTest(1)">🧪 1件テスト</button>
+<button onclick="runTest(5)">🧪 5件テスト</button>
+<button onclick="runTest(20)">🧪 20件テスト</button>
+<button onclick="copyResult()">📋 結果をコピー</button>
+</p>
+<pre id="result">未実行</pre>
+<script>
+const CODES=["N9735HP", "N9801CV", "N0001HD", "N0011GR", "N0011HH", "N0034LU", "N0052GG", "N0053HQ", "N0060GV", "N0064FU", "N0064HK", "N0073ID", "N0076DK", "N0079FD", "N0088JI", "N0089JC", "N0094GS", "N0098GC", "N0105EJ", "N0105HL"];
+const API="https://api.syosetu.com/novel18api/api/";
+let busy=false;
+function now(){return new Date().toLocaleTimeString("ja-JP",{hour12:false});}
+function logLine(s){const el=document.getElementById("result");el.textContent+=(el.textContent==="未実行"?"":"\n")+s;}
+function jsonp(url,cb,timeout=30000){
+ return new Promise((resolve,reject)=>{
+  const script=document.createElement("script"); let timer;
+  window[cb]=data=>{clearTimeout(timer);delete window[cb];script.remove();resolve(data);};
+  script.onerror=()=>{clearTimeout(timer);delete window[cb];script.remove();reject(new Error("script error"));};
+  timer=setTimeout(()=>{delete window[cb];script.remove();reject(new Error("timeout"));},timeout);
+  script.src=url;document.body.appendChild(script);
+ });
+}
+async function runTest(count){
+ if(busy)return; busy=true; document.getElementById("result").textContent="";
+ const codes=CODES.slice(0,count);
+ const cb="tomotaYomuV64_"+Math.random().toString(36).slice(2);
+ const params=new URLSearchParams({ncode:codes.join("-"),out:"json",of:"n-gl",lim:String(count),callback:cb});
+ const url=API+"?"+params.toString();
+ logLine(now()+" 【"+count+"件テスト開始】");
+ logLine("Nコード: "+codes.join(", "));
+ logLine("API: "+API);
+ logLine("of=n-gl / JSONP / lim="+count);
+ const t0=performance.now();
+ try{
+  const data=await jsonp(url,cb,30000),ms=Math.round(performance.now()-t0);
+  const rows=Array.isArray(data)?data:[];
+  logLine(now()+" API応答成功");
+  logLine("取得件数: "+Math.max(0,rows.length-1));
+  logLine("応答時間: "+ms+" ms");
+  logLine("先頭データ:");
+  logLine(JSON.stringify(rows.slice(0,3),null,2));
+ }catch(e){
+  const ms=Math.round(performance.now()-t0);
+  logLine(now()+" API ERROR: "+e.message);
+  logLine("経過時間: "+ms+" ms");
+ }finally{
+  busy=false;logLine("【"+count+"件テスト終了】");
+ }
+}
+async function copyResult(){
+ const text=document.getElementById("result").textContent;
+ try{await navigator.clipboard.writeText(text);alert("コピーしました！");}
+ catch(e){alert("コピーできませんでした。");}
+}
+</script>
+</body>
+</html>
