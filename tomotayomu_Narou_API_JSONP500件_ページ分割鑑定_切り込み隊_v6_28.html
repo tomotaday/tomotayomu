@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ Narou API JSONP 500件・ページ分割鑑定 v6.28</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;margin:16px;line-height:1.5;background:#f7f7f7;color:#222}
+h1{font-size:20px}h2{font-size:17px}.card{background:#fff;border-radius:14px;padding:14px;margin:12px 0;box-shadow:0 1px 4px #bbb}
+button{font-size:16px;padding:10px 14px;margin:4px;border-radius:10px;border:1px solid #aaa;background:#fff}
+pre{white-space:pre-wrap;word-break:break-all;background:#111;color:#eee;padding:12px;border-radius:10px;font-size:12px}
+.small{font-size:13px;color:#666}
+</style>
+</head>
+<body>
+<h1>🧪 ともたよむ Narou API JSONP 500件・ページ分割鑑定 v6.28</h1>
+<div class="card">
+<h2>目的</h2>
+<p>v6.27でJSONP受信に成功したため、同じ方式で<strong>500件取得＋stページ分割</strong>が成立するか確認する。</p>
+<p>対象は通常API・直近7日間。まずst=1でallcountを取得し、その件数に応じて500件単位でページ取得する。</p>
+<p class="small">本棚・R18・GASは使用しない。取得したNコードを重複除去して件数を表示する。</p>
+</div>
+<div class="card">
+<button type="button" id="run">▶ JSONP 500件鑑定開始</button>
+<button type="button" id="copy">📋 結果をコピー</button>
+<button type="button" id="clear">🧹 ログ消去</button>
+</div>
+<div class="card"><pre id="log">【待機中】</pre></div>
+<script>
+var BASE="https://api.syosetu.com/novelapi/api/";
+var logEl=document.getElementById("log");
+var cbSeq=0;
+function add(s){if(logEl.textContent==="【待機中】")logEl.textContent="";logEl.textContent+=s+"\\n";}
+function jsonp(url,callbackName){
+ return new Promise(function(resolve,reject){
+  var s=document.createElement("script"), timer;
+  var started=performance.now();
+  function cleanup(){clearTimeout(timer);try{s.remove();}catch(e){}}
+  window[callbackName]=function(data){cleanup();resolve({data:data,ms:Math.round(performance.now()-started)});try{delete window[callbackName];}catch(e){window[callbackName]=undefined;}};
+  s.onerror=function(){cleanup();try{delete window[callbackName];}catch(e){}reject(new Error("script error / "+Math.round(performance.now()-started)+"ms"));};
+  s.src=url+"&callback="+callbackName+"&_cb="+Date.now()+"_"+(++cbSeq);
+  document.head.appendChild(s);
+  timer=setTimeout(function(){cleanup();try{delete window[callbackName];}catch(e){}reject(new Error("timeout 15s"));},15000);
+ });
+}
+function makeUrl(st){
+ var p=new URLSearchParams();
+ p.set("lastup","sevenday");p.set("of","n-gl-ga");p.set("lim","500");p.set("st",String(st));p.set("out","jsonp");
+ return BASE+"?"+p.toString();
+}
+async function getPage(st){
+ var cb="tomotaYomuJsonp_"+cbSeq;
+ var url=makeUrl(st);
+ add("\\n--- st="+st+" ---");
+ add("URL: "+url);
+ var r=await jsonp(url,cb);
+ var rows=Array.isArray(r.data)?r.data:[];
+ var all=rows[0]&&rows[0].allcount!=null?Number(rows[0].allcount):0;
+ add("受信: "+r.ms+"ms / allcount="+all+" / data="+Math.max(0,rows.length-1));
+ return {allcount:all,data:rows.slice(1)};
+}
+document.getElementById("run").addEventListener("click",async function(){
+ var b=this;b.disabled=true;logEl.textContent="";
+ add("【v6.28 開始】");
+ add("通常API JSONP 500件・ページ分割鑑定");
+ add("条件: lastup=sevenday / of=n-gl-ga / lim=500");
+ try{
+  var first=await getPage(1);
+  var all=first.allcount;
+  var rows=first.data.slice();
+  for(var st=501;st<=all;st+=500){
+    var page=await getPage(st);
+    rows=rows.concat(page.data);
+  }
+  var codes=new Set();
+  rows.forEach(function(w){if(w&&w.ncode)codes.add(String(w.ncode).toUpperCase());});
+  add("\\n===== 集計 =====");
+  add("API allcount: "+all);
+  add("受信データ行: "+rows.length);
+  add("ユニークNコード: "+codes.size);
+  add("重複: "+(rows.length-codes.size));
+  add("【テスト完了】");
+ }catch(e){
+  add("\\n🔴 エラー: "+e);
+  add("【テスト未完了】");
+ }
+ b.disabled=false;
+});
+document.getElementById("clear").onclick=function(){logEl.textContent="【待機中】";};
+document.getElementById("copy").onclick=async function(){
+ try{await navigator.clipboard.writeText(logEl.textContent);var b=this,o=b.textContent;b.textContent="✅ コピーしました";setTimeout(function(){b.textContent=o;},1200);}
+ catch(e){alert("コピーできませんでした。ログを長押ししてコピーしてください。");}
+};
+</script>
+</body>
+</html>
