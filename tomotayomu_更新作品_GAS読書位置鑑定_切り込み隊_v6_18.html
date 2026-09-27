@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ 更新作品→GAS読書位置鑑定 v6.18</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:16px;line-height:1.5}
+button{display:block;width:100%;padding:13px;margin:8px 0;font-size:16px}
+pre{white-space:pre-wrap;background:#f5f5f5;padding:12px;border-radius:10px}
+.small{font-size:13px;color:#666}
+</style>
+</head>
+<body>
+<h2>ともたよむ 更新作品→GAS読書位置鑑定 v6.18</h2>
+<p class="small">
+v6.17で抽出された7作品だけを対象に、GASから現在の読書位置を取得する。
+API再検索は行わない。更新作品を絞った後にGASへ進む流れの鑑定。
+</p>
+
+<button onclick="run()">📖 7作品のGAS読書位置を確認</button>
+<button onclick="copyLog()">📋 ししょー用に結果をコピー</button>
+<button onclick="clearLog()">🗑 ログ消去</button>
+<pre id="log"></pre>
+
+<script>
+const GAS="https://script.google.com/macros/s/AKfycbxbvywLmy4aWh-_u_o_iDVDq_7AMxf9K2wPY-BhXphGbnaBp0JZ4R78_eplmYfXH3obHA/exec";
+
+const WORKS=[
+ {ncode:"N7998LI", latest:"2026-09-26 11:05:07", total:52},
+ {ncode:"N6106LC", latest:"2026-09-25 19:50:00", total:58},
+ {ncode:"N1028JP", latest:"2026-09-25 12:00:00", total:84},
+ {ncode:"N1444KS", latest:"2026-09-27 09:31:33", total:35},
+ {ncode:"N7730MO", latest:"2026-09-26 21:23:31", total:34},
+ {ncode:"N3627MQ", latest:"2026-09-26 21:01:39", total:58},
+ {ncode:"N7035MQ", latest:"2026-09-26 19:00:00", total:36}
+];
+
+function now(){return new Date().toLocaleTimeString("ja-JP",{hour12:false})}
+function log(x){document.getElementById("log").textContent+=now()+" "+x+"\n"}
+function clearLog(){document.getElementById("log").textContent=""}
+
+async function getPosition(ncode){
+  const url=GAS+"?ncode="+encodeURIComponent(ncode);
+  const started=performance.now();
+  const r=await fetch(url,{cache:"no-store"});
+  const text=(await r.text()).trim();
+  return {status:r.status,text,ms:Math.round(performance.now()-started)};
+}
+
+function parse(text){
+  const p=text.split(/\s+/);
+  if(p[0]==="READ" && p.length>=3){
+    const ep=Number(p[2]);
+    return Number.isFinite(ep)?ep:null;
+  }
+  if(p[0]==="NOT_FOUND")return null;
+  return undefined;
+}
+
+async function run(){
+  clearLog();
+  log("【7作品 GAS読書位置鑑定開始】");
+  log("対象作品: "+WORKS.length);
+
+  let done=0,read=0,notfound=0,error=0;
+
+  for(const w of WORKS){
+    log("────────────────");
+    log(w.ncode+" / 最新掲載 "+w.latest+" / 最新 "+w.total+"話");
+    try{
+      const r=await getPosition(w.ncode);
+      const ep=parse(r.text);
+      log("HTTP: "+r.status+" / "+r.ms+" ms");
+      log("GAS: "+r.text);
+
+      if(ep===undefined){
+        error++;
+        log("判定: GAS応答解析不可");
+      }else if(ep===null){
+        notfound++;
+        log("読書位置: 未登録");
+        log("更新判定: 未確認");
+      }else{
+        read++;
+        const status=ep>=w.total?"読了":"未読あり";
+        log("読書位置: "+ep+" / "+w.total+"話");
+        log("更新判定: "+status);
+      }
+      done++;
+    }catch(e){
+      error++;
+      log("❌ ERROR: "+e);
+    }
+  }
+
+  log("────────────────");
+  log("取得完了: "+done+" / "+WORKS.length);
+  log("読書位置取得: "+read);
+  log("未登録: "+notfound);
+  log("エラー: "+error);
+  log("【テスト完了】");
+}
+
+async function copyLog(){
+  try{
+    await navigator.clipboard.writeText(document.getElementById("log").textContent);
+    alert("コピーしました");
+  }catch(e){
+    alert("コピー失敗: "+e);
+  }
+}
+</script>
+</body>
+</html>
