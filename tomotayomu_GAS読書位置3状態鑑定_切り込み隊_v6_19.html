@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ GAS読書位置 3状態鑑定 v6.19</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;margin:16px;line-height:1.5;background:#f7f7f7;color:#222}
+h1{font-size:20px}
+h2{font-size:17px;margin-top:22px}
+button{font-size:16px;padding:10px 14px;margin:4px;border-radius:10px;border:1px solid #aaa;background:#fff}
+.card{background:#fff;border-radius:14px;padding:14px;margin:12px 0;box-shadow:0 1px 4px #bbb}
+pre{white-space:pre-wrap;word-break:break-all;background:#111;color:#eee;padding:12px;border-radius:10px;font-size:13px}
+.ok{color:green}.warn{color:#b36b00}.err{color:#c00}
+.small{font-size:13px;color:#666}
+</style>
+</head>
+<body>
+<h1>🧪 ともたよむ GAS読書位置 3状態鑑定・切り込み隊 v6.19</h1>
+<p>目的：GAS読書位置APIについて、<b>READ / NOT_FOUND / HTTP 404</b> の3状態を同一条件で比較する。</p>
+
+<div class="card">
+<h2>対象</h2>
+<ul>
+<li><b>N0175GW</b>：既知の登録済み → READ想定</li>
+<li><b>N7998LI</b>：既知の未登録 → NOT_FOUND想定</li>
+<li><b>N6106LC</b>：v6.18でHTTP 404 → 再現確認</li>
+</ul>
+<p class="small">各リクエストに時刻とキャッシュバスターを付ける。レスポンス本文とHTTPステータスをそのまま記録する。</p>
+</div>
+
+<div class="card">
+<button id="run">▶ 3件まとめて鑑定</button>
+<button id="copy">📋 結果をコピー</button>
+<button id="clear">🧹 ログ消去</button>
+</div>
+
+<div class="card">
+<h2>GAS URL</h2>
+<pre id="gas"></pre>
+</div>
+
+<div class="card">
+<h2>鑑定ログ</h2>
+<pre id="log">【待機中】</pre>
+</div>
+
+<script>
+const GAS="https://script.google.com/macros/s/AKfycbxbvywLmy4aWh-_u_o_iDVDq_7AMxf9K2wPY-BhXphGbnaBp0JZ4R78_eplmYfXH3obHA/exec";
+const targets=["N0175GW","N7998LI","N6106LC"];
+const logEl=document.getElementById("log");
+document.getElementById("gas").textContent=GAS;
+
+function add(s){
+  if(logEl.textContent==="【待機中】") logEl.textContent="";
+  logEl.textContent += s + "\n";
+}
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+async function test(ncode){
+  const stamp=Date.now()+"_"+Math.random().toString(36).slice(2);
+  const url=GAS+"?ncode="+encodeURIComponent(ncode)+"&cb="+encodeURIComponent(stamp);
+  add("\n===== "+ncode+" =====");
+  add("開始: "+new Date().toLocaleString("ja-JP"));
+  add("URL: "+url);
+
+  const started=performance.now();
+  try{
+    const res=await fetch(url,{cache:"no-store",redirect:"follow"});
+    const body=await res.text();
+    const elapsed=Math.round(performance.now()-started);
+    add("HTTP: "+res.status+" "+res.statusText+" / "+elapsed+"ms");
+    add("最終URL: "+res.url);
+    add("本文:");
+    add(body);
+    if(res.ok){
+      if(body.startsWith("READ ")) add("判定: ✅ READ");
+      else if(body.startsWith("NOT_FOUND ")) add("判定: 🟡 NOT_FOUND");
+      else add("判定: ⚠️ HTTP200だが想定外本文");
+    }else{
+      add("判定: 🔴 HTTP "+res.status);
+    }
+  }catch(e){
+    const elapsed=Math.round(performance.now()-started);
+    add("FETCH ERROR / "+elapsed+"ms");
+    add(String(e));
+    add("判定: 🔴 fetch例外");
+  }
+}
+
+async function runAll(){
+  document.getElementById("run").disabled=true;
+  logEl.textContent="";
+  add("【v6.19 開始】");
+  add("同一GAS URL・同一fetch条件で3件を順番に確認します。");
+  for(const n of targets){
+    await test(n);
+    await sleep(500);
+  }
+  add("\n【テスト完了】");
+  document.getElementById("run").disabled=false;
+}
+
+document.getElementById("run").onclick=runAll;
+document.getElementById("clear").onclick=()=>logEl.textContent="【待機中】";
+document.getElementById("copy").onclick=async()=>{
+  try{
+    await navigator.clipboard.writeText(logEl.textContent);
+    const old=document.getElementById("copy").textContent;
+    document.getElementById("copy").textContent="✅ コピーしました";
+    setTimeout(()=>document.getElementById("copy").textContent=old,1200);
+  }catch(e){
+    alert("コピーできませんでした。ログを長押ししてコピーしてください。");
+  }
+};
+</script>
+</body>
+</html>
