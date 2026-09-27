@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ R18 API項目別鑑定 切り込み隊 v6.5</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;margin:16px;line-height:1.5}
+h1{font-size:20px}
+button{font-size:15px;padding:9px 11px;margin:4px 4px 4px 0;border-radius:10px;border:1px solid #bbb;background:#fff}
+pre{white-space:pre-wrap;word-break:break-word;background:#f5f5f5;padding:12px;border-radius:10px;font-size:13px}
+.note{background:#fff8dc;padding:10px;border-radius:10px}
+.ok{font-weight:700}
+</style>
+</head>
+<body>
+<h1>🔪 ともたよむ R18 API項目別鑑定 v6.5</h1>
+<div class="note">
+同じ1作品・同じR18 APIに対して、公式の <code>of</code> 項目を1項目ずつ要求する鑑定。<br>
+「どの項目なら通るか」を探すための資料取り。GAS・読書位置・localStorageは使用しない。<br>
+対象Nコード: <b>N9735HP</b>
+</div>
+<p>
+<button onclick="runAll()">▶ 全項目を順番に試す</button>
+<button onclick="runOne(0)">🧪 先頭項目だけ</button>
+<button onclick="copyResult()">📋 結果をコピー</button>
+<button onclick="clearResult()">🗑 結果クリア</button>
+</p>
+<p>※各項目は順番に1件ずつ実行。1項目の待機上限は <b>10秒</b>。</p>
+<pre id="result">未実行</pre>
+
+<script>
+const N_CODE="N9735HP";
+const API="https://api.syosetu.com/novel18api/api/";
+const FIELDS=[["t", "title"], ["n", "ncode"], ["w", "writer"], ["s", "story"], ["ng", "nocgenre"], ["k", "keyword"], ["gf", "general_firstup"], ["gl", "general_lastup"], ["nt", "noveltype"], ["e", "end"], ["ga", "general_all_no"], ["l", "length"], ["ti", "time"], ["i", "isstop"], ["ibl", "isbl"], ["igl", "isgl"], ["izk", "iszankoku"], ["its", "istensei"], ["iti", "istenni"], ["gp", "global_point"], ["dp", "daily_point"], ["wp", "weekly_point"], ["mp", "monthly_point"], ["qp", "quarter_point"], ["yp", "yearly_point"], ["f", "fav_novel_cnt"], ["imp", "impression_cnt"], ["r", "review_cnt"], ["a", "all_point"], ["ah", "all_hyoka_cnt"], ["sa", "sasie_cnt"], ["ka", "kaiwaritu"], ["nu", "novelupdated_at"], ["ua", "updated_at"]];
+let busy=false;
+
+function now(){return new Date().toLocaleTimeString("ja-JP",{hour12:false});}
+function logLine(s){
+  const el=document.getElementById("result");
+  el.textContent += (el.textContent==="未実行"?"":"\n")+s;
+}
+function clearResult(){document.getElementById("result").textContent="未実行";}
+
+function jsonp(url,cb,timeout=10000){
+ return new Promise((resolve,reject)=>{
+  const script=document.createElement("script");
+  let timer;
+  window[cb]=data=>{
+    clearTimeout(timer); delete window[cb]; script.remove(); resolve(data);
+  };
+  script.onerror=()=>{
+    clearTimeout(timer); delete window[cb]; script.remove();
+    reject(new Error("script error"));
+  };
+  timer=setTimeout(()=>{
+    delete window[cb]; script.remove(); reject(new Error("timeout"));
+  },timeout);
+  script.src=url; document.body.appendChild(script);
+ });
+}
+
+async function runOne(index){
+ if(busy)return;
+ const [code,label]=FIELDS[index];
+ busy=true;
+ const cb="tomotaYomuV65_"+Math.random().toString(36).slice(2);
+ const params=new URLSearchParams({
+   ncode:N_CODE,out:"json",of:code,lim:"1",callback:cb
+ });
+ const url=API+"?"+params.toString();
+ const t0=performance.now();
+ logLine(now()+" 【"+(index+1)+"/"+FIELDS.length+"】 of="+code+" ("+label+") 開始");
+ try{
+   const data=await jsonp(url,cb,10000);
+   const ms=Math.round(performance.now()-t0);
+   const rows=Array.isArray(data)?data:[];
+   logLine(now()+" ✅ SUCCESS / "+ms+" ms / 取得要素="+Math.max(0,rows.length-1));
+   logLine("  "+JSON.stringify(rows.slice(0,2)));
+ }catch(e){
+   const ms=Math.round(performance.now()-t0);
+   logLine(now()+" ❌ "+e.message+" / "+ms+" ms");
+ }
+ busy=false;
+}
+
+async function runAll(){
+ if(busy)return;
+ busy=true;
+ document.getElementById("result").textContent="";
+ logLine("【R18 API 項目別鑑定開始】");
+ logLine("Nコード: "+N_CODE);
+ logLine("API: "+API);
+ logLine("各項目: 1件 / JSONP / out=json / 10秒timeout");
+ busy=false;
+ for(let i=0;i<FIELDS.length;i++){
+   while(busy) await new Promise(r=>setTimeout(r,50));
+   await runOne(i);
+ }
+ logLine("【全項目鑑定終了】");
+}
+
+async function copyResult(){
+ try{await navigator.clipboard.writeText(document.getElementById("result").textContent);alert("コピーしました！");}
+ catch(e){alert("コピーできませんでした。");}
+}
+</script>
+</body>
+</html>
