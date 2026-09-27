@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ API直接アクセス・fetch比較鑑定 v6.23</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;margin:16px;line-height:1.5;background:#f7f7f7;color:#222}
+h1{font-size:20px}.card{background:#fff;border-radius:14px;padding:14px;margin:12px 0;box-shadow:0 1px 4px #bbb}
+button{font-size:16px;padding:10px 14px;margin:4px;border-radius:10px;border:1px solid #aaa;background:#fff}
+pre{white-space:pre-wrap;word-break:break-all;background:#111;color:#eee;padding:12px;border-radius:10px;font-size:12px}
+.small{font-size:13px;color:#666}
+a{word-break:break-all}
+</style>
+</head>
+<body>
+<h1>🧪 ともたよむ API直接アクセス・fetch比較鑑定 v6.23</h1>
+
+<div class="card">
+<h2>今回の目的</h2>
+<p>Documents内HTMLから、同じ通常APIについて<strong>①ブラウザ直接アクセス</strong>と<strong>②JavaScriptのfetch</strong>を比較する。</p>
+<p>まずは軽い1件取得条件を使い、APIそのものとfetch通信を切り分ける。</p>
+<p class="small">本棚・R18・GASは今回使わない。</p>
+</div>
+
+<div class="card">
+<h2>① API直接アクセス</h2>
+<p>下のリンクをタップして、APIのページが開くか確認してください。</p>
+<p><a id="direct" target="_blank" rel="noopener">通常APIを直接開く</a></p>
+<p class="small">開いた画面にJSONが表示されれば、API自体にはブラウザから到達できています。</p>
+</div>
+
+<div class="card">
+<h2>② Documents HTML → fetch</h2>
+<button id="run">▶ fetch鑑定</button>
+<button id="copy">📋 結果をコピー</button>
+<button id="clear">🧹 ログ消去</button>
+<pre id="log">【待機中】</pre>
+</div>
+
+<script>
+const API="https://api.syosetu.com/novelapi/api/?lastup=sevenday&of=n-gl-ga&lim=1&st=1&out=json";
+document.getElementById("direct").href=API;
+const log=document.getElementById("log");
+function add(s){if(log.textContent==="【待機中】")log.textContent="";log.textContent+=s+"\\n";}
+
+document.getElementById("run").onclick=async()=>{
+ const b=document.getElementById("run");b.disabled=true;log.textContent="";
+ add("【v6.23 fetch鑑定開始】");
+ add("URL: "+API);
+ const t=performance.now();
+ try{
+  const r=await fetch(API,{cache:"no-store"});
+  const body=await r.text();
+  add("HTTP: "+r.status+" "+r.statusText);
+  add("通信時間: "+Math.round(performance.now()-t)+"ms");
+  add("本文先頭:");
+  add(body.slice(0,1000));
+  add("\\n【fetchテスト完了】");
+ }catch(e){
+  add("🔴 fetch失敗: "+String(e));
+  add("通信時間: "+Math.round(performance.now()-t)+"ms");
+  add("\\n【fetchテスト完了・失敗】");
+ }finally{b.disabled=false;}
+};
+
+document.getElementById("clear").onclick=()=>log.textContent="【待機中】";
+document.getElementById("copy").onclick=async()=>{
+ try{
+  await navigator.clipboard.writeText(log.textContent);
+  const b=document.getElementById("copy");b.textContent="✅ コピーしました";
+  setTimeout(()=>b.textContent="📋 結果をコピー",1200);
+ }catch(e){alert("コピーできませんでした。ログを長押ししてコピーしてください。")}
+};
+</script>
+</body>
+</html>
