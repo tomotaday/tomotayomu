@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ Narou API JSONP 時間分割鑑定 v6.29</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:16px;line-height:1.5}
+button{font-size:16px;padding:10px 14px;margin:4px 4px 10px 0}
+pre{white-space:pre-wrap;word-break:break-word;background:#f5f5f5;padding:12px;border-radius:10px}
+.note{padding:10px;border:1px solid #ccc;border-radius:10px;margin:10px 0}
+</style>
+</head>
+<body>
+<h1>v6.29 JSONP 時間分割鑑定</h1>
+<div class="note">
+通常API / JSONP / of=n-gl-ga。<br>
+2026/09/25 00:00 JST → 現在を対象に、allcount が 2000 以下になるまで時間範囲を自動分割し、その後500件ページで取得します。
+</div>
+<button id="start">鑑定開始</button>
+<button id="copy">ログをコピー</button>
+<pre id="log"></pre>
+<script>
+"use strict";
+
+const API="https://api.syosetu.com/novelapi/api/";
+const LIM=500;
+const MAX=2000;
+let cbSeq=0;
+let lines=[];
+
+function log(s){lines.push(s);document.getElementById("log").textContent=lines.join("\\n");}
+function fmt(ms){return Math.round(ms)+"ms";}
+function ymdhms(d){
+  const p=n=>String(n).padStart(2,"0");
+  return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes())+":"+p(d.getSeconds());
+}
+function toUnix(d){return Math.floor(d.getTime()/1000);}
+function jsonp(urlBase){
+  return new Promise((resolve,reject)=>{
+    const name="tomotaYomuJsonp_"+(++cbSeq);
+    const s=document.createElement("script");
+    let timer;
+    const started=performance.now();
+    function cleanup(){
+      clearTimeout(timer);
+      try{s.remove();}catch(e){}
+      try{delete window[name];}catch(e){window[name]=undefined;}
+    }
+    window[name]=data=>{
+      const ms=performance.now()-started;
+      cleanup();
+      resolve({data,ms});
+    };
+    s.onerror=()=>{
+      const ms=performance.now()-started;
+      cleanup();
+      reject(new Error("script load error ("+Math.round(ms)+"ms)"));
+    };
+    s.src=urlBase+(urlBase.includes("?")?"&":"?")+"out=jsonp&callback="+name+"&_cb="+Date.now()+"_"+cbSeq;
+    document.head.appendChild(s);
+    timer=setTimeout(()=>{
+      cleanup();
+      reject(new Error("timeout"));
+    },15000);
+  });
+}
+async function queryRange(start,end){
+  const params=new URLSearchParams({
+    lastup:toUnix(start)+"-"+toUnix(end),
+    of:"n-gl-ga",
+    lim:String(LIM),
+    st:"1"
+  });
+  const url=API+"?"+params.toString();
+  const r=await jsonp(url);
+  const a=r.data?.[0]?.allcount ?? 0;
+  const rows=Array.isArray(r.data)?r.data.slice(1):[];
+  return {start,end,allcount:Number(a),rows,url,ms:r.ms};
+}
+async function fetchPages(range){
+  const out=[];
+  let st=1;
+  while(st<=range.allcount){
+    const params=new URLSearchParams({
+      lastup:toUnix(range.start)+"-"+toUnix(range.end),
+      of:"n-gl-ga",
+      lim:String(LIM),
+      st:String(st)
+    });
+    const r=await jsonp(API+"?"+params.toString());
+    const rows=Array.isArray(r.data)?r.data.slice(1):[];
+    log("  page st="+st+" / data="+rows.length+" / "+fmt(r.ms));
+    out.push(...rows);
+    if(rows.length===0) throw new Error("0件ページ: st="+st);
+    st+=LIM;
+  }
+  return out;
+}
+async function splitAndFetch(start,end,depth=0){
+  const pad="  ".repeat(depth);
+  const q=await queryRange(start,end);
+  log(pad+"範囲: "+ymdhms(start)+" → "+ymdhms(end));
+  log(pad+"  allcount="+q.allcount+" / "+fmt(q.ms));
+  if(q.allcount<=MAX){
+    log(pad+"  → 取得可能範囲");
+    const rows=await fetchPages(q);
+    return rows;
+  }
+  const mid=new Date(Math.floor((start.getTime()+end.getTime())/2));
+  if(mid.getTime()<=start.getTime() || mid.getTime()>=end.getTime()){
+    throw new Error("これ以上時間分割できません");
+  }
+  log(pad+"  → 2000超過。分割");
+  const left=await splitAndFetch(start,mid,depth+1);
+  const right=await splitAndFetch(mid,end,depth+1);
+  return left.concat(right);
+}
+async function run(){
+  document.getElementById("start").disabled=true;
+  lines=[];
+  log("【v6.29 開始】");
+  log("通常API JSONP / 時間範囲自動分割 / 500件ページ");
+  const end=new Date();
+  const start=new Date("2026-09-25T00:00:00+09:00");
+  log("対象: "+ymdhms(start)+" → "+ymdhms(end));
+  try{
+    const rows=await splitAndFetch(start,end);
+    const codes=rows.map(x=>String(x.ncode||"").toUpperCase()).filter(Boolean);
+    const unique=new Set(codes);
+    log("");
+    log("===== 集計 =====");
+    log("受信データ行: "+rows.length);
+    log("ユニークNコード: "+unique.size);
+    log("重複: "+(codes.length-unique.size));
+    log("【テスト完了】");
+  }catch(e){
+    log("");
+    log("ERROR: "+e.message);
+    log("【テスト未完了】");
+  }finally{
+    document.getElementById("start").disabled=false;
+  }
+}
+document.getElementById("start").onclick=run;
+document.getElementById("copy").onclick=async()=>{
+  try{
+    await navigator.clipboard.writeText(document.getElementById("log").textContent);
+    alert("ログをコピーしました");
+  }catch(e){
+    alert("コピーできませんでした");
+  }
+};
+</script>
+</body>
+</html>
