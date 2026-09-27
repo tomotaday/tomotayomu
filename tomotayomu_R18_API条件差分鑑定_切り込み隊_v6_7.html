@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ R18 API 条件差分鑑定 v6.7</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;margin:0;padding:16px;background:#f7f7f7;color:#222}
+h1{font-size:20px} h2{font-size:16px;margin-top:24px}
+button{font-size:16px;padding:12px 14px;margin:5px 4px 5px 0;border-radius:10px;border:1px solid #bbb;background:#fff}
+pre{white-space:pre-wrap;word-break:break-word;background:#111;color:#eee;padding:12px;border-radius:10px;font-size:13px;line-height:1.5}
+.note{background:#fff3cd;padding:12px;border-radius:10px;line-height:1.5}
+</style>
+</head>
+<body>
+<h1>🧪 ともたよむ R18 API 条件差分鑑定 v6.7</h1>
+
+<div class="note">
+<b>目的：</b>前回成功した v5.2 の条件差分を切り分ける。<br>
+同じNコードについて <b>of=n-gl</b> と <b>of=n-gl-ga</b> を比較する。<br>
+さらに N0175GW（前回成功）と N9735HP（今回失敗）を同条件で比較する。<br>
+各試験は最大60秒。JSONP / callback / lim=1。
+</div>
+
+<h2>試験条件</h2>
+<ul>
+<li>API: https://api.syosetu.com/novel18api/api/</li>
+<li>Nコード: N0175GW / N9735HP</li>
+<li>件数: 1</li>
+<li>出力: JSONP</li>
+<li>比較: of=n-gl / of=n-gl-ga</li>
+<li>timeout: 60秒</li>
+</ul>
+
+<button onclick="runAll()">▶ 4条件を全部試す</button>
+<button onclick="runOne('N0175GW','n-gl')">N0175GW / n-gl</button>
+<button onclick="runOne('N0175GW','n-gl-ga')">N0175GW / n-gl-ga</button>
+<button onclick="runOne('N9735HP','n-gl')">N9735HP / n-gl</button>
+<button onclick="runOne('N9735HP','n-gl-ga')">N9735HP / n-gl-ga</button>
+<button onclick="copyLog()">📋 結果をコピー</button>
+<button onclick="clearLog()">🗑 クリア</button>
+
+<h2>結果</h2>
+<pre id="log">待機中</pre>
+
+<script>
+let logLines=[];
+let seq=0;
+
+function log(s){
+  const line=new Date().toLocaleTimeString()+" "+s;
+  logLines.push(line);
+  document.getElementById("log").textContent=logLines.join("\\n");
+}
+
+function runOne(ncode, of){
+  seq++;
+  const cb="tomotaYomuApiTest_"+seq;
+  const started=performance.now();
+  const script=document.createElement("script");
+  let finished=false;
+
+  const params=new URLSearchParams({
+    ncode:ncode,
+    of:of,
+    lim:"1",
+    out:"jsonp",
+    callback:cb
+  });
+
+  const url="https://api.syosetu.com/novel18api/api/?"+params.toString();
+
+  window[cb]=function(data){
+    if(finished)return;
+    finished=true;
+    const ms=Math.round(performance.now()-started);
+    cleanup();
+    log("✅ SUCCESS / "+ms+" ms");
+    log("Nコード: "+ncode+" / of="+of);
+    log("URL: "+url);
+    log("response: "+JSON.stringify(data));
+  };
+
+  const timer=setTimeout(()=>{
+    if(finished)return;
+    finished=true;
+    cleanup();
+    log("❌ TIMEOUT / "+Math.round(performance.now()-started)+" ms");
+    log("Nコード: "+ncode+" / of="+of);
+    log("URL: "+url);
+  },60000);
+
+  function cleanup(){
+    clearTimeout(timer);
+    try{delete window[cb]}catch(e){window[cb]=undefined}
+    script.remove();
+  }
+
+  log("【開始】"+ncode+" / of="+of+" / callback="+cb);
+  log("条件: JSONP / lim=1 / timeout=60s");
+  log("URL: "+url);
+  document.head.appendChild(script);
+}
+
+async function runAll(){
+  const tests=[
+    ["N0175GW","n-gl"],
+    ["N0175GW","n-gl-ga"],
+    ["N9735HP","n-gl"],
+    ["N9735HP","n-gl-ga"]
+  ];
+  for(const [ncode,of] of tests){
+    runOne(ncode,of);
+    await new Promise(r=>setTimeout(r,1000));
+  }
+}
+
+async function copyLog(){
+  const text=document.getElementById("log").textContent;
+  try{
+    await navigator.clipboard.writeText(text);
+    log("📋 コピーしました");
+  }catch(e){
+    prompt("以下をコピーしてください",text);
+  }
+}
+
+function clearLog(){
+  logLines=[];
+  document.getElementById("log").textContent="クリアしました";
+}
+</script>
+</body>
+</html>
