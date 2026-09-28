@@ -15672,6 +15672,31 @@ function seedReadingCache(){
   });
   if(changed)saveJSON(READ_KEY,m);
 }
+function restoreReadingPositions(){
+  document.querySelectorAll("#shelf .card").forEach(card=>{
+    const n = card.dataset.ncode.toUpperCase();
+    const current = readingFor(n);
+    const total = Number(card.dataset.totalEpisodes || 0);
+    const resumeLink = card.querySelector(".resumeLink");
+
+    card.dataset.current = current == null ? "" : String(current);
+
+    if(!resumeLink) return;
+
+    const workUrl = card.querySelector(".workLink")?.href || "";
+
+    if(current == null){
+      resumeLink.textContent =
+        "続きから　📖 📝 読書記録なし / " + (total || "—") + "話";
+      resumeLink.href = workUrl;
+    }else{
+      resumeLink.textContent =
+        "続きから　📖 " + current + " / " + (total || "—") + "話";
+      resumeLink.href =
+        current > 0 ? workUrl + String(current) + "/" : workUrl;
+    }
+  });
+}
 function updateCard(card,w){
   const n=String(w.ncode||card.dataset.ncode).toUpperCase();
   card.dataset.lastUpdated = w.general_lastup || card.dataset.lastUpdated || "";
@@ -15745,7 +15770,7 @@ function rememberActive(card){ localStorage.setItem(ACTIVE_KEY,card.dataset.ncod
 document.getElementById("updateBtn").addEventListener("click",updateInfo);
 document.addEventListener("click",e=>{ const a=e.target.closest(".resumeLink"); if(!a)return; const card=e.target.closest(".card"); if(!card)return; rememberActive(card); });
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") refreshActiveFromGAS(); });
-window.addEventListener("load",async()=>{ seedReadingCache(); const baseline=loadJSON(STORAGE_KEY,null); if(baseline)buildUpdateView(); buildShelfFolders(); setTimeout(refreshActiveFromGAS,300); });
+window.addEventListener("load",async()=>{ seedReadingCache(); restoreReadingPositions(); const baseline=loadJSON(STORAGE_KEY,null); if(baseline)buildUpdateView(); buildShelfFolders(); setTimeout(refreshActiveFromGAS,300); });
 </script>
 </body>
 </html>
