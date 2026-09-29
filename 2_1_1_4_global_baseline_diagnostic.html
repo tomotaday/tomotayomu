@@ -1,0 +1,18 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ともたよむ 基準日一本化 診断</title><style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:18px;background:#f6f3ed;color:#252525}button{padding:10px 14px;border:1px solid #aaa195;border-radius:8px;background:#fffdf9}pre{white-space:pre-wrap;background:#fffdf9;border:1px solid #aaa195;border-radius:10px;padding:12px}textarea{width:100%;height:180px;margin-top:10px}</style></head><body><h1>ともたよむ 基準日一本化 診断</h1><p>作品ごとのbaselineを使わず、全作品共通の基準日で判定する実験。</p><button id="run">▶ 基準日一本化を検証</button> <button id="copy">📋 結果をコピー</button><pre id="out">待機中</pre><textarea id="copyarea" readonly></textarea><script>
+const INITIAL_BASELINE="2026-09-25T00:00:00+09:00";
+const samples=[
+ {n:"N6117JH",lastup:"2024-08-22T20:12:04+09:00",reading:23,total:55},
+ {n:"N3192IO",lastup:"2026-09-29T00:09:40+09:00",reading:null,total:0}
+];
+function fmt(v){const d=new Date(v);return Number.isNaN(d.getTime())?"不正":d.toLocaleString("ja-JP",{hour12:false});}
+function run(){
+ const base=new Date(INITIAL_BASELINE); let s="【基準日一本化 診断】\n";
+ s+="共通基準日="+fmt(INITIAL_BASELINE)+"\n";
+ s+="基準日Unix秒="+Math.floor(base.getTime()/1000)+"\n";
+ s+="────────────\n";
+ for(const x of samples){const d=new Date(x.lastup);const newer=d>base;const unread=x.total>0&&x.reading!=null&&x.reading<x.total;const mark=newer&&unread;s+=`【${x.n}】\nlastup=${fmt(x.lastup)}\n基準日より新しい=${newer}\n読書履歴=${x.reading==null?"なし":x.reading+"話"}\n未読残=${unread}\n🆙=${mark}\n────────────\n`;}
+ s+="期待する構造：全作品が同じ基準日 2026/09/25 00:00 を比較対象にする。\nこの診断ではlocalStorage/API/本体データを変更しない。";
+ document.getElementById('out').textContent=s;document.getElementById('copyarea').value=s;
+}
+run.addEventListener('click',run);copy.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(document.getElementById('out').textContent);copy.textContent='✅ コピー済み';setTimeout(()=>copy.textContent='📋 結果をコピー',1200)}catch(e){document.getElementById('copyarea').select();document.execCommand('copy');}});
+</script></body></html>
