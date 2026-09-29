@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ 本棚照合診断</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;padding:16px;line-height:1.5}
+button{width:100%;padding:14px;margin:8px 0;font-size:16px}
+textarea{width:100%;min-height:560px;box-sizing:border-box;font:13px/1.5 monospace}
+</style>
+</head>
+<body>
+<h2>🔎 本棚2117作品 × lastup取得データ照合</h2>
+<p>更新保存・カード更新・更新棚生成は行いません。現在の本棚とR18/通常APIの取得結果だけを照合します。</p>
+<button id="runBtn" type="button">🔎 本棚照合を診断</button>
+<button id="copyBtn" type="button">📋 テスト結果をコピー</button>
+<textarea id="result" readonly></textarea>
+
+<script>
+const API_NORMAL="https://api.syosetu.com/novelapi/api/";
+const API_R18="https://api.syosetu.com/novel18api/api/";
+const MAX_ST=2000;
+const STORAGE_KEY="tomotaYomu_v211_update_baseline";
+const result=document.getElementById("result");
+
+function log(s){
+  result.value += s+"\\n";
+  result.scrollTop=result.scrollHeight;
+}
+function range(a,b){return Math.floor(a)+"-"+Math.floor(b);}
+function jsonp(url,timeout=15000){
+  return new Promise((resolve,reject)=>{
+    const cb="tomotaShelf_"+Date.now()+"_"+Math.random().toString(36).slice(2);
+    const s=document.createElement("script");
+    let done=false;
+    const timer=setTimeout(()=>{
+      if(done)return;
+      done=true;cleanup();
+      reject(new Error("JSONP timeout"));
+    },timeout);
+    function cleanup(){
+      clearTimeout(timer);
+      try{delete window[cb]}catch(e){window[cb]=undefined}
+      s.remove();
+    }
+    window[cb]=data=>{
+      if(done)return;
+      done=true;cleanup();resolve(data);
+    };
+    s.onerror=()=>{
+      if(done)return;
+      done=true;cleanup();
+      reject(new Error("JSONP script error"));
+    };
+    s.src=url+"&out=jsonp&callback="+cb+"&_cb="+Date.now();
+    document.head.appendChild(s);
+  });
+}
+
+function shelfNcodes(){
+  return [...document.querySelectorAll("#shelf .card")]
+    .map(c=>String(c.dataset.ncode||"").toUpperCase())
+    .filter(Boolean);
+}
+
+async function collect(base,a,b,depth=0){
+  const u=range(a,b);
+  const d=await jsonp(base+"?lastup="+u+"&of=n-gl-ga-e-e&lim=1&st=1");
+  const n=Number(d?.[0]?.allcount||0);
+  if(n===0)return [];
+  if(n<=MAX_ST){
+    const all=[];
+    for(let st=1;st<=n;st+=500){
+      const lim=Math.min(500,n-st+1);
+      const d2=await jsonp(base+"?lastup="+u+"&of=n-gl-ga-e-e&lim="+lim+"&st="+st);
+      all.push(...(Array.isArray(d2)?d2.slice(1).filter(x=>x&&x.ncode):[]));
+    }
+    return all;
+  }
+  if(depth>=20)throw new Error("lastup時間分割上限");
+  const m=Math.floor((a+b)/2);
+  return (await collect(base,a,m,depth+1)).concat(await collect(base,m+1,b,depth+1));
+}
+
+document.getElementById("runBtn").addEventListener("click",async()=>{
+  const btn=document.getElementById("runBtn");
+  btn.disabled=true;
+  result.value="";
+  log("【本棚照合診断開始】");
+  log("────────────");
+
+  try{
+    const cards=[...document.querySelectorAll("#shelf .card")];
+    const shelf=shelfNcodes();
+    const shelfSet=new Set(shelf);
+    const baseline=JSON.parse(localStorage.getItem(STORAGE_KEY)||"null");
+
+    log("本棚カード数 = "+cards.length);
+    log("本棚Nコード数 = "+shelfSet.size);
+    log("baseline件数 = "+(baseline?Object.keys(baseline).length:0));
+
+    const vals=baseline ? Object.values(baseline).filter(Boolean)
+      .map(v=>Math.floor(new Date(String(v).replace(" ","T")).getTime()/1000))
+      .filter(Number.isFinite) : [];
+
+    const start=vals.length?Math.min(...vals):0;
+    const end=Math.floor(Date.now()/1000);
+
+    log("照会開始 = "+start+" / "+new Date(start*1000).toLocaleString("ja-JP"));
+    log("照会終了 = "+end+" / "+new Date(end*1000).toLocaleString("ja-JP"));
+    log("lastup = "+range(start,end));
+    log("────────────");
+    log("通常API取得中…");
+
+    const normal=await collect(API_NORMAL,start,end);
+    log("通常API rows = "+normal.length);
+
+    log("R18 API取得中…");
+    const r18=await collect(API_R18,start,end);
+    log("R18 API rows = "+r18.length);
+
+    const normalMap=new Map(normal.map(x=>[String(x.ncode||"").toUpperCase(),x]));
+    const r18Map=new Map(r18.map(x=>[String(x.ncode||"").toUpperCase(),x]));
+
+    const normalHits=shelf.filter(n=>normalMap.has(n));
+    const r18Hits=shelf.filter(n=>r18Map.has(n));
+    const allHits=[...new Set([...normalHits,...r18Hits])];
+
+    const noHit=shelf.filter(n=>!normalMap.has(n)&&!r18Map.has(n));
+
+    log("────────────");
+    log("【本棚照合結果】");
+    log("通常API × 本棚 = "+normalHits.length);
+    log("R18 API × 本棚 = "+r18Hits.length);
+    log("両API合計ユニーク捕捉 = "+allHits.length);
+    log("本棚未捕捉 = "+noHit.length);
+
+    const target="N6117JH";
+    log("────────────");
+    log("【N6117JH】");
+    log("本棚 = "+(shelfSet.has(target)?"あり":"なし"));
+    log("通常API = "+(normalMap.has(target)?"捕捉":"未捕捉"));
+    log("R18 API = "+(r18Map.has(target)?"捕捉":"未捕捉"));
+
+    if(noHit.length){
+      log("────────────");
+      log("【未捕捉先頭30件】");
+      noHit.slice(0,30).forEach(n=>log(n));
+    }
+
+    log("────────────");
+    log("【診断完了】");
+    log("※ updateCard・保存・更新棚生成は実行していません。");
+  }catch(e){
+    log("────────────");
+    log("【ERROR】 "+(e?.message||String(e)));
+  }finally{
+    btn.disabled=false;
+  }
+});
+
+document.getElementById("copyBtn").addEventListener("click",async()=>{
+  const text=result.value;
+  try{
+    await navigator.clipboard.writeText(text);
+  }catch(e){
+    result.select();document.execCommand("copy");
+  }
+  document.getElementById("copyBtn").textContent="✅ コピーしました";
+  setTimeout(()=>document.getElementById("copyBtn").textContent="📋 テスト結果をコピー",1200);
+});
+
+log("ページ読み込み完了。");
+log("「🔎 本棚照合を診断」を押してください。");
+</script>
+</body>
+</html>
