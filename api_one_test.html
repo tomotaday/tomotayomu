@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ API 1作品診断</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;margin:20px;line-height:1.6}
+h1{font-size:20px}
+button{font-size:16px;padding:10px 14px;margin:6px 0}
+.box{border:1px solid #ccc;border-radius:10px;padding:12px;margin:12px 0;white-space:pre-wrap;word-break:break-all}
+.ok{font-weight:bold}
+</style>
+</head>
+<body>
+<h1>ともたよむ｜Narou API 1作品診断</h1>
+<p>Nコード：<strong>N6117JH</strong></p>
+<p>2117作品・基準日・更新判定は一切使わず、APIから1作品だけ取得します。</p>
+
+<button id="testBtn">APIを1作品だけ取得</button>
+<div id="normal" class="box">全年齢API：未実行</div>
+<div id="r18" class="box">R18 API：未実行</div>
+<div id="result" class="box">診断結果：未実行</div>
+
+<script>
+const NCODE="N6117JH";
+
+function requestJsonp(url, callbackName){
+  return new Promise((resolve,reject)=>{
+    const script=document.createElement("script");
+    let timer=null;
+    window[callbackName]=(data)=>{
+      cleanup();
+      resolve(data);
+    };
+    script.src=url;
+    script.onerror=()=>{
+      cleanup();
+      reject(new Error("script.onerror"));
+    };
+    timer=setTimeout(()=>{
+      cleanup();
+      reject(new Error("タイムアウト"));
+    },15000);
+    function cleanup(){
+      clearTimeout(timer);
+      script.remove();
+      try{delete window[callbackName];}catch(e){window[callbackName]=undefined;}
+    }
+    document.head.appendChild(script);
+  });
+}
+
+async function testOne(){
+  const btn=document.getElementById("testBtn");
+  const normal=document.getElementById("normal");
+  const r18=document.getElementById("r18");
+  const result=document.getElementById("result");
+  btn.disabled=true;
+  normal.textContent="全年齢API：取得中…";
+  r18.textContent="R18 API：取得中…";
+  result.textContent="診断結果：実行中…";
+
+  const stamp=Date.now();
+
+  let nData=null, rData=null;
+  let nError="", rError="";
+
+  try{
+    nData=await requestJsonp(
+      "https://api.syosetu.com/novelapi/api/?out=jsonp&callback=tomotaNormal_"+stamp+
+      "&ncode="+encodeURIComponent(NCODE),
+      "tomotaNormal_"+stamp
+    );
+    normal.textContent="全年齢API：応答あり\n"+JSON.stringify(nData,null,2);
+  }catch(e){
+    nError=String(e);
+    normal.textContent="全年齢API：取得失敗\n"+nError;
+  }
+
+  try{
+    rData=await requestJsonp(
+      "https://api.syosetu.com/novel18api/api/?out=jsonp&callback=tomotaR18_"+stamp+
+      "&ncode="+encodeURIComponent(NCODE),
+      "tomotaR18_"+stamp
+    );
+    r18.textContent="R18 API：応答あり\n"+JSON.stringify(rData,null,2);
+  }catch(e){
+    rError=String(e);
+    r18.textContent="R18 API：取得失敗\n"+rError;
+  }
+
+  const nRows=Array.isArray(nData)?nData.length:"—";
+  const rRows=Array.isArray(rData)?rData.length:"—";
+
+  result.textContent=
+    "診断結果\n"+
+    "全年齢API：配列 "+nRows+" 件\n"+
+    "R18 API：配列 "+rRows+" 件\n\n"+
+    "N6117JH がどちら側から返ったかを確認します。\n"+
+    (nError||rError ? "通信エラーあり\n" : "通信エラーなし\n");
+
+  btn.disabled=false;
+}
+
+document.getElementById("testBtn").addEventListener("click",testOne);
+</script>
+</body>
+</html>
