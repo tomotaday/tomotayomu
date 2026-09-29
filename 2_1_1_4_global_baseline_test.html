@@ -15650,6 +15650,7 @@ const READ_KEY = "tomotaYomu_v211_reading";
 const ACTIVE_KEY = "tomotaYomu_v211_active_ncode";
 const LAST_CHECK_KEY = "tomotaYomu_v211_last_check";
 const BASELINE_KEY = "tomotaYomu_v214_baseline_date";
+const UPDATE_KEY = "tomotaYomu_v214_update_candidates";
 const INITIAL_BASELINE = "2026-09-25T00:00:00+09:00";
 const MAX_ST = 2000;
 const INIT_START = 0;
@@ -15762,18 +15763,24 @@ function buildShelfFolders(){
   for(const [label,key] of order){const members=cards.filter(c=>getFolder(c)===key).sort((a,b)=>(b.dataset.lastUpdated||"").localeCompare(a.dataset.lastUpdated||"")); if(!members.length)continue; const d=document.createElement("details"); d.className="folderDetails"; if(key==="🟠読書中")d.open=true; const sm=document.createElement("summary"); sm.textContent=`${label} ${members.length}`; const wrap=document.createElement("div"); wrap.className="folderCards"; members.forEach(c=>wrap.appendChild(c.cloneNode(true))); d.append(sm,wrap); root.appendChild(d);}
   source.hidden=true;
 }
+function loadUpdateCandidates(){ return loadJSON(UPDATE_KEY,{}); }
+function saveUpdateCandidates(v){ saveJSON(UPDATE_KEY,v); }
 function buildUpdateView(){
-  const baseline=getGlobalBaseline(), cards=[...document.querySelectorAll("#shelf .card")], updates=[];
-  const baseMs=new Date(baseline).getTime();
+  const candidates=loadUpdateCandidates(), cards=[...document.querySelectorAll("#shelf .card")], updates=[], alive={};
   cards.forEach(card=>{
     applyCardState(card);
-    const latest=card.dataset.lastUpdated||"", current=readingFor(card.dataset.ncode.toUpperCase()), total=Number(card.dataset.totalEpisodes||0);
-    const latestMs=latest?new Date(latest.replace(" ","T")).getTime():NaN;
-    const isUpdate=Number.isFinite(latestMs)&&latestMs>baseMs&&current!=null&&current<total;
+    const n=card.dataset.ncode.toUpperCase(), latest=card.dataset.lastUpdated||"", current=readingFor(n), total=Number(card.dataset.totalEpisodes||0);
     const metaText=(card.querySelector(".meta")?.textContent||"").replace(/\s+/g,"");
     const isUnclassified=metaText.includes("未分類");
-    if(isUpdate&&!isUnclassified)updates.push(card);
+    const pendingLastup=candidates[n]||"";
+    const hasPending=!!pendingLastup;
+    const unread=current!=null && total>0 && current<total;
+    if(hasPending && latest && pendingLastup===latest && unread){
+      alive[n]=pendingLastup;
+      if(!isUnclassified)updates.push(card);
+    }
   });
+  saveUpdateCandidates(alive);
   updates.sort((a,b)=>(b.dataset.lastUpdated||"").localeCompare(a.dataset.lastUpdated||""));
   const list=document.getElementById("updateList"); list.innerHTML=""; updates.forEach(c=>list.appendChild(c.cloneNode(true)));
   document.getElementById("updateTitle").textContent=`🆙 更新${updates.length}`;
@@ -15812,8 +15819,9 @@ async function updateInfo(){
     status.textContent=`更新候補を確認中…（${formatBaselineDate(oldBaseline)} → ${formatBaselineDate(newBaseline)}）`;
     const [normal,r18]=await Promise.all([collectRange(API_URL,start,end),collectRange(R18_API_URL,start,end)]);
     r18.forEach(w=>w.__r18=true);
-    const rows=[...normal,...r18], cards=getCardsByNcode(), changed=new Set();
-    rows.forEach(w=>{const n=String(w.ncode||"").toUpperCase(),c=cards[n]; if(!c)return; updateCard(c,w); changed.add(n);});
+    const rows=[...normal,...r18], cards=getCardsByNcode(), changed=new Set(), candidates=loadUpdateCandidates();
+    rows.forEach(w=>{const n=String(w.ncode||"").toUpperCase(),c=cards[n]; if(!c)return; updateCard(c,w); changed.add(n); const latest=String(w.general_lastup||""); if(latest)candidates[n]=latest;});
+    saveUpdateCandidates(candidates);
     localStorage.setItem(BASELINE_KEY,newBaseline);
     saveJSON(LAST_CHECK_KEY,newBaseline);
     renderBaselineDate(); buildUpdateView(); buildShelfFolders();
