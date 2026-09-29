@@ -1,0 +1,2249 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
+<meta content="#f6f3ed" name="theme-color"/>
+<title>ともたよむ v2.1.1.4 基準日一本化・更新棚保持修正版</title>
+<style>
+:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.55}
+main{width:min(100%,720px);margin:auto;padding:18px 14px 40px}
+h1{font-size:30px;margin:0 0 4px}
+.note{font-size:13px;color:var(--muted);margin-bottom:15px}
+button{border:1px solid #c8c0b5;border-radius:8px;background:transparent;padding:5px 9px;font-size:14px;color:var(--ink)}
+#apiStatus{font-size:13px;margin:10px 0 15px}
+.section{margin:20px 0 8px;font-weight:700;font-size:18px}
+.update-empty{color:var(--muted);margin-bottom:16px}
+.update-list .card{margin-bottom:10px}
+.card{background:var(--card);border:1px solid #aaa195;border-radius:12px;padding:13px;margin:10px 0}
+.meta{font-size:12px;color:#555;margin-bottom:8px}
+.newMark{font-size:12px}
+h2{font-size:15px;line-height:1.45;font-weight:700;margin:0 0 4px}
+.author,.ncode{font-size:13px;color:#555}
+details{margin-top:9px;font-size:13px}
+summary{cursor:pointer}
+.synopsis{white-space:pre-wrap;color:#555;margin:7px 0}
+.actions{display:flex;gap:10px;margin-top:12px;font-size:13px;flex-wrap:wrap}
+.actions a{color:inherit;text-decoration:none;border-bottom:1px solid #aaa}
+.hidden{display:none!important}
+</style>
+<style id="v19-folder-style">
+.folderSection{margin:18px 0 22px}
+.folderTitle{font-size:17px;font-weight:700;margin:0 0 10px;padding:0 2px}
+.folderCards{display:flex;flex-direction:column;gap:10px}
+</style>
+<style id="v203-fold-style">
+.updateDetails{margin:20px 0 8px}
+.updateDetails>summary{list-style:none;cursor:pointer;font-size:18px;font-weight:700;padding:3px 2px}
+.updateDetails>summary::-webkit-details-marker{display:none}
+.updateDetails>summary::before{content:"▸ ";font-size:15px}
+.updateDetails[open]>summary::before{content:"▾ ";font-size:15px}
+.bookshelfDetails{margin:20px 0 8px}
+.bookshelfDetails>summary{list-style:none;cursor:pointer;font-size:22px;font-weight:800;padding:4px 2px}
+.bookshelfDetails>summary::-webkit-details-marker{display:none}
+.bookshelfDetails>summary::before{content:"▸ ";font-size:18px}
+.bookshelfDetails[open]>summary::before{content:"▾ ";font-size:18px}
+.folderDetails{margin:14px 0}
+.folderDetails>summary{list-style:none;cursor:pointer;font-size:18px;font-weight:700;padding:3px 2px}
+.folderDetails>summary::-webkit-details-marker{display:none}
+.folderDetails>summary::before{content:"▸ ";font-size:15px}
+.folderDetails[open]>summary::before{content:"▾ ";font-size:15px}
+
+.card{position:relative}.r18Badge{position:absolute;top:9px;right:10px;font-size:10px;line-height:1;padding:3px 5px;border:1px solid #aaa195;border-radius:5px;color:#666;background:#f6f3ed;letter-spacing:.2px}
+</style>
+</head>
+<body>
+<main>
+<h1>ともたよむ</h1>
+<div class="note">v2.1.1.4｜基準日一本化・更新棚保持修正版｜本棚2117作品｜通常170＋R18 1947</div>
+<button id="updateBtn" type="button">🔄 更新情報を確認</button>
+<div id="baselineDate">基準日：未設定</div>
+<div id="apiStatus">初回取得待ち</div>
+<details class="updateDetails" open>
+<summary id="updateTitle">🆙 更新0</summary>
+<div class="update-empty" id="updateEmpty">作品はありません。</div>
+<section class="update-list" id="updateList"></section>
+</details>
+<details class="bookshelfDetails" open="">
+<summary>📚 本棚 2117</summary>
+<div id="shelfSections"></div>
+</details>
+<section id="shelf">
+<article class="card" data-current="" data-ncode="N0002IK">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>皇太子妃候補をゼロにするお仕事</h2>
+<div class="author">作者：美雪</div>
+<div class="ncode">Nコード：N0002IK</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n0002ik/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n0002ik/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N0030HU">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【書籍化】婚約者は愛をたくさんお持ちだそうです～いろいろ目が覚めたので、婚約破棄いたします～</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N0030HU</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n0030hu/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n0030hu/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N0033BS">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>エスケープの向こう側</h2>
+<div class="author">作者：奏多悠香</div>
+<div class="ncode">Nコード：N0033BS</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n0033bs/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n0033bs/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N0051GP">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>時計屋の兎（ラビット）</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N0051GP</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n0051gp/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n0051gp/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N0093BS">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>髪を切るとき</h2>
+<div class="author">作者：奏多悠香</div>
+<div class="ncode">Nコード：N0093BS</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n0093bs/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n0093bs/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N0123IV">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【書籍化】運良く人生をやり直せることになったので、一度目の人生でわたしを殺した夫の命、握ります</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N0123IV</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n0123iv/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n0123iv/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N0152GD">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>黄金の魔族姫</h2>
+<div class="author">作者：風和ふわ</div>
+<div class="ncode">Nコード：N0152GD</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n0152gd/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n0152gd/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N0171DI">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>種馬婚約者と呼ばれる、その男</h2>
+<div class="author">作者：読箱</div>
+<div class="ncode">Nコード：N0171DI</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n0171di/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n0171di/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N0273BA">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>茨に咲く君と</h2>
+<div class="author">作者：奏多</div>
+<div class="ncode">Nコード：N0273BA</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n0273ba/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n0273ba/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="11" data-ncode="N0370LQ">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🎈ま〜も</div>
+<h2>筆頭公爵家第二夫人の楽しいオタク生活　２　〜ラスボス劇場爆誕！〜　【電子書籍化】</h2>
+<div class="author">作者：三香</div>
+<div class="ncode">Nコード：N0370LQ</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n0370lq/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n0370lq/11/" rel="noopener" target="_blank">続きから　📖 11 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N0397BC">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>第八公女奮闘記</h2>
+<div class="author">作者：ぶっぽうそう</div>
+<div class="ncode">Nコード：N0397BC</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n0397bc/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n0397bc/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N0442GJ">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>恋愛禁止のアイドルは、今日も悪魔に恋をする。</h2>
+<div class="author">作者：シロヒ</div>
+<div class="ncode">Nコード：N0442GJ</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n0442gj/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n0442gj/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N0565FN">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>傷心公爵令嬢レイラの逃避行【書籍化・コミカライズ】</h2>
+<div class="author">作者：染井由乃</div>
+<div class="ncode">Nコード：N0565FN</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n0565fn/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n0565fn/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N0593IQ">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【書籍化】夫に顧みられない王妃は、人間をやめることにしました～もふもふ自由なセカンドライフを謳歌するつもりだったのに、何故かペットにされています！～</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N0593IQ</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n0593iq/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n0593iq/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="1" data-ncode="N0600JD">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【書籍化】すべてを奪われた少女は隣国にて返り咲く</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N0600JD</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n0600jd/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n0600jd/1/" rel="noopener" target="_blank">続きから　📖 1 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N0635GW">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>その姫、生き残りにつき</h2>
+<div class="author">作者：平野あお</div>
+<div class="ncode">Nコード：N0635GW</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n0635gw/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n0635gw/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N0644GM">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>旦那様は魔王様！</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N0644GM</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n0644gm/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n0644gm/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N0645GG">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>運命の恋人は期限付き</h2>
+<div class="author">作者：小鳩子鈴</div>
+<div class="ncode">Nコード：N0645GG</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n0645gg/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n0645gg/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N0649Z">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>ドイツさんと私</h2>
+<div class="author">作者：吉田</div>
+<div class="ncode">Nコード：N0649Z</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n0649z/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n0649z/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N0753HR">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【漫画4巻6/5発売！】悪役令嬢の矜持〜婚約者を奪い取って義姉を追い出した私は、どうやら今から破滅するようです。〜</h2>
+<div class="author">作者：メアリー＝ドゥ</div>
+<div class="ncode">Nコード：N0753HR</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n0753hr/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n0753hr/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N0760HO">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>貧乏騎士に嫁入りしたはずが！</h2>
+<div class="author">作者：宮前葵</div>
+<div class="ncode">Nコード：N0760HO</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n0760ho/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n0760ho/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N0874LC">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【完結】ご期待に、お応えいたします</h2>
+<div class="author">作者：楽歩</div>
+<div class="ncode">Nコード：N0874LC</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n0874lc/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n0874lc/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N0989GV">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>私を好きすぎる勇者様を利用して、今世こそ長生きするつもりだったのに（多分、また失敗した）</h2>
+<div class="author">作者：琴子</div>
+<div class="ncode">Nコード：N0989GV</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n0989gv/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n0989gv/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="82" data-ncode="N1028JP">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🎈さ〜そ</div>
+<h2>【書籍化】逆行令嬢リリアンヌの二度目はもっと楽しい学園生活〜悪役令嬢を幸せにしてみせます！〜</h2>
+<div class="author">作者：鈴埜</div>
+<div class="ncode">Nコード：N1028JP</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n1028jp/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n1028jp/82/" rel="noopener" target="_blank">続きから　📖 82 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N1151BV">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>animato</h2>
+<div class="author">作者：奏多悠香</div>
+<div class="ncode">Nコード：N1151BV</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n1151bv/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n1151bv/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N1238HC">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【コミカライズ】だから、離婚しようと思います</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N1238HC</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n1238hc/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n1238hc/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N1266FJ">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>犬を拾った。……はずだった</h2>
+<div class="author">作者：縞白</div>
+<div class="ncode">Nコード：N1266FJ</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n1266fj/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n1266fj/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N1437II">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【書籍化】国宝級令息の求婚</h2>
+<div class="author">作者：sasasa</div>
+<div class="ncode">Nコード：N1437II</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n1437ii/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n1437ii/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N1450IE">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>彼女が好きなのは、俺か、俺の筋肉か（別章追加）</h2>
+<div class="author">作者：日室千種</div>
+<div class="ncode">Nコード：N1450IE</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n1450ie/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n1450ie/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N1518CR">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>幼馴染みの君が言うには</h2>
+<div class="author">作者：六つ花 えいこ</div>
+<div class="ncode">Nコード：N1518CR</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n1518cr/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n1518cr/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N1594GH">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【コミカライズ】聖女は魔王に嫁ぎます！</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N1594GH</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n1594gh/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n1594gh/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N1598IK">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>妖精の風の吹くまま～家を追われた元伯爵令嬢は行き倒れたわけあり青年貴族を拾いました～</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N1598IK</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n1598ik/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n1598ik/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="6" data-ncode="N1673KH">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🎈ま〜も</div>
+<h2>筆頭公爵家第二夫人の楽しいオタク生活〈連載版〉【電子書籍化】【コミカライズ企画進行中】</h2>
+<div class="author">作者：三香</div>
+<div class="ncode">Nコード：N1673KH</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n1673kh/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n1673kh/6/" rel="noopener" target="_blank">続きから　📖 6 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N1728KP">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>偏屈婚約者の婚約者</h2>
+<div class="author">作者：ひなた　なだ</div>
+<div class="ncode">Nコード：N1728KP</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n1728kp/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n1728kp/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N1742IE">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>転生もふもふ令嬢のまったり領地改革記 ークールなお義兄様とあまあまスローライフを楽しんでいますー【コミックス②2/20発売】</h2>
+<div class="author">作者：藍上イオタ＠天才魔導師の悪妻26/2/14発売</div>
+<div class="ncode">Nコード：N1742IE</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n1742ie/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n1742ie/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N1750GX">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>不香の花、降る降る冬の朝に　～絶滅危惧種に転生しました～</h2>
+<div class="author">作者：三香</div>
+<div class="ncode">Nコード：N1750GX</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n1750gx/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n1750gx/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N1758HB">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>僕の番</h2>
+<div class="author">作者：新在 落花</div>
+<div class="ncode">Nコード：N1758HB</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n1758hb/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n1758hb/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N1762GO">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>とても幸せな100個の恋と、世界を滅ぼすたった1つの恋</h2>
+<div class="author">作者：シロヒ</div>
+<div class="ncode">Nコード：N1762GO</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n1762go/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n1762go/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N1763JP">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>美しき婚約者の婚約者</h2>
+<div class="author">作者：ひなた　なだ</div>
+<div class="ncode">Nコード：N1763JP</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n1763jp/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n1763jp/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N1782BS">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>accelerando</h2>
+<div class="author">作者：奏多悠香</div>
+<div class="ncode">Nコード：N1782BS</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n1782bs/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n1782bs/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N1800GT">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【書籍】事故チューだったのに！【発売中】</h2>
+<div class="author">作者：こう</div>
+<div class="ncode">Nコード：N1800GT</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n1800gt/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n1800gt/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N1839CX">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>立場変わって二度目の人生</h2>
+<div class="author">作者：ななふみてん</div>
+<div class="ncode">Nコード：N1839CX</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n1839cx/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n1839cx/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N1888HH">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【コミカライズ連載中】私の運命は、黙って愛を語る困った人で目を離せない。～もふもふな雪豹騎士にまっしぐらに溺愛されました〜</h2>
+<div class="author">作者：待鳥園子</div>
+<div class="ncode">Nコード：N1888HH</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n1888hh/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n1888hh/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N1997BA">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>理想体重は８０キロ</h2>
+<div class="author">作者：28号</div>
+<div class="ncode">Nコード：N1997BA</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n1997ba/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n1997ba/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N2008CE">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>十年恋愛</h2>
+<div class="author">作者：六つ花 えいこ</div>
+<div class="ncode">Nコード：N2008CE</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n2008ce/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n2008ce/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N2026BM">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>転生少女は自由に生きる。</h2>
+<div class="author">作者：池中織奈</div>
+<div class="ncode">Nコード：N2026BM</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n2026bm/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n2026bm/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N2049GR">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【書籍化】王太子に婚約破棄されたので、もうバカのふりはやめようと思います</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N2049GR</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n2049gr/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n2049gr/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N2121BF">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>酔っ払いの礼儀</h2>
+<div class="author">作者：岸上ゲソ</div>
+<div class="ncode">Nコード：N2121BF</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n2121bf/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n2121bf/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N2251HS">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【書籍化】記憶喪失になった婚約者は、どうやらわたしが好きらしい</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N2251HS</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n2251hs/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n2251hs/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N2319IK">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>王子様を落とし穴に落としたら婚約者になりました ～迷惑がられているみたいですが、私あきらめませんから！～</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N2319IK</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n2319ik/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n2319ik/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N2336GG">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>食べるだけで強くなる！？　最強ハンターの異次元レシピ　〜料理のできないますたぁが喫茶店を始めてしまいました……〜</h2>
+<div class="author">作者：槻影</div>
+<div class="ncode">Nコード：N2336GG</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n2336gg/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n2336gg/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N2445BS">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>親友同盟</h2>
+<div class="author">作者：奏多悠香</div>
+<div class="ncode">Nコード：N2445BS</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n2445bs/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n2445bs/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N2449HO">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【書籍化】妹の身代わりで嫁いだはずが、どうやら私が真の聖女だったようです～自由気ままなスローライフを満喫しているのでほっといてください！～（旧）聖女の身代わりとして皇帝に嫁ぐことになりました</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N2449HO</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n2449ho/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n2449ho/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N2504HW">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【電子書籍化・コミカライズ】殿下、婚約破棄は分かりましたが、それより来賓の「皇太子」の横で地味眼鏡のふりをしている本物に気づいてくださいっ！</h2>
+<div class="author">作者：細波</div>
+<div class="ncode">Nコード：N2504HW</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n2504hw/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n2504hw/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N2750JS">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【書籍化】婚約していないのに婚約破棄された私のその後</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N2750JS</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n2750js/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n2750js/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="28" data-ncode="N2752LG">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🎈さ〜そ</div>
+<h2>魔法を使えないなんてもったいない！もう一度学園に逆戻りします！！</h2>
+<div class="author">作者：鈴埜</div>
+<div class="ncode">Nコード：N2752LG</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n2752lg/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n2752lg/28/" rel="noopener" target="_blank">続きから　📖 28 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N2774IL">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>俺様公爵様は平民上がりの男爵令嬢にご執心</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N2774IL</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n2774il/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n2774il/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N2833KW">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>君を愛せないと言われたので、夫が忘れた初恋令嬢を探します</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N2833KW</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n2833kw/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n2833kw/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="45" data-ncode="N2862JB">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🎈や〜ん</div>
+<h2>【書籍化・コミカライズ】断罪される公爵令嬢、生まれ変わってラスボスの王妃様の子どもになります</h2>
+<div class="author">作者：りょうと　かえ</div>
+<div class="ncode">Nコード：N2862JB</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n2862jb/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n2862jb/45/" rel="noopener" target="_blank">続きから　📖 45 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N2902IC">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【書籍化・コミカライズ】猫かぶり聖女、討伐するはずの魔王がどタイプだったので帰るのやめた。（絶対に振り向かせてみせます！）</h2>
+<div class="author">作者：星見うさぎ</div>
+<div class="ncode">Nコード：N2902IC</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n2902ic/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n2902ic/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N2919JC">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>男装令嬢スカーレット・レヴァインは揺らがない</h2>
+<div class="author">作者：早瀬黒絵</div>
+<div class="ncode">Nコード：N2919JC</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n2919jc/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n2919jc/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N3072LS">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【コミカライズ発売中！】番の身代わり婚約者を辞めることにしたら、冷酷な龍神王太子の様子がおかしくなりました</h2>
+<div class="author">作者：降魔　鬼灯</div>
+<div class="ncode">Nコード：N3072LS</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n3072ls/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n3072ls/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N3214LI">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【完結】白い結婚をしたはずの夫が、呪いで（中身だけ）若返って溺愛執着してきます！</h2>
+<div class="author">作者：藤原ライラ</div>
+<div class="ncode">Nコード：N3214LI</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n3214li/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n3214li/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N3304II">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>子猫獣人とほのぼの交流生活！から思い出と年の差と恋の狭間で悶絶するとか予想外です</h2>
+<div class="author">作者：秋灘 才</div>
+<div class="ncode">Nコード：N3304II</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n3304ii/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n3304ii/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N3471IM">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【書籍化】地味令嬢ですが、暴君陛下が私の（小説の）ファンらしいです。</h2>
+<div class="author">作者：sasasa</div>
+<div class="ncode">Nコード：N3471IM</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n3471im/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n3471im/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="33" data-ncode="N3556IG">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【書籍化・漫画化】あの日助けた幼い兄妹が、怒濤の勢いで恩返ししてきます</h2>
+<div class="author">作者：新高◆恩返し兄妹２巻4/15発売</div>
+<div class="ncode">Nコード：N3556IG</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n3556ig/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n3556ig/33/" rel="noopener" target="_blank">続きから　📖 33 / —話</a>
+</div>
+</article>
+<article class="card" data-current="9" data-ncode="N3580EU">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【書籍化】私の推しメンは噛ませ犬◆こっち向いてよヒロイン様！◆</h2>
+<div class="author">作者：ナユタ</div>
+<div class="ncode">Nコード：N3580EU</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n3580eu/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n3580eu/9/" rel="noopener" target="_blank">続きから　📖 9 / —話</a>
+</div>
+</article>
+<article class="card" data-current="7" data-ncode="N3609DD">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🎈か〜こ</div>
+<h2>あかねぞら</h2>
+<div class="author">作者：奏多悠香</div>
+<div class="ncode">Nコード：N3609DD</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n3609dd/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n3609dd/7/" rel="noopener" target="_blank">続きから　📖 7 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N3609GS">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>「来世で結婚してくれますか」と誓った部下が、現世では年上の騎士団長様になっていて、本当に結婚を迫られている件</h2>
+<div class="author">作者：シロヒ</div>
+<div class="ncode">Nコード：N3609GS</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n3609gs/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n3609gs/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N3648FT">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>番かどうかわからないので恋愛結婚を希望します</h2>
+<div class="author">作者：幸智ボウロ(bouro)</div>
+<div class="ncode">Nコード：N3648FT</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n3648ft/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n3648ft/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N3696HD">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>ヤンキー漫画に転生したら、何故か総長に餌付けされてます。</h2>
+<div class="author">作者：ビス</div>
+<div class="ncode">Nコード：N3696HD</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n3696hd/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n3696hd/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N3720HM">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【コミカライズ】病弱（嘘）令嬢は婚約破棄したい～お金勘定に忙しいので、結婚したくないんです！～</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N3720HM</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n3720hm/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n3720hm/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N3759IC">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【コミック④05/13発売！】聖女の妹の尻拭いを仰せつかった、ただの侍女でございます〜謝罪先の獣人国で何故か冷酷黒狼陛下に見初められました!?〜【完結】</h2>
+<div class="author">作者：櫻田りん@02/02【仮初の婚約・書籍】発売！</div>
+<div class="ncode">Nコード：N3759IC</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n3759ic/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n3759ic/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N4060GJ">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【コミカライズ】恋に恋する侯爵令嬢のこじらせ恋愛</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N4060GJ</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n4060gj/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n4060gj/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N4286JI">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>もふもふ姿で逃亡中の戦姫様、ダンジョンでストレス発散しているところを配信されてバズってしまう</h2>
+<div class="author">作者：緋色の雨</div>
+<div class="ncode">Nコード：N4286JI</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n4286ji/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n4286ji/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N4291LI">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>没落伯爵令嬢の玉の輿試練</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N4291LI</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n4291li/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n4291li/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N4402BD">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>オーバーロード：前編</h2>
+<div class="author">作者：丸山くがね</div>
+<div class="ncode">Nコード：N4402BD</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n4402bd/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n4402bd/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="212" data-ncode="N4505EU">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🎈あ〜お</div>
+<h2>サポートキャラに悪役令嬢の魅了は効かない</h2>
+<div class="author">作者：宇和マチカ</div>
+<div class="ncode">Nコード：N4505EU</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n4505eu/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n4505eu/212/" rel="noopener" target="_blank">続きから　📖 212 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N4545EW">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>大豆以外が敵となった世界で、思いつく限りの大豆料理を作って帰る物語</h2>
+<div class="author">作者：はいあか</div>
+<div class="ncode">Nコード：N4545EW</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n4545ew/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n4545ew/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N4600HI">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>竜のお世話係</h2>
+<div class="author">作者：かなえ</div>
+<div class="ncode">Nコード：N4600HI</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n4600hi/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n4600hi/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="10" data-ncode="N4608LR">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🎈さ〜そ</div>
+<h2>断罪される未来を知った母は、誰にも告げず家を出た</h2>
+<div class="author">作者：白波　いと</div>
+<div class="ncode">Nコード：N4608LR</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n4608lr/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n4608lr/10/" rel="noopener" target="_blank">続きから　📖 10 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N4644HT">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【書籍化】幼児化したらなぜか溺愛されています</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N4644HT</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n4644ht/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n4644ht/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="160" data-ncode="N4712FW">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>サポートキャラに悪役令嬢の魅了は効かない（その後の小話集）</h2>
+<div class="author">作者：宇和マチカ</div>
+<div class="ncode">Nコード：N4712FW</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n4712fw/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n4712fw/160/" rel="noopener" target="_blank">続きから　📖 160 / —話</a>
+</div>
+</article>
+<article class="card" data-current="28" data-ncode="N4719LT">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🎈か〜こ</div>
+<h2>不機嫌殿下の溺愛生活は期間限定！？</h2>
+<div class="author">作者：奏多悠香</div>
+<div class="ncode">Nコード：N4719LT</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n4719lt/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n4719lt/28/" rel="noopener" target="_blank">続きから　📖 28 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N4895KQ">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【電子書籍11/15】　『王太子の嫁な！』と遺言状に書いてありました。</h2>
+<div class="author">作者：笛路　@書籍・コミカライズ進行中</div>
+<div class="ncode">Nコード：N4895KQ</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n4895kq/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n4895kq/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N5057IC">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【書籍化】婚約者に「あなたは将来浮気をしてわたしを捨てるから別れてください」と言ってみた</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N5057IC</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n5057ic/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n5057ic/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N5124JV">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>ただの村娘の私の元に、救世の英雄が恩返しに来たのですが</h2>
+<div class="author">作者：紬夏乃</div>
+<div class="ncode">Nコード：N5124JV</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n5124jv/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n5124jv/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N5124KF">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>冤罪です騎士団長！</h2>
+<div class="author">作者：こう</div>
+<div class="ncode">Nコード：N5124KF</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n5124kf/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n5124kf/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N5171IG">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>彼女こそ運命の人だ！と面識のないイケメンに宣言された令嬢は私です</h2>
+<div class="author">作者：秋灘 才</div>
+<div class="ncode">Nコード：N5171IG</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n5171ig/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n5171ig/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N5225IA">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>虎の威を借る狐になって復讐がしたい</h2>
+<div class="author">作者：こう</div>
+<div class="ncode">Nコード：N5225IA</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n5225ia/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n5225ia/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N5277IL">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【小説第３巻4/12発売！】無能の悪童王子は生き残りたい～恋愛ＲＰＧの悪役モブに転生したけど、原作無視して最強を目指す～</h2>
+<div class="author">作者：サンボン</div>
+<div class="ncode">Nコード：N5277IL</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n5277il/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n5277il/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N5315GK">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【書籍化】この度、筋肉バカ王子の教育係に任命されました</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N5315GK</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n5315gk/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n5315gk/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N5531GE">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>二度目の異世界、少年だった彼は年上騎士になり溺愛してくる</h2>
+<div class="author">作者：琴子</div>
+<div class="ncode">Nコード：N5531GE</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n5531ge/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n5531ge/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N5582JM">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>元公女の難儀な復讐</h2>
+<div class="author">作者：関谷 れい</div>
+<div class="ncode">Nコード：N5582JM</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n5582jm/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n5582jm/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="57" data-ncode="N5599IN">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🎈か〜こ</div>
+<h2>田舎者にはよくわかりません～ぼんやり辺境伯令嬢は、断罪された公爵令息をお持ち帰りする～【書籍化＆コミカライズ】</h2>
+<div class="author">作者：来須みかん</div>
+<div class="ncode">Nコード：N5599IN</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n5599in/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n5599in/57/" rel="noopener" target="_blank">続きから　📖 57 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N5632Z">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>庭付き4LDK中古住宅※リフォーム済嫁付</h2>
+<div class="author">作者：榎木ユウ</div>
+<div class="ncode">Nコード：N5632Z</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n5632z/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n5632z/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="1" data-ncode="N5651FM">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>醜いアヒルの子は鷹だった</h2>
+<div class="author">作者：violet</div>
+<div class="ncode">Nコード：N5651FM</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n5651fm/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n5651fm/1/" rel="noopener" target="_blank">続きから　📖 1 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N5795HQ">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>聖女が「甘やかしてくれる優しい旦那様」を募集したら国王陛下が立候補してきた</h2>
+<div class="author">作者：瀬尾優梨</div>
+<div class="ncode">Nコード：N5795HQ</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n5795hq/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n5795hq/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N5890LH">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【完結】見返りは、当然求めますわ</h2>
+<div class="author">作者：楽歩</div>
+<div class="ncode">Nコード：N5890LH</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n5890lh/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n5890lh/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N6014GW">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【書籍化】視線から始まる</h2>
+<div class="author">作者：クレハ</div>
+<div class="ncode">Nコード：N6014GW</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n6014gw/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n6014gw/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N6025KL">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>甘い香りは終わりの始まり（旧題：芳香罪）</h2>
+<div class="author">作者：奏多悠香</div>
+<div class="ncode">Nコード：N6025KL</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n6025kl/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n6025kl/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N6057LJ">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>実録１１日間、実況中継は白い結婚！</h2>
+<div class="author">作者：三香</div>
+<div class="ncode">Nコード：N6057LJ</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n6057lj/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n6057lj/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N6066KQ">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【8/12 本日発売】人質王子を自分好みに育てたら……</h2>
+<div class="author">作者：笛路　@書籍・コミカライズ進行中</div>
+<div class="ncode">Nコード：N6066KQ</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n6066kq/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n6066kq/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N6074IJ">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【Web版全6話+2】ヒロインに婚約者を取られるみたいなので、悪役令息ヤンデレキャラを狙います【書籍版全4巻+コミカライズ開始】</h2>
+<div class="author">作者：宝 小箱（旧名:どろえん）</div>
+<div class="ncode">Nコード：N6074IJ</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n6074ij/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n6074ij/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N6106LC">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【書籍化】枯れ専令嬢、喜び勇んで老紳士に後妻として嫁いだら、待っていたのは二十歳の青年でした。なんでだ～⁉</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N6106LC</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n6106lc/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n6106lc/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N6261FV">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>推定年齢120歳、顔も知らない婚約者が実は超絶美形でした。</h2>
+<div class="author">作者：シロヒ</div>
+<div class="ncode">Nコード：N6261FV</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n6261fv/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n6261fv/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N6398IO">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>推し魔王様のバッドエンドを回避するために、本人を買うことにした。【書籍化】</h2>
+<div class="author">作者：早瀬黒絵</div>
+<div class="ncode">Nコード：N6398IO</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n6398io/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n6398io/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N6526LK">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【完結】【連載版】断罪されたらレベルが上がったので、王国を蹂躙することにしました</h2>
+<div class="author">作者：上下サユウ</div>
+<div class="ncode">Nコード：N6526LK</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n6526lk/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n6526lk/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="9" data-ncode="N6577IM">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>元魔王の娘が聖女に転生っておかしくないですか？～前世でわたしを殺した勇者の末裔に言い寄られても困ります！～</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N6577IM</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n6577im/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n6577im/9/" rel="noopener" target="_blank">続きから　📖 9 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N6682GF">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>悪役令嬢の中の人【書籍化・コミカライズ】</h2>
+<div class="author">作者：まきぶろ</div>
+<div class="ncode">Nコード：N6682GF</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n6682gf/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n6682gf/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N6706IE">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【電書＆コミカライズ】推しとは結婚できません！〜最強魔術師様の結婚相手がわたしだなんて、めちゃくちゃ解釈違いです！〜</h2>
+<div class="author">作者：鈴宮(すずみや)</div>
+<div class="ncode">Nコード：N6706IE</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n6706ie/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n6706ie/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N6711HW">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【書籍二巻・コミックス四巻発売中】ヒロインが来る前に妊娠しました～詰んだはずの悪役令嬢ですが、どうやら違うようです</h2>
+<div class="author">作者：ロゼ</div>
+<div class="ncode">Nコード：N6711HW</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n6711hw/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n6711hw/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N6753LE">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>微睡みの上に花は咲く～大規模異世界転移、掲示板つき～</h2>
+<div class="author">作者：初鹿余フツカ</div>
+<div class="ncode">Nコード：N6753LE</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n6753le/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n6753le/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N6845HG">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【書籍化・コミカライズ】元暗殺者、転生して貴族の令嬢になりました。</h2>
+<div class="author">作者：音無砂月</div>
+<div class="ncode">Nコード：N6845HG</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n6845hg/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n6845hg/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N6981GK">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>ゴリラの神から加護された令嬢は王立騎士団で可愛がられる</h2>
+<div class="author">作者：シロヒ</div>
+<div class="ncode">Nコード：N6981GK</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n6981gk/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n6981gk/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N6981GN">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【web版】ブチ切れ令嬢は報復を誓いました。〜魔導書の力で祖国を叩き潰します〜</h2>
+<div class="author">作者：はぐれメタボ</div>
+<div class="ncode">Nコード：N6981GN</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n6981gn/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n6981gn/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="18" data-ncode="N7001JW">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>兄に悪役令嬢をやらせたら、とんだ傾国の美女（男）になりまして</h2>
+<div class="author">作者：恵ノ島すず</div>
+<div class="ncode">Nコード：N7001JW</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n7001jw/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n7001jw/18/" rel="noopener" target="_blank">続きから　📖 18 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N7006CM">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>復讐を誓った白猫は竜王の膝の上で惰眠をむさぼる【書籍化&amp;amp;コミカライズ】</h2>
+<div class="author">作者：クレハ</div>
+<div class="ncode">Nコード：N7006CM</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n7006cm/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n7006cm/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="30" data-ncode="N7025FC">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🎈あ〜お</div>
+<h2>守備範囲内に跡取りが多い</h2>
+<div class="author">作者：宇和マチカ</div>
+<div class="ncode">Nコード：N7025FC</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n7025fc/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n7025fc/30/" rel="noopener" target="_blank">続きから　📖 30 / —話</a>
+</div>
+</article>
+<article class="card" data-current="1" data-ncode="N7038HV">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【書籍3巻発売】酔っ払い令嬢が英雄と知らず求婚した結果 〜最強の神獣騎士から溺愛がはじまりました!?〜【コミカライズ】</h2>
+<div class="author">作者：長月 おと</div>
+<div class="ncode">Nコード：N7038HV</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n7038hv/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n7038hv/1/" rel="noopener" target="_blank">続きから　📖 1 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N7060BR">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>量産型聖女</h2>
+<div class="author">作者：はいあか</div>
+<div class="ncode">Nコード：N7060BR</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n7060br/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n7060br/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N7072KM">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【完結】彼女は可哀想な人なのよ、だって【書籍化・コミカライズ決定！】</h2>
+<div class="author">作者：川崎悠</div>
+<div class="ncode">Nコード：N7072KM</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n7072km/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n7072km/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N7224HV">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【書籍化・コミカライズ】麗しの皇帝陛下の運命の花嫁に選ばれてしまったのですが、まだ仕事がしたいので秘密です！</h2>
+<div class="author">作者：田山 歩</div>
+<div class="ncode">Nコード：N7224HV</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n7224hv/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n7224hv/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N7412GL">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【書籍化】悪役令嬢の愛され計画～破滅エンド回避のための奮闘記～</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N7412GL</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n7412gl/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n7412gl/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N7413HM">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>叔父一家に家を乗っ取られそうなので、今すぐ結婚したいんです！</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N7413HM</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n7413hm/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n7413hm/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="3" data-ncode="N7443KL">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>主人公の義兄がヤンデレになるとか聞いてないんですけど！？</h2>
+<div class="author">作者：玉響なつめ</div>
+<div class="ncode">Nコード：N7443KL</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n7443kl/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n7443kl/3/" rel="noopener" target="_blank">続きから　📖 3 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N7466II">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【コミカライズ】透明人間になったわたしと、わたしに興味がない（はずの）夫の奇妙な三か月間</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N7466II</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n7466ii/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n7466ii/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N7469KT">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【書籍化】鬼と姫君～平安異形絵巻～</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N7469KT</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n7469kt/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n7469kt/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N7483BV">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>この道の先に</h2>
+<div class="author">作者：奏多悠香</div>
+<div class="ncode">Nコード：N7483BV</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n7483bv/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n7483bv/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N7721HX">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>じゃない方聖女と言われたので、落ちこぼれ騎士団を最強に育てます ～ブラック芸能事務所のマネージャーだったけど異世界で騎士団のお世話係はじめました～</h2>
+<div class="author">作者：シロヒ</div>
+<div class="ncode">Nコード：N7721HX</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n7721hx/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n7721hx/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N7806CE">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>異世界の中心で「誘拐犯になりたくねぇ！」と叫ぶ</h2>
+<div class="author">作者：Aska</div>
+<div class="ncode">Nコード：N7806CE</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n7806ce/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n7806ce/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N7812S">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>皇帝陛下の猫</h2>
+<div class="author">作者：縞白</div>
+<div class="ncode">Nコード：N7812S</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n7812s/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n7812s/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N7909CL">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>いちごの国のお姫様はただのバイトですが、若き次期大統領に溺愛されています</h2>
+<div class="author">作者：日室千種</div>
+<div class="ncode">Nコード：N7909CL</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n7909cl/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n7909cl/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N7942GK">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>モブ同然の悪役令嬢に転生したので男装して主人公に攻略されることにしました（書籍版：モブ同然の悪役令嬢は男装して攻略対象の座を狙う）</h2>
+<div class="author">作者：岡崎マサムネ</div>
+<div class="ncode">Nコード：N7942GK</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n7942gk/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n7942gk/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N7968JL">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>婚約者様は非公表</h2>
+<div class="author">作者：湯瀬</div>
+<div class="ncode">Nコード：N7968JL</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n7968jl/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n7968jl/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N7998LI">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【書籍化・コミカライズ決定】臣下に下賜した元婚約者に、今更なんのご用で？</h2>
+<div class="author">作者：戸倉　儚</div>
+<div class="ncode">Nコード：N7998LI</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n7998li/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n7998li/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N8005GA">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>乙女ゲーのラスボスに転生して早々、敵が可愛すぎて死にそうです</h2>
+<div class="author">作者：楢山幕府</div>
+<div class="ncode">Nコード：N8005GA</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n8005ga/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n8005ga/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N8095KT">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【書籍化】皆様、答え合わせをいたしましょう</h2>
+<div class="author">作者：楽歩</div>
+<div class="ncode">Nコード：N8095KT</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n8095kt/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n8095kt/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N8177JN">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>かくして魔法使いノイ・ガレネーは百年後、花嫁となった　【#かく嫁】</h2>
+<div class="author">作者：六つ花 えいこ</div>
+<div class="ncode">Nコード：N8177JN</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n8177jn/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n8177jn/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N8180GW">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>《連載版》あなたのお城の小人さん　～御飯下さい、働きますっ～</h2>
+<div class="author">作者：美袋和仁</div>
+<div class="ncode">Nコード：N8180GW</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n8180gw/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n8180gw/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N8188IG">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>フクロウが羽根をくれるのは</h2>
+<div class="author">作者：秋灘 才</div>
+<div class="ncode">Nコード：N8188IG</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n8188ig/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n8188ig/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="284" data-ncode="N8303IO">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🎈さ〜そ</div>
+<h2>【書籍化】精霊樹の落とし子と飾り紐</h2>
+<div class="author">作者：鈴埜</div>
+<div class="ncode">Nコード：N8303IO</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n8303io/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n8303io/284/" rel="noopener" target="_blank">続きから　📖 284 / —話</a>
+</div>
+</article>
+<article class="card" data-current="21" data-ncode="N8462KW">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>天才魔導師の悪妻～私の夫を虐げておいて戻ってこいとは呆れましてよ？～【コミカライズ決定】</h2>
+<div class="author">作者：藍上イオタ＠天才魔導師の悪妻26/2/14発売</div>
+<div class="ncode">Nコード：N8462KW</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n8462kw/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n8462kw/21/" rel="noopener" target="_blank">続きから　📖 21 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N8523HP">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【書籍化】魔王伯爵と呪われた宝石～お願いですから、豹変して抱きついてくるのはやめてください～</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N8523HP</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n8523hp/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n8523hp/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N8549GC">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>陛下、心の声がだだ漏れです！</h2>
+<div class="author">作者：シロヒ</div>
+<div class="ncode">Nコード：N8549GC</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n8549gc/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n8549gc/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="39" data-ncode="N8607CM">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🎈た〜と</div>
+<h2>いつか空につりあう日</h2>
+<div class="author">作者：白銀トオル</div>
+<div class="ncode">Nコード：N8607CM</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n8607cm/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n8607cm/39/" rel="noopener" target="_blank">続きから　📖 39 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N8697GP">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【書籍化】悪徳令嬢に転生したのに、まさかの求婚!?～手のひら返しの求婚はお断りします！～</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N8697GP</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n8697gp/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n8697gp/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N8906CE">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>僕は妃と話ができない【連載版】</h2>
+<div class="author">作者：宮路広子</div>
+<div class="ncode">Nコード：N8906CE</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n8906ce/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n8906ce/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N8909IH">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>ブラックシープ～人形姫との下僕契約～</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N8909IH</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n8909ih/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n8909ih/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N8922HW">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【書籍化】憧れの冷徹王弟に溺愛されています</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N8922HW</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n8922hw/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n8922hw/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N8996BW">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>風間に咲く花</h2>
+<div class="author">作者：奏多悠香</div>
+<div class="ncode">Nコード：N8996BW</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n8996bw/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n8996bw/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N9024JI">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>灰かぶり姫の姉だったので、魔法使いの助けを借りました。</h2>
+<div class="author">作者：早瀬黒絵</div>
+<div class="ncode">Nコード：N9024JI</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n9024ji/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n9024ji/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N9237HN">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>聖なる加護持ち令嬢は、騎士を目指しているので聖女にはなりません。【コミカライズ】</h2>
+<div class="author">作者：白崎まこと（加護持ち令嬢漫画②巻12/5）</div>
+<div class="ncode">Nコード：N9237HN</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n9237hn/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n9237hn/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N9293BY">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>今日も私は、魔界で生きます</h2>
+<div class="author">作者：白銀トオル</div>
+<div class="ncode">Nコード：N9293BY</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n9293by/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n9293by/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N9331HZ">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>ベル・プペーのスパダリ婚約～「好みじゃない」と言われた人形姫、我慢をやめたら皇子がデレデレになった。実に愛い！～【WEB短編版】</h2>
+<div class="author">作者：朝霧あさき</div>
+<div class="ncode">Nコード：N9331HZ</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n9331hz/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n9331hz/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N9429IC">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>仕事人間な伯爵令嬢は氷の宰相様の愛を見誤っている　～この婚約は偽装、ですよね？～</h2>
+<div class="author">作者：杓子ねこ</div>
+<div class="ncode">Nコード：N9429IC</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n9429ic/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n9429ic/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N9449HT">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>サイコな黒幕の義姉ちゃん【書籍化・コミカライズ】</h2>
+<div class="author">作者：59</div>
+<div class="ncode">Nコード：N9449HT</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n9449ht/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n9449ht/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N9525LL">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【完結】【連載版】断罪された悪役令嬢ですが、真実の愛よりも大切なことを教えてさしあげますわ</h2>
+<div class="author">作者：天地サユウ</div>
+<div class="ncode">Nコード：N9525LL</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n9525ll/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n9525ll/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N9595GJ">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>婿養子の心得</h2>
+<div class="author">作者：まゆらん</div>
+<div class="ncode">Nコード：N9595GJ</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n9595gj/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n9595gj/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N9601JO">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>お気に入り登録をされたみたいです</h2>
+<div class="author">作者：三香</div>
+<div class="ncode">Nコード：N9601JO</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n9601jo/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n9601jo/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="1" data-ncode="N9647IA">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🎈ま〜も</div>
+<h2>ループ四回目。いい加減「愛してる」と言われながら王子に殺される運命から逃げるため、ウキウキで婚約破棄したつもり、だった。</h2>
+<div class="author">作者：丸山華永</div>
+<div class="ncode">Nコード：N9647IA</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n9647ia/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n9647ia/1/" rel="noopener" target="_blank">続きから　📖 1 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N9711HL">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>シャーロット〜とある侍女の城仕え物語〜 【書籍化・コミカライズ】</h2>
+<div class="author">作者：守雨</div>
+<div class="ncode">Nコード：N9711HL</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n9711hl/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n9711hl/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N9712BK">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>天才少女の一生。</h2>
+<div class="author">作者：池中織奈</div>
+<div class="ncode">Nコード：N9712BK</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n9712bk/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n9712bk/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="43" data-ncode="N9770ML">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>宮廷魔導師選抜試験を記念受験した田舎者</h2>
+<div class="author">作者：古野ジョン</div>
+<div class="ncode">Nコード：N9770ML</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n9770ml/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n9770ml/43/" rel="noopener" target="_blank">続きから　📖 43 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N9824JW">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 🟠読書中</div>
+<h2>【書籍化】円満離婚を勝ち取るため、浮気調査はじめます</h2>
+<div class="author">作者：狭山ひびき</div>
+<div class="ncode">Nコード：N9824JW</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n9824jw/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n9824jw/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N9856LK">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【連載版】婚約破棄された悪役令嬢の心の声が面白かったので求婚してみた</h2>
+<div class="author">作者：夕景あき</div>
+<div class="ncode">Nコード：N9856LK</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n9856lk/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n9856lk/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N9894DK">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>弟馬鹿と妹馬鹿</h2>
+<div class="author">作者：宮路広子</div>
+<div class="ncode">Nコード：N9894DK</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n9894dk/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n9894dk/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N9969II">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>最下位魔女の私が、何故か一位の騎士様に選ばれまして</h2>
+<div class="author">作者：シロヒ</div>
+<div class="ncode">Nコード：N9969II</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n9969ii/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n9969ii/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N9978II">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【書籍化】君を愛することはない、という訳ではないと結婚した氷の騎士は宣言した（長編版）</h2>
+<div class="author">作者：とんでー</div>
+<div class="ncode">Nコード：N9978II</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n9978ii/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n9978ii/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article>
+<article class="card" data-current="" data-ncode="N9991IQ">
+<div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ 未分類</div>
+<h2>【3巻電子書籍発売】王子に婚約破棄されたので、義理の兄が激怒してこの国を滅ぼすと叫び出したんだけど……</h2>
+<div class="author">作者：古里@3巻電子書籍化『王子に婚約破棄されたので義理の兄が激怒して</div>
+<div class="ncode">Nコード：N9991IQ</div>
+<details><summary>あらすじを読む</summary><p class="synopsis">API取得待ち</p></details>
+<div class="actions">
+<a class="workLink" href="https://ncode.syosetu.com/n9991iq/" rel="noopener" target="_blank">作品を開く</a>
+<a class="resumeLink" href="https://ncode.syosetu.com/n9991iq/" rel="noopener" target="_blank">続きから　📖 未読 / —話</a>
+</div>
+</article><article class="card" data-current="" data-last-updated="2026-06-10T00:40:08Z" data-ncode="N9735HP" data-r18="1" data-total-episodes="174"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2026/06/10</span> ｜ <span class="status">🟢 連載中</span> ｜ 未分類</div><h2>おのぼりエルフレイモンド、一念勃起ヤリチン道中</h2><div class="author">作者：ケロリビ堂</div><div class="ncode">Nコード：N9735HP</div><details><summary>あらすじを読む</summary><p class="synopsis">　暁の子は性欲が強すぎる変わり種エルフ。エルフの里から出て来たばかりの彼は言葉もおぼつかず、人間の常識もあんまりわかってないのだが、とにかく体がでかく、顔が美しく、なによりめちゃくちゃちんちんが強い！！　そんなおのぼりエルフが無邪気に無自覚にやり手ベテラン娼婦や田舎貴族出身のお嬢様冒険者や竜人女剣士など、いろんな女性とめちゃくちゃセックスして騒動を起こす話です。
+　ムーンライトノベルに掲載している「はらぺこサキュバスが性欲の強い男エルフと一夜のあやまちで契約をしてしまう話」のスピンオフですが、元作品を読まなくても楽しめるように書くつもりです。元作品は女性向けですが今作はどうあっても女性向けにならなそうなのでノクターンに掲載しています。
+</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n9735hp/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n9735hp/" rel="noopener" target="_blank">続きから　📖 未読 / 174話</a></div></article><article class="card" data-current="" data-last-updated="2018-05-20T01:33:12Z" data-ncode="N9801CV" data-r18="1" data-total-episodes="4"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2018/05/20</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>囚われの令嬢</h2><div class="author">作者：浅葱</div><div class="ncode">Nコード：N9801CV</div><details><summary>あらすじを読む</summary><p class="synopsis">もうどれぐらい経ったのかもわからない―結婚を控えていた侯爵家の令嬢は攫われ、ずっと見知らぬ男たちに抱かれ続けている。彼女に助けはあるのだろうか？―セレスト王国に処女信仰があった頃の話
+
+※以前どこぞでこっそり載せていた物を手直ししています。完結済。
+
+※他の物語とは雰囲気が違うのと、書いてからすでにかなり経っていますので感想欄は閉じます。読んでいただきありがとうございます。</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n9801cv/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n9801cv/" rel="noopener" target="_blank">続きから　📖 未読 / 4話</a></div></article><article class="card" data-current="" data-last-updated="2025-12-19T16:35:14Z" data-ncode="N0001HD" data-r18="1" data-total-episodes="135"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2025/12/19</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>【コミカライズ】帝国外交官（アイドル）の用心棒になりました</h2><div class="author">作者：昆野うみ@帝国外交官〜コミカライズ1/31配信</div><div class="ncode">Nコード：N0001HD</div><details><summary>あらすじを読む</summary><p class="synopsis">女用心棒×年下美形外交官の主従恋愛ものです
+
+第一部　命と引き換えに奴隷となることを誓わされた凄腕用心棒ライラと、演奏家兼外交官として敵国をまわるルーカス。詐欺師にも負けない饒舌さと、女に困ることのない容姿を持ち合わせながら、なぜかルーカスは美人ではないアラサーのライラに、性処理まで求め‥？
+女主人公が、最強で男前です。相手は若干クズ、モラハラ、ツンデレのデレなし。糖度は低めです。
+第二部　恋を自覚したライラ。しかし、アイドルの恋の噂は絶えず、苦悩する日々。国内の陰謀、思わぬ出来事に二人の関係性も変わってゆくのだった。糖度は若干上がります。</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0001hd/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0001hd/" rel="noopener" target="_blank">続きから　📖 未読 / 135話</a></div></article><article class="card" data-current="" data-last-updated="2020-12-25T23:41:11Z" data-ncode="N0011GR" data-r18="1" data-total-episodes="10"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2020/12/25</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>クマ兄様がカッコイイなんて聞いてない</h2><div class="author">作者：おりのまるる</div><div class="ncode">Nコード：N0011GR</div><details><summary>あらすじを読む</summary><p class="synopsis">プリムローズにはどうしても処女を捨てなくてはいけない理由があった。
+義兄アルフォンスに、誰か知り合いを紹介してほしいと頼んだところ、話の流れでアルフォンスに初めてを捧げることに。
+つつがなく二人で夜を過ごした後、プリムローズは兄として好きだったはずのアルフォンスが、大人の男の人に見えてきて戸惑う。
+
+気持ちを伝えたいけれど、この関係が壊れたら。
+プリムローズがアルフォンスに恋していることに気付いたその日から、妹扱いを切なく思う日々を過ごす。
+
+そんな中、アルフォンスの双子の弟にプリムローズは拉致されてしまう。
+
+全10話、約30,000字です。どうぞよろしくお願い致します。
+
+＊誤字脱字報告ありがとうございます。</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0011gr/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0011gr/" rel="noopener" target="_blank">続きから　📖 未読 / 10話</a></div></article><article class="card" data-current="" data-last-updated="2024-04-01T01:46:34Z" data-ncode="N0011HH" data-r18="1" data-total-episodes="25"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2024/04/01</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>雨の国の聖女が、ずっと好きだった幼馴染の最愛となるまで</h2><div class="author">作者：椎名さえら</div><div class="ncode">Nコード：N0011HH</div><details><summary>あらすじを読む</summary><p class="synopsis">【本編完結済】
+【レオナルド目線完結済】
+
+シア＝カールディスはユスキア共和国の“聖女”に指名された。
+
+ユスキア共和国は“雨の国”とも呼ばれ、聖女の主な役目は、
+儀式を“介添人”と行い、月に一回雨を降らせること。
+雨を降らせるためには聖女は介添人の手助けにより“感情を爆発”させる必要があり、
+シアの介添人は幼馴染のアルフレッド＝ローランズだと内々に決まっていた。
+
+が、儀式当日、介添人として立っていたのはアルフレッドの弟、レオナルド。
+そしてレオナルドが選んだ感情を爆発させる方法は、シアを性的に絶頂させることで！？
+
+「残念だったな、兄貴じゃなくて」
+
+密かにずっと好きだった幼馴染に、気づいたら溺愛されている話。</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0011hh/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0011hh/" rel="noopener" target="_blank">続きから　📖 未読 / 25話</a></div></article><article class="card" data-current="56" data-last-updated="2026-05-15T09:39:00Z" data-ncode="N0034LU" data-r18="1" data-total-episodes="56"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2026/05/15</span> ｜ <span class="status">🔵 完結</span> ｜ 🎈は〜ほ</div><h2>私を殺した『永久凍土の騎士様』は、今世は恋でバグってる</h2><div class="author">作者：華永</div><div class="ncode">Nコード：N0034LU</div><details><summary>あらすじを読む</summary><p class="synopsis">（ちがう、ちがう、ちがう、キャラが……違いすぎる！！）
+
+＊＊＊
+
+男爵令嬢シイラ・クニューベルには、誰にも言えない秘密がある。
+彼女は二度目の人生を生きており、回帰前の前世では“永久凍土の騎士様”と言われ冷酷無比と恐れられるアルヴィス・レーヴライン侯爵の妻となり、最後には彼に殺されたのだ。
+
+そして二度目の人生は、彼と一切関わらないよう距離を置きながら静かに生きてきた。
+
+なのに。
+
+「私はようやく、あなたに出会うことができた……ああ、私の美しい天使は、ここに居たのだ……！」
+（は！？）
+「どうか私の愛を受け入れてくれないだろうか、小さな天使よ」
+
+再会した彼は、シイラの前に膝をつき、手を取り、甘く囁く。
+
+前世では最悪の結婚生活、最後は自分を殺したはずの夫。
+なのに今世では、なぜか初対面から全力で愛されている！？
+
+運命回避したいヒロインと、なぜか彼女を見つけてしまった永久凍土の騎士様による、すれ違い（？）の話です。
+
+※完結まで作成済み
+※むしろ回想がメインの実はヒーローがめっちゃ頑張ってた系です
+※現世はコメディ調、前世はシリアス（自分比）
+※Rは後半のみ、30話からです
+※AIはあくまで表現の補助ツールとしての使用です。（ep.15など）AIでがっつり執筆しているわけではありません。</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0034lu/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0034lu/56/" rel="noopener" target="_blank">続きから　📖 56 / 56話</a></div></article><article class="card" data-current="" data-last-updated="2024-02-21T05:35:33Z" data-ncode="N0052GG" data-r18="1" data-total-episodes="5"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2024/02/21</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>その勇者、変態につき。</h2><div class="author">作者：桜月みやこ</div><div class="ncode">Nコード：N0052GG</div><details><summary>あらすじを読む</summary><p class="synopsis">町の食事処で働いているミラは、町からの依頼で魔獣の討伐に訪れた勇者・エルラントから出逢った瞬間にプロポーズされた。
+けれどエルラントがミラに惹かれたのは顔でも性格でもなく、太腿──！？
+
+
+※アルファポリス様の方で開催された、なとみ様主催「足フェチ祭り」参加作品です
+※色々ゆるっゆるです。お祭りやっほい！で頭空っぽでどうぞ
+
+
+※表紙絵(1ページ目に貼ってあります)は君織さま(Twitter ID：@yuapple241)に描いて頂きました
+
+
+※この作品はムーンライトノベルズ様・アルファポリス様に掲載しています。</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0052gg/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0052gg/" rel="noopener" target="_blank">続きから　📖 未読 / 5話</a></div></article><article class="card" data-current="" data-last-updated="2022-05-11T00:15:28Z" data-ncode="N0053HQ" data-r18="1" data-total-episodes="10"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2022/05/11</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>婚約者はわたしの匂いが好きすぎる</h2><div class="author">作者：ゆう</div><div class="ncode">Nコード：N0053HQ</div><details><summary>あらすじを読む</summary><p class="synopsis">わたしは王太子の婚約者。
+王太子のベンジャミンはとても素敵な人だけど、ちょっと人には言えない癖がある。
+そんな癖だって気にならないぐらい、慣れてしまった。二人の仲だってとても良好だ。
+
+このまま結婚するんだろうな、と思っていたところ―――。
+
+同盟国の王女がやってきた。
+
+※※注意事項
+ヒーローが匂いフェチです。しかもヒロインはマザコンだと勘違いしてストーリーが進みます。
+生理的に受け付けない方は読まないようお願いします。
+
+◆
+なろう「貴方だけが知る秘密の香り」のR18改稿版です。現在なろうでは検索外となっています。</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0053hq/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0053hq/" rel="noopener" target="_blank">続きから　📖 未読 / 10話</a></div></article><article class="card" data-current="" data-last-updated="2024-09-27T08:43:45Z" data-ncode="N0060GV" data-r18="1" data-total-episodes="38"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2024/09/27</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>【電子書籍化しました】友人だと思っていた彼と結婚したら突如、狼に豹変しました。</h2><div class="author">作者：花煉</div><div class="ncode">Nコード：N0060GV</div><details><summary>あらすじを読む</summary><p class="synopsis">家のゴタゴタで、二十も年上の変態貴族に嫁がされることになった伯爵令嬢リリナ。
+普通の人が相手なら誰でも良かったのに！と嘆くリリナに学生時代の友人ルカが声をかけた。
+
+「ならちょうど良いから、僕と結婚する？」
+
+
+なんて渡りに船！とばかりに了承したリリナだったが、あっという間に結婚式。
+友人相手だから気が楽だなあと思っていたのもつかの間。
+
+「えっ？何？いやらしいこと、するの？今日！？貴方と？私が？」
+「当たり前でしょ。僕と君は今日から夫婦なのだから。跡継ぎは必要だよ？」
+「いや、ええと！待ってちょうだい！？いずれはそうかもと思っていたけど、いきなり今日！？」
+「うん。今日」
+結婚式で初めてのキスをしたばかりの二人。
+良い友人だと思っていたルカに突如（？）求められる子作り。
+一回で済むと思いきや、執拗に求められる体。
+友人だと思っていた人と結婚したら、彼が突如、豹変して、甘く囁いてくるようになって……？
+
+
+これは恋とか考えたことのなかったマイペースな令嬢と、前から片想いしていた相手との結婚を切っ掛けにタガが外れた男の話。（になる予定です）
+
+※が付いている部分は性描写ありです。</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0060gv/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0060gv/" rel="noopener" target="_blank">続きから　📖 未読 / 38話</a></div></article><article class="card" data-current="" data-last-updated="2025-10-28T10:02:19Z" data-ncode="N0064FU" data-r18="1" data-total-episodes="28"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2025/10/28</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>陛下をボコボコにしたのは、あのメイドです</h2><div class="author">作者：イシクロ</div><div class="ncode">Nコード：N0064FU</div><details><summary>あらすじを読む</summary><p class="synopsis">元騎士の家系で、今は辺境伯の元でハウスメイドをしているユーグ。彼女の昼の日課は、とある年下の少年との剣の勝負だ。彼が静養に来ている、病弱な王太子アルベルトだとも知らないまま。
+身分を明かしたアルベルトがユーグに求婚するも、神官や大臣から釘を刺された少女は自信のなさからそれを拒否する。そんなある日、領内に災いの竜が現れた。騎士による討伐も失敗し、倒す手段が見つからない中、ユーグを竜の生贄にせよと王命が下る。
+故郷とアルベルトのために少女は死を覚悟して湖に飛び込んだがーーー目覚めると、竜が現れる前に時が巻き戻っていた。そして目の前には、なぜか大人の姿のアルベルトが。※夕焼け様主催、復縁企画参加作品です。　追記）※の話はＲ描写があります。完結済み。ヒーロー視点を付け加えています。</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0064fu/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0064fu/" rel="noopener" target="_blank">続きから　📖 未読 / 28話</a></div></article><article class="card" data-current="30" data-last-updated="2026-08-02T01:10:10Z" data-ncode="N0064HK" data-r18="1" data-total-episodes="30"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2026/08/02</span> ｜ <span class="status">🔵 完結</span> ｜ 🎈ま〜も</div><h2>悪役令嬢はゲームのシナリオに貢献できない</h2><div class="author">作者：みつき怜</div><div class="ncode">Nコード：N0064HK</div><details><summary>あらすじを読む</summary><p class="synopsis">「このままでは婚約を白紙に戻すことになる」
+見知らぬ場所で見知らぬ人から告げられた私。
+どうやら彼は婚約解消したいらしい。そして私は悪名高いとんでもない女だった。
+過去を深く反省するつもりが（ただし記憶がない）、ひたすら甘やかされているのですが――！？
+
+悪役令嬢×攻略対象キャラたちのお話。
+
+</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0064hk/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0064hk/30/" rel="noopener" target="_blank">続きから　📖 30 / 30話</a></div></article><article class="card" data-current="29" data-last-updated="2025-09-09T14:40:38Z" data-ncode="N0073ID" data-r18="1" data-total-episodes="29"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2025/09/09</span> ｜ <span class="status">🟢 連載中</span> ｜ ⏰更新待ち</div><h2> 【ネット書籍化】お一人様で生きていきたいのに、前世の旦那様にロックオンされていて困ります</h2><div class="author">作者：由友ひろ</div><div class="ncode">Nコード：N0073ID</div><details><summary>あらすじを読む</summary><p class="synopsis">人の前世を見ることができるルビエラは、自分の前世が家族に尽くし倒した人生であったことから、現世では結婚なんかしたくないと男を拒絶して生きてきた。
+そんなルビエラが、前世の夫（寡黙で生真面目な仕事人間）の生まれ変わりであるダニエル（騎士団長、口を開くと女を口説く女たらし）と出会い、なんだかんだ惹かれていく話。
+
+設定は「婚約者がエロゲーの主人公だと思い出したので、婚約破棄を目指したいと思います」と同じ世界です。
+
+Rはそんなに多くしない予定です。
+ダニエルは甘めになりますが、ルビエラは辛めです。
+
+ネット書籍化させていただきましたので、投稿取り消しさせていただいた部分があります。ご理解よろしくお願いいたします。</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0073id/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0073id/29/" rel="noopener" target="_blank">続きから　📖 29 / 29話</a></div></article><article class="card" data-current="" data-last-updated="2018-04-07T23:01:07Z" data-ncode="N0076DK" data-r18="1" data-total-episodes="34"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2018/04/07</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>身代わり陛下の大変な半年</h2><div class="author">作者：北野　ふゆ</div><div class="ncode">Nコード：N0076DK</div><details><summary>あらすじを読む</summary><p class="synopsis">両親と似ても似つかぬ容姿で生まれたせいで、『精霊の取替え子』と恐れられ、わずか２歳で捨てられた私。そんな私を拾い、名前をくれたのは流浪の民・ソヴェリの長だった。
+【夢見の才能】を開花させるため、ソヴェリの娘は１８になれば処女を捨てなければならない。
+養父に連れられ、高級娼館までやってきたはいいが、いきなり現れた身分ありげな美貌の男に拉致されて――。
+人違いです。私は陛下じゃありません！
+
+一見俺様な宰相閣下と、処女を捨てる相手が変わっただけと割り切ることにした私の、体から始まる恋。
+（一迅社様メリッサレーベルより２０１７年１２月に書籍化予定）
+
+
+</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0076dk/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0076dk/" rel="noopener" target="_blank">続きから　📖 未読 / 34話</a></div></article><article class="card" data-current="" data-last-updated="2026-06-09T12:50:25Z" data-ncode="N0079FD" data-r18="1" data-total-episodes="6"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2026/06/09</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>弟王子に狙われました</h2><div class="author">作者：砂月 美乃</div><div class="ncode">Nコード：N0079FD</div><details><summary>あらすじを読む</summary><p class="synopsis">社交界の薔薇、結婚したい女性ナンバーワンのマリレーヌは、今日も求婚をお断りしたばかり。そんな彼女に声をかけたのは、かつて一緒に遊んだ第三王子のクリス。四つ年下で未だ成人前、大好きだけど弟にしか思えない。
+ところがクリスは予想外にグイグイ迫ってきて……！？
+
+「ヒミツの恋愛遊戯」シリーズ、クリス編です。シリーズのキャラクターも登場しますが、本作だけでもお読みいただけます。</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0079fd/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0079fd/" rel="noopener" target="_blank">続きから　📖 未読 / 6話</a></div></article><article class="card" data-current="" data-last-updated="2025-11-26T14:57:08Z" data-ncode="N0088JI" data-r18="1" data-total-episodes="12"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2025/11/26</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>死に戻り悪女がヤられるトラブルワンナイト-冷血鉄壁な毒舌魔術師だと思っておりましたのに、どうしてこうなった！？-</h2><div class="author">作者：ヤトさん</div><div class="ncode">Nコード：N0088JI</div><details><summary>あらすじを読む</summary><p class="synopsis">（お前そんなキャラじゃないだろう……）。朝日が眩しい乱れたベッドの中。隣で寝ている裸の美丈夫を目の当たりにして、辺境伯令嬢のローズ・ガルシアは頭を抱える。
+自分が前の人生をやりなおしていると認識したのは、15歳の学園入学時だった。
+現在20歳で妖艶な悪女枠であるはずの自分に興味ないどころか、想い人以外に冷たい態度を崩さないはずのこの男が。
+夜会で絡まれた相手を躱（いな）すため、近場のこの男こと、魔術師団長ランドルフ・バイパーにしなだれかかったのが事の始まり。
+ローズは媚薬塗れで、いつの間にかランドルフにお持ち帰りされていた。
+
+ワンナイトを阻止したい真面目系な魔術師（医者）×ワンナイトですませたいハリボテ悪女の異世界媚薬&amp;amp;淫紋トラブル。
+
+◆本編10話＋閑話2話（全12話）予定です。
+◆学園生活は閑話（前半・後半）のランドルフ編のみ。
+◇攻守両方有り。男女双方喘いでます。
+◇お互い若干、無理やり感があるところがあります。
+◇ところどころ♡（ハート）を使用しています。苦手な方はご注意ください。
+（注）世界観は乙女ゲーム系異世界ですが、本人は根っからの異世界現地人です。
+
+◉誤字報告ありがとうございます。助かりました！
+</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0088ji/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0088ji/" rel="noopener" target="_blank">続きから　📖 未読 / 12話</a></div></article><article class="card" data-current="" data-last-updated="2024-12-21T02:33:14Z" data-ncode="N0089JC" data-r18="1" data-total-episodes="1"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2024/12/21</span> ｜ <span class="status">🟢 連載中</span> ｜ 未分類</div><h2>かわいい彼女</h2><div class="author">作者：朋隆</div><div class="ncode">Nコード：N0089JC</div><details><summary>あらすじを読む</summary><p class="synopsis">短編「かっこいい彼氏」の彼氏視点です。ひたすらかわいいと言い続けています。</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0089jc/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0089jc/" rel="noopener" target="_blank">続きから　📖 未読 / 1話</a></div></article><article class="card" data-current="" data-last-updated="2025-03-24T22:40:19Z" data-ncode="N0094GS" data-r18="1" data-total-episodes="13"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2025/03/24</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>騎士団長は純情不埒</h2><div class="author">作者：すなぎもりこ</div><div class="ncode">Nコード：N0094GS</div><details><summary>あらすじを読む</summary><p class="synopsis">コミック化記念御礼番外編【新婚生活編】投稿しました～
+
+2021年eロマンスロイヤル大賞でコミック原作賞受賞
+☆電子コミック配信中☆
+☆コミック（紙書籍）１、2巻発売中☆
+ありがとうございます！！
+
+ヘルゲは破格の給金に釣られて女嫌いのアセンシオ騎士団長の補佐官として働くことになる。
+夢を叶えるための資金調達が目的だった。
+しかし、何故かやたらと懐かれてしまう。
+更に何やらヘルゲの身体に興味を持ち始めたようで…
+
+トラウマを抱えながらも情欲を抑えきれない美貌の騎士団長と、しっかり者の補佐官のラブストーリーです。
+
+12話で完結予定です。※完結しました。</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0094gs/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0094gs/" rel="noopener" target="_blank">続きから　📖 未読 / 13話</a></div></article><article class="card" data-current="" data-last-updated="2025-12-06T02:45:04Z" data-ncode="N0098GC" data-r18="1" data-total-episodes="108"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2025/12/06</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>堅物竜騎士の(教育的)恋愛指導</h2><div class="author">作者：悠月彩香</div><div class="ncode">Nコード：N0098GC</div><details><summary>あらすじを読む</summary><p class="synopsis">竜が失われた国で竜騎士に憧れる騎士公爵リューンと、竜の村で育った竜守の少女シルフィア。
+ふたりが出会った時、事件は起きた。
+「子種をわけてくださいませんか？」
+「は――！？」
+
+竜の村の後継者を残すために子種を欲するシルフィアと、道徳を訴える堅物騎士リューンのきわどい攻防戦の物語。
+
+※攻防戦の合間に、とらわれた竜を助けたり、竜と竜騎士の盟約を結んだり、ついでに世界まで救っちゃうお話です。
+
+☆紙書籍、電子書籍ともにティアラ文庫より発売中です☆
+「きまじめ竜騎士の子作り指南①求婚編」
+「きまじめ竜騎士の子作り指南②新婚編」
+「こじらせ竜騎士王子の溺愛指南」
+イラスト:コトハ先生</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0098gc/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0098gc/" rel="noopener" target="_blank">続きから　📖 未読 / 108話</a></div></article><article class="card" data-current="" data-last-updated="2026-06-09T09:51:24Z" data-ncode="N0105EJ" data-r18="1" data-total-episodes="35"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2026/06/09</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>あなたについて、考える。</h2><div class="author">作者：清白 妙</div><div class="ncode">Nコード：N0105EJ</div><details><summary>あらすじを読む</summary><p class="synopsis">【電子書籍化しました！】
+
+**********
+
+倉吉琴美は、５年付き合った末に職場結婚した夫の浮気現場に遭遇してしまう。
+証拠はバッチリ。サクサク進む離婚の手続き。
+不倫現場を偶然一緒に目撃した上杉巧に助けられつつ、全てを終わらせた琴美は本社から支社へ転勤していく。
+「５年くらい経たないと次の恋愛は考えられない」
+「じゃあ５年後、俺のこと考えてよ」上杉からの、突然のキス。
+「約束な」
+そして５年後――。
+
+ちょっぴり天然、こじらせ系アラサー女子と、10年間彼女だけを一途に愛する同僚の、ジレジレ恋愛ストーリー。
+
+**********
+
+アマゾナイトノベルズで電子書籍化しました。
+全4巻配信。詳しくはＸ活動報告をご覧下さい。
+
+https://xmypage.syosetu.com/mypageblog/view/xid/230585/blogkey/193402/</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0105ej/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0105ej/" rel="noopener" target="_blank">続きから　📖 未読 / 35話</a></div></article><article class="card" data-current="" data-last-updated="2025-11-26T11:01:16Z" data-ncode="N0105HL" data-r18="1" data-total-episodes="9"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2025/11/26</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>欲しがりな私のお兄様</h2><div class="author">作者：秋都たすく</div><div class="ncode">Nコード：N0105HL</div><details><summary>あらすじを読む</summary><p class="synopsis">　レティシアは４人の兄がいるリリュー家の末娘。幼い頃、１２歳年上の親戚のリュカに何の気なしに求婚した。だって一番好きだから。
+　その時ははぐらかされたと思ったのに、ある日の夜会で突然リュカに口づけされて「約束を果たしてくれる？」と言われて……
+
+　幼い恋心を引き摺る少女と青年の話。
+
+本編全８話
+☆Ｒ１８は＊マーク</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0105hl/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0105hl/" rel="noopener" target="_blank">続きから　📖 未読 / 9話</a></div></article><article class="card" data-current="31" data-last-updated="2026-01-08T11:13:19Z" data-ncode="N0108DQ" data-r18="1" data-total-episodes="31"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2026/01/08</span> ｜ <span class="status">🔵 完結</span> ｜ 🎈は〜ほ</div><h2>だって、好きなんだからしょうがない</h2><div class="author">作者：早瀬美夜</div><div class="ncode">Nコード：N0108DQ</div><details><summary>あらすじを読む</summary><p class="synopsis">大学生の三木芽依子は、バイト先の出版社で自らが大ファンである人気作家・秋月拓真にコーヒーをぶっかけた縁で彼の家仕事の手伝いをすることになる。恐縮しきりの芽依子だが、女性に興味が無いとも言われる秋月は何故か芽依子にはとてつもなく甘い視線と言葉を常に向けてくれる。戸惑いながら惹かれつつも、先生と私なんてとてもじゃないけど釣り合いなんて取れない、と及び腰の芽依子の恋の行方は。
+拙作「知らぬは私ばかりなり」「鳴かぬ狼が身を焦がす」と同じ世界観で、現代に獣人が普通にいる世界での獣人男性×人間女性の恋。
+R１８は予告無く入ります。
+
+2/22、猫の日のお話を１本上げました。
+</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0108dq/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0108dq/31/" rel="noopener" target="_blank">続きから　📖 31 / 31話</a></div></article><article class="card" data-current="" data-last-updated="2025-10-29T00:43:24Z" data-ncode="N0119HV" data-r18="1" data-total-episodes="5"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2025/10/29</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>夢で美女を好き勝手できる呪いにかかった王子は、婚約者に土下座する</h2><div class="author">作者：花伊美咲</div><div class="ncode">Nコード：N0119HV</div><details><summary>あらすじを読む</summary><p class="synopsis">「殿下！　大変です！　殿下は呪いにかかっています！」
+「はあ？　呪い？」
+
+ある日お抱えの魔術師にそう言われてしまった王子、アルバート。どんな呪いかと聞いてみれば、毎晩見ているエロい夢に取り込まれてしまうというもの。
+
+毎晩、美女を相手に好き勝手していた王子は、婚約者がいるにも関わらずその夢の女に情が湧いていて、拒むことができない。
+
+それどころか、夢はどんどんリアルになってきて……。
+
+5話で終わります。設定ゆるゆるで、ほとんどの話にR18要素がありますので、★マークはついていません。</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0119hv/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0119hv/" rel="noopener" target="_blank">続きから　📖 未読 / 5話</a></div></article><article class="card" data-current="47" data-last-updated="2025-12-28T12:17:41Z" data-ncode="N0121HV" data-r18="1" data-total-episodes="47"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2025/12/28</span> ｜ <span class="status">🔵 完結</span> ｜ 🎈さ〜そ</div><h2>私の推し活</h2><div class="author">作者：桜木桃子</div><div class="ncode">Nコード：N0121HV</div><details><summary>あらすじを読む</summary><p class="synopsis">男爵令嬢のエリカは行儀見習いとして辺境伯邸で働いている。目当ては嫡男のアンドリュー様。鋭い目つきと逞しい身体が最高でエリカの最推しだ。毎日影からこっそり見て満足していたのだけれども…。
+
+※ちょいちょい専門用語と申しますか、マニアックな言葉が出て参ります。不明な単語がございましたら大変恐れ入りますがググってくださいまし。</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0121hv/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0121hv/47/" rel="noopener" target="_blank">続きから　📖 47 / 47話</a></div></article><article class="card" data-current="" data-last-updated="2026-01-24T12:25:15Z" data-ncode="N0129BK" data-r18="1" data-total-episodes="36"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2026/01/24</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>良識の行方</h2><div class="author">作者：九重</div><div class="ncode">Nコード：N0129BK</div><details><summary>あらすじを読む</summary><p class="synopsis">「なんて良識のない・・・」春花と母は呆然と呟いた。
+ある日、良識が欠如しているとしか思えない男性と知り合ってしまった春花。これはその男性と春花との３０日間の攻防の物語。
+軽～い、ふわふわとしたお菓子のような物語です。お気軽にお読みいただけると嬉しいです。
+（すみません。一番良識のないのは作者です。作中の犬の名前についての苦情は一切受け付けておりませんのでご了承ください。）
+11月10日完結しました。ありがとうございました。</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0129bk/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0129bk/" rel="noopener" target="_blank">続きから　📖 未読 / 36話</a></div></article><article class="card" data-current="" data-last-updated="2023-07-13T08:34:52Z" data-ncode="N0130HT" data-r18="1" data-total-episodes="6"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2023/07/13</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>【電子書籍化】エッチな下着のデザインを相談したら絶倫男に種付けされました</h2><div class="author">作者：千歳りりこ</div><div class="ncode">Nコード：N0130HT</div><details><summary>あらすじを読む</summary><p class="synopsis">乙女ゲーの世界に転生したのに推しはまだ生まれていなかったので、えっちな下着のデザイナーとしてのんびり過ごしていたシェリー。
+しかし喪女なのでデザインに行き詰まり、頼った相手は顔見知りの娼館のオーナーであるクリードだった。
+成り行きでクリードに抱かれることになったのだが、彼にはとある秘密があった。
+
+体格がいい執着激しめヒーロー（とある特殊能力あり）×喪女拗らせヒロインのラブコメです。
+
+【追記】2023年6月6日、アマゾナイトノベルズより、電子書籍として配信されました。（旧タイトル・下着のデザインを相談した男に種付けされた話）</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0130ht/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0130ht/" rel="noopener" target="_blank">続きから　📖 未読 / 6話</a></div></article><article class="card" data-current="" data-last-updated="2025-03-26T01:54:02Z" data-ncode="N0135HI" data-r18="1" data-total-episodes="10"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2025/03/26</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>おめでとうございます！厳正な審査の結果、王家の孕み袋に選ばれました！</h2><div class="author">作者：猫大福</div><div class="ncode">Nコード：N0135HI</div><details><summary>あらすじを読む</summary><p class="synopsis">処女のまま死んでしまったネイシアは、今世では沢山の男性と気持ちの良いことをするのだと決心してデビュタントへ臨む。
+　※陛下・王弟・全員のR１８話を追加中です。</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0135hi/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0135hi/" rel="noopener" target="_blank">続きから　📖 未読 / 10話</a></div></article><article class="card" data-current="" data-last-updated="2020-05-22T13:50:16Z" data-ncode="N0136EV" data-r18="1" data-total-episodes="20"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2020/05/22</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>結婚から始まる、幼なじみとラブラブになる方法。      </h2><div class="author">作者：さい</div><div class="ncode">Nコード：N0136EV</div><details><summary>あらすじを読む</summary><p class="synopsis">「私と結婚して下さい！一生大切にするから！」
+
+サキと森野は腐れ縁の幼なじみ。
+
+森野は無防備過ぎるサキに振り回されながら、イライラとムラムラを紛らわせるため長年無愛想な態度を取り続けていた。
+
+サキはそんな森野の気持ちも知らず、ずっと一緒にいたいとの思い付きから、いきなり森野に逆プロポーズをブチかます。一流のハンターは今日も良い仕事します。
+
+守下サキ ＝ サキ
+森野悠人 ＝ クマ
+
+★性描写有
+
+【別の話と一部登場人物が共通】</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0136ev/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0136ev/" rel="noopener" target="_blank">続きから　📖 未読 / 20話</a></div></article><article class="card" data-current="" data-last-updated="2023-08-31T14:54:53Z" data-ncode="N0147HR" data-r18="1" data-total-episodes="43"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2023/08/31</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>【書籍化】追放された元聖女の私を拾ってくれたのは、魔性のSSランク冒険者さんでした。</h2><div class="author">作者：yori</div><div class="ncode">Nコード：N0147HR</div><details><summary>あらすじを読む</summary><p class="synopsis">＊一迅社メリッサさまより書籍化しました＊
+発売日:2023/07/03
+アクリルコースターなどの特典情報やweb版との違いについては、活動報告よりご確認いただけます！
+
+
+聖女セシリアは、神聖な儀式の場で境地に立たされていた。何故なら婚約者である王太子殿下が、別の女性の肩を抱き、覚えもない罪を突きつけてきたからだ。
+
+「全ての証拠が揃っている！　お前など婚約破棄だ！　この国から追放する！」
+
+瞬く間に隣国の森に捨てられた、無一文のセシリア。
+低級魔物に襲われ、絶体絶命の時に助けてくれたのは、美しすぎる青年だった。
+そしてセシリアの事情を聞くと、彼は躊躇いなく、救いの手を差し伸べる。
+
+「じゃあ、うちにくる？」
+
+隣国の街で始まる、一つ屋根の下での甘い同居生活。
+新天地でギルド受付嬢として働くことになったり、友達が出来たり……。
+
+――セシリアにとって、第二の人生が始まる。
+
+
+※Rシーンは中盤以降からです。
+◇：軽めの性描写
+◆：しっかり性描写
+</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0147hr/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0147hr/" rel="noopener" target="_blank">続きから　📖 未読 / 43話</a></div></article><article class="card" data-current="" data-last-updated="2025-06-03T06:59:05Z" data-ncode="N0151JO" data-r18="1" data-total-episodes="17"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2025/06/03</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>恋愛詐欺師に金貨百枚貢ぎます！</h2><div class="author">作者：マツガサキ ヒロ</div><div class="ncode">Nコード：N0151JO</div><details><summary>あらすじを読む</summary><p class="synopsis">冒険者ギルドの受付嬢ユーリアは、小さい頃片思いしていた高位冒険者カミロから告白される。
+これは恋愛詐欺に違いない！
+そう確信したユーリアが、金貨百枚貯めてカミロに貢ごうとするお話。</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0151jo/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0151jo/" rel="noopener" target="_blank">続きから　📖 未読 / 17話</a></div></article><article class="card" data-current="" data-last-updated="2014-09-02T01:32:07Z" data-ncode="N0154BV" data-r18="1" data-total-episodes="27"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2014/09/02</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>茶番に巻き込まれた私</h2><div class="author">作者：夜光</div><div class="ncode">Nコード：N0154BV</div><details><summary>あらすじを読む</summary><p class="synopsis">魔力研究所で毎日せっせと働いている行き遅れの20歳の伯爵令嬢には美しい妹がいる。美少女な妹の婚約者は美丈夫なこの国の若い王。
+妹の起こした事件に巻き込まれてしまった主人公の話。</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0154bv/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0154bv/" rel="noopener" target="_blank">続きから　📖 未読 / 27話</a></div></article><article class="card" data-current="" data-last-updated="2024-07-18T09:47:45Z" data-ncode="N0157HH" data-r18="1" data-total-episodes="21"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2024/07/18</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>学校一の美女が学校一の漢に告白される話</h2><div class="author">作者：狭山雪菜</div><div class="ncode">Nコード：N0157HH</div><details><summary>あらすじを読む</summary><p class="synopsis">近野白雪は、美女で可愛らしい女の子
+
+体育祭の借り物競走で学校一の身体つきの山崎哲夫に駆り出され、そのメモをみたら&amp;quot;好きな人&amp;quot;と書いてあり、またかと嫌な気分になった
+
+しかし、待てど暮せど山崎くんからのアプローチはなくて…
+
+
+
+全編甘々を目指しております
+R18はだいぶ先です
+この作品は「アルファポリス・カクヨム」にも掲載しております。</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0157hh/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0157hh/" rel="noopener" target="_blank">続きから　📖 未読 / 21話</a></div></article><article class="card" data-current="10" data-last-updated="2026-09-22T12:36:16Z" data-ncode="N0157MM" data-r18="1" data-total-episodes="10"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2026/09/22</span> ｜ <span class="status">🔵 完結</span> ｜ 🎈か〜こ</div><h2>或る彫金師の終の星</h2><div class="author">作者：小林蕪</div><div class="ncode">Nコード：N0157MM</div><details><summary>あらすじを読む</summary><p class="synopsis">王族にのみその作品を納め続けてきた、幻の彫金工房『ローラン』が、なんと首都の外れにこの度店を開くらしい。この報せに国民たち、特に首都近郊の富豪たちは驚き沸き立ったが、工房主である男はとても偏屈で、買い付けようと誰が訪れても全てが門前払い。国章を掲げる店であるだけに、王族たちはどうにか彼と客とを仲介しようと画策するが、全てあえなく失敗に終わり……、そしてついにその仲介人の仕事が、とある王妃付きの侍女へと回ってくることとなる。
+これは『ローラン』を敬愛――を通り越して偏愛する娘が、二百年間ひとりで美しい細工を作り続けた長命種エルフ族の職人の男と出会い、年齢差三百歳の運命に互いに転げ落ちてゆくお話である。
+
+※全六話。後日談等は気が向いたら。
+
+※いつも通りハッピーエンド過激派による山なし谷なしハッピーエンド話です
+※R18には*が付いています
+※設定上『眠らせ星と竜の騎士』という健全小説と舞台や時代が同じになりますが、掠る程度であまり関係ありません
+
+※誤字報告ありがとうございます……！！！！！！ 心から感謝です。</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0157mm/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0157mm/10/" rel="noopener" target="_blank">続きから　📖 10 / 10話</a></div></article><article class="card" data-current="" data-last-updated="2026-06-01T14:30:56Z" data-ncode="N0174HV" data-r18="1" data-total-episodes="8"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2026/06/01</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>花火なんて見なかった</h2><div class="author">作者：ペッテンソン</div><div class="ncode">Nコード：N0174HV</div><details><summary>あらすじを読む</summary><p class="synopsis">大人ぶりたい女子高生が、覇気薄い大学生を誘って致したら予想外にドロドロにされて愕然とする話。
+あるいは、お互いを意識し始めた二人が前進しようとするたびに性欲に振り回されヨロヨロと恋を始めるお話。</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0174hv/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0174hv/" rel="noopener" target="_blank">続きから　📖 未読 / 8話</a></div></article><article class="card" data-current="" data-last-updated="2025-08-29T04:30:17Z" data-ncode="N0181GK" data-r18="1" data-total-episodes="54"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2025/08/29</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>白金の杖の魔女と滅竜騎士の溺愛　&amp;lt;電子書籍化&amp;gt;</h2><div class="author">作者：早瀬美夜</div><div class="ncode">Nコード：N0181GK</div><details><summary>あらすじを読む</summary><p class="synopsis">見習い魔女のヴィオラは、一人前の魔女になるべく最凶と名高い師匠について修行中だ。
+ある日ヴィオラは、偶然憧れの滅竜騎士ラーシュが、実は菓子が好きだという秘密を知る。だが、先祖返りの外見に女性が怯える強面のせいで菓子屋に入れないという悩みを聞いて同行を申し出た。
+良き友人として憧れの人と一緒に買い物デートを重ねるヴィオラは、日々その想いを募らせていく。
+だが、最強の騎士であり貴族であるラーシュは、庶民の魔女であるヴィオラがいくら想っても手の届かない雲の上の存在だった。
+そんな時、２人の関係を変える決定的な出来事が起こった。
+規格外の魔力を持つ庶民の魔女と竜を単独で斃す騎士の溺愛物語。
+全４５話＋番外編。
+4/22、配信記念ＳＳを投稿。</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0181gk/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0181gk/" rel="noopener" target="_blank">続きから　📖 未読 / 54話</a></div></article><article class="card" data-current="" data-last-updated="2021-06-23T17:09:50Z" data-ncode="N0183GW" data-r18="1" data-total-episodes="6"><span class="r18Badge">R18</span><div class="meta"><span class="newMark" hidden="">🆙 </span><span class="lastUpdated">2021/06/23</span> ｜ <span class="status">🔵 完結</span> ｜ 未分類</div><h2>大嫌いなアイツが媚薬を盛られたらしいので、不本意ながらカラダを張って救けてあげます</h2><div class="author">作者：スケキヨ</div><div class="ncode">Nコード：N0183GW</div><details><summary>あらすじを読む</summary><p class="synopsis">媚薬を盛られたミアを救けてくれたのは学生時代からのライバルで公爵家の次男坊・リアムだった。ほっとしたのも束の間、なんと今度はリアムのほうが異国の王女に媚薬を盛られて絶体絶命！？
+「弟を救けてやってくれないか？」――リアムの兄の策略で、発情したリアムと同じ部屋に閉じ込められてしまったミア。気が付くと、頬を上気させ目元を潤ませたリアムの顔がすぐそばにあって……！！
+
+『媚薬を盛られた私をいろんな意味で救けてくれたのは、大嫌いなアイツでした』という作品の続編になります。前作は読んでいなくてもそんなに支障ありませんので、気楽にご覧ください。
+
+R18描写のある話には※をつけています。
+この作品はアルファポリスにも掲載しています。
+誤字報告ありがとうございます。</p></details><div class="actions"><a class="workLink" href="https://novel18.syosetu.com/n0183gw/" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" href="https://novel18.syosetu.com/n0183gw/" rel="noopener" target="_bl
