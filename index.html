@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#f6f3ed" name="theme-color"/>
-<title>ともたよむ v2.1.1.5 短編・あらすじ・R18表示修正版</title>
+<title>ともたよむ v2.1.1.6 完結・連載・R18表示修正版</title>
 <style>
 :root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195}
 *{box-sizing:border-box}
@@ -52,13 +52,13 @@ summary{cursor:pointer}
 .folderDetails>summary::before{content:"▸ ";font-size:15px}
 .folderDetails[open]>summary::before{content:"▾ ";font-size:15px}
 
-.card{position:relative}.r18Badge{position:absolute;bottom:9px;right:10px;font-size:10px;line-height:1;padding:3px 5px;border:1px solid #aaa195;border-radius:5px;color:#666;background:#f6f3ed;letter-spacing:.2px;z-index:2}.actions{padding-right:48px}
+.ncode{position:relative;padding-right:48px;min-height:20px}.r18Badge{position:absolute;right:0;top:50%;transform:translateY(-50%);font-size:10px;line-height:1;padding:3px 5px;border:1px solid #aaa195;border-radius:5px;color:#666;background:#f6f3ed;letter-spacing:.2px;z-index:2}
 </style>
 </head>
 <body>
 <main>
 <h1>ともたよむ</h1>
-<div class="note">v2.1.1.5｜短編・あらすじ・R18表示修正版｜本棚2117作品｜通常170＋R18 1947</div>
+<div class="note">v2.1.1.6｜完結・連載・R18表示修正版｜本棚2117作品｜通常170＋R18 1947</div>
 <button id="updateBtn" type="button">🔄 更新情報を確認</button>
 <div id="baselineDate">基準日：未設定</div>
 <div class="note">基準日は全作品共通で1個。更新候補は基準日とは別に保持します。</div>
@@ -15787,7 +15787,7 @@ function updateCard(card,w){
   card.dataset.lastUpdated = w.general_lastup || card.dataset.lastUpdated || "";
   card.dataset.totalEpisodes = w.general_all_no || card.dataset.totalEpisodes || "";
   card.querySelector(".lastUpdated").textContent = formatDate(card.dataset.lastUpdated);
-  card.querySelector(".status").textContent = setStatus(w);
+  if(Object.prototype.hasOwnProperty.call(w,"end") || Object.prototype.hasOwnProperty.call(w,"novel_type") || Object.prototype.hasOwnProperty.call(w,"noveltype")) card.querySelector(".status").textContent = setStatus(w);
   card.querySelector(".synopsis").textContent = w.story || "あらすじなし";
   const workUrl = siteUrl(w); card.querySelector(".workLink").href = workUrl;
   const current = readingFor(n), total = Number(w.general_all_no || card.dataset.totalEpisodes || 0), resumeLink = card.querySelector(".resumeLink");
@@ -15886,13 +15886,19 @@ async function updateInfo(){
   }finally{btn.disabled=false;}
 }
 function gasRead(n){ return new Promise((resolve,reject)=>{ const x=new XMLHttpRequest(); x.open("GET",GAS_URL+"?ncode="+encodeURIComponent(n),true); x.timeout=20000; x.onload=()=>resolve({status:x.status,text:x.responseText.trim()}); x.onerror=()=>reject(new Error("GAS通信エラー")); x.ontimeout=()=>reject(new Error("GASタイムアウト")); x.send(); }); }
-async function refreshActiveFromGAS(){ const n=(localStorage.getItem(ACTIVE_KEY)||"").toUpperCase(); if(!n)return; const card=document.querySelector(`#shelf .card[data-ncode="${n}"]`); if(!card)return; try{ const r=await gasRead(n); const p=r.text.split(/\s+/); if(r.status===200&&p[0]==="READ"&&/^\d+$/.test(p[2])){ setReading(n,Number(p[2])); updateCard(card,{ncode:n,general_lastup:card.dataset.lastUpdated,general_all_no:card.dataset.totalEpisodes,end:card.querySelector(".status")?.textContent?.includes("連載中")?1:0,story:card.querySelector(".synopsis")?.textContent||"" ,__r18:card.querySelector(".r18Badge")!=null}); } else if(r.status===200&&p[0]==="NOT_FOUND"){ const m=readingMap(); m[n]=null; saveJSON(READ_KEY,m); updateCard(card,{ncode:n,general_lastup:card.dataset.lastUpdated,general_all_no:card.dataset.totalEpisodes,end:0,story:card.querySelector(".synopsis")?.textContent||"",__r18:card.querySelector(".r18Badge")!=null}); } else throw new Error("GAS応答不明："+r.text); buildUpdateView(); buildShelfFolders(); localStorage.removeItem(ACTIVE_KEY); }catch(e){ console.warn(e); }
+async function refreshActiveFromGAS(){ const n=(localStorage.getItem(ACTIVE_KEY)||"").toUpperCase(); if(!n)return; const card=document.querySelector(`#shelf .card[data-ncode="${n}"]`); if(!card)return; try{ const r=await gasRead(n); const p=r.text.split(/\s+/); if(r.status===200&&p[0]==="READ"&&/^\d+$/.test(p[2])){ setReading(n,Number(p[2])); updateCard(card,{ncode:n,general_lastup:card.dataset.lastUpdated,general_all_no:card.dataset.totalEpisodes,story:card.querySelector(".synopsis")?.textContent||"",__r18:card.querySelector(".r18Badge")!=null}); } else if(r.status===200&&p[0]==="NOT_FOUND"){ const m=readingMap(); m[n]=null; saveJSON(READ_KEY,m); updateCard(card,{ncode:n,general_lastup:card.dataset.lastUpdated,general_all_no:card.dataset.totalEpisodes,story:card.querySelector(".synopsis")?.textContent||"",__r18:card.querySelector(".r18Badge")!=null}); } else throw new Error("GAS応答不明："+r.text); buildUpdateView(); buildShelfFolders(); localStorage.removeItem(ACTIVE_KEY); }catch(e){ console.warn(e); }
 }
 function rememberActive(card){ localStorage.setItem(ACTIVE_KEY,card.dataset.ncode.toUpperCase()); }
+function placeR18Badges(){
+  document.querySelectorAll("#shelf .card").forEach(card=>{
+    const badge=card.querySelector(".r18Badge"), ncode=card.querySelector(".ncode");
+    if(badge && ncode && !ncode.contains(badge)) ncode.appendChild(badge);
+  });
+}
 document.getElementById("updateBtn").addEventListener("click",updateInfo);
 document.addEventListener("click",e=>{ const a=e.target.closest(".resumeLink"); if(!a)return; const card=e.target.closest(".card"); if(!card)return; rememberActive(card); });
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") refreshActiveFromGAS(); });
-window.addEventListener("load",async()=>{ seedReadingCache(); restoreReadingFromQuery(); restoreReadingPositions(); renderGlobalBaseline(); restoreLatestWorks(); await hydrateCandidateWorks(); buildUpdateView(); buildShelfFolders(); setTimeout(refreshActiveFromGAS,300); });
+window.addEventListener("load",async()=>{ placeR18Badges(); seedReadingCache(); restoreReadingFromQuery(); restoreReadingPositions(); renderGlobalBaseline(); restoreLatestWorks(); await hydrateCandidateWorks(); buildUpdateView(); buildShelfFolders(); setTimeout(refreshActiveFromGAS,300); });
 </script>
 </body>
 </html>
