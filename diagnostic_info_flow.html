@@ -1,0 +1,23 @@
+<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ともたよむ 情報経路診断</title><style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f6f3ed;color:#252525;padding:16px;line-height:1.5}button{padding:8px 12px;margin:4px;border-radius:8px;border:1px solid #aaa;background:white}.card{background:white;border:1px solid #aaa;border-radius:10px;padding:10px;margin:8px 0}.small{font-size:12px;color:#666}pre{white-space:pre-wrap;background:#fff;padding:10px;border-radius:8px}</style><h1>ともたよむ 情報経路診断</h1><p>カード表示・読書位置・更新候補・保存済み最新情報を分離して確認する診断ページ。</p><button onclick="run()">診断開始</button><button onclick="copyOut()">結果をコピー</button><pre id="out">未実行</pre><script>
+const codes=["N6106LC","N1028JP","N7998LI","N3192IO","N7730MO","N1444KS","N3627MQ","N7035MQ"];
+function j(k){try{return JSON.parse(localStorage.getItem(k)||"null")}catch(e){return null}}
+function txt(c,sel){return c.querySelector(sel)?.textContent?.trim()||""}
+async function run(){
+ const out=document.getElementById("out"); let s="";
+ const html=await fetch("index.html?_="+Date.now()).then(r=>r.text());
+ const doc=new DOMParser().parseFromString(html,"text/html");
+ const cards=[...doc.querySelectorAll("#shelf .card")]; const by={}; cards.forEach(c=>by[(c.dataset.ncode||"").toUpperCase()]=c);
+ const keys=["tomotaYomu_v214_global_baseline","tomotaYomu_v214_update_candidates","tomotaYomu_v214_latest_works","tomotaYomu_v211_reading","tomotaYomu_v211_active_ncode"];
+ s+="【保存データ】\n"; keys.forEach(k=>{const v=j(k);s+=k+" = "+(v?JSON.stringify(v).slice(0,1200):"なし")+"\n"});
+ s+="\n【作品別】\n";
+ for(const n of codes){
+  const c=by[n]; const latest=j("tomotaYomu_v214_latest_works")||{}; const cand=j("tomotaYomu_v214_update_candidates")||{}; const read=j("tomotaYomu_v211_reading")||{};
+  s+="\n"+n+"\n";
+  s+="HTML: lastup="+(c?.dataset.lastUpdated||"なし")+" total="+(c?.dataset.totalEpisodes||"なし")+" story="+(txt(c,".synopsis")||"なし")+" meta="+(txt(c,".meta")||"なし")+"\n";
+  s+="保存latest: "+(latest[n]?JSON.stringify(latest[n]):"なし")+"\n";
+  s+="候補: "+(cand[n]||"なし")+" / 読書位置: "+(read[n]??"なし")+"\n";
+ }
+ out.textContent=s;
+}
+async function copyOut(){await navigator.clipboard.writeText(document.getElementById("out").textContent);alert("コピーしました")}
+</script></html>
