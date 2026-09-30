@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ 全年齢取得診断</title>
+<body style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:16px;line-height:1.6">
+<h2>🔬 全年齢取得診断</h2>
+<p>本番のともたよむを変更せず、全年齢APIとR18 APIの取得状況だけを確認します。</p>
+<button id="run" style="font-size:16px;padding:10px 14px">診断開始</button>
+<button id="copy" style="font-size:16px;padding:10px 14px">結果をコピー</button>
+<pre id="out" style="white-space:pre-wrap;background:#f5f5f5;padding:12px;border-radius:8px"></pre>
+<script>
+const PROD="https://tomotaday.github.io/tomotayomu/index.html";
+const NORMAL="https://api.syosetu.com/novelapi/api/";
+const R18="https://api.syosetu.com/novel18api/api/";
+const SAMPLES=["N6106LC","N1028JP","N7998LI"];
+function jsonp(url){return new Promise((resolve,reject)=>{const cb="diag_"+Date.now()+"_"+Math.random().toString(36).slice(2);const s=document.createElement("script");const t=setTimeout(()=>{s.remove();delete window[cb];reject(new Error("JSONP timeout"))},20000);window[cb]=d=>{clearTimeout(t);s.remove();delete window[cb];resolve(d)};s.onerror=()=>{clearTimeout(t);s.remove();delete window[cb];reject(new Error("JSONP error"))};s.src=url+"&out=jsonp&callback="+cb+"&_cb="+Date.now();document.head.appendChild(s)})}
+function getList(src,name){const m=src.match(new RegExp("const "+name+"\\s*=\\s*\\[([\\s\\S]*?)\\]"));if(!m)return[];return[...m[1].matchAll(/["']([^"']+)["']/g)].map(x=>x[1])}
+function chunk(a,n){let r=[];for(let i=0;i<a.length;i+=n)r.push(a.slice(i,i+n));return r}
+async function fetchCodes(api,codes){let out=[];for(const c of chunk(codes,400)){const d=await jsonp(api+"?ncode="+encodeURIComponent(c.join("-"))+"&of=n-gl-ga-e-e&lim=500");out.push(...(Array.isArray(d)?d.slice(1):[]))}return out}
+async function run(){
+ const out=document.getElementById("out");out.textContent="診断中…";
+ try{
+  const html=await fetch(PROD).then(r=>r.text());
+  const normalCodes=getList(html,"NCODES"),r18Codes=getList(html,"R18_NCODES");
+  const cards=[...html.matchAll(/data-ncode="([^"]+)"/g)].map(x=>x[1].toUpperCase());
+  const cardSet=new Set(cards);
+  const [normal,r18]=await Promise.all([fetchCodes(NORMAL,normalCodes),fetchCodes(R18,r18Codes)]);
+  const nm=new Map(normal.map(w=>[String(w.ncode).toUpperCase(),w]));
+  const rm=new Map(r18.map(w=>[String(w.ncode).toUpperCase(),w]));
+  const lines=[
+   "【ともたよむ 全年齢取得診断】",
+   "本番URL: "+PROD,
+   "全年齢NCODE数: "+normalCodes.length,
+   "R18 NCODE数: "+r18Codes.length,
+   "全年齢API取得: "+normal.length,
+   "R18 API取得: "+r18.length,
+   "全年齢・本棚一致（HTML上のカード基準）: "+normal.filter(w=>cardSet.has(String(w.ncode).toUpperCase())).length,
+   "R18・本棚一致（HTML上のカード基準）: "+r18.filter(w=>cardSet.has(String(w.ncode).toUpperCase())).length,
+   "",
+   "【確認サンプル】"
+  ];
+  for(const n of SAMPLES){
+   const w=nm.get(n), c=cardSet.has(n);
+   lines.push(n+" | 全年齢API="+(!!w)+" | 本棚カード="+c+" | lastup="+(w?.general_lastup||"—")+" | story="+(w?.story?"取得あり":"空/なし")+" | 話数="+(w?.general_all_no??"—"));
+  }
+  out.textContent=lines.join("\n");
+ }catch(e){out.textContent="診断失敗: "+e.message}
+}
+document.getElementById("run").onclick=run;
+document.getElementById("copy").onclick=async()=>{try{await navigator.clipboard.writeText(document.getElementById("out").textContent);alert("コピーしました")}catch(e){alert("コピーできませんでした")}};
+</script></body></html>
