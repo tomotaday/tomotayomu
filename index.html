@@ -52,7 +52,7 @@ summary{cursor:pointer}
 .folderDetails>summary::before{content:"▸ ";font-size:15px}
 .folderDetails[open]>summary::before{content:"▾ ";font-size:15px}
 
-.card{position:relative}.r18Badge{position:absolute;top:9px;right:10px;font-size:10px;line-height:1;padding:3px 5px;border:1px solid #aaa195;border-radius:5px;color:#666;background:#f6f3ed;letter-spacing:.2px}
+.card{position:relative}.r18Badge{position:absolute;bottom:9px;right:10px;font-size:10px;line-height:1;padding:3px 5px;border:1px solid #aaa195;border-radius:5px;color:#666;background:#f6f3ed;letter-spacing:.2px;z-index:2}.actions{padding-right:48px}
 </style>
 </head>
 <body>
@@ -15677,7 +15677,7 @@ function slimWork(w){
     keyword:w.keyword||"",
     genre:w.genre??0,
     userid:w.userid??0,
-    noveltype:w.noveltype??0,
+    noveltype:w.novel_type??0,
     isstop:w.isstop??0,
     novelupdated_at:w.novelupdated_at||"",
     __r18:!!w.__r18
@@ -15691,9 +15691,37 @@ function restoreLatestWorks(){
   });
 }
 function renderGlobalBaseline(){ const el=document.getElementById("baselineDate"); if(el)el.textContent="基準日："+formatDate(getGlobalBaseline()); }
+async function hydrateCandidateWorks(){
+  const candidates=getUpdateCandidates();
+  const ncodes=Object.keys(candidates||{});
+  if(!ncodes.length)return;
+  try{
+    const [normal,r18]=await Promise.all([
+      fetchByNcodes(API_URL,ncodes,"normal"),
+      fetchByNcodes(R18_API_URL,ncodes,"r18")
+    ]);
+    r18.forEach(w=>w.__r18=true);
+    const rows=[...normal,...r18], cards=getCardsByNcode(), latest=getLatestWorks();
+    rows.forEach(w=>{
+      const n=String(w.ncode||"").toUpperCase();
+      if(!candidates[n])return;
+      if(w.general_lastup && new Date(String(w.general_lastup).replace(" ","T")).getTime() >= new Date(String(candidates[n]).replace(" ","T")).getTime()){
+        const saved=slimWork(w);
+        latest[n]=saved;
+        const c=cards[n];
+        if(c)updateCard(c,saved);
+      }
+    });
+    saveLatestWorks(latest);
+  }catch(e){ console.warn("候補作品の最新情報取得に失敗",e); }
+}
+
 function formatDate(v) { if (!v) return "—"; const d = new Date(String(v).replace(" ", "T")); if (isNaN(d)) return String(v).slice(0,10).replaceAll("-","/"); return d.toLocaleString("ja-JP", {year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}); }
 function nowUnix(){ return Math.floor(Date.now()/1000); }
-function setStatus(w) { return String(w.end) === "1" ? "🟢 連載中" : "🔵 完結"; }
+function setStatus(w) {
+  if (String(w.novel_type ?? w.noveltype ?? "").trim() === "2") return "🟣 短編";
+  return String(w.end) === "1" ? "🔵 完結" : "🟢 連載中";
+}
 function siteUrl(w) { return w.__r18 ? "https://novel18.syosetu.com/" + String(w.ncode).toLowerCase() + "/" : "https://ncode.syosetu.com/" + String(w.ncode).toLowerCase() + "/"; }
 function restoreReadingFromQuery(){
   const params = new URLSearchParams(location.search);
@@ -15764,8 +15792,9 @@ function updateCard(card,w){
   const workUrl = siteUrl(w); card.querySelector(".workLink").href = workUrl;
   const current = readingFor(n), total = Number(w.general_all_no || card.dataset.totalEpisodes || 0), resumeLink = card.querySelector(".resumeLink");
   card.dataset.current = current==null ? "" : String(current);
+  const isShortStory = String(w.noveltype ?? "").trim() === "2";
   if(current==null){ resumeLink.textContent = "続きから　📖 📝 読書記録なし / " + (total||"—") + "話"; resumeLink.href = workUrl; }
-  else { resumeLink.textContent = "続きから　📖 " + current + " / " + (total||"—") + "話"; resumeLink.href = current>0 ? workUrl + String(current) + "/" : workUrl; }
+  else { resumeLink.textContent = "続きから　📖 " + current + " / " + (total||"—") + "話"; resumeLink.href = isShortStory ? workUrl : (current>0 ? workUrl + String(current) + "/" : workUrl); }
   applyCardState(card);
 }
 function applyCardState(card){
@@ -15798,40 +15827,17 @@ function buildUpdateView(){
 }
 function jsonp(url){ return new Promise((resolve,reject)=>{ const cb="tomotaYomu_v211_"+Date.now()+"_"+Math.random().toString(36).slice(2); const s=document.createElement("script"), timer=setTimeout(()=>{cleanup();reject(new Error("JSONP timeout"))},20000); function cleanup(){clearTimeout(timer);try{s.remove()}catch(e){};try{delete window[cb]}catch(e){window[cb]=undefined}} window[cb]=d=>{cleanup();resolve(d)}; s.onerror=()=>{cleanup();reject(new Error("JSONP load error"))}; s.src=url+"&out=jsonp&callback="+cb+"&_cb="+Date.now(); document.head.appendChild(s); }); }
 function range(a,b){ return Math.floor(a)+"-"+Math.floor(b); }
-async function countRange(base,a,b){ const d=await jsonp(base+"?lastup="+range(a,b)+"&of=n-gl-ga-e-e&lim=1&st=1"); return Number(d?.[0]?.allcount||0); }
+async function countRange(base,a,b){ const d=await jsonp(base+"?lastup="+range(a,b)+"&of=n-t-s-gl-ga-e-e&lim=1&st=1"); return Number(d?.[0]?.allcount||0); }
 async function collectRange(base,a,b,depth=0){
-  const n=await countRange(base,a,b); if(n===0)return []; if(n<=MAX_ST){ let out=[]; for(let st=1;st<=n;st+=500){ const lim=Math.min(500,n-st+1),d=await jsonp(base+"?lastup="+range(a,b)+"&of=n-gl-ga-e-e&lim="+lim+"&st="+st); out.push(...(d||[]).filter(x=>x.ncode)); } return out; }
+  const n=await countRange(base,a,b); if(n===0)return []; if(n<=MAX_ST){ let out=[]; for(let st=1;st<=n;st+=500){ const lim=Math.min(500,n-st+1),d=await jsonp(base+"?lastup="+range(a,b)+"&of=n-t-s-gl-ga-e-e&lim="+lim+"&st="+st); out.push(...(d||[]).filter(x=>x.ncode)); } return out; }
   if(depth>20)throw new Error("lastup時間分割上限"); const m=Math.floor((a+b)/2); return (await collectRange(base,a,m,depth+1)).concat(await collectRange(base,m+1,b,depth+1));
 }
 async function fetchByNcodes(apiUrl,ncodes,label){
   const chunks=[]; for(let i=0;i<ncodes.length;i+=400)chunks.push(ncodes.slice(i,i+400)); const results=[];
-  for(let i=0;i<chunks.length;i++){ const chunk=chunks[i]; const d=await jsonp(apiUrl+"?ncode="+encodeURIComponent(chunk.join("-"))+"&of=n-gl-ga-e-e&lim=500"); results.push(...(Array.isArray(d)?d.slice(1):[])); }
+  for(let i=0;i<chunks.length;i++){ const chunk=chunks[i]; const d=await jsonp(apiUrl+"?ncode="+encodeURIComponent(chunk.join("-"))+"&of=n-t-s-gl-ga-e-e&lim=500"); results.push(...(Array.isArray(d)?d.slice(1):[])); }
   return results;
 }
 function getCardsByNcode(){ const m={}; document.querySelectorAll("#shelf .card").forEach(c=>m[c.dataset.ncode.toUpperCase()]=c); return m; }
-async function hydrateUpdateCandidates(){
-  const candidates=getUpdateCandidates();
-  const ncodes=Object.keys(candidates);
-  if(!ncodes.length)return 0;
-  const cards=getCardsByNcode(), normal=[], r18=[];
-  ncodes.forEach(n=>{ const c=cards[n]; if(c?.dataset.r18==="1") r18.push(n); else normal.push(n); });
-  const [works,r18works]=await Promise.all([
-    normal.length?fetchByNcodes(API_URL,normal,"candidate-normal"):Promise.resolve([]),
-    r18.length?fetchByNcodes(R18_API_URL,r18,"candidate-r18"):Promise.resolve([])
-  ]);
-  r18works.forEach(w=>w.__r18=true);
-  const latest=getLatestWorks(); let hydrated=0;
-  [...works,...r18works].forEach(w=>{
-    const n=String(w.ncode||"").toUpperCase(), c=cards[n];
-    if(!c)return;
-    const saved=slimWork(w);
-    latest[n]=saved;
-    updateCard(c,saved);
-    hydrated++;
-  });
-  saveLatestWorks(latest);
-  return hydrated;
-}
 async function initializeBaseline(){
   const status=document.getElementById("apiStatus"); status.textContent="初回同期：作品情報を取得中…";
   const [works,r18]=await Promise.all([fetchByNcodes(API_URL,NCODES,"normal"),fetchByNcodes(R18_API_URL,R18_NCODES,"r18")]); r18.forEach(w=>w.__r18=true);
@@ -15886,7 +15892,7 @@ function rememberActive(card){ localStorage.setItem(ACTIVE_KEY,card.dataset.ncod
 document.getElementById("updateBtn").addEventListener("click",updateInfo);
 document.addEventListener("click",e=>{ const a=e.target.closest(".resumeLink"); if(!a)return; const card=e.target.closest(".card"); if(!card)return; rememberActive(card); });
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") refreshActiveFromGAS(); });
-window.addEventListener("load",async()=>{ seedReadingCache(); restoreReadingFromQuery(); restoreReadingPositions(); renderGlobalBaseline(); restoreLatestWorks(); try{ await hydrateUpdateCandidates(); }catch(e){ console.warn("更新候補の再取得に失敗",e); } buildUpdateView(); buildShelfFolders(); setTimeout(refreshActiveFromGAS,300); });
+window.addEventListener("load",async()=>{ seedReadingCache(); restoreReadingFromQuery(); restoreReadingPositions(); renderGlobalBaseline(); restoreLatestWorks(); await hydrateCandidateWorks(); buildUpdateView(); buildShelfFolders(); setTimeout(refreshActiveFromGAS,300); });
 </script>
 </body>
 </html>
