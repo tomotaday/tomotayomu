@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ 診断10</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;padding:16px;line-height:1.55;background:#fafafa;color:#222}
+h1{font-size:20px}button{font-size:16px;padding:10px 14px;margin:5px 4px 5px 0;border-radius:10px;border:1px solid #aaa;background:#fff}
+pre{white-space:pre-wrap;word-break:break-word;background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px;font-size:13px}
+.ok{color:#187a3b}.warn{color:#9a6200}.err{color:#b00020}
+.small{font-size:12px;color:#666}
+</style>
+</head>
+<body>
+<h1>ともたよむ v2.1.1.6 診断⑩</h1>
+<p>🔎 更新確認の内部追跡（保存はしません）</p>
+<p class="small">本体と同じ基準日・API・general_lastup判定を使い、現在のlocalStorageを確認したうえで更新候補を再現します。診断ページ自身からlocalStorageを書き換えません。</p>
+<button id="state">① 保存状態を確認</button>
+<button id="check">② 更新判定を実行</button>
+<button id="copy">📋 結果をコピー</button>
+<pre id="out">待機中…</pre>
+<script>
+const $=id=>document.getElementById(id);
+const BASELINE_KEY="tomotaYomu_v214_global_baseline";
+const CANDIDATE_KEY="tomotaYomu_v214_update_candidates";
+const LATEST_KEY="tomotaYomu_v214_latest_works";
+const INITIAL="2026-09-25T00:00:00+09:00";
+const API="https://api.syosetu.com/novelapi/api/";
+const R18="https://api.syosetu.com/novel18api/api/";
+const NCODES=["N7035MQ","N9801CV","N9735HP","N0034LU","N0073ID","N0089JC","N0002IK","N0030HU"];
+let result="";
+function load(k){try{return JSON.parse(localStorage.getItem(k)||"null")}catch(e){return null}}
+function fmt(v){if(!v)return "—";const d=new Date(String(v).replace(" ","T"));return isNaN(d.getTime())?String(v):d.toLocaleString("ja-JP",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false})}
+function jsonp(url){return new Promise((resolve,reject)=>{const cb="diag10_"+Date.now()+"_"+Math.random().toString(36).slice(2);const s=document.createElement("script");const t=setTimeout(()=>{cleanup();reject(new Error("JSONP timeout"))},20000);function cleanup(){clearTimeout(t);s.remove();try{delete window[cb]}catch(e){window[cb]=undefined}}window[cb]=d=>{cleanup();resolve(d)};s.onerror=()=>{cleanup();reject(new Error("JSONP load error"))};s.src=url+"&out=jsonp&callback="+cb+"&_cb="+Date.now();document.head.appendChild(s)})}
+function range(a,b){return Math.floor(a)+"-"+Math.floor(b)}
+async function fetchN(base,ncodes,a,b){const d=await jsonp(base+"?ncode="+encodeURIComponent(ncodes.join("-"))+"&of=n-t-s-gl-ga-e-e&lim=500");return Array.isArray(d)?d.slice(1).filter(x=>x.ncode):[]}
+function print(s){result=s;$("out").textContent=s}
+$("state").onclick=()=>{
+ const b=localStorage.getItem(BASELINE_KEY)||"(未保存→本体は9/25を使用)";
+ const c=load(CANDIDATE_KEY),l=load(LATEST_KEY);
+ print("=== ① 保存状態 ===\norigin = "+location.origin+
+ "\n\n基準日\n"+b+"\n表示上の基準日 = "+fmt(b==="(未保存→本体は9/25を使用)"?INITIAL:b)+
+ "\n\n更新候補\n"+(c?JSON.stringify(c,null,2):"(未保存)")+
+ "\n\n最新作品情報\n"+(l?Object.keys(l).length+"作品保存":"(未保存)")+
+ "\n\n※ この診断では保存しません。");
+};
+$("check").onclick=async()=>{
+ $("out").textContent="② API確認中…";
+ try{
+  const raw=localStorage.getItem(BASELINE_KEY)||INITIAL;
+  const oldMs=new Date(raw).getTime(), now=new Date().toISOString(), newMs=new Date(now).getTime();
+  const [normal,r18]=await Promise.all([fetchN(API,NCODES,oldMs/1000,newMs/1000),fetchN(R18,NCODES,oldMs/1000,newMs/1000)]);
+  const rows=[...normal,...r18];
+  const lines=[];
+  lines.push("=== ② 更新判定 ===");
+  lines.push("基準日 = "+raw);
+  lines.push("今回の確認時刻 = "+now);
+  lines.push("API取得作品数 = "+rows.length);
+  lines.push("");
+  let hit=0;
+  for(const w of rows){
+   const last=w.general_lastup||"";
+   const hitNow=!!last && new Date(last.replace(" ","T")).getTime()>oldMs;
+   if(hitNow)hit++;
+   lines.push((hitNow?"🆙 ":"　 ")+String(w.ncode).toUpperCase()+
+    " | general_lastup="+(last||"—")+
+    " | noveltype="+(w.noveltype??"—")+
+    " | end="+(w.end??"—")+
+    " | total="+(w.general_all_no??"—")+
+    " | 判定="+(hitNow?"候補":"対象外"));
+  }
+  lines.push("");
+  lines.push("更新候補数 = "+hit);
+  lines.push("");
+  lines.push("重要：この診断は本体と違い、");
+  lines.push("・update_candidatesを保存しない");
+  lines.push("・latest_worksを保存しない");
+  lines.push("・基準日を進めない");
+  lines.push("つまり『更新判定そのもの』だけを見る検査です。");
+  print(lines.join("\n"));
+ }catch(e){print("❌ エラー\n"+e.message+"\n"+e.stack)}
+};
+$("copy").onclick=async()=>{
+ try{await navigator.clipboard.writeText(result||$("out").textContent);$("copy").textContent="✅ コピーしました";setTimeout(()=>$("copy").textContent="📋 結果をコピー",1200)}catch(e){alert("コピーできませんでした。結果欄を長押ししてコピーしてください。")}
+};
+</script>
+</body>
+</html>
