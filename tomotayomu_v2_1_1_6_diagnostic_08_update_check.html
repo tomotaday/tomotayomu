@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ 実験⑧ 更新判定</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:16px;line-height:1.45;background:#f7f7f7;color:#222}
+h1{font-size:20px}button,input{font-size:16px;padding:10px;margin:4px}button{border:0;border-radius:9px;background:#222;color:#fff}
+.card{background:#fff;border-radius:12px;padding:12px;margin:10px 0;box-shadow:0 1px 4px #ddd}pre{white-space:pre-wrap;word-break:break-word;background:#111;color:#eee;padding:12px;border-radius:10px;font-size:13px}.small{font-size:13px;color:#666}
+</style></head><body>
+<h1>🔬 実験⑧「更新判定」実データ検証</h1>
+<div class="card"><b>目的</b><p>基準日と Narou API の <b>general_lastup</b> を比較し、🆙更新候補の判定を確認する。</p>
+<p class="small">novelupdated_at は比較表示のみ。isstop は今回の判定に使用しない。</p></div>
+<div class="card"><label><b>基準日：</b><input id="baseline" type="datetime-local" value="2026-09-25T00:00"></label></div>
+<button id="run">▶ 実験⑧を実行</button><button id="copy">📋 コピペちゃん</button>
+<div id="summary" class="card">待機中</div><div id="results"></div>
+<h2>📋 コピー用調査結果</h2><pre id="copyArea">まだ実行していません。</pre>
+<script>
+const works=[
+["N7035MQ","R18"],["N9801CV","R18"],["N9735HP","R18"],["N0034LU","R18"],
+["N0073ID","R18"],["N0089JC","R18"],["N0002IK","通常"],["N0030HU","通常"]
+];
+const $=id=>document.getElementById(id);
+function apiUrl(n,r18){
+ const host=r18?"https://api.syosetu.com/novel18api/api/":"https://api.syosetu.com/novelapi/api/";
+ return host+"?ncode="+encodeURIComponent(n)+"&of=n-t-e-w-gl-nt-ga-i-nu&out=jsonp&callback=?";
+}
+function jsonp(url){return new Promise((resolve,reject)=>{
+ const cb="__d8_"+Math.random().toString(36).slice(2),s=document.createElement("script");
+ const timer=setTimeout(()=>{cleanup();reject(new Error("timeout"))},10000);
+ function cleanup(){clearTimeout(timer);try{delete window[cb]}catch(e){window[cb]=undefined}s.remove()}
+ window[cb]=d=>{cleanup();resolve(d)};s.onerror=()=>{cleanup();reject(new Error("script error"))};
+ s.src=url.replace("callback=?","callback="+cb);document.body.appendChild(s);
+})}
+function pd(s){if(!s)return null;const m=String(s).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/);return m?new Date(+m[1],+m[2]-1,+m[3],+m[4],+m[5],+m[6]):null}
+function fd(d){if(!d)return"—";const p=n=>String(n).padStart(2,"0");return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes())+":"+p(d.getSeconds())}
+function st(w){if(String(w.noveltype)==="2")return"🟣 短編";return String(w.end)==="0"?"🔵 完結":"🟢 連載中"}
+async function run(){
+ $("summary").textContent="API取得中…";$("results").innerHTML="";$("copyArea").textContent="";
+ const base=new Date($("baseline").value),lines=[
+ "実験⑧「更新判定」実データ検証","基準日: "+fd(base),
+ "判定: general_lastup > 基準日 → 🆙候補","※ novelupdated_at は比較表示のみ / isstop は不使用",""];
+ let ok=0,cnt=0;
+ for(const [n,site] of works){
+  const box=document.createElement("div");box.className="card";box.innerHTML="<b>"+n+"</b> / "+site+"<br>API取得中…";$("results").appendChild(box);
+  try{
+   const d=await jsonp(apiUrl(n,site==="R18")),w=d&&d[1];if(!w)throw Error("作品データなし");ok++;
+   const lu=pd(w.general_lastup),nu=pd(w.novelupdated_at),yes=!!lu&&lu>base;if(yes)cnt++;
+   box.innerHTML="<b>"+w.ncode+"</b> / "+site+"<br><b>"+(w.title||"")+"</b><br>状態: "+st(w)+"　全話数: "+(w.general_all_no??"—")+"<br>general_lastup: "+(w.general_lastup||"—")+"<br>novelupdated_at: "+(w.novelupdated_at||"—")+"<br>基準日: "+fd(base)+"<br><b>"+(yes?"🆙 更新候補":"— 基準日以前")+"</b>";
+   lines.push("【"+w.ncode+" / "+site+"】","title = "+(w.title||""),"noveltype = "+(w.noveltype??""),
+    "end = "+(w.end??""),"general_all_no = "+(w.general_all_no??""),
+    "general_lastup = "+(w.general_lastup||""),"novelupdated_at = "+(w.novelupdated_at||""),
+    "isstop = "+(w.isstop??""),"general_lastup > baseline = "+(yes?"YES（🆙候補）":"NO"),
+    "novelupdated_at > baseline = "+(nu&&nu>base?"YES":"NO"),"");
+  }catch(e){box.innerHTML="<b>"+n+"</b> / "+site+"<br>❌ "+e.message;lines.push("【"+n+" / "+site+"】 ERROR: "+e.message,"")}
+ }
+ $("summary").innerHTML="<b>完了</b><br>API成功: "+ok+"/"+works.length+"<br>general_lastup による 🆙候補: "+cnt+"/"+works.length;
+ $("copyArea").textContent=lines.join("\n");
+}
+$("run").onclick=run;
+$("copy").onclick=async()=>{try{await navigator.clipboard.writeText($("copyArea").textContent)}catch(e){const t=document.createElement("textarea");t.value=$("copyArea").textContent;document.body.appendChild(t);t.select();document.execCommand("copy");t.remove()}$("copy").textContent="✅ コピーしました";setTimeout(()=>$("copy").textContent="📋 コピペちゃん",1500)}
+</script></body></html>
