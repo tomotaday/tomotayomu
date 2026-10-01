@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#f6f3ed" name="theme-color"/>
-<title>ともたよむ v2.1.1.6 完結・連載・R18表示修正版</title>
+<title>ともたよむ v2.1.2</title>
 <style>
 :root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195}
 *{box-sizing:border-box}
@@ -56,9 +56,11 @@ summary{cursor:pointer}
 </style>
 </head>
 <body>
+
+
 <main>
 <h1>ともたよむ</h1>
-<div class="note">v2.1.1.6｜完結・連載・R18表示修正版｜本棚2117作品｜通常170＋R18 1947</div>
+<div class="note">v2.1.2｜作品情報マスター基盤版</div>
 <button id="updateBtn" type="button">🔄 更新情報を確認</button>
 <div id="baselineDate">基準日：未設定</div>
 <div class="note">基準日は全作品共通で1個。更新候補は基準日とは別に保持します。</div>
@@ -15677,7 +15679,7 @@ function slimWork(w){
     keyword:w.keyword||"",
     genre:w.genre??0,
     userid:w.userid??0,
-    noveltype:w.novel_type??0,
+    noveltype:w.noveltype??0,
     isstop:w.isstop??0,
     novelupdated_at:w.novelupdated_at||"",
     __r18:!!w.__r18
@@ -15719,8 +15721,8 @@ async function hydrateCandidateWorks(){
 function formatDate(v) { if (!v) return "—"; const d = new Date(String(v).replace(" ", "T")); if (isNaN(d)) return String(v).slice(0,10).replaceAll("-","/"); return d.toLocaleString("ja-JP", {year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}); }
 function nowUnix(){ return Math.floor(Date.now()/1000); }
 function setStatus(w) {
-  if (String(w.novel_type ?? w.noveltype ?? "").trim() === "2") return "🟣 短編";
-  return String(w.end) === "1" ? "🔵 完結" : "🟢 連載中";
+  if (String(w.noveltype ?? "").trim() === "2") return "🟣 短編";
+  return String(w.end) === "0" ? "🔵 完結" : "🟢 連載中";
 }
 function siteUrl(w) { return w.__r18 ? "https://novel18.syosetu.com/" + String(w.ncode).toLowerCase() + "/" : "https://ncode.syosetu.com/" + String(w.ncode).toLowerCase() + "/"; }
 function restoreReadingFromQuery(){
@@ -15834,7 +15836,7 @@ async function collectRange(base,a,b,depth=0){
 }
 async function fetchByNcodes(apiUrl,ncodes,label){
   const chunks=[]; for(let i=0;i<ncodes.length;i+=400)chunks.push(ncodes.slice(i,i+400)); const results=[];
-  for(let i=0;i<chunks.length;i++){ const chunk=chunks[i]; const d=await jsonp(apiUrl+"?ncode="+encodeURIComponent(chunk.join("-"))+"&of=n-t-s-gl-ga-e-e&lim=500"); results.push(...(Array.isArray(d)?d.slice(1):[])); }
+  for(let i=0;i<chunks.length;i++){ const chunk=chunks[i]; const d=await jsonp(apiUrl+"?ncode="+encodeURIComponent(chunk.join("-"))+"&of=n-t-s-gl-ga-e-e-nt&lim=500"); results.push(...(Array.isArray(d)?d.slice(1):[])); }
   return results;
 }
 function getCardsByNcode(){ const m={}; document.querySelectorAll("#shelf .card").forEach(c=>m[c.dataset.ncode.toUpperCase()]=c); return m; }
@@ -15900,5 +15902,8 @@ document.addEventListener("click",e=>{ const a=e.target.closest(".resumeLink"); 
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") refreshActiveFromGAS(); });
 window.addEventListener("load",async()=>{ placeR18Badges(); seedReadingCache(); restoreReadingFromQuery(); restoreReadingPositions(); renderGlobalBaseline(); restoreLatestWorks(); await hydrateCandidateWorks(); buildUpdateView(); buildShelfFolders(); setTimeout(refreshActiveFromGAS,300); });
 </script>
+
+
+
 </body>
 </html>
