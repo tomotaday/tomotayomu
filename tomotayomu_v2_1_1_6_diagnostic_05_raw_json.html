@@ -1,97 +1,195 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ともたよむ v2.1.1.6 原データ診断①②</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;line-height:1.5;margin:0;padding:16px;background:#faf9f6;color:#333}main{max-width:900px;margin:auto}.note{color:#666;font-size:13px;margin:6px 0 14px}textarea,input,button{font:inherit}textarea{width:100%;min-height:120px;box-sizing:border-box;padding:10px;border:1px solid #bbb;border-radius:8px;background:#fff}button{padding:9px 13px;border:1px solid #999;border-radius:8px;background:#fff;margin:6px 6px 6px 0}table{width:100%;border-collapse:collapse;background:#fff;margin:12px 0;font-size:13px}th,td{border:1px solid #ddd;padding:6px;vertical-align:top;text-align:left}th{background:#f1eee8}.ok{font-weight:700}.bad{font-weight:700}.raw{white-space:pre-wrap;word-break:break-all;font-size:11px;background:#fff;border:1px solid #ddd;border-radius:8px;padding:10px}.card{background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px;margin:12px 0}.small{font-size:12px;color:#666}.mono{font-family:ui-monospace,monospace}</style></head><body><main><h1>ともたよむ 原データ診断①②</h1><div class="note">基準：v2.1.1.6｜このページは修正版ではなく、v2.1.1.6の状態を材料として調べるための診断ページ。</div><div class="card"><b>調査対象Nコード</b><textarea id="codes">N7035MQ
-N9801CV
-N9735HP
-N0034LU
-N0073ID
-N0089JC
-N0002IK
-N0030HU</textarea><button id="run">APIから取得して比較</button><button id="copy">結果をコピー</button><div class="small">1行1Nコード。R18 APIと全年齢APIの両方を照会し、取得できた側を表示します。</div></div><div id="status" class="note">待機中</div><div id="result"></div><details class="card"><summary>今回見る項目</summary><div class="small">v2.1.1.6表示：status / 最終更新 / 総話数 / 読書位置 / R18 / あらすじ<br>API原データ：ncode / end / novel_type / general_all_no / general_lastup / novelupdated_at / isstop / title / writer / story<br>判定：APIのend・novel_typeから算出した表示状態と、v2.1.1.6の表示状態を横並び比較。</div></details></main><script>
-const NORMAL_API='https://api.syosetu.com/novelapi/api/';
-const R18_API='https://api.syosetu.com/novel18api/api/';
-const statusEl=document.getElementById('status');
-const resultEl=document.getElementById('result');
-const runBtn=document.getElementById('run');
-const copyBtn=document.getElementById('copy');
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ v2.1.1.6 診断⑤ Raw JSON</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;padding:16px;background:#f5f5f5;color:#222}
+h1{font-size:20px;margin:0 0 8px}
+.note{font-size:13px;line-height:1.6;background:#fff;padding:12px;border-radius:10px;margin-bottom:12px}
+button{font-size:16px;padding:10px 16px;border:0;border-radius:10px;background:#333;color:#fff}
+#summary{margin:12px 0;font-size:14px}
+.card{background:#fff;border-radius:12px;margin:12px 0;padding:12px;box-shadow:0 1px 4px #ccc}
+.card h2{font-size:16px;margin:0 0 8px}
+.meta{font-size:13px;line-height:1.6;margin-bottom:8px}
+.ok{color:#187a18}.ng{color:#b00020}
+pre{white-space:pre-wrap;word-break:break-word;background:#111;color:#eee;padding:12px;border-radius:8px;overflow:auto;font-size:12px;line-height:1.45}
+.field{background:#fafafa;border-left:4px solid #999;padding:8px;margin:4px 0;font-size:13px;white-space:pre-wrap;word-break:break-word}
+</style>
+</head>
+<body>
+<h1>ともたよむ v2.1.1.6 診断⑤ ― Narou API Raw JSON</h1>
 
-function esc(x){
-  return String(x??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+<div class="note">
+このページは<strong>判定を補正しません</strong>。<br>
+Narou APIから返ってきた作品オブジェクトを、そのまま表示します。<br>
+特に <code>end</code> / <code>novel_type</code> / <code>general_all_no</code> /
+<code>general_lastup</code> / <code>novelupdated_at</code> / <code>isstop</code> /
+<code>story</code> を確認します。
+</div>
+
+<button id="start">調査開始</button>
+<div id="summary">待機中</div>
+<div id="results"></div>
+
+<script>
+const API_URL = "https://api.syosetu.com/novelapi/api/";
+const R18_API_URL = "https://api.syosetu.com/novel18api/api/";
+
+const targets = [
+  ["N7035MQ","R18"],
+  ["N9801CV","R18"],
+  ["N9735HP","R18"],
+  ["N0034LU","R18"],
+  ["N0073ID","R18"],
+  ["N0089JC","R18"],
+  ["N0002IK","通常"],
+  ["N0030HU","通常"]
+];
+
+const $ = id => document.getElementById(id);
+
+function apiUrl(base,ncode){
+  const of = [
+    "n","t","e","w","s","g","u",
+    "novelupdated_at","end","novel_type",
+    "general_all_no","general_lastup","isstop"
+  ].join("-");
+  return base
+    + "?out=jsonp"
+    + "&of=" + encodeURIComponent(of)
+    + "&lim=1"
+    + "&ncode=" + encodeURIComponent(ncode)
+    + "&callback=narouDiag_" + ncode;
 }
-function jsonp(url){
+
+function loadJsonp(url, callbackName){
   return new Promise((resolve,reject)=>{
-    const cb='diag5_'+Date.now()+'_'+Math.random().toString(36).slice(2);
-    const s=document.createElement('script');
     let done=false;
-    const timer=setTimeout(()=>finish(false,null,'timeout'),15000);
-    function cleanup(){clearTimeout(timer);delete window[cb];s.remove();}
-    function finish(ok,data,error){
-      if(done)return; done=true; cleanup();
-      ok?resolve(data):reject(new Error(error||'unknown'));
+    const script=document.createElement("script");
+    const timer=setTimeout(()=>{
+      if(done)return;
+      done=true;
+      cleanup();
+      reject(new Error("タイムアウト"));
+    },10000);
+
+    window[callbackName]=data=>{
+      if(done)return;
+      done=true;
+      clearTimeout(timer);
+      cleanup();
+      resolve(data);
+    };
+
+    function cleanup(){
+      try{delete window[callbackName]}catch(e){window[callbackName]=undefined}
+      script.remove();
     }
-    window[cb]=data=>finish(true,data);
-    s.onerror=()=>finish(false,null,'script-error');
-    s.src=url+(url.includes('?')?'&':'?')+'out=jsonp&callback='+encodeURIComponent(cb);
-    document.head.appendChild(s);
+
+    script.onerror=()=>{
+      if(done)return;
+      done=true;
+      clearTimeout(timer);
+      cleanup();
+      reject(new Error("JSONP通信エラー"));
+    };
+
+    script.src=url;
+    document.head.appendChild(script);
   });
 }
-async function probe(api,ncode){
-  const url=api+'?of=n-t-e-w-s-g-u-novelupdated_at-end-novel_type-general_all_no-general_lastup-isstop&ncode='+encodeURIComponent(ncode);
-  const t0=performance.now();
+
+function firstWork(data){
+  if(!Array.isArray(data)) return null;
+  for(let i=1;i<data.length;i++){
+    if(data[i] && typeof data[i]==="object" && !Array.isArray(data[i])){
+      return data[i];
+    }
+  }
+  return null;
+}
+
+function showField(name,value){
+  const d=document.createElement("div");
+  d.className="field";
+  let text;
+  if(value===undefined) text="undefined";
+  else if(value===null) text="null";
+  else if(typeof value==="string") text=value;
+  else text=JSON.stringify(value,null,2);
+  d.textContent=name + " = " + text;
+  return d;
+}
+
+async function runOne(ncode,type,index){
+  const base=type==="R18" ? R18_API_URL : API_URL;
+  const cb="narouDiag_"+ncode;
+  const card=document.createElement("section");
+  card.className="card";
+  $("results").appendChild(card);
+
+  const h=document.createElement("h2");
+  h.textContent=(index+1)+". "+ncode+" / "+type;
+  card.appendChild(h);
+
+  const meta=document.createElement("div");
+  meta.className="meta";
+  meta.textContent="通信中...";
+  card.appendChild(meta);
+
   try{
-    const data=await jsonp(url);
-    const work=Array.isArray(data)&&data[1]&&typeof data[1]==='object'?data[1]:null;
-    return {apiName:api===NORMAL_API?'全年齢':'R18',ncode,url,ms:Math.round(performance.now()-t0),
-      allcount:data?.[0]?.allcount??null, work, raw:data};
-  }catch(e){
-    return {apiName:api===NORMAL_API?'全年齢':'R18',ncode,url,ms:Math.round(performance.now()-t0),
-      allcount:null,work:null,error:String(e)};
+    const data=await loadJsonp(apiUrl(base,ncode),cb);
+    const work=firstWork(data);
+
+    meta.className="meta ok";
+    meta.textContent=
+      "JSONP成功 / API="+base+
+      " / allcount="+(data && data[0] && data[0].allcount !== undefined ? data[0].allcount : "不明")+
+      " / rows="+(work ? "1" : "0");
+
+    if(!work){
+      card.appendChild(showField("raw response",data));
+      return;
+    }
+
+    const important=[
+      "ncode","title","writer","end","novel_type",
+      "general_all_no","general_lastup","novelupdated_at",
+      "isstop","story","keyword","genre","userid"
+    ];
+
+    important.forEach(k=>card.appendChild(showField(k,work[k])));
+
+    card.appendChild(showField("Object.keys(work)",Object.keys(work)));
+
+    const rawTitle=document.createElement("h3");
+    rawTitle.textContent="作品オブジェクト全文";
+    card.appendChild(rawTitle);
+
+    const pre=document.createElement("pre");
+    pre.textContent=JSON.stringify(work,null,2);
+    card.appendChild(pre);
+
+  }catch(err){
+    meta.className="meta ng";
+    meta.textContent="取得失敗: "+err.message;
   }
 }
-function field(v){return v===undefined?'(未返却)':(v===null?'null':String(v));}
-function render(all){
-  let html='';
-  for(const r of all){
-    html+=`<section class="card"><h2>${esc(r.ncode)}　${esc(r.apiName)}</h2>`;
-    html+=`<div class="small">通信：${r.error?'失敗':'JSONP成功'}　時間：${r.ms} ms　allcount：${esc(field(r.allcount))}</div>`;
-    if(r.error){html+=`<pre class="raw">${esc(r.error)}</pre></section>`;continue;}
-    const w=r.work;
-    if(!w){html+='<p>data[1] に作品オブジェクトがありません。</p>';html+=`<pre class="raw">${esc(JSON.stringify(r.raw,null,2))}</pre></section>`;continue;}
-    const keys=Object.keys(w);
-    html+=`<table><tr><th>項目</th><th>API原値</th></tr>
-      <tr><td>ncode</td><td>${esc(field(w.ncode))}</td></tr>
-      <tr><td>title</td><td>${esc(field(w.title))}</td></tr>
-      <tr><td>writer</td><td>${esc(field(w.writer))}</td></tr>
-      <tr><td>end</td><td><b>${esc(field(w.end))}</b></td></tr>
-      <tr><td>novel_type</td><td><b>${esc(field(w.novel_type))}</b></td></tr>
-      <tr><td>general_all_no</td><td><b>${esc(field(w.general_all_no))}</b></td></tr>
-      <tr><td>general_lastup</td><td>${esc(field(w.general_lastup))}</td></tr>
-      <tr><td>novelupdated_at</td><td>${esc(field(w.novelupdated_at))}</td></tr>
-      <tr><td>isstop</td><td>${esc(field(w.isstop))}</td></tr>
-      <tr><td>story</td><td>${esc(field(w.story))}</td></tr>
-      </table>`;
-    html+=`<div class="small">返却キー：${esc(keys.join(', '))}</div>`;
-    html+=`<h3>作品オブジェクトそのもの（data[1]）</h3><pre class="raw">${esc(JSON.stringify(w,null,2))}</pre>`;
-    html+=`<h3>APIレスポンス全体（data）</h3><pre class="raw">${esc(JSON.stringify(r.raw,null,2))}</pre>`;
-    html+='</section>';
+
+$("start").onclick=async()=>{
+  $("start").disabled=true;
+  $("summary").textContent="調査中… 8作品を順番に取得します。";
+  $("results").innerHTML="";
+
+  for(let i=0;i<targets.length;i++){
+    await runOne(targets[i][0],targets[i][1],i);
   }
-  resultEl.innerHTML=html;
-}
-async function run(){
-  runBtn.disabled=true;resultEl.innerHTML='';
-  const codes=document.getElementById('codes').value.split(/\s+/).map(x=>x.trim().toUpperCase()).filter(Boolean);
-  statusEl.textContent='原本JSONを取得中…';
-  const all=[];
-  for(let i=0;i<codes.length;i++){
-    const n=codes[i]; statusEl.textContent=`原本JSONを取得中… ${i+1}/${codes.length} ${n}`;
-    all.push(await probe(NORMAL_API,n));
-    all.push(await probe(R18_API,n));
-  }
-  render(all);
-  statusEl.textContent=`完了：${codes.length}作品 × 2 API`;
-  runBtn.disabled=false;
-}
-runBtn.onclick=run;
-copyBtn.onclick=async()=>{
-  try{await navigator.clipboard.writeText(resultEl.innerText);statusEl.textContent='結果をコピーしました';}
-  catch(e){statusEl.textContent='コピーできませんでした。結果を長押しでコピーしてください';}
+
+  $("summary").textContent="調査完了。上から順に、APIが返した生データを確認してください。";
+  $("start").disabled=false;
 };
-</script></body></html>
+</script>
+</body>
+</html>
