@@ -5,19 +5,28 @@ function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").repl
 function workUrl(w){const n=String(w.ncode||"").toLowerCase();return w.__r18?"https://novel18.syosetu.com/"+n+"/":"https://ncode.syosetu.com/"+n+"/"}
 function getDone(){try{return new Set(JSON.parse(localStorage.getItem(DONE_KEY)||"[]"))}catch(e){return new Set()}}
 function saveDone(s){localStorage.setItem(DONE_KEY,JSON.stringify([...s]))}
-function xidFrom(url){const m=String(url).match(/xmypage\.syosetu\.com\/(x[a-z0-9]+)\/?/i);return m?m[1].toUpperCase():""}
+function authorKey(url){
+ const x=String(url).match(/xmypage\.syosetu\.com\/(x[a-z0-9]+)\/?/i);
+ if(x)return {type:"r18",id:x[1].toUpperCase()};
+ const n=String(url).match(/mypage\.syosetu\.com\/(\\d+)\/?/i);
+ if(n)return {type:"normal",id:n[1]};
+ return null;
+}
 function jsonp(url){return new Promise((resolve,reject)=>{const cb="tyHallCb_"+Date.now();const s=document.createElement("script");const timer=setTimeout(()=>{cleanup();reject(new Error("JSONP timeout"))},20000);function cleanup(){clearTimeout(timer);try{delete window[cb]}catch(e){}s.remove()}window[cb]=d=>{cleanup();resolve(d)};s.onerror=()=>{cleanup();reject(new Error("JSONP load error"))};s.src=url+"&callback="+cb;document.body.appendChild(s)})}
 async function processAuthor(authorUrl){
- const xid=xidFrom(authorUrl);if(!xid)throw new Error("作者URLからXIDを取得できませんでした");
+ const author=authorKey(authorUrl);if(!author)throw new Error("作者URLから作者IDを取得できませんでした");
  let master={};try{master=JSON.parse(localStorage.getItem(MASTER_KEY)||"{}")}catch(e){}
- const data=await jsonp("https://api.syosetu.com/novel18api/api/?out=jsonp&of=n-t-w-gl-ga-nt-e&xid="+encodeURIComponent(xid)+"&lim=500");
+ const api=author.type==="r18"
+ ? "https://api.syosetu.com/novel18api/api/?out=jsonp&of=n-t-w-gl-ga-nt-e&xid="+encodeURIComponent(author.id)+"&lim=500"
+ : "https://api.syosetu.com/novelapi/api/?out=jsonp&of=n-t-w-gl-ga-nt-u-w-e&userid="+encodeURIComponent(author.id)+"&lim=500";
+ const data=await jsonp(api);
  const works=Array.isArray(data)?data.filter((x,i)=>i>0&&x.ncode):[];
  const done=getDone();let hits=0;
  works.forEach(w=>{const n=String(w.ncode||"").toUpperCase();if(master[n]){done.add(n);hits++}});
  saveDone(done);
  let reg={};try{reg=JSON.parse(localStorage.getItem(AUTHOR_KEY)||"{}")}catch(e){}
  reg[xid]={xid,authorUrl,registeredAt:new Date().toISOString()};localStorage.setItem(AUTHOR_KEY,JSON.stringify(reg));
- return "XID="+xid+"｜作者作品="+works.length+"｜本棚処理="+hits+"作品";
+ return (author.type==="r18"?"XID="+author.id:"userid="+author.id)+"｜作者作品="+works.length+"｜本棚処理="+hits+"作品";
 }
 async function handleIncoming(){
  const url=new URLSearchParams(location.search).get("authorurl");if(!url)return;
