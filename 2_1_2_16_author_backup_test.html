@@ -4,7 +4,17 @@ function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").repl
 function load(){try{registry=JSON.parse(localStorage.getItem(KEY)||"{}")}catch(e){registry={}};render()}
 function render(msg){const n=Object.keys(registry).length;document.getElementById("result").innerHTML="<pre>"+esc((msg?msg+"\n\n":"")+"作者図鑑登録数="+n+"人\n保存キー="+KEY+(n?("\n\nXID一覧="+Object.keys(registry).join(", ")):""))+"</pre>"}
 function makeBackup(){const payload={format:"tomotaYomu-author-registry-backup",version:"1",createdAt:new Date().toISOString(),registry:registry};return JSON.stringify(payload,null,2)}
-function backup(){backupText=makeBackup();const blob=new Blob([backupText],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="tomotayomu_author_registry_backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);render("バックアップJSONを保存しました")}
+async function backup(){
+ backupText=makeBackup();
+ const file=new File([backupText],"tomotayomu_author_registry_backup.json",{type:"application/json"});
+ if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+  try{await navigator.share({title:"ともたよむ 作者図鑑バックアップ",text:"作者図鑑バックアップJSON",files:[file]});render("共有シートを開きました");return}catch(e){if(e.name==="AbortError"){render("共有シートを閉じました");return}}
+ }
+ if(navigator.share){
+  try{await navigator.share({title:"ともたよむ 作者図鑑バックアップ",text:backupText});render("共有シートを開きました（ファイル共有非対応）");return}catch(e){if(e.name==="AbortError"){render("共有シートを閉じました");return}}
+ }
+ render("この環境では共有シートを開けません。");
+}
 async function copyBackup(){backupText=makeBackup();try{await navigator.clipboard.writeText(backupText);render("バックアップJSONをクリップボードへコピーしました")}catch(e){render("コピー失敗："+e.message)}}
 function restoreFile(){const f=document.getElementById("file").files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>{try{const p=JSON.parse(reader.result);if(p.format!=="tomotaYomu-author-registry-backup"||!p.registry||typeof p.registry!=="object")throw new Error("このバックアップ形式ではありません");registry=p.registry;localStorage.setItem(KEY,JSON.stringify(registry));render("バックアップを復元しました")}catch(e){render("復元失敗："+e.message)}};reader.readAsText(f)}
 load();
