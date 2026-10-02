@@ -23,9 +23,10 @@ async function processAuthor(authorUrl){
  const works=Array.isArray(data)?data.filter((x,i)=>i>0&&x.ncode):[];
  const done=getDone();let hits=0;
  works.forEach(w=>{const n=String(w.ncode||"").toUpperCase();if(master[n]){done.add(n);hits++}});
- saveDone(done);
  let reg={};try{reg=JSON.parse(localStorage.getItem(AUTHOR_KEY)||"{}")}catch(e){}
- reg[xid]={xid,authorUrl,registeredAt:new Date().toISOString()};localStorage.setItem(AUTHOR_KEY,JSON.stringify(reg));
+ reg[author.id]={type:author.type,id:author.id,authorUrl,registeredAt:new Date().toISOString()};
+ localStorage.setItem(AUTHOR_KEY,JSON.stringify(reg));
+ saveDone(done);
  return (author.type==="r18"?"XID="+author.id:"userid="+author.id)+"｜作者作品="+works.length+"｜本棚処理="+hits+"作品";
 }
 async function handleIncoming(){
