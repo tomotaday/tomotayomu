@@ -8,7 +8,7 @@ function saveDone(s){localStorage.setItem(DONE_KEY,JSON.stringify([...s]))}
 function authorKey(url){
  const x=String(url).match(/xmypage\.syosetu\.com\/(x[a-z0-9]+)\/?/i);
  if(x)return {type:"r18",id:x[1].toUpperCase()};
- const n=String(url).match(/mypage\.syosetu\.com\/(\\d+)\/?/i);
+ const n=String(url).match(/mypage\.syosetu\.com\/(\d+)\/?/i);
  if(n)return {type:"normal",id:n[1]};
  return null;
 }
