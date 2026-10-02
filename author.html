@@ -1,0 +1,14 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ともたよむ｜作者登録 特設会場</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;margin:0;padding:16px;line-height:1.45;background:#fafafa}h1{font-size:20px;margin:0 0 6px}p{margin:4px 0 12px;color:#666}.card{background:white;border:1px solid #ddd;border-radius:12px;padding:14px;margin:10px 0}.title{font-size:16px;font-weight:600;margin-bottom:5px}.writer{font-size:14px;color:#666;margin-bottom:10px}a{display:inline-block;padding:9px 12px;border-radius:8px;background:#eee;color:#111;text-decoration:none}.top{position:sticky;top:0;background:#fafafa;padding-bottom:8px;z-index:2}#count{font-weight:600}</style></head><body><div class="top"><h1>ともたよむ｜作者登録 特設会場</h1><p>初期作品の作者ページ登録作業用。<span id="count">読み込み中…</span></p></div><div id="list"></div><script>
+const MASTER_KEY="tomotaYomu_v214_works_master";
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+function workUrl(w){const n=String(w.ncode||"").toLowerCase();return w.__r18?"https://novel18.syosetu.com/"+n+"/":"https://ncode.syosetu.com/"+n+"/"}
+function render(){
+ let master={};try{master=JSON.parse(localStorage.getItem(MASTER_KEY)||"{}")}catch(e){}
+ const works=Object.values(master).filter(w=>w&&w.ncode);
+ document.getElementById("count").textContent=works.length+"作品";
+ const list=document.getElementById("list");
+ if(!works.length){list.innerHTML="<p>作品情報マスターがありません。先に本棚でマスターを作成してください。</p>";return}
+ list.innerHTML=works.map(w=>'<div class="card"><div class="title">'+esc(w.title||"作品名なし")+'</div><div class="writer">作者：'+esc(w.writer||"作者名なし")+'</div><a href="'+workUrl(w)+'" target="_blank" rel="noopener">作品を開く</a></div>').join("");
+}
+render();
+</script></body></html>
