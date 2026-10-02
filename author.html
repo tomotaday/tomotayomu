@@ -1,14 +1,37 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ともたよむ｜作者登録 特設会場</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;margin:0;padding:16px;line-height:1.45;background:#fafafa}h1{font-size:20px;margin:0 0 6px}p{margin:4px 0 12px;color:#666}.card{background:white;border:1px solid #ddd;border-radius:12px;padding:14px;margin:10px 0}.title{font-size:16px;font-weight:600;margin-bottom:5px}.writer{font-size:14px;color:#666;margin-bottom:10px}a{display:inline-block;padding:9px 12px;border-radius:8px;background:#eee;color:#111;text-decoration:none}.top{position:sticky;top:0;background:#fafafa;padding-bottom:8px;z-index:2}#count{font-weight:600}</style></head><body><div class="top"><h1>ともたよむ｜作者登録 特設会場</h1><p>初期作品の作者ページ登録作業用。<span id="count">読み込み中…</span></p></div><div id="list"></div><script>
-const MASTER_KEY="tomotaYomu_v214_works_master";
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ともたよむ｜作者登録 特設会場</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;margin:0;padding:16px;line-height:1.45;background:#fafafa}h1{font-size:20px;margin:0 0 6px}p{margin:4px 0 12px;color:#666}.card{background:white;border:1px solid #ddd;border-radius:12px;padding:14px;margin:10px 0}.title{font-size:16px;font-weight:600;margin-bottom:5px}.writer{font-size:14px;color:#666;margin-bottom:10px}a{display:inline-block;padding:9px 12px;border-radius:8px;background:#eee;color:#111;text-decoration:none}.top{position:sticky;top:0;background:#fafafa;padding-bottom:8px;z-index:2}#count{font-weight:600} #count{font-weight:600}.notice{background:#fff8d8;border-radius:10px;padding:10px;margin:10px 0}
+</style></head><body><div class="top"><h1>ともたよむ｜作者登録 特設会場</h1><p>初期作品の作者ページ登録作業用。<span id="count">読み込み中…</span></p></div><div id="notice" class="notice">作者URLを受け取ると、作者作品をまとめて処理済みにします。</div><div id="list"></div><script>
+const MASTER_KEY="tomotaYomu_v214_works_master",AUTHOR_KEY="tomotaYomu_v215_author_registry",DONE_KEY="tomotaYomu_v215_author_done_ncodes";
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
 function workUrl(w){const n=String(w.ncode||"").toLowerCase();return w.__r18?"https://novel18.syosetu.com/"+n+"/":"https://ncode.syosetu.com/"+n+"/"}
+function getDone(){try{return new Set(JSON.parse(localStorage.getItem(DONE_KEY)||"[]"))}catch(e){return new Set()}}
+function saveDone(s){localStorage.setItem(DONE_KEY,JSON.stringify([...s]))}
+function xidFrom(url){const m=String(url).match(/xmypage\.syosetu\.com\/(x[a-z0-9]+)\/?/i);return m?m[1].toUpperCase():""}
+function jsonp(url){return new Promise((resolve,reject)=>{const cb="tyHallCb_"+Date.now();const s=document.createElement("script");const timer=setTimeout(()=>{cleanup();reject(new Error("JSONP timeout"))},20000);function cleanup(){clearTimeout(timer);try{delete window[cb]}catch(e){}s.remove()}window[cb]=d=>{cleanup();resolve(d)};s.onerror=()=>{cleanup();reject(new Error("JSONP load error"))};s.src=url+"&callback="+cb;document.body.appendChild(s)})}
+async function processAuthor(authorUrl){
+ const xid=xidFrom(authorUrl);if(!xid)throw new Error("作者URLからXIDを取得できませんでした");
+ let master={};try{master=JSON.parse(localStorage.getItem(MASTER_KEY)||"{}")}catch(e){}
+ const data=await jsonp("https://api.syosetu.com/novel18api/api/?out=jsonp&of=n-t-w-gl-ga-nt-e&xid="+encodeURIComponent(xid)+"&lim=500");
+ const works=Array.isArray(data)?data.filter((x,i)=>i>0&&x.ncode):[];
+ const done=getDone();let hits=0;
+ works.forEach(w=>{const n=String(w.ncode||"").toUpperCase();if(master[n]){done.add(n);hits++}});
+ saveDone(done);
+ let reg={};try{reg=JSON.parse(localStorage.getItem(AUTHOR_KEY)||"{}")}catch(e){}
+ reg[xid]={xid,authorUrl,registeredAt:new Date().toISOString()};localStorage.setItem(AUTHOR_KEY,JSON.stringify(reg));
+ return "XID="+xid+"｜作者作品="+works.length+"｜本棚処理="+hits+"作品";
+}
+async function handleIncoming(){
+ const url=new URLSearchParams(location.search).get("authorurl");if(!url)return;
+ const notice=document.getElementById("notice");notice.textContent="作者URLを受信。処理中…";
+ try{notice.textContent="作者登録完了｜"+await processAuthor(url);render()}catch(e){notice.textContent="作者登録失敗｜"+e.message}
+}
 function render(){
  let master={};try{master=JSON.parse(localStorage.getItem(MASTER_KEY)||"{}")}catch(e){}
- const works=Object.values(master).filter(w=>w&&w.ncode);
+ const done=getDone();const works=Object.values(master).filter(w=>w&&w.ncode&&!done.has(String(w.ncode).toUpperCase()));
  document.getElementById("count").textContent=works.length+"作品";
  const list=document.getElementById("list");
  if(!works.length){list.innerHTML="<p>作品情報マスターがありません。先に本棚でマスターを作成してください。</p>";return}
  list.innerHTML=works.map(w=>'<div class="card"><div class="title">'+esc(w.title||"作品名なし")+'</div><div class="writer">作者：'+esc(w.writer||"作者名なし")+'</div><a href="'+workUrl(w)+'" target="_blank" rel="noopener">作品を開く</a></div>').join("");
 }
 render();
+handleIncoming();
 </script></body></html>
