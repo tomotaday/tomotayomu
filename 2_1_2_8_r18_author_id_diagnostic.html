@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
+<meta content="#f6f3ed" name="theme-color"/>
+<title>ともたよむ｜v2.1.2.8 R18作者識別キー調査</title>
+<style>
+:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.55}
+main{width:min(100%,720px);margin:auto;padding:18px 14px 40px}
+h1{font-size:30px;margin:0 0 4px}
+.note{font-size:13px;color:var(--muted);margin-bottom:15px}
+button{border:1px solid #c8c0b5;border-radius:8px;background:transparent;padding:5px 9px;font-size:14px;color:var(--ink)}
+#apiStatus{font-size:13px;margin:10px 0 15px}
+.section{margin:20px 0 8px;font-weight:700;font-size:18px}
+.update-empty{color:var(--muted);margin-bottom:16px}
+.update-list .card{margin-bottom:10px}
+.card{background:var(--card);border:1px solid #aaa195;border-radius:12px;padding:13px;margin:10px 0}
+.meta{font-size:12px;color:#555;margin-bottom:8px}
+.newMark{font-size:12px}
+h2{font-size:15px;line-height:1.45;font-weight:700;margin:0 0 4px}
+.author,.ncode{font-size:13px;color:#555}
+details{margin-top:9px;font-size:13px}
+summary{cursor:pointer}
+.synopsis{white-space:pre-wrap;color:#555;margin:7px 0}
+.actions{display:flex;gap:10px;margin-top:12px;font-size:13px;flex-wrap:wrap}
+.actions a{color:inherit;text-decoration:none;border-bottom:1px solid #aaa}
+.hidden{display:none!important}
+</style>
+<style id="v19-folder-style">
+.folderSection{margin:18px 0 22px}
+.folderTitle{font-size:17px;font-weight:700;margin:0 0 10px;padding:0 2px}
+.folderCards{display:flex;flex-direction:column;gap:10px}
+</style>
+<style id="v203-fold-style">
+.updateDetails{margin:20px 0 8px}
+.updateDetails>summary{list-style:none;cursor:pointer;font-size:18px;font-weight:700;padding:3px 2px}
+.updateDetails>summary::-webkit-details-marker{display:none}
+.updateDetails>summary::before{content:"▸ ";font-size:15px}
+.updateDetails[open]>summary::before{content:"▾ ";font-size:15px}
+.bookshelfDetails{margin:20px 0 8px}
+.bookshelfDetails>summary{list-style:none;cursor:pointer;font-size:22px;font-weight:800;padding:4px 2px}
+.bookshelfDetails>summary::-webkit-details-marker{display:none}
+.bookshelfDetails>summary::before{content:"▸ ";font-size:18px}
+.bookshelfDetails[open]>summary::before{content:"▾ ";font-size:18px}
+.folderDetails{margin:14px 0}
+.folderDetails>summary{list-style:none;cursor:pointer;font-size:18px;font-weight:700;padding:3px 2px}
+.folderDetails>summary::-webkit-details-marker{display:none}
+.folderDetails>summary::before{content:"▸ ";font-size:15px}
+.folderDetails[open]>summary::before{content:"▾ ";font-size:15px}
+
+.ncode{position:relative;padding-right:48px;min-height:20px}.r18Badge{position:absolute;right:0;top:50%;transform:translateY(-50%);font-size:10px;line-height:1;padding:3px 5px;border:1px solid #aaa195;border-radius:5px;color:#666;background:#f6f3ed;letter-spacing:.2px;z-index:2}
+</style>
+</head>
+
+<body>
+<div class="wrap">
+<h1>ともたよむ</h1>
+<div class="ver">v2.1.2.8｜R18作者識別キー調査</div>
+<div class="box">
+<p>R18 APIにはuseridがないため、作者名からユーザ検索APIで作者IDへ辿れるかを調査します。</p>
+<p>※ユーザ検索APIの「word」は部分一致検索です。候補をそのまま表示し、同名・類似名を勝手に確定しません。</p>
+<button id="run">R18作者IDを調査する</button>
+<button id="copy">診断結果をコピー</button>
+</div>
+<pre id="out">未実行</pre>
+</div>
+<script>
+"use strict";
+const MASTER_KEY="tomotaYomu_v214_works_master";
+const API="https://api.syosetu.com/userapi/api/";
+const out=document.getElementById("out");
+
+function jsonp(url){
+  return new Promise((resolve,reject)=>{
+    const cb="jsonp_"+Date.now()+"_"+Math.random().toString(36).slice(2);
+    const s=document.createElement("script");
+    const timer=setTimeout(()=>{cleanup();reject(new Error("timeout"));},15000);
+    function cleanup(){clearTimeout(timer);delete window[cb];s.remove();}
+    window[cb]=d=>{cleanup();resolve(d);};
+    s.onerror=()=>{cleanup();reject(new Error("API error"));};
+    s.src=url+"&out=jsonp&callback="+cb+"&_cb="+Date.now();
+    document.body.appendChild(s);
+  });
+}
+function getMaster(){
+  try{return JSON.parse(localStorage.getItem(MASTER_KEY)||"{}");}
+  catch(e){return {};}
+}
+function pickAuthors(master){
+  const names=[...new Set(Object.values(master)
+    .filter(w=>w&&w.__r18&&String(w.writer||"").trim())
+    .map(w=>String(w.writer).trim()))];
+  return names.slice(0,8);
+}
+function line(v){return String(v??"").replace(/\n/g," ");}
+async function run(){
+  out.textContent="調査中…";
+  const master=getMaster();
+  const authors=pickAuthors(master);
+  const result=[
+    "【v2.1.2.8｜R18作者識別キー調査】",
+    "保存Master作品数："+Object.keys(master).length,
+    "調査するR18作者名："+authors.length,
+    ""
+  ];
+  for(const name of authors){
+    result.push("R18作者名："+name);
+    try{
+      const url=API+"?word="+encodeURIComponent(name)+"&of=u-n-y-nc&lim=20";
+      const d=await jsonp(url);
+      const rows=Array.isArray(d)?d.slice(1):[];
+      result.push("ユーザ検索HIT："+rows.length);
+      if(!rows.length){
+        result.push("候補なし");
+      }else{
+        rows.forEach((u,i)=>{
+          result.push(
+            "候補"+(i+1)+
+            " userid="+line(u.userid)+
+            " / name="+line(u.name)+
+            " / yomikata="+line(u.yomikata)+
+            " / novel_cnt="+line(u.novel_cnt)
+          );
+        });
+      }
+    }catch(e){
+      result.push("API取得エラー："+e.message);
+    }
+    result.push("");
+  }
+  out.textContent=result.join("\n");
+}
+document.getElementById("run").addEventListener("click",run);
+document.getElementById("copy").addEventListener("click",async()=>{
+  try{await navigator.clipboard.writeText(out.textContent);alert("診断結果をコピーしました。");}
+  catch(e){alert("コピーできませんでした。結果を長押ししてコピーしてください。");}
+});
+</script>
+</body>
+
+</html>
