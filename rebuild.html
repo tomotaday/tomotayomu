@@ -86,7 +86,7 @@ function saveCandidate(part,master,errors){
 
 function check(master,target){
  const map=new Map(master.map(w=>[w.ncode,w])),lines=[
- "旧作品情報の読み込み：0（Nコード識別のみ）",
+ "旧作品情報の読み込み：0（Nコード識別のみ）\n全年齢/R18は別APIとして取得",
  "Narou APIから作成した候補： "+master.length+"件",
  "今回の対象Nコード： "+target.length+"件",
  "欠落： "+target.filter(x=>!map.has(x.ncode)).length+"件"
@@ -102,15 +102,28 @@ async function run(){
   const target=part===1?all.slice(0,mid):all.slice(mid);
   $("target").textContent=target.length;$("prog").max=Math.ceil(target.length/CHUNK);
   const result=[],errors=[];
+  const batches=[];
   for(let i=0;i<target.length;i+=CHUNK){
    const chunk=target.slice(i,i+CHUNK);
+   const normal=chunk.filter(x=>!x.r18),r18=chunk.filter(x=>x.r18);
+   if(normal.length)batches.push(normal);
+   if(r18.length)batches.push(r18);
+  }
+  $("prog").max=batches.length;
+  for(let bi=0;bi<batches.length;bi++){
+   const batch=batches[bi];
    try{
-    const data=await fetchChunk(chunk),rows=Array.isArray(data)?data.filter(x=>x&&x.ncode):[];
-    for(const w of rows){const src=chunk.find(x=>x.ncode===String(w.ncode||"").toUpperCase());if(src)result.push(slim(w,src.r18))}
-   }catch(e){errors.push(...chunk.map(x=>x.ncode))}
+    const data=await fetchChunk(batch),rows=Array.isArray(data)?data.filter(x=>x&&x.ncode):[];
+    const returned=new Set();
+    for(const w of rows){
+     const n=String(w.ncode||"").toUpperCase(),src=batch.find(x=>x.ncode===n);
+     if(src){result.push(slim(w,src.r18));returned.add(n)}
+    }
+    for(const x of batch)if(!returned.has(x.ncode))errors.push(x.ncode);
+   }catch(e){errors.push(...batch.map(x=>x.ncode))}
    $("success").textContent=result.length;$("failed").textContent=errors.length;
-   $("prog").value=Math.ceil((i+chunk.length)/CHUNK);
-   if(i+CHUNK<target.length)await sleep(WAIT);
+   $("prog").value=bi+1;
+   if(bi+1<batches.length)await sleep(WAIT);
   }
   const master=[...new Map(result.map(w=>[w.ncode,w])).values()];
   saveCandidate(part,master,errors);$("built").textContent=master.length;
