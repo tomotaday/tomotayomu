@@ -19,7 +19,7 @@ progress{width:100%;height:12px}details{margin-top:12px}
 <body>
 <main>
 <h1>ともたよむ</h1>
-<div class="ver">v2.1.2.25｜作品マスター反映</div>
+<div class="ver">v2.1.2.26｜作品マスター反映 容量対策</div>
 <div class="card">
 <p><b>旧カードの作品情報は使用しません。</b></p>
 <p>NコードとR18判定だけを識別情報として使い、Narou APIの現在値から作品マスター候補を作ります。現行マスターは変更しません。</p>
@@ -155,20 +155,24 @@ async function replaceMaster(){
  try{
   const [a,b]=await Promise.all([readCandidate(1),readCandidate(2)]);
   if(!a||!b) throw new Error("前半・後半の候補が両方そろっていません。");
-  const all=[...(a.works||[]),...(b.works||[])];
-  const map=new Map();
+  const all=[...(a.works||[]),...(b.works||[])],map=new Map();
   for(const w of all) map.set(String(w.ncode||"").toUpperCase(),w);
-  const works=[...map.values()];
-  const normal=works.filter(w=>!w.__r18),r18=works.filter(w=>w.__r18);
+  const works=[...map.values()],normal=works.filter(w=>!w.__r18),r18=works.filter(w=>w.__r18);
   if(works.length!==2104||normal.length!==170||r18.length!==1934) throw new Error("件数検査NG。反映しません。");
   if(works.some(w=>!w.general_lastup||w.general_all_no===null||w.general_all_no===undefined)) throw new Error("必須作品情報に欠損があります。反映しません。");
   const old=localStorage.getItem(MASTER_KEY);
-  localStorage.setItem(MASTER_KEY,JSON.stringify({version:"rebuild-20261003",created_at:new Date().toISOString(),works}));
-  const backupKey=MASTER_KEY+"_backup_20261003";
-  if(old!==null)localStorage.setItem(backupKey,old);
-  const saved=JSON.parse(localStorage.getItem(MASTER_KEY)||"null");
-  if(!saved||!Array.isArray(saved.works)||saved.works.length!==2104) throw new Error("書き込み後検証NG。");
-  $("replaceResult").textContent="本番マスター反映：完了\n2104件（全年齢170 / R18 1934）\n旧マスター："+(old!==null?"バックアップ保存済み":"なし")+"\n新マスター検証：2104件\n\nN5284IA："+(saved.works.find(w=>w.ncode==="N5284IA")?.general_lastup||"見つかりません");
+  if(old===null) throw new Error("現在の本番マスターがありません。反映しません。");
+  const payload=JSON.stringify({version:"rebuild-20261003",created_at:new Date().toISOString(),works});
+  localStorage.removeItem(MASTER_KEY);
+  try{
+   localStorage.setItem(MASTER_KEY,payload);
+   const saved=JSON.parse(localStorage.getItem(MASTER_KEY)||"null");
+   if(!saved||!Array.isArray(saved.works)||saved.works.length!==2104) throw new Error("書き込み後検証NG。");
+   $("replaceResult").textContent="本番マスター反映：完了\n2104件（全年齢170 / R18 1934）\n旧マスターは旧端末側に保持せず、候補はIndexedDBに残っています。\n新マスター検証：2104件\nN5284IA："+(saved.works.find(w=>w.ncode==="N5284IA")?.general_lastup||"見つかりません");
+  }catch(e){
+   localStorage.setItem(MASTER_KEY,old);
+   throw new Error("新マスターの保存に失敗したため、旧マスターへ復元しました："+e.message);
+  }
  }catch(e){$("replaceResult").textContent="反映しませんでした： "+e.message}
  finally{$("replace").disabled=false}
 }
