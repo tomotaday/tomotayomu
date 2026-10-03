@@ -9,26 +9,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0
 main{max-width:760px;margin:auto;padding:18px}
 h1{font-size:20px;margin:0 0 6px}.ver{font-size:13px;color:#666;margin-bottom:18px}
 .card{background:#fff;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 1px 4px #0001}
-button{border:0;border-radius:10px;padding:12px 16px;font-size:15px;background:#222;color:#fff}
-button:disabled{opacity:.45}
+button,select{border:0;border-radius:10px;padding:12px 16px;font-size:15px}
+button{background:#222;color:#fff}button:disabled{opacity:.45}
 .row{display:flex;justify-content:space-between;border-bottom:1px solid #eee;padding:7px 0;font-size:14px}
-.ok{color:#16803c}.ng{color:#b42318}.mono{font-family:ui-monospace,monospace;white-space:pre-wrap;font-size:12px}
-progress{width:100%;height:12px}
-details{margin-top:12px}
+.mono{font-family:ui-monospace,monospace;white-space:pre-wrap;font-size:12px}
+progress{width:100%;height:12px}details{margin-top:12px}
 </style>
 </head>
 <body>
 <main>
 <h1>ともたよむ</h1>
-<div class="ver">v2.1.2.19｜作品マスター再構築実験</div>
-
+<div class="ver">v2.1.2.20｜作品マスター再構築実験</div>
 <div class="card">
-<p><b>目的</b></p>
-<p>旧カードの作品情報を引き継がず、現在の作品マスターからNコードだけを取り出し、Narou APIの現在値だけで新しい作品マスター候補を作ります。</p>
-<p>現行マスターはこのページでは変更しません。</p>
-<button id="start">再構築を開始</button>
+<p><b>旧カードの作品情報は使用しません。</b></p>
+<p>NコードとR18判定だけを識別情報として使い、Narou APIの現在値から作品マスター候補を作ります。現行マスターは変更しません。</p>
+<label>取得範囲　<select id="part"><option value="1">前半（最大1052作品）</option><option value="2">後半（最大1052作品）</option></select></label>
+<br><br><button id="start">選択範囲を再構築</button>
 </div>
-
 <div class="card">
 <div class="row"><span>対象作品</span><b id="target">-</b></div>
 <div class="row"><span>API取得成功</span><b id="success">0</b></div>
@@ -37,180 +34,94 @@ details{margin-top:12px}
 <div class="row"><span>マスター候補</span><b id="built">0</b></div>
 <progress id="prog" value="0" max="1"></progress>
 </div>
-
-<div class="card">
-<b>検証</b>
-<div id="checks" class="mono">まだ実行していません。</div>
-</div>
-
+<div class="card"><b>検証</b><div id="checks" class="mono">まだ実行していません。</div></div>
 <div class="card">
 <button id="copy">診断結果をコピー</button>
 <details><summary>取得失敗Nコード</summary><div id="errors" class="mono">-</div></details>
 <details><summary>候補マスター確認用JSON</summary><div id="json" class="mono">-</div></details>
 </div>
 </main>
-
 <script>
 "use strict";
-
 const MASTER_KEY="tomotaYomu_v214_works_master";
-const CANDIDATE_KEY="tomotaYomu_rebuilt_master_20261003";
+const CANDIDATE_PREFIX="tomotaYomu_rebuilt_master_20261003_part";
 const OF="n-t-w-gl-ga-e-e-nt-u-w-s-k-g-nu-i";
-const CHUNK=80;
-const WAIT=700;
-
+const CHUNK=40, WAIT=1200;
 const $=id=>document.getElementById(id);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
-function jsonp(url, timeout=15000){
-  return new Promise((resolve,reject)=>{
-    const cb="tomotaYomuRebuild_"+Date.now()+"_"+Math.random().toString(36).slice(2);
-    const script=document.createElement("script");
-    let done=false;
-    const timer=setTimeout(()=>finish(new Error("timeout")),timeout);
-    function finish(err,data){
-      if(done)return; done=true; clearTimeout(timer);
-      try{delete window[cb]}catch(e){window[cb]=undefined}
-      script.remove();
-      err?reject(err):resolve(data);
-    }
-    window[cb]=data=>finish(null,data);
-    script.onerror=()=>finish(new Error("API load error"));
-    script.src=url+(url.includes("?")?"&":"?")+"callback="+cb;
-    document.body.appendChild(script);
-  });
-}
+function jsonp(url,timeout=20000){return new Promise((resolve,reject)=>{
+ const cb="tomotaYomuRebuild_"+Date.now()+"_"+Math.random().toString(36).slice(2),s=document.createElement("script");
+ let done=false; const timer=setTimeout(()=>finish(new Error("timeout")),timeout);
+ function finish(err,data){if(done)return;done=true;clearTimeout(timer);try{delete window[cb]}catch(e){window[cb]=undefined}s.remove();err?reject(err):resolve(data)}
+ window[cb]=data=>finish(null,data);s.onerror=()=>finish(new Error("API load error"));
+ s.src=url+"&callback="+cb;document.body.appendChild(s);
+})}
 
-function slim(w, r18){
-  return {
-    ncode:String(w.ncode||"").toUpperCase(),
-    title:w.title||"",
-    writer:w.writer||"",
-    keyword:w.keyword||"",
-    genre:w.genre??0,
-    userid:w.userid??0,
-    noveltype:w.noveltype??w.novel_type??0,
-    end:w.end??0,
-    isstop:w.isstop??0,
-    general_lastup:w.general_lastup||"",
-    general_all_no:w.general_all_no??0,
-    story:w.story||"",
-    novelupdated_at:w.novelupdated_at||"",
-    __r18:!!r18
-  };
+function slim(w,r18){return{
+ ncode:String(w.ncode||"").toUpperCase(),title:w.title||"",writer:w.writer||"",keyword:w.keyword||"",
+ genre:w.genre??0,userid:w.userid??0,noveltype:w.noveltype??w.novel_type??0,end:w.end??0,isstop:w.isstop??0,
+ general_lastup:w.general_lastup||"",general_all_no:w.general_all_no??0,story:w.story||"",
+ novelupdated_at:w.novelupdated_at||"",__r18:!!r18
+}}
+
+function loadSource(){
+ const raw=localStorage.getItem(MASTER_KEY);if(!raw)throw new Error("現行作品マスターが見つかりません。");
+ const obj=JSON.parse(raw),works=Array.isArray(obj)?obj:(Array.isArray(obj.works)?obj.works:Object.values(obj));
+ const seen=new Set(),out=[];
+ for(const w of works){const n=String(w?.ncode||"").toUpperCase();if(!/^N[0-9A-Z]+$/.test(n))continue;
+  if(seen.has(n))continue;seen.add(n);out.push({ncode:n,r18:!!w.__r18});}
+ return out;
 }
 
 async function fetchChunk(items){
-  const r18=items[0].r18;
-  const codes=items.map(x=>x.ncode).join("-");
-  const base=r18
-    ?"https://api.syosetu.com/novel18api/api/"
-    :"https://api.syosetu.com/novelapi/api/";
-  const url=base+"?out=jsonp&lim=500&of="+encodeURIComponent(OF)+"&ncode="+encodeURIComponent(codes);
-  return await jsonp(url);
+ const r18=items[0].r18,codes=items.map(x=>x.ncode).join("-");
+ const base=r18?"https://api.syosetu.com/novel18api/api/":"https://api.syosetu.com/novelapi/api/";
+ return jsonp(base+"?out=jsonp&lim=500&of="+encodeURIComponent(OF)+"&ncode="+encodeURIComponent(codes));
 }
 
-function loadSource(){
-  const raw=localStorage.getItem(MASTER_KEY);
-  if(!raw)throw new Error("現行作品マスターが見つかりません。");
-  const obj=JSON.parse(raw);
-  const works=Array.isArray(obj)?obj:(Array.isArray(obj.works)?obj.works:Object.values(obj));
-  const seen=new Set(), out=[];
-  for(const w of works){
-    const n=String(w?.ncode||"").toUpperCase();
-    if(!/^N[0-9A-Z]+$/.test(n))continue;
-    if(seen.has(n)){$("dup").textContent=String(Number($("dup").textContent)+1);continue}
-    seen.add(n);
-    out.push({ncode:n,r18:!!w.__r18});
-  }
-  return out;
-}
-
-function saveCandidate(master){
-  localStorage.setItem(CANDIDATE_KEY,JSON.stringify({
-    created_at:new Date().toISOString(),
-    source:"Narou API forced rebuild",
-    count:master.length,
-    works:master
-  }));
+function saveCandidate(part,master,errors){
+ localStorage.setItem(CANDIDATE_PREFIX+part,JSON.stringify({created_at:new Date().toISOString(),source:"Narou API forced rebuild",part,count:master.length,failed:errors.length,works:master}));
 }
 
 function check(master,target){
-  const map=new Map(master.map(w=>[w.ncode,w]));
-  const samples=["N5284IA","N4561MJ","N0175GW"];
-  const lines=[];
-  lines.push("旧作品情報の読み込み：0（Nコード識別のみ）");
-  lines.push("Narou APIから作成した候補： "+master.length+"件");
-  lines.push("対象Nコード： "+target.length+"件");
-  lines.push("欠落： "+target.filter(x=>!map.has(x.ncode)).length+"件");
-  for(const n of samples){
-    if(map.has(n)){
-      const w=map.get(n);
-      lines.push("");
-      lines.push(n+"｜"+w.title);
-      lines.push("general_lastup = "+(w.general_lastup||"(空)"));
-      lines.push("general_all_no = "+String(w.general_all_no));
-      lines.push("noveltype = "+String(w.noveltype));
-      lines.push("end = "+String(w.end));
-      lines.push("userid = "+String(w.userid));
-    }
-  }
-  return lines.join("\n");
+ const map=new Map(master.map(w=>[w.ncode,w])),lines=[
+ "旧作品情報の読み込み：0（Nコード識別のみ）",
+ "Narou APIから作成した候補： "+master.length+"件",
+ "今回の対象Nコード： "+target.length+"件",
+ "欠落： "+target.filter(x=>!map.has(x.ncode)).length+"件"
+ ];
+ for(const n of ["N5284IA","N4561MJ","N0175GW"])if(map.has(n)){const w=map.get(n);lines.push("",n+"｜"+w.title,"general_lastup = "+(w.general_lastup||"(空)"),"general_all_no = "+w.general_all_no,"noveltype = "+w.noveltype,"end = "+w.end,"userid = "+w.userid)}
+ return lines.join("\n");
 }
 
 async function run(){
-  $("start").disabled=true;
-  try{
-    const target=loadSource();
-    $("target").textContent=target.length;
-    $("prog").max=Math.ceil(target.length/CHUNK);
-
-    const result=[];
-    const errors=[];
-    for(let i=0;i<target.length;i+=CHUNK){
-      const chunk=target.slice(i,i+CHUNK);
-      try{
-        const data=await fetchChunk(chunk);
-        const rows=Array.isArray(data)?data.filter(x=>x&&x.ncode):[];
-        for(const w of rows){
-          const src=chunk.find(x=>x.ncode===String(w.ncode||"").toUpperCase());
-          if(src)result.push(slim(w,src.r18));
-        }
-        $("success").textContent=String(result.length);
-      }catch(e){
-        errors.push(...chunk.map(x=>x.ncode));
-      }
-      $("prog").value=Math.ceil((i+chunk.length)/CHUNK);
-      $("failed").textContent=String(errors.length);
-      if(i+CHUNK<target.length)await sleep(WAIT);
-    }
-
-    const map=new Map(result.map(w=>[w.ncode,w]));
-    const master=[...map.values()];
-    saveCandidate(master);
-    $("built").textContent=String(master.length);
-    $("errors").textContent=errors.length?errors.join("\n"):"なし";
-    $("checks").textContent=check(master,target);
-    $("json").textContent=JSON.stringify({
-      created_at:new Date().toISOString(),
-      count:master.length,
-      failed:errors.length,
-      works:master.slice(0,3)
-    },null,2);
-  }catch(e){
-    $("checks").textContent="エラー："+e.message;
-  }finally{
-    $("start").disabled=false;
+ $("start").disabled=true;
+ try{
+  const all=loadSource(),part=Number($("part").value),mid=Math.ceil(all.length/2);
+  const target=part===1?all.slice(0,mid):all.slice(mid);
+  $("target").textContent=target.length;$("prog").max=Math.ceil(target.length/CHUNK);
+  const result=[],errors=[];
+  for(let i=0;i<target.length;i+=CHUNK){
+   const chunk=target.slice(i,i+CHUNK);
+   try{
+    const data=await fetchChunk(chunk),rows=Array.isArray(data)?data.filter(x=>x&&x.ncode):[];
+    for(const w of rows){const src=chunk.find(x=>x.ncode===String(w.ncode||"").toUpperCase());if(src)result.push(slim(w,src.r18))}
+   }catch(e){errors.push(...chunk.map(x=>x.ncode))}
+   $("success").textContent=result.length;$("failed").textContent=errors.length;
+   $("prog").value=Math.ceil((i+chunk.length)/CHUNK);
+   if(i+CHUNK<target.length)await sleep(WAIT);
   }
+  const master=[...new Map(result.map(w=>[w.ncode,w])).values()];
+  saveCandidate(part,master,errors);$("built").textContent=master.length;
+  $("errors").textContent=errors.length?errors.join("\n"):"なし";
+  $("checks").textContent=check(master,target);
+  $("json").textContent=JSON.stringify({part,created_at:new Date().toISOString(),count:master.length,failed:errors.length,works:master.slice(0,3)},null,2);
+ }catch(e){$("checks").textContent="エラー："+e.message}
+ finally{$("start").disabled=false}
 }
-
 $("start").onclick=run;
-$("copy").onclick=async()=>{
-  const text="ともたよむ v2.1.2.19｜作品マスター再構築実験\n\n"+$("checks").textContent+"\n\n取得失敗Nコード\n"+$("errors").textContent;
-  await navigator.clipboard.writeText(text);
-  $("copy").textContent="コピーしました";
-  setTimeout(()=>$("copy").textContent="診断結果をコピー",1500);
-};
+$("copy").onclick=async()=>{const t="ともたよむ v2.1.2.20｜作品マスター再構築実験\n\n"+$("checks").textContent+"\n\n取得失敗Nコード\n"+$("errors").textContent;await navigator.clipboard.writeText(t);$("copy").textContent="コピーしました";setTimeout(()=>$("copy").textContent="診断結果をコピー",1500)}
 </script>
 </body>
 </html>
