@@ -19,7 +19,7 @@ progress{width:100%;height:12px}details{margin-top:12px}
 <body>
 <main>
 <h1>ともたよむ</h1>
-<div class="ver">v2.1.2.21｜作品マスター再構築実験</div>
+<div class="ver">v2.1.2.22｜作品マスター再構築実験</div>
 <div class="card">
 <p><b>旧カードの作品情報は使用しません。</b></p>
 <p>NコードとR18判定だけを識別情報として使い、Narou APIの現在値から作品マスター候補を作ります。現行マスターは変更しません。</p>
@@ -81,7 +81,17 @@ async function fetchChunk(items){
 }
 
 function saveCandidate(part,master,errors){
- localStorage.setItem(CANDIDATE_PREFIX+part,JSON.stringify({created_at:new Date().toISOString(),source:"Narou API forced rebuild",part,count:master.length,failed:errors.length,works:master}));
+ return new Promise((resolve,reject)=>{
+  const req=indexedDB.open("tomotaYomu_rebuild",1);
+  req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains("candidates"))req.result.createObjectStore("candidates")};
+  req.onerror=()=>reject(req.error||new Error("IndexedDB open error"));
+  req.onsuccess=()=>{
+   const db=req.result,tx=db.transaction("candidates","readwrite");
+   tx.objectStore("candidates").put({created_at:new Date().toISOString(),source:"Narou API forced rebuild",part,count:master.length,failed:errors.length,works:master},String(part));
+   tx.oncomplete=()=>{db.close();resolve()};
+   tx.onerror=()=>{db.close();reject(tx.error||new Error("IndexedDB save error"))};
+  };
+ });
 }
 
 function check(master,target){
@@ -126,7 +136,7 @@ async function run(){
    if(bi+1<batches.length)await sleep(WAIT);
   }
   const master=[...new Map(result.map(w=>[w.ncode,w])).values()];
-  saveCandidate(part,master,errors);$("built").textContent=master.length;
+  await saveCandidate(part,master,errors);$("built").textContent=master.length;
   $("errors").textContent=errors.length?errors.join("\n"):"なし";
   $("checks").textContent=check(master,target);
   $("json").textContent=JSON.stringify({part,created_at:new Date().toISOString(),count:master.length,failed:errors.length,works:master.slice(0,3)},null,2);
@@ -134,7 +144,15 @@ async function run(){
  finally{$("start").disabled=false}
 }
 $("start").onclick=run;
-$("copy").onclick=async()=>{const t="ともたよむ v2.1.2.20｜作品マスター再構築実験\n\n"+$("checks").textContent+"\n\n取得失敗Nコード\n"+$("errors").textContent;await navigator.clipboard.writeText(t);$("copy").textContent="コピーしました";setTimeout(()=>$("copy").textContent="診断結果をコピー",1500)}
+$("copy").onclick=async()=>{
+ const t="ともたよむ v2.1.2.22｜作品マスター再構築実験\n\n"+$("checks").textContent+"\n\n取得失敗Nコード\n"+$("errors").textContent;
+ try{
+  if(navigator.clipboard&&window.isSecureContext) await navigator.clipboard.writeText(t);
+  else{const ta=document.createElement("textarea");ta.value=t;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.focus();ta.select();document.execCommand("copy");ta.remove();}
+  $("copy").textContent="コピーしました";
+ }catch(e){$("copy").textContent="コピーできませんでした";alert("複写できませんでした。もう一度お試しください。");}
+ setTimeout(()=>$("copy").textContent="診断結果をコピー",1800)
+}
 </script>
 </body>
 </html>
