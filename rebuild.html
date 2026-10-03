@@ -19,7 +19,7 @@ progress{width:100%;height:12px}details{margin-top:12px}
 <body>
 <main>
 <h1>ともたよむ</h1>
-<div class="ver">v2.1.2.23｜作品マスター統合検査</div>
+<div class="ver">v2.1.2.24｜作品マスター統合検査 修正版</div>
 <div class="card">
 <p><b>旧カードの作品情報は使用しません。</b></p>
 <p>NコードとR18判定だけを識別情報として使い、Narou APIの現在値から作品マスター候補を作ります。現行マスターは変更しません。</p>
@@ -208,9 +208,10 @@ async function run(){
  }catch(e){$("checks").textContent="エラー："+e.message}
  finally{$("start").disabled=false}
 }
-$("start").onclick=run;\n$("merge").onclick=runMergeCheck;
+$("start").onclick=run;
+$("merge").onclick=runMergeCheck;
 $("copy").onclick=async()=>{
- const t="ともたよむ v2.1.2.23｜作品マスター統合検査\n\n"+$("checks").textContent+"\n\n取得失敗Nコード\n"+$("errors").textContent;
+ const t="ともたよむ v2.1.2.24｜作品マスター統合検査 修正版\n\n【統合検査】\n"+$("mergeChecks").textContent+"\n\n【選択範囲の検査】\n"+$("checks").textContent+"\n\n取得失敗Nコード\n"+$("errors").textContent;
  try{
   if(navigator.clipboard&&window.isSecureContext) await navigator.clipboard.writeText(t);
   else{const ta=document.createElement("textarea");ta.value=t;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.focus();ta.select();document.execCommand("copy");ta.remove();}
