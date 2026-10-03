@@ -19,12 +19,12 @@ progress{width:100%;height:12px}details{margin-top:12px}
 <body>
 <main>
 <h1>ともたよむ</h1>
-<div class="ver">v2.1.2.22｜作品マスター再構築実験</div>
+<div class="ver">v2.1.2.23｜作品マスター統合検査</div>
 <div class="card">
 <p><b>旧カードの作品情報は使用しません。</b></p>
 <p>NコードとR18判定だけを識別情報として使い、Narou APIの現在値から作品マスター候補を作ります。現行マスターは変更しません。</p>
 <label>取得範囲　<select id="part"><option value="1">前半（最大1052作品）</option><option value="2">後半（最大1052作品）</option></select></label>
-<br><br><button id="start">選択範囲を再構築</button>
+<br><br><button id="start">選択範囲を再構築</button><br><br><button id="merge">前半＋後半を統合検査</button>
 </div>
 <div class="card">
 <div class="row"><span>対象作品</span><b id="target">-</b></div>
@@ -35,6 +35,7 @@ progress{width:100%;height:12px}details{margin-top:12px}
 <progress id="prog" value="0" max="1"></progress>
 </div>
 <div class="card"><b>検証</b><div id="checks" class="mono">まだ実行していません。</div></div>
+<div class="card"><b>統合検査</b><div id="mergeChecks" class="mono">前半・後半の候補を読み込んで検査します。現行マスターは変更しません。</div></div>
 <div class="card">
 <button id="copy">診断結果をコピー</button>
 <details><summary>取得失敗Nコード</summary><div id="errors" class="mono">-</div></details>
@@ -94,6 +95,70 @@ function saveCandidate(part,master,errors){
  });
 }
 
+function readCandidate(part){
+ return new Promise((resolve,reject)=>{
+  const req=indexedDB.open("tomotaYomu_rebuild",1);
+  req.onerror=()=>reject(req.error||new Error("IndexedDB open error"));
+  req.onsuccess=()=>{
+   const db=req.result,tx=db.transaction("candidates","readonly"),get=tx.objectStore("candidates").get(String(part));
+   get.onsuccess=()=>{const v=get.result;db.close();resolve(v||null)};
+   get.onerror=()=>{db.close();reject(get.error||new Error("IndexedDB read error"))};
+  };
+ });
+}
+
+function mergeCheck(a,b){
+ const wa=Array.isArray(a?.works)?a.works:[], wb=Array.isArray(b?.works)?b.works:[];
+ const all=[...wa,...wb], seen=new Map(), dup=[];
+ for(const w of all){
+  const n=String(w?.ncode||"").toUpperCase();
+  if(!n)continue;
+  if(seen.has(n))dup.push(n); else seen.set(n,w);
+ }
+ const works=[...seen.values()];
+ const normal=works.filter(w=>!w.__r18),r18=works.filter(w=>w.__r18);
+ const missingLastup=works.filter(w=>!String(w.general_lastup||"").trim()).length;
+ const missingTotal=works.filter(w=>w.general_all_no===null||w.general_all_no===undefined||String(w.general_all_no)==="").length;
+ const noveltypes=[...new Set(works.map(w=>String(w.noveltype??"")))].sort().join(", ");
+ const ends=[...new Set(works.map(w=>String(w.end??"")))].sort().join(", ");
+ const normalNoUser=normal.filter(w=>!Number(w.userid)).length;
+ const r18NoUser=r18.filter(w=>Number(w.userid)!==0).length;
+ const samples=[];
+ for(const n of ["N5284IA","N0175GW"]){
+  const w=seen.get(n);
+  if(w)samples.push(n+"｜"+w.title,"general_lastup = "+(w.general_lastup||"(空)"),"general_all_no = "+w.general_all_no,"noveltype = "+w.noveltype,"end = "+w.end,"userid = "+w.userid);
+ }
+ return [
+  "前半候補："+wa.length+"件",
+  "後半候補："+wb.length+"件",
+  "統合候補："+all.length+"件",
+  "重複Nコード："+dup.length+"件"+(dup.length?"\n"+dup.slice(0,20).join(", "):""),
+  "ユニークNコード："+works.length+"件",
+  "全年齢："+normal.length+"件",
+  "R18："+r18.length+"件",
+  "general_lastup 欠損："+missingLastup+"件",
+  "general_all_no 欠損："+missingTotal+"件",
+  "noveltype 値："+(noveltypes||"(なし)"),
+  "end 値："+(ends||"(なし)"),
+  "全年齢 userid=0："+normalNoUser+"件",
+  "R18 userid≠0："+r18NoUser+"件",
+  "",
+  ...samples,
+  "",
+  "現行作品マスター：変更していません。"
+ ].join("\n");
+}
+
+async function runMergeCheck(){
+ $("merge").disabled=true;
+ try{
+  const [a,b]=await Promise.all([readCandidate(1),readCandidate(2)]);
+  if(!a||!b) throw new Error("前半・後半の候補が両方そろっていません。");
+  $("mergeChecks").textContent=mergeCheck(a,b);
+ }catch(e){$("mergeChecks").textContent="エラー："+e.message}
+ finally{$("merge").disabled=false}
+}
+
 function check(master,target){
  const map=new Map(master.map(w=>[w.ncode,w])),lines=[
  "旧作品情報の読み込み：0（Nコード識別のみ）\n全年齢/R18は別APIとして取得",
@@ -143,9 +208,9 @@ async function run(){
  }catch(e){$("checks").textContent="エラー："+e.message}
  finally{$("start").disabled=false}
 }
-$("start").onclick=run;
+$("start").onclick=run;\n$("merge").onclick=runMergeCheck;
 $("copy").onclick=async()=>{
- const t="ともたよむ v2.1.2.22｜作品マスター再構築実験\n\n"+$("checks").textContent+"\n\n取得失敗Nコード\n"+$("errors").textContent;
+ const t="ともたよむ v2.1.2.23｜作品マスター統合検査\n\n"+$("checks").textContent+"\n\n取得失敗Nコード\n"+$("errors").textContent;
  try{
   if(navigator.clipboard&&window.isSecureContext) await navigator.clipboard.writeText(t);
   else{const ta=document.createElement("textarea");ta.value=t;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.focus();ta.select();document.execCommand("copy");ta.remove();}
