@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ｜再構築候補結合</title>
+<style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;background:#f7f7f7;color:#222}main{max-width:760px;margin:auto;padding:18px}h1{font-size:20px}.ver{font-size:13px;color:#666}.card{background:#fff;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 1px 4px #0001}button{border:0;border-radius:10px;padding:12px 16px;font-size:15px;background:#222;color:#fff}.mono{font-family:ui-monospace,monospace;white-space:pre-wrap;font-size:12px}</style></head>
+<body><main><h1>ともたよむ</h1><div class="ver">v2.1.2.23｜再構築候補結合実験</div>
+<div class="card"><b>前半＋後半の候補を結合します。</b><p>現行作品マスターは変更しません。結合後の2104件を検証用候補として保存します。</p><button id="run">結合・検証</button></div>
+<div class="card"><div id="out" class="mono">まだ実行していません。</div></div>
+<div class="card"><button id="copy">診断結果をコピー</button></div>
+<script>
+"use strict";
+const DB="tomotaYomu_rebuild",STORE="candidates",OUT="tomotaYomu_rebuilt_master_20261003_merged";
+const $=id=>document.getElementById(id);
+function readPart(part){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB,1);r.onerror=()=>reject(r.error);r.onsuccess=()=>{const db=r.result,t=db.transaction(STORE,"readonly");const q=t.objectStore(STORE).get(String(part));q.onsuccess=()=>{db.close();resolve(q.result||null)};q.onerror=()=>{db.close();reject(q.error)}}})}
+function saveMerged(data){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB,1);r.onsuccess=()=>{const db=r.result,t=db.transaction(STORE,"readwrite");t.objectStore(STORE).put(data,OUT);t.oncomplete=()=>{db.close();resolve()};t.onerror=()=>{db.close();reject(t.error)}};r.onerror=()=>reject(r.error)})}
+async function run(){
+ $("run").disabled=true;
+ try{
+  const a=await readPart(1),b=await readPart(2);
+  if(!a||!b)throw new Error("前半または後半の候補が見つかりません。両方を実行してください。");
+  const all=[...(a.works||[]),...(b.works||[])],map=new Map(),dup=[];
+  for(const w of all){const n=String(w.ncode||"").toUpperCase();if(map.has(n))dup.push(n);else map.set(n,w)}
+  const works=[...map.values()],r18=works.filter(w=>w.__r18).length,normal=works.length-r18;
+  const text="ともたよむ v2.1.2.23｜再構築候補結合実験\n\n前半候補："+(a.count||0)+"件\n後半候補："+(b.count||0)+"件\n結合前："+all.length+"件\n重複Nコード："+dup.length+"件\n結合後："+works.length+"件\n全年齢："+normal+"件\nR18："+r18+"件\n\n欠落・取得失敗\n前半："+(a.failed||0)+"件\n後半："+(b.failed||0)+"件\n\n現行作品マスター：変更していません。";
+  await saveMerged({created_at:new Date().toISOString(),source:"Narou API forced rebuild merged",count:works.length,works});
+  $("out").textContent=text+"\n\n候補結合保存：完了";
+ }catch(e){$("out").textContent="エラー："+e.message}
+ finally{$("run").disabled=false}
+}
+$("run").onclick=run;
+$("copy").onclick=async()=>{const t=$("out").textContent;try{await navigator.clipboard.writeText(t);$("copy").textContent="コピーしました"}catch(e){$("copy").textContent="コピーできませんでした"}setTimeout(()=>$("copy").textContent="診断結果をコピー",1500)};
+</script></main></body></html>
