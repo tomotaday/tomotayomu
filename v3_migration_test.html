@@ -35,6 +35,7 @@ pre{white-space:pre-wrap;background:#fff;border:1px solid #ddd;border-radius:10p
 </div>
 
 <div class="card"><b>④ works_cacheへ作品情報を移行</b><div class="small">現在の本棚2117件だけを対象に、index.htmlで実績のあるJSONP方式で通常APIとR18 APIから作品情報を取得し、works_cacheへ保存します。</div><div class="count" id="workCount">0/0件</div><button id="migrateWorks" disabled>本棚作品情報をIndexedDBへ保存</button></div>
+<div class="card"><b>⑤ works_cache保存内容を確認</b><div class="small">保存件数と主要項目（タイトル・作者・最終更新・話数・完結/連載）を確認します。削除済み13作品は対象外です。</div><button id="verifyWorks">works_cacheを確認</button></div>
 <button id="copy">診断結果をコピー</button>
 <h2>診断結果</h2>
 <pre id="out">まだ開始していません。</pre>
@@ -178,6 +179,34 @@ async function refreshMigrationState(){
     }
   }catch(e){ console.warn("移行状態確認失敗",e); }
 }
+$("verifyWorks").onclick=async()=>{
+  try{
+    $("verifyWorks").disabled=true;
+    await openDB();
+    const rows=await new Promise((ok,no)=>{
+      const a=[],r=db.transaction("works_cache","readonly").objectStore("works_cache").openCursor();
+      r.onsuccess=()=>{if(r.result){a.push(r.result.value);r.result.continue()}else ok(a)};
+      r.onerror=()=>no(r.error);
+    });
+    const missingTitle=rows.filter(w=>!String(w.title||"").trim()).length;
+    const missingWriter=rows.filter(w=>!String(w.writer||"").trim()).length;
+    const missingLastup=rows.filter(w=>!String(w.general_lastup||"").trim()).length;
+    const missingEpisodes=rows.filter(w=>w.general_all_no===undefined||w.general_all_no===null).length;
+    log("works_cache件数："+rows.length);
+    log("タイトル未取得："+missingTitle+"件");
+    log("作者未取得："+missingWriter+"件");
+    log("最終更新未取得："+missingLastup+"件");
+    log("話数未取得："+missingEpisodes+"件");
+    if(rows.length===2104 && !missingTitle && !missingWriter && !missingLastup && !missingEpisodes){
+      log("✓ works_cache主要項目の保存確認完了");
+    }else{
+      log("⚠ works_cacheに要確認項目があります");
+    }
+    const sample=rows[0];
+    if(sample)log("サンプル："+sample.ncode+"｜"+sample.title+"｜"+sample.writer+"｜"+sample.general_all_no+"話");
+    $("verifyWorks").disabled=false;
+  }catch(e){log("✗ works_cache確認エラー："+e.message);$("verifyWorks").disabled=false}
+};
 $("copy").onclick=async()=>{try{await navigator.clipboard.writeText($("out").textContent);alert("コピーしました")}catch(e){alert("コピーできませんでした")}};
 refreshMigrationState();
 </script></main></body></html>
