@@ -43,6 +43,7 @@ pre{white-space:pre-wrap;background:#fff;border:1px solid #ddd;border-radius:10p
 <div class="card"><b>⑩ 本棚2117作品を一括再構築検証</b><div class="small">4つのStoreをNコードで結合し、全作品について画面表示用データが成立するか確認します。既存データは変更しません。</div><button id="rebuildAll">2117作品を検証</button></div>
 <div class="card"><b>⑪ 本棚表示用データを生成</b><div class="small">現存作品について、Nコード順ではなくshelf_placementの順序を保った表示用配列を生成し、先頭・末尾・読書位置あり作品を確認します。既存データは変更しません。</div><button id="buildView">表示用データを検証</button></div>
 <div class="card"><b>⑫ 読書位置338件の突合診断</b><div class="small">読書位置338件を作品情報と突き合わせ、表示用データから外れる作品を特定します。既存データは変更しません。</div><button id="checkReadingJoin">338件を突合</button></div>
+<div class="card"><b>⑬ 読書位置4作品のAPI再照会</b><div class="small">N1351MD・N2954IL・N5420MC・N8546MGだけを通常APIとR18 APIへ照会します。works_cacheは変更しません。</div><button id="checkFour">4作品をAPI照会</button></div>
 <button id="copy">診断結果をコピー</button>
 <h2>診断結果</h2>
 <pre id="out">まだ開始していません。</pre>
@@ -425,6 +426,27 @@ $("checkReadingJoin").onclick=async()=>{
     log(joined.length===positions.length?"✓ 読書位置338件すべて結合可能":"⚠ 読書位置に結合できない作品があります");
     $("checkReadingJoin").disabled=false;
   }catch(e){log("✗ 読書位置突合エラー："+e.message);$("checkReadingJoin").disabled=false}
+};
+$("checkFour").onclick=async()=>{
+  try{
+    $("checkFour").disabled=true;
+    const ncodes=["N1351MD","N2954IL","N5420MC","N8546MG"];
+    log("⑬ API再照会対象："+ncodes.join(", "));
+    const [normal,r18]=await Promise.all([
+      fetchByNcodes(API_GENERAL,ncodes,"通常"),
+      fetchByNcodes(API_R18,ncodes,"R18")
+    ]);
+    const nm=new Map(normal.map(w=>[String(w.ncode||"").toUpperCase(),w]));
+    const rm=new Map(r18.map(w=>[String(w.ncode||"").toUpperCase(),w]));
+    ncodes.forEach(n=>{
+      const w=nm.get(n),r=rm.get(n);
+      log(n+"｜通常="+(w?"取得":"なし")+"｜R18="+(r?"取得":"なし"));
+      if(w)log("  通常："+String(w.title||"")+"｜"+String(w.writer||"")+"｜"+String(w.general_all_no||0)+"話");
+      if(r)log("  R18："+String(r.title||"")+"｜"+String(r.writer||"")+"｜"+String(r.general_all_no||0)+"話");
+    });
+    log(normal.length===0&&r18.length===0?"✓ 4作品ともAPIから取得できません":"⚠ API上で取得できる作品があります");
+    $("checkFour").disabled=false;
+  }catch(e){log("✗ 4作品API照会エラー："+e.message);$("checkFour").disabled=false}
 };
 $("copy").onclick=()=>{
   const text=$("out").textContent;
