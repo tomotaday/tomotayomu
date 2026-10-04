@@ -44,7 +44,7 @@ pre{white-space:pre-wrap;background:#fff;border:1px solid #ddd;border-radius:10p
 "use strict";
 const DB="tomotaYomuDB",VER=1;
 const ST={shelf_names:"shelf_id",shelf_placement:"ncode",works_cache:"ncode",authors:"ncode",reading_position:"ncode"};
-const EXTRA=[];
+const EXTRA=["N0212JU","N8266K"];
 let db=null,target=[];
 const $=id=>document.getElementById(id);
 function log(x){$("out").textContent+=($("out").textContent==="まだ開始していません。"?"":"\n")+x}
@@ -64,7 +64,7 @@ $("prepare").onclick=async()=>{
     log("v2.1.2本体：有効Nコード "+base.length+"件");
     const merged=[...new Set([...base,...EXTRA])];
     target=merged;
-    log("CSV確定の2119件を基準に確認");
+    log("CSVとの差分2件を追加：N0212JU / N8266K");
     log("重複除外後："+target.length+"件");
     if(base.length!==2119)throw Error("移行対象が2119件ではありません："+base.length);
     if(target.length!==2119)throw Error("移行対象が2119件になりません："+target.length);
