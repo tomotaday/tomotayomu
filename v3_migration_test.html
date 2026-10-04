@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ともたよむ｜v3.0.0 CSV→IndexedDB 初回移行版</title>
+<title>ともたよむ｜v3.0.0 IndexedDB初回移行・works_cache版</title>
 <style>
 body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;margin:0;padding:18px;background:#f7f7f7;color:#222}
 main{max-width:700px;margin:auto}.sub{color:#555;font-size:13px;line-height:1.6;margin-bottom:16px}
@@ -12,7 +12,7 @@ pre{white-space:pre-wrap;background:#fff;border:1px solid #ddd;border-radius:10p
 .ok{color:#16733a}
 </style></head><body><main>
 <h1>ともたよむ</h1>
-<div class="sub"><b>v3.0.0｜CSV→IndexedDB 初回移行</b><br>2026/10/04版｜CSVを正本としてNコードを移行</div>
+<div class="sub"><b>v3.0.0｜IndexedDB初回移行・works_cache版</b><br>2026/10/04版｜本棚2117作品を対象に作品情報を移行</div>
 
 <div class="card">
 <b>① CSVを選択</b>
@@ -34,7 +34,7 @@ pre{white-space:pre-wrap;background:#fff;border:1px solid #ddd;border-radius:10p
 <button id="cleanup" class="danger">DBを端末から削除</button>
 </div>
 
-<div class="card"><b>④ works_cache 1件テスト</b><div class="small">現在のshelf_placementからNコードを1件取り出し、通常API→取得できなければR18 APIの順で作品情報を取得して保存します。</div><button id="testWork">1件取得してworks_cacheへ保存</button></div>
+<div class="card"><b>④ works_cacheへ作品情報を移行</b><div class="small">現在の本棚2117件だけを対象に、index.htmlで実績のあるJSONP方式で通常APIとR18 APIから作品情報を取得し、works_cacheへ保存します。</div><div class="count" id="workCount">0/0件</div><button id="migrateWorks" disabled>本棚作品情報をIndexedDBへ保存</button></div>
 <button id="copy">診断結果をコピー</button>
 <h2>診断結果</h2>
 <pre id="out">まだ開始していません。</pre>
@@ -62,45 +62,59 @@ async function getBookshelfNcodes(){
   const doc=new DOMParser().parseFromString(html,"text/html");
   return [...new Set([...doc.querySelectorAll("[data-ncode]")].map(e=>String(e.dataset.ncode||"").trim().toUpperCase()).filter(n=>/^N[0-9A-Z]+$/.test(n)))];
 }
-async function getOneNcode(){
-  return new Promise((ok,no)=>{
-    const r=db.transaction("shelf_placement","readonly").objectStore("shelf_placement").openCursor();
-    r.onsuccess=()=>ok(r.result?r.result.value.ncode:null); r.onerror=()=>no(r.error);
+function jsonp(url){
+  return new Promise((resolve,reject)=>{
+    const cb="tomotaYomu_migration_"+Date.now()+"_"+Math.random().toString(36).slice(2);
+    const script=document.createElement("script");
+    const timer=setTimeout(()=>{cleanup();reject(new Error("JSONP timeout"))},20000);
+    function cleanup(){clearTimeout(timer);try{script.remove()}catch(e){};try{delete window[cb]}catch(e){window[cb]=undefined}}
+    window[cb]=data=>{cleanup();resolve(data)};
+    script.onerror=()=>{cleanup();reject(new Error("JSONP load error"))};
+    script.src=url+"&out=jsonp&callback="+cb+"&_cb="+Date.now();
+    document.head.appendChild(script);
   });
 }
-async function fetchApi(base,ncode){
-  const u=base+"?out=json&of=t-n-u-w-s-bg-g-k-gf-gl-nt-e-ga-nu&ncode="+encodeURIComponent(ncode);
-  const res=await fetch(u,{cache:"no-store"});
-  if(!res.ok)throw Error("API HTTP "+res.status);
-  const j=await res.json();
-  return j;
+async function fetchByNcodes(apiUrl,ncodes,label){
+  const chunks=[];
+  for(let i=0;i<ncodes.length;i+=400)chunks.push(ncodes.slice(i,i+400));
+  const results=[];
+  for(let i=0;i<chunks.length;i++){
+    log(label+" API "+(i+1)+"/"+chunks.length+" を取得中…");
+    const d=await jsonp(apiUrl+"?ncode="+encodeURIComponent(chunks[i].join("-"))+"&of=n-t-s-gl-ga-e-e-nt&lim=500");
+    results.push(...(Array.isArray(d)?d.slice(1):[]));
+  }
+  return results;
 }
-$("testWork").onclick=async()=>{
-  try{
-    $("testWork").disabled=true;
-    await openDB();
-    const ncode=await getOneNcode();
-    if(!ncode)throw Error("shelf_placementにNコードがありません");
-    log("テスト対象："+ncode);
-    let j=await fetchApi(API_GENERAL,ncode),source="general";
-    if(!j[0]||j[0].allcount===0){
-      log("通常API：該当なし → R18 APIを確認");
-      j=await fetchApi(API_R18,ncode); source="r18";
-    }
-    if(!j[0]||j[0].allcount===0)throw Error("通常API/R18 APIのどちらにも該当作品がありません");
-    const work=j[1];
-    const record={ncode:String(work.ncode||ncode).toUpperCase(),source,api_fetched_at:new Date().toISOString(),...work};
-    await new Promise((ok,no)=>{
-      const t=db.transaction("works_cache","readwrite");
-      t.objectStore("works_cache").put(record);
-      t.oncomplete=ok;t.onerror=()=>no(t.error);
-    });
-    log("✓ API取得："+source);
-    log("✓ title："+(record.title||"（タイトルなし）"));
-    log("✓ works_cacheへ1件保存");
-    $("testWork").disabled=false;
-  }catch(e){log("✗ works_cacheテスト："+e.message);$("testWork").disabled=false}
-};
+function slimWork(w,r18){
+  return {ncode:String(w.ncode||"").toUpperCase(),general_lastup:w.general_lastup||"",general_all_no:w.general_all_no||0,end:w.end??0,story:w.story||"",title:w.title||"",writer:w.writer||"",keyword:w.keyword||"",genre:w.genre??0,userid:w.userid??0,noveltype:w.noveltype??0,isstop:w.isstop??0,novelupdated_at:w.novelupdated_at||"",__r18:!!r18,api_fetched_at:new Date().toISOString()};
+}
+async function migrateWorksCache(){
+  await openDB();
+  const ncodes=await new Promise((ok,no)=>{
+    const a=[],r=db.transaction("shelf_placement","readonly").objectStore("shelf_placement").openCursor();
+    r.onsuccess=()=>{if(r.result){a.push(String(r.result.value.ncode||"").toUpperCase());r.result.continue()}else ok([...new Set(a)])};
+    r.onerror=()=>no(r.error);
+  });
+  if(!ncodes.length)throw Error("shelf_placementにNコードがありません");
+  $("workCount").textContent="0/"+ncodes.length+"件";
+  log("works_cache移行対象："+ncodes.length+"件");
+  const [normal,r18]=await Promise.all([fetchByNcodes(API_GENERAL,ncodes,"通常"),fetchByNcodes(API_R18,ncodes,"R18")]);
+  const by=new Map();
+  normal.forEach(w=>by.set(String(w.ncode||"").toUpperCase(),slimWork(w,false)));
+  r18.forEach(w=>by.set(String(w.ncode||"").toUpperCase(),slimWork(w,true)));
+  log("通常API取得："+normal.length+"件");
+  log("R18 API取得："+r18.length+"件");
+  log("API取得合計："+by.size+"件");
+  const tx=db.transaction("works_cache","readwrite"),store=tx.objectStore("works_cache");
+  store.clear();
+  let saved=0;
+  for(const n of ncodes){const work=by.get(n);if(!work)continue;store.put(work);saved++;$("workCount").textContent=saved+"/"+ncodes.length+"件";}
+  await new Promise((ok,no)=>{tx.oncomplete=ok;tx.onerror=()=>no(tx.error);tx.onabort=()=>no(tx.error||new Error("DB transaction aborted"))});
+  log("✓ works_cacheを一度クリア");
+  log("✓ works_cache："+saved+"件保存");
+  log(saved===ncodes.length?"✓ 本棚作品情報の移行完了":"⚠ API未取得："+(ncodes.length-saved)+"件");
+}
+$("migrateWorks").onclick=async()=>{try{$("migrateWorks").disabled=true;await migrateWorksCache();$("migrateWorks").disabled=false}catch(e){log("✗ works_cache移行エラー："+e.message);$("migrateWorks").disabled=false}};
 $("prepare").onclick=async()=>{
   try{
     $("out").textContent="CSVを確認しています。";
@@ -134,6 +148,7 @@ $("migrate").onclick=async()=>{
     log("✓ shelf_placement："+target.length+"件");
     log("✓ IndexedDBへのNコード保存完了");
     $("verify").disabled=false;
+    $("migrateWorks").disabled=false;
   }catch(e){log("✗ DB投入エラー："+e.message);$("migrate").disabled=false}
 };
 $("verify").onclick=async()=>{
