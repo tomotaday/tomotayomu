@@ -39,6 +39,7 @@ pre{white-space:pre-wrap;background:#fff;border:1px solid #ddd;border-radius:10p
 <div class="card"><b>⑥ authorsを構築</b><div class="small">works_cacheに保存済みの作者名からauthorsを構築します。Narou APIは再取得しません。</div><div class="count" id="authorCount">0件</div><button id="buildAuthors">works_cacheからauthorsを保存</button></div>
 <div class="card"><b>⑦ reading_positionを確認</b><div class="small">現在のIndexedDBに保存されている読書位置を確認します。読書位置の移行元はまだ変更しません。</div><div class="count" id="readingCount">0件</div><button id="verifyReading">reading_positionを確認</button></div>
 <div class="card"><b>⑧ reading_position内容を検証</b><div class="small">ncode・episodeの形式、本棚との対応、読書位置の範囲を確認します。既存データは変更しません。</div><button id="checkReading">reading_positionを検証</button></div>
+<div class="card"><b>⑨ 1作品の完成データを再構築</b><div class="small">shelf_placement・works_cache・authors・reading_positionをNコードで結合し、画面表示用の1作品データを確認します。既存データは変更しません。</div><button id="rebuildOne">1作品を再構築</button></div>
 <button id="copy">診断結果をコピー</button>
 <h2>診断結果</h2>
 <pre id="out">まだ開始していません。</pre>
@@ -287,6 +288,44 @@ $("checkReading").onclick=async()=>{
     if(first)log("確認例："+String(first.ncode||"")+"｜episode="+String(first.episode));
     $("checkReading").disabled=false;
   }catch(e){log("✗ reading_position検証エラー："+e.message);$("checkReading").disabled=false}
+};
+$("rebuildOne").onclick=async()=>{
+  try{
+    $("rebuildOne").disabled=true;
+    await openDB();
+    const readAll=name=>new Promise((ok,no)=>{
+      const a=[],r=db.transaction(name,"readonly").objectStore(name).openCursor();
+      r.onsuccess=()=>{if(r.result){a.push(r.result.value);r.result.continue()}else ok(a)};
+      r.onerror=()=>no(r.error);
+    });
+    const [placements,works,authors,positions]=await Promise.all([
+      readAll("shelf_placement"),readAll("works_cache"),readAll("authors"),readAll("reading_position")
+    ]);
+    const n=String(placements[0]?.ncode||"").toUpperCase();
+    if(!n)throw Error("shelf_placementに作品がありません");
+    const work=works.find(v=>String(v.ncode||"").toUpperCase()===n)||null;
+    const author=authors.find(v=>String(v.ncode||"").toUpperCase()===n)||null;
+    const position=positions.find(v=>String(v.ncode||"").toUpperCase()===n)||null;
+    const result={
+      ncode:n,
+      shelf_id:placements[0]?.shelf_id||"",
+      title:work?.title||"",
+      writer:author?.writer||work?.writer||"",
+      general_all_no:work?.general_all_no??0,
+      general_lastup:work?.general_lastup||"",
+      end:work?.end??0,
+      noveltype:work?.noveltype??0,
+      reading_episode:position?.episode??null,
+      has_work:!!work,
+      has_author:!!author,
+      has_reading_position:!!position
+    };
+    log("⑨ 1作品再構築：");
+    log(JSON.stringify(result,null,2));
+    log(result.has_work&&result.has_author?"✓ 作品情報＋作者情報を結合":"⚠ 作品情報または作者情報がありません");
+    log(result.has_reading_position?"✓ 読書位置も結合":"○ この作品には読書位置なし");
+    $("rebuildOne").disabled=false;
+  }catch(e){log("✗ 1作品再構築エラー："+e.message);$("rebuildOne").disabled=false}
 };
 $("copy").onclick=()=>{
   const text=$("out").textContent;
