@@ -41,6 +41,7 @@ pre{white-space:pre-wrap;background:#fff;border:1px solid #ddd;border-radius:10p
 <script>
 "use strict";
 const DB="tomotaYomuDB",VER=1;
+const PRODUCTION_URL="index.html?migration_filter_20261004";
 const ST={shelf_names:"shelf_id",shelf_placement:"ncode",works_cache:"ncode",authors:"ncode",reading_position:"ncode"};
 let db=null,target=[];
 const $=id=>document.getElementById(id);
@@ -53,6 +54,11 @@ function extractNcodes(csv){
   let m; while((m=re.exec(csv))!==null) out.push(m[1].toUpperCase());
   return out;
 }
+async function getBookshelfNcodes(){
+  const html=await (await fetch(PRODUCTION_URL,{cache:"no-store"})).text();
+  const doc=new DOMParser().parseFromString(html,"text/html");
+  return [...new Set([...doc.querySelectorAll("[data-ncode]")].map(e=>String(e.dataset.ncode||"").trim().toUpperCase()).filter(n=>/^N[0-9A-Z]+$/.test(n)))];
+}
 $("prepare").onclick=async()=>{
   try{
     $("out").textContent="CSVを確認しています。";
@@ -60,11 +66,15 @@ $("prepare").onclick=async()=>{
     if(!f1||!f2)throw Error("通常CSVとR18 CSVの2つを選択してください");
     const [c1,c2]=await Promise.all([readFile(f1),readFile(f2)]);
     const a=extractNcodes(c1),b=extractNcodes(c2);
-    target=[...new Set([...a,...b])];
+    const csvCodes=new Set([...a,...b]);
+    const shelf=await getBookshelfNcodes();
+    target=shelf.filter(n=>csvCodes.has(n));
     log("通常CSV："+a.length+"件");
     log("R18 CSV："+b.length+"件");
-    log("重複除外後："+target.length+"件");
-    log("✓ CSVから移行対象Nコードを確定");
+    log("CSV重複除外後："+csvCodes.size+"件");
+    log("現在の本棚："+shelf.length+"件");
+    log("本棚に存在するCSV対象："+target.length+"件");
+    log(target.length===shelf.length?"✓ 本棚分だけを移行対象として確定":"⚠ 本棚とCSVの一致件数が異なります");
     $("count").textContent=target.length+"件";
     $("migrate").disabled=target.length===0;
   }catch(e){log("✗ CSV確認エラー："+e.message)}
