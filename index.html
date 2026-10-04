@@ -152,8 +152,18 @@ async function hydrateCandidateWorks(){
   }catch(e){ console.warn("候補作品の最新情報取得に失敗",e); }
 }
 
-const CSV_SHELF_FOLDER_MAP={"N0030HU":"🟠読書中","N0051GP":"🟠読書中","N0123IV":"🟠読書中","N0212JU":"🟠読書中","N0370LQ":"🎈ま〜も","N0593IQ":"🟠読書中","N0600JD":"🟠読書中","N0644GM":"🟠読書中","N1028JP":"🎈さ〜そ","N1238HC":"🟠読書中","N1594GH":"🟠読書中","N1598IK":"🟠読書中","N1673KH":"🎈ま〜も","N2049GR":"🟠読書中","N2251HS":"🟠読書中","N2319IK":"🟠読書中","N2449HO":"🟠読書中","N2750JS":"🟠読書中","N2752LG":"🎈さ〜そ","N2774IL":"🟠読書中","N2833KW":"🟠読書中","N2862JB":"🎈や〜ん","N3556IG":"🟠読書中","N3580EU":"🟠読書中","N3609DD":"🎈か〜こ","N3720HM":"🟠読書中","N4060GJ":"🟠読書中","N4291LI":"🟠読書中","N4505EU":"🎈あ〜お","N4608LR":"🎈さ〜そ","N4644HT":"🟠読書中","N4712FW":"🟠読書中","N4719LT":"🎈か〜こ","N5057IC":"🟠読書中","N5315GK":"🟠読書中","N5599IN":"🎈か〜こ","N6106LC":"🟠読書中","N6577IM":"🟠読書中","N6682GF":"🟠読書中","N7025FC":"🎈あ〜お","N7412GL":"🟠読書中","N7413HM":"🟠読書中","N7466II":"🟠読書中","N7469KT":"🟠読書中","N8303IO":"🎈さ〜そ","N8462KW":"🟠読書中","N8523HP":"🟠読書中","N8607CM":"🎈た〜と","N8697GP":"🟠読書中","N8909IH":"🟠読書中","N8922HW":"🟠読書中","N9647IA":"🎈ま〜も","N9770ML":"🟠読書中","N9824JW":"🟠読書中","N0034LU":"🌀は〜ほ","N0064HK":"🌀ま〜も","N0073ID":"⏰更新待ち","N0108DQ":"🌀は〜ほ","N0121HV":"🌀さ〜そ","N0157MM":"🌀か〜こ","N0312BC":"🌀た〜と","N0325EQ":"🌀な〜の","N0334FS":"🌀あ〜お","N0338KH":"🌀た〜と","N0374HO":"🌀ま〜も","N0381LC":"🔵読書中","N0438HG":"🌀あ〜お","N0483IF":"🌀あ〜お","N0489HF":"🌀さ〜そ","N0717HV":"🔵読書中","N0797LK":"🌀た〜と","N0913IH":"🔵読書中","N0996GF":"🌀か〜こ","N1019HK":"🔵読書中","N1034HY":"🔵読書中","N1041EB":"🌀は〜ほ","N1087JU":"🌀た〜と","N1113FS":"🌀か〜こ","N1179JX":"🌀た〜と","N1194KE":"🌀や〜ん","N1201IH":"🌀あ〜お","N1223GF":"🌀あ〜お","N1227GT":"🔵読書中","N1253FS":"🌀か〜こ","N1301IF":"🌀あ〜お","N1302LQ":"🌀は〜ほ","N1322MD":"🌀や〜ん","N1350GV":"🌀あ〜お","N1351MD":"🌀は〜ほ","N1370HJ":"🌀た〜と","N1392LN":"🌀あ〜お","N1444KS":"🌀は〜ほ","N1446JH":"🌀か〜こ","N1466IR":"🌀あ〜お","N1470HC":"🌀は〜ほ","N1499CV":"🌀か〜こ","N1550JQ":"🌀ま〜も","N1553IU":"🔵読書中","N1565EC":"🌀さ〜そ","N1584CW":"⏰更新待ち","N1596HD":"🌀は〜ほ","N1607HS":"🌀か〜こ","N1659HM":"🌀な〜の","N1719HY":"⏰更新待ち","N1735HJ":"🌀さ〜そ","N1769JT":"⏰更新待ち","N1781GS":"🌀ま〜も","N1853FE":"🌀な〜の","N1904BE":"🌀た〜と","N1914KD":"⏰更新待ち","N1916KJ":"🔵読書中","N1945IE":"🌀た〜と","N1954HH":"🌀や〜ん","N2003IK":"🌀た〜と","N2020GV":"⏰更新待ち","N2035GR":"🌀あ〜お","N2093IQ":"🌀ま〜も","N2101JY":"🌀た〜と","N2103LM":"🌀さ〜そ","N2109JJ":"⏰更新待ち","N2128DT":"🌀か〜こ","N2213GI":"🔵読書中","N2218JU":"🌀た〜と","N2231LO":"🌀あ〜お","N2255HZ":"⏰更新待ち","N2381KU":"🌀は〜ほ","N2382KF":"🌀か〜こ","N2386LM":"🌀か〜こ","N2499HR":"🌀か〜こ","N2512JX":"🔵読書中","N2546JO":"🔵読書中","N2592GF":"🌀ま〜も","N2765KJ":"🌀た〜と","N2774IP":"🌀か〜こ","N2836CR":"🌀さ〜そ","N2891EC":"🌀は〜ほ","N2982DS":"🌀か〜こ","N2984JZ":"🌀あ〜お","N2984KX":"🌀は〜ほ","N2990JX":"🌀や〜ん","N3152MA":"🌀さ〜そ","N3182GZ":"🔵読書中","N3208FG":"🌀あ〜お","N3225MK":"🌀あ〜お","N3239ML":"🔵読書中","N3288HO":"🔵読書中","N3339LE":"🌀か〜こ","N3341KB":"🔵読書中","N3348IU":"🌀さ〜そ","N3356IA":"🌀や〜ん","N3378HX":"⏰更新待ち","N3389JB":"🌀や〜ん","N3451KT":"🌀た〜と","N3506MF":"🌀ま〜も","N3547GZ":"🌀ま〜も","N3564HA":"🌀さ〜そ","N3565S":"⏰更新待ち","N3593HM":"🌀や〜ん","N3617CG":"⏰更新待ち","N3627MQ":"🔵読書中","N3628MI":"🌀か〜こ","N3649CT":"🌀か〜こ","N3659FA":"🌀さ〜そ","N3718LW":"🌀あ〜お","N3728FR":"🔵読書中","N3755MH":"🌀か〜こ","N3764JC":"🌀や〜ん","N3764LQ":"🌀か〜こ","N3766GA":"🔵読書中","N3792IY":"🌀さ〜そ","N3826BE":"🌀た〜と","N3884KP":"🌀は〜ほ","N3946LZ":"🌀や〜ん","N4027MB":"🌀か〜こ","N4032IV":"🌀さ〜そ","N4161HI":"🔵読書中","N4173JW":"🌀さ〜そ","N4182IV":"🌀た〜と","N4218JZ":"🔵読書中","N4321IR":"🌀た〜と","N4323HB":"🌀ま〜も","N4363LV":"🌀あ〜お","N4404LO":"🌀は〜ほ","N4435KN":"🌀た〜と","N4467MF":"🌀あ〜お","N4469GM":"🔵読書中","N4520BY":"🌀さ〜そ","N4529IP":"🌀や〜ん","N4531KA":"🌀や〜ん","N4541JP":"🌀た〜と","N4560JQ":"🌀か〜こ","N4561MJ":"🌀や〜ん"};
+function loadShelfRestoreMap(){
+  return new Promise((ok,no)=>{
+    if(window.ORIGINAL_SHELF_MAP){ok();return;}
+    const s=document.createElement("script");
+    s.src="v3_shelf_restore_map.js";
+    s.onload=()=>ok();
+    s.onerror=()=>no(new Error("shelf restore map load failed"));
+    document.head.appendChild(s);
+  });
+}
 async function buildV3CardsFromIndexedDB(){
+  await loadShelfRestoreMap();
   const db=await new Promise((ok,no)=>{
     const r=indexedDB.open("tomotaYomuDB",1);
     r.onsuccess=()=>ok(r.result);
@@ -181,9 +191,9 @@ async function buildV3CardsFromIndexedDB(){
   const shelfIdByCore=new Map();
   shelves.forEach(v=>{const id=String(v.shelf_id||"").trim(),core=shelfCore(shelfText(v));if(id&&core&&!shelfIdByCore.has(core))shelfIdByCore.set(core,id);});
   const allSameShelf=placements.length>0 && new Set(placements.map(v=>String(v.shelf_id||"").trim())).size===1;
-  if(allSameShelf && Object.keys(CSV_SHELF_FOLDER_MAP).length){
+  if(allSameShelf && Object.keys(window.ORIGINAL_SHELF_MAP||{}).length){
     const repaired=placements.map(p=>{
-      const n=String(p.ncode||"").toUpperCase(), raw=CSV_SHELF_FOLDER_MAP[n]||"未分類", core=shelfCore(raw), sid=shelfIdByCore.get(core)||shelfIdByCore.get("未分類")||String(p.shelf_id||"").trim();
+      const n=String(p.ncode||"").toUpperCase(), raw=(window.ORIGINAL_SHELF_MAP||{})[n]||"未分類", core=shelfCore(raw), sid=shelfIdByCore.get(core)||shelfIdByCore.get("未分類")||String(p.shelf_id||"").trim();
       return {...p,shelf_id:sid};
     });
     const changed=repaired.some((p,i)=>String(p.shelf_id||"")!==String(placements[i].shelf_id||""));
