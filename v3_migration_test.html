@@ -164,5 +164,20 @@ $("cleanup").onclick=()=>{
   r.onsuccess=()=>{$("out").textContent="✓ DBを端末から削除しました。";$("count").textContent="0件"};
   r.onerror=()=>log("✗ DB削除エラー");
 };
+async function refreshMigrationState(){
+  try{
+    await openDB();
+    const n=await new Promise((ok,no)=>{
+      const r=db.transaction("shelf_placement","readonly").objectStore("shelf_placement").count();
+      r.onsuccess=()=>ok(r.result); r.onerror=()=>no(r.error);
+    });
+    if(n>0){
+      $("migrateWorks").disabled=false;
+      $("workCount").textContent="0/"+n+"件";
+      log("既存のshelf_placement："+n+"件 → ④を実行できます");
+    }
+  }catch(e){ console.warn("移行状態確認失敗",e); }
+}
 $("copy").onclick=async()=>{try{await navigator.clipboard.writeText($("out").textContent);alert("コピーしました")}catch(e){alert("コピーできませんでした")}};
+refreshMigrationState();
 </script></main></body></html>
