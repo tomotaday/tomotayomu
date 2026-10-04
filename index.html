@@ -15822,6 +15822,8 @@ function seedReadingCache(){
   if(changed)saveJSON(READ_KEY,m);
 }
 function updateCard(card,w){
+  const titleEl=card.querySelector("h2"); if(titleEl && w.title) titleEl.textContent=w.title;
+  const authorEl=card.querySelector(".author"); if(authorEl && w.writer) authorEl.textContent="作者："+w.writer;
   const n=String(w.ncode||card.dataset.ncode).toUpperCase();
   card.dataset.lastUpdated = w.general_lastup || card.dataset.lastUpdated || "";
   card.dataset.totalEpisodes = w.general_all_no || card.dataset.totalEpisodes || "";
