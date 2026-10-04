@@ -222,9 +222,9 @@ async function buildV3CardsFromIndexedDB(){
       const n=String(p.ncode||"").toUpperCase();
       const originalLabel=String(originalShelfByNcode[n]||"").trim();
       const originalCore=shelfCore(originalLabel);
-      let sid="__UNCLASSIFIED__";
+      let sid="";
       if(originalCore){
-        sid=shelfIdByCore.get(originalCore)||"__UNCLASSIFIED__";
+        sid=shelfIdByCore.get(originalCore)||"";
       }
       return {...p,shelf_id:sid};
     });
@@ -256,9 +256,9 @@ async function buildV3CardsFromIndexedDB(){
     const n=String(p.ncode||"").toUpperCase(),w=wm.get(n);
     if(!w){deleted++;continue;}
     const sid=String(p.shelf_id||"").trim();
-    const rawShelf=sid==="__UNCLASSIFIED__" ? "未分類" : shelfText(sm.get(sid));
+    const rawShelf=shelfText(sm.get(sid));
     const shelf=shelfLabel(rawShelf);
-    if(sid!=="__UNCLASSIFIED__" && !sm.has(sid))unmapped++;
+    if(sid && !sm.has(sid))unmapped++;
 
     const card=document.createElement("article");
     card.className="card";
@@ -278,7 +278,7 @@ async function buildV3CardsFromIndexedDB(){
   const s=document.getElementById("apiStatus");
   if(s){ const shelfCounts={}; placements.forEach(p=>{const id=String(p.shelf_id||"(空)").trim(); shelfCounts[id]=(shelfCounts[id]||0)+1;}); const shelfDebug=Object.entries(shelfCounts).map(([id,n])=>id+"="+n).join(" / "); s.textContent="v3 IndexedDB：本棚"+placements.length+"件｜表示"+made+"件｜削除済み"+deleted+"件｜作品情報"+works.length+"件｜作者"+authors.length+"件｜読書位置"+positions.length+"件｜棚"+shelves.length+"件｜棚未対応"+unmapped+"件｜棚ID内訳 "+shelfDebug; }
   const sum=document.getElementById("bookshelfSummary");
-  if(sum)sum.textContent="📚 本棚 "+made+"｜TEST-3006";
+  if(sum)sum.textContent="📚 本棚 "+made+"｜TEST-3008";
   return {shelves,placements,made,deleted,works,authors,positions,unmapped};
 }
 function formatDate(v) { if (!v) return "—"; const d = new Date(String(v).replace(" ", "T")); if (isNaN(d)) return String(v).slice(0,10).replaceAll("-","/"); return d.toLocaleString("ja-JP", {year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}); }
