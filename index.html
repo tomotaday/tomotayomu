@@ -163,7 +163,8 @@ async function buildV3CardsFromIndexedDB(){
   const [placements,works,authors,positions]=await Promise.all([readAll("shelf_placement"),readAll("works_cache"),readAll("authors"),readAll("reading_position")]);
   const wm=new Map(works.map(v=>[String(v.ncode||"").toUpperCase(),v]));
   const am=new Map(authors.map(v=>[String(v.ncode||"").toUpperCase(),v]));
-  const pm=new Map(positions.map(v=>[String(v.ncode||"").toUpperCase(),v]));\n  const readMap=readingMap(); positions.forEach(v=>{ const n=String(v.ncode||"").toUpperCase(); if(/^N[0-9A-Z]+$/.test(n)&&Number.isFinite(Number(v.episode))) readMap[n]=Number(v.episode); }); saveJSON(READ_KEY,readMap);
+  const pm=new Map(positions.map(v=>[String(v.ncode||"").toUpperCase(),v]));
+  const readMap=readingMap(); positions.forEach(v=>{ const n=String(v.ncode||"").toUpperCase(); if(/^N[0-9A-Z]+$/.test(n)&&Number.isFinite(Number(v.episode))) readMap[n]=Number(v.episode); }); saveJSON(READ_KEY,readMap);
   const source=document.getElementById("shelf"); source.innerHTML="";
   let made=0,deleted=0;
   for(const p of placements){
@@ -231,7 +232,8 @@ function restoreReadingPositions(){
 
 function readingMap(){ return loadJSON(READ_KEY,{}); }
 function readingFor(n){ const r=readingMap()[String(n).toUpperCase()]; return Number.isFinite(Number(r)) ? Number(r) : null; }
-function setReading(n,episode){ const key=String(n).toUpperCase(), value=Number(episode); const m=readingMap(); m[key]=value; saveJSON(READ_KEY,m); saveReadingToIndexedDB(key,value); }\nfunction saveReadingToIndexedDB(n,episode){ try{ const r=indexedDB.open("tomotaYomuDB",1); r.onsuccess=()=>{ const d=r.result; if(!d.objectStoreNames.contains("reading_position"))return; const t=d.transaction("reading_position","readwrite"); t.objectStore("reading_position").put({ncode:n,episode:Number(episode)}); }; }catch(e){ console.warn("reading_position保存失敗",e); } }
+function setReading(n,episode){ const key=String(n).toUpperCase(), value=Number(episode); const m=readingMap(); m[key]=value; saveJSON(READ_KEY,m); saveReadingToIndexedDB(key,value); }
+function saveReadingToIndexedDB(n,episode){ try{ const r=indexedDB.open("tomotaYomuDB",1); r.onsuccess=()=>{ const d=r.result; if(!d.objectStoreNames.contains("reading_position"))return; const t=d.transaction("reading_position","readwrite"); t.objectStore("reading_position").put({ncode:n,episode:Number(episode)}); }; }catch(e){ console.warn("reading_position保存失敗",e); } }
 function seedReadingCache(){
   const m=readingMap(); let changed=false;
   document.querySelectorAll("#shelf .card").forEach(card=>{
