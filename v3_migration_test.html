@@ -85,8 +85,10 @@ $("migrate").onclick=async()=>{
     await openDB();
     const t=db.transaction("shelf_placement","readwrite");
     const s=t.objectStore("shelf_placement");
+    s.clear();
     for(const n of target)s.put({ncode:n,shelf_id:"shelf01"});
     await new Promise((ok,no)=>{t.oncomplete=ok;t.onerror=()=>no(t.error);t.onabort=()=>no(t.error||new Error("DB transaction aborted"))});
+    log("✓ shelf_placementを一度クリア");
     log("✓ shelf_placement："+target.length+"件");
     log("✓ IndexedDBへのNコード保存完了");
     $("verify").disabled=false;
