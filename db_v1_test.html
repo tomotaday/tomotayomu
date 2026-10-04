@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ともたよむ｜DB v1 テスト室</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;padding:20px;background:#f7f7f7;color:#222}
+main{max-width:680px;margin:auto}h1{font-size:22px;margin:0 0 4px}.sub{color:#666;font-size:13px;margin-bottom:18px}
+button{width:100%;padding:13px 12px;margin:6px 0;border:1px solid #ccc;border-radius:10px;background:#fff;font-size:15px}
+button:disabled{opacity:.45}pre{white-space:pre-wrap;background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px;font-size:12px;line-height:1.55}
+</style></head><body><main>
+<h1>ともたよむ</h1><div class="sub">DB v1 テスト室｜tomotaYomuDB</div>
+<button id="init">① DBを初期化</button>
+<button id="put" disabled>② NTEST01を登録</button>
+<button id="read" disabled>③ NTEST01を読み出す</button>
+<button id="move" disabled>④ 本棚をshelf03へ変更</button>
+<button id="pos" disabled>⑤ 読書位置を100話へ変更</button>
+<button id="del" disabled>⑥ NTEST01を完全削除</button>
+<button id="verify" disabled>⑦ 削除確認</button>
+<button id="copy">診断結果をコピー</button>
+<h2>診断結果</h2><pre id="out">まだテストしていません。</pre>
+</main>
+<script>
+"use strict";
+const DB_NAME="tomotaYomuDB",DB_VERSION=1,NCODE="NTEST01";
+const STORES={shelf_names:"shelf_id",shelf_placement:"ncode",works_cache:"ncode",authors:"ncode",reading_position:"ncode"};
+let db=null;const $=id=>document.getElementById(id);
+function log(m,ok=true){$("out").textContent+=($("out").textContent.includes("まだテスト")?"":"\n")+(ok?"✓ ":"✗ ")+m}
+function enable(ids){ids.forEach(id=>$(id).disabled=false)}
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=e=>{const d=e.target.result;for(const [n,k] of Object.entries(STORES))if(!d.objectStoreNames.contains(n))d.createObjectStore(n,{keyPath:k})};r.onsuccess=e=>{db=e.target.result;res(db)};r.onerror=()=>rej(r.error)})}
+function tx(names,mode,fn){return new Promise((res,rej)=>{const t=db.transaction(names,mode),s=Object.fromEntries(names.map(n=>[n,t.objectStore(n)]));try{fn(s)}catch(e){rej(e);return}t.oncomplete=()=>res();t.onerror=()=>rej(t.error)})}
+function get(store,key){return new Promise((res,rej)=>{const r=db.transaction(store,"readonly").objectStore(store).get(key);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+function count(store){return new Promise((res,rej)=>{const r=db.transaction(store,"readonly").objectStore(store).count();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+$("init").onclick=async()=>{try{db=await openDB();$("out").textContent="";log("DBを開きました："+DB_NAME+" / version "+DB_VERSION);for(const s of Object.keys(STORES)){if(!db.objectStoreNames.contains(s))throw Error(s+" がありません");log(s+"：OK")}enable(["put"])}catch(e){log("DB初期化エラー："+e.message,false)}};
+$("put").onclick=async()=>{try{await tx(Object.keys(STORES),"readwrite",s=>{s.shelf_names.put({shelf_id:"shelf20",name:"仮保存"});s.shelf_placement.put({ncode:NCODE,shelf_id:"shelf20"});s.works_cache.put({ncode:NCODE,title:"テスト作品",writer:"テスト作者",general_lastup:"2026-10-04 00:00:00",general_all_no:100,noveltype:1,end:1,__r18:false});s.authors.put({ncode:NCODE,type:"normal",userid:"12345"});s.reading_position.put({ncode:NCODE,episode:62})});log("NTEST01を5ストアへ登録");enable(["read"]);$("put").disabled=true}catch(e){log("登録エラー："+e.message,false)}};
+$("read").onclick=async()=>{try{const p=await Promise.all([get("shelf_placement",NCODE),get("works_cache",NCODE),get("authors",NCODE),get("reading_position",NCODE)]);if(!p.every(Boolean))throw Error("一部データが読み出せません");log("読み出し：OK");log("本棚="+p[0].shelf_id+"｜作品="+p[1].title+"｜作者ID="+p[2].userid+"｜読書位置="+p[3].episode+"話");enable(["move","pos","del"])}catch(e){log("読み出しエラー："+e.message,false)}};
+$("move").onclick=async()=>{try{await tx(["shelf_placement"],"readwrite",s=>s.shelf_placement.put({ncode:NCODE,shelf_id:"shelf03"}));log("本棚変更："+(await get("shelf_placement",NCODE)).shelf_id);$("move").disabled=true}catch(e){log("本棚変更エラー："+e.message,false)}};
+$("pos").onclick=async()=>{try{await tx(["reading_position"],"readwrite",s=>s.reading_position.put({ncode:NCODE,episode:100}));log("読書位置変更："+(await get("reading_position",NCODE)).episode+"話");$("pos").disabled=true}catch(e){log("読書位置変更エラー："+e.message,false)}};
+$("del").onclick=async()=>{if(!confirm("NTEST01を4つのNコード系ストアから完全削除します。実行しますか？"))return;try{await tx(["shelf_placement","works_cache","authors","reading_position"],"readwrite",s=>{s.shelf_placement.delete(NCODE);s.works_cache.delete(NCODE);s.authors.delete(NCODE);s.reading_position.delete(NCODE)});log("NTEST01を完全削除");$("del").disabled=true;enable(["verify"])}catch(e){log("削除エラー："+e.message,false)}};
+$("verify").onclick=async()=>{try{const v=await Promise.all([get("shelf_placement",NCODE),get("works_cache",NCODE),get("authors",NCODE),get("reading_position",NCODE)]),ok=v.every(x=>x===undefined);log("削除確認："+(ok?"NTEST01の4ストアからの消去を確認":"残存データあり"),ok);for(const s of Object.keys(STORES))log(s+" 件数="+await count(s));$("verify").disabled=true}catch(e){log("削除確認エラー："+e.message,false)}};
+$("copy").onclick=async()=>{try{await navigator.clipboard.writeText($("out").textContent);$("copy").textContent="コピーしました";setTimeout(()=>$("copy").textContent="診断結果をコピー",1200)}catch(e){alert("コピーできませんでした。診断結果を長押ししてコピーしてください。")}};
+</script></body></html>
