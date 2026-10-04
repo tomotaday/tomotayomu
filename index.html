@@ -154,7 +154,7 @@ async function hydrateCandidateWorks(){
 
 function loadShelfRestoreMap(){
   return new Promise((ok,no)=>{
-    if(window.ORIGINAL_SHELF_MAP){ok();return;}
+    if(window.ORIGINAL_READING_NCODES){ok();return;}
     const s=document.createElement("script");
     s.src="v3_shelf_restore_map.js";
     s.onload=()=>ok();
@@ -188,6 +188,14 @@ async function buildV3CardsFromIndexedDB(){
     if(s.includes("未分類"))return "未分類";
     for(const k of ["あ〜お","か〜こ","さ〜そ","た〜と","な〜の","は〜ほ","ま〜も","や〜ん","更新待ち"]) if(s.includes(k)||s.includes(k.replace("〜","-"))) return k;
     return "";
+  };
+  const shelfLabel=raw=>{
+    const core=shelfCore(raw);
+    if(core==="読書中")return "🟠読書中";
+    if(core==="未分類")return "未分類";
+    if(core==="更新待ち")return "⏰更新待ち";
+    if(core)return "🎈"+core;
+    return String(raw||"").trim();
   };
   const shelfIdByCore=new Map();
   const shelfIdsByCore=new Map();
@@ -360,7 +368,7 @@ function applyCardState(card){
 }
 function buildShelfFolders(){
   const root=document.getElementById("shelfSections"), source=document.getElementById("shelf"); if(!root||!source)return; root.innerHTML="";
-  const order=[["🟠 読書中","🟠読書中"],["📚 未分類","未分類"],["🎈 あ〜お","🎈あ〜お"],["🎈 か〜こ","🎈か〜こ"],["🎈 さ〜そ","🎈さ〜そ"],["🎈 た〜と","🎈た〜と"],["🎈 な〜の","🎈な〜の"],["🎈 は〜ほ","🎈は〜ほ"],["🎈 ま〜も","🎈ま〜も"],["🎈 や〜ん","🎈や〜ん"],["⏰ 更新待ち","⏰更新待ち"]];
+  const order=[["🟠 読書中","🟠読書中"],["🎈 あ〜お","🎈あ〜お"],["🎈 か〜こ","🎈か〜こ"],["🎈 さ〜そ","🎈さ〜そ"],["🎈 た〜と","🎈た〜と"],["🎈 な〜の","🎈な〜の"],["🎈 は〜ほ","🎈は〜ほ"],["🎈 ま〜も","🎈ま〜も"],["🎈 や〜ん","🎈や〜ん"],["⏰ 更新待ち","⏰更新待ち"],["📚 未分類","未分類"]];
   const cards=[...source.querySelectorAll(":scope > .card")]; const getFolder=card=>{const text=(card.querySelector(".meta")?.textContent||"").replace(/\s+/g,""); for(const [,key] of order)if(text.includes(key.replace(/\s+/g,"")))return key; return "未分類";};
   for(const [label,key] of order){const members=cards.filter(c=>getFolder(c)===key).sort((a,b)=>(b.dataset.lastUpdated||"").localeCompare(a.dataset.lastUpdated||"")); if(!members.length)continue; const d=document.createElement("details"); d.className="folderDetails"; if(key==="🟠読書中")d.open=true; const sm=document.createElement("summary"); sm.textContent=`${label} ${members.length}`; const wrap=document.createElement("div"); wrap.className="folderCards"; members.forEach(c=>wrap.appendChild(c.cloneNode(true))); d.append(sm,wrap); root.appendChild(d);}
   source.hidden=true;
