@@ -42,6 +42,7 @@ pre{white-space:pre-wrap;background:#fff;border:1px solid #ddd;border-radius:10p
 <div class="card"><b>⑨ 1作品の完成データを再構築</b><div class="small">shelf_placement・works_cache・authors・reading_positionをNコードで結合し、画面表示用の1作品データを確認します。既存データは変更しません。</div><button id="rebuildOne">1作品を再構築</button></div>
 <div class="card"><b>⑩ 本棚2117作品を一括再構築検証</b><div class="small">4つのStoreをNコードで結合し、全作品について画面表示用データが成立するか確認します。既存データは変更しません。</div><button id="rebuildAll">2117作品を検証</button></div>
 <div class="card"><b>⑪ 本棚表示用データを生成</b><div class="small">現存作品について、Nコード順ではなくshelf_placementの順序を保った表示用配列を生成し、先頭・末尾・読書位置あり作品を確認します。既存データは変更しません。</div><button id="buildView">表示用データを検証</button></div>
+<div class="card"><b>⑫ 読書位置338件の突合診断</b><div class="small">読書位置338件を作品情報と突き合わせ、表示用データから外れる作品を特定します。既存データは変更しません。</div><button id="checkReadingJoin">338件を突合</button></div>
 <button id="copy">診断結果をコピー</button>
 <h2>診断結果</h2>
 <pre id="out">まだ開始していません。</pre>
@@ -395,6 +396,35 @@ $("buildView").onclick=async()=>{
     log(view.length===2104&&withReading===338?"✓ 現存2104作品の表示用データ生成を確認":"⚠ 表示用データに要確認項目があります");
     $("buildView").disabled=false;
   }catch(e){log("✗ 表示用データ生成エラー："+e.message);$("buildView").disabled=false}
+};
+$("checkReadingJoin").onclick=async()=>{
+  try{
+    $("checkReadingJoin").disabled=true;
+    await openDB();
+    const readAll=name=>new Promise((ok,no)=>{
+      const a=[],r=db.transaction(name,"readonly").objectStore(name).openCursor();
+      r.onsuccess=()=>{if(r.result){a.push(r.result.value);r.result.continue()}else ok(a)};
+      r.onerror=()=>no(r.error);
+    });
+    const [works,positions]=await Promise.all([readAll("works_cache"),readAll("reading_position")]);
+    const wm=new Map(works.map(v=>[String(v.ncode||"").toUpperCase(),v]));
+    const missing=[],noTitle=[],joined=[];
+    for(const rp of positions){
+      const n=String(rp.ncode||"").toUpperCase(),w=wm.get(n);
+      if(!w) missing.push(n);
+      else if(!String(w.title||"").trim()) noTitle.push(n);
+      else joined.push(n);
+    }
+    log("⑫ 読書位置突合：");
+    log("読書位置："+positions.length+"件");
+    log("作品情報と結合："+joined.length+"件");
+    log("作品情報なし："+missing.length+"件");
+    log("作品情報あり・タイトルなし："+noTitle.length+"件");
+    if(missing.length)log("作品情報なしNコード："+missing.join(", "));
+    if(noTitle.length)log("タイトルなしNコード："+noTitle.join(", "));
+    log(joined.length===positions.length?"✓ 読書位置338件すべて結合可能":"⚠ 読書位置に結合できない作品があります");
+    $("checkReadingJoin").disabled=false;
+  }catch(e){log("✗ 読書位置突合エラー："+e.message);$("checkReadingJoin").disabled=false}
 };
 $("copy").onclick=()=>{
   const text=$("out").textContent;
