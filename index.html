@@ -190,39 +190,44 @@ async function buildV3CardsFromIndexedDB(){
     return "";
   };
   const shelfIdByCore=new Map();
-  shelves.forEach(v=>{const id=String(v.shelf_id||"").trim(),core=shelfCore(shelfText(v));if(id&&core&&!shelfIdByCore.has(core))shelfIdByCore.set(core,id);});
-  const allSameShelf=placements.length>0 && new Set(placements.map(v=>String(v.shelf_id||"").trim())).size===1;
-  if(allSameShelf && Object.keys(window.ORIGINAL_SHELF_MAP||{}).length){
+  const shelfIdsByCore=new Map();
+  shelves.forEach(v=>{
+    const id=String(v.shelf_id||"").trim(),core=shelfCore(shelfText(v));
+    if(!id||!core)return;
+    if(!shelfIdByCore.has(core))shelfIdByCore.set(core,id);
+    if(!shelfIdsByCore.has(core))shelfIdsByCore.set(core,new Set());
+    shelfIdsByCore.get(core).add(id);
+  });
+
+  const originalReadingSet=new Set(window.ORIGINAL_READING_NCODES||[]);
+  const readShelfId=shelfIdByCore.get("読書中")||"";
+  const unclassifiedShelfId=shelfIdByCore.get("未分類")||"";
+
+  if(readShelfId && unclassifiedShelfId){
+    const readShelfIds=shelfIdsByCore.get("読書中")||new Set();
     const repaired=placements.map(p=>{
-      const n=String(p.ncode||"").toUpperCase(), raw=(window.ORIGINAL_SHELF_MAP||{})[n]||"未分類", core=shelfCore(raw), sid=shelfIdByCore.get(core)||shelfIdByCore.get("未分類")||String(p.shelf_id||"").trim();
+      const n=String(p.ncode||"").toUpperCase();
+      const currentId=String(p.shelf_id||"").trim();
+      let sid=currentId;
+      if(originalReadingSet.has(n)){
+        sid=readShelfId;
+      }else if(readShelfIds.has(currentId)){
+        sid=unclassifiedShelfId;
+      }
       return {...p,shelf_id:sid};
     });
     const changed=repaired.some((p,i)=>String(p.shelf_id||"")!==String(placements[i].shelf_id||""));
     if(changed){
       await new Promise((ok,no)=>{
-        const tx=db.transaction("shelf_placement","readwrite"), st=tx.objectStore("shelf_placement");
-        repaired.forEach(p=>st.put(p)); tx.oncomplete=ok; tx.onerror=()=>no(tx.error);
+        const tx=db.transaction("shelf_placement","readwrite"),st=tx.objectStore("shelf_placement");
+        repaired.forEach(p=>st.put(p));
+        tx.oncomplete=ok;
+        tx.onerror=()=>no(tx.error);
+        tx.onabort=()=>no(tx.error||new Error("shelf repair aborted"));
       });
       placements.splice(0,placements.length,...repaired);
     }
   }
-
-
-  const shelfLabel=raw=>{
-    const s=String(raw||"").replace(/\s+/g,"");
-    if(s.includes("読書中"))return "🟠読書中";
-    if(s.includes("未分類"))return "未分類";
-    if(s.includes("あ〜お")||s.includes("あ-お"))return "🎈あ〜お";
-    if(s.includes("か〜こ")||s.includes("か-こ"))return "🎈か〜こ";
-    if(s.includes("さ〜そ")||s.includes("さ-そ"))return "🎈さ〜そ";
-    if(s.includes("た〜と")||s.includes("た-と"))return "🎈た〜と";
-    if(s.includes("な〜の")||s.includes("な-の"))return "🎈な〜の";
-    if(s.includes("は〜ほ")||s.includes("は-ほ"))return "🎈は〜ほ";
-    if(s.includes("ま〜も")||s.includes("ま-も"))return "🎈ま〜も";
-    if(s.includes("や〜ん")||s.includes("や-ん"))return "🎈や〜ん";
-    if(s.includes("更新待ち"))return "⏰更新待ち";
-    return raw||"未分類";
-  };
 
   const readMap=readingMap();
   positions.forEach(v=>{
