@@ -36,6 +36,7 @@ pre{white-space:pre-wrap;background:#fff;border:1px solid #ddd;border-radius:10p
 
 <div class="card"><b>④ works_cacheへ作品情報を移行</b><div class="small">現在の本棚2117件だけを対象に、index.htmlで実績のあるJSONP方式で通常APIとR18 APIから作品情報を取得し、works_cacheへ保存します。</div><div class="count" id="workCount">0/0件</div><button id="migrateWorks" disabled>本棚作品情報をIndexedDBへ保存</button></div>
 <div class="card"><b>⑤ works_cache保存内容を確認</b><div class="small">保存件数と主要項目（タイトル・作者・最終更新・話数・完結/連載）を確認します。削除済み13作品は対象外です。</div><button id="verifyWorks">works_cacheを確認</button></div>
+<div class="card"><b>⑥ authorsを構築</b><div class="small">works_cacheに保存済みの作者名からauthorsを構築します。Narou APIは再取得しません。</div><div class="count" id="authorCount">0件</div><button id="buildAuthors">works_cacheからauthorsを保存</button></div>
 <button id="copy">診断結果をコピー</button>
 <h2>診断結果</h2>
 <pre id="out">まだ開始していません。</pre>
@@ -206,6 +207,37 @@ $("verifyWorks").onclick=async()=>{
     if(sample)log("サンプル："+sample.ncode+"｜"+sample.title+"｜"+sample.writer+"｜"+sample.general_all_no+"話");
     $("verifyWorks").disabled=false;
   }catch(e){log("✗ works_cache確認エラー："+e.message);$("verifyWorks").disabled=false}
+};
+$("buildAuthors").onclick=async()=>{
+  try{
+    $("buildAuthors").disabled=true;
+    await openDB();
+    const rows=await new Promise((ok,no)=>{
+      const a=[],r=db.transaction("works_cache","readonly").objectStore("works_cache").openCursor();
+      r.onsuccess=()=>{if(r.result){a.push(r.result.value);r.result.continue()}else ok(a)};
+      r.onerror=()=>no(r.error);
+    });
+    if(!rows.length)throw Error("works_cacheに作品情報がありません");
+    const authors=new Map();
+    rows.forEach(w=>{
+      const n=String(w.ncode||"").toUpperCase();
+      const writer=String(w.writer||"").trim();
+      if(n&&writer)authors.set(n,{ncode:n,writer,source:"works_cache",updated_at:new Date().toISOString()});
+    });
+    const tx=db.transaction("authors","readwrite"),store=tx.objectStore("authors");
+    store.clear();
+    for(const v of authors.values())store.put(v);
+    await new Promise((ok,no)=>{tx.oncomplete=ok;tx.onerror=()=>no(tx.error);tx.onabort=()=>no(tx.error||new Error("DB transaction aborted"))});
+    $("authorCount").textContent=authors.size+"件";
+    log("works_cache："+rows.length+"件");
+    log("作者あり："+authors.size+"件");
+    log("作者なし："+(rows.length-authors.size)+"件");
+    log("✓ authorsへ保存："+authors.size+"件");
+    log(authors.size===rows.length?"✓ authors構築完了":"⚠ 作者名のない作品があります");
+    const first=authors.values().next().value;
+    if(first)log("サンプル："+first.ncode+"｜"+first.writer);
+    $("buildAuthors").disabled=false;
+  }catch(e){log("✗ authors構築エラー："+e.message);$("buildAuthors").disabled=false}
 };
 $("copy").onclick=async()=>{try{await navigator.clipboard.writeText($("out").textContent);alert("コピーしました")}catch(e){alert("コピーできませんでした")}};
 refreshMigrationState();
