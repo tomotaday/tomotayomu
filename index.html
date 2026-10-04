@@ -60,7 +60,7 @@ summary{cursor:pointer}
 
 <main>
 <h1>ともたよむ</h1>
-<div class="note">v2.1.2｜作品情報マスター基盤版</div>
+<div class="note">v3.0.0｜IndexedDB接続テスト版</div>
 <button id="updateBtn" type="button">🔄 更新情報を確認</button>
 <div id="baselineDate">基準日：未設定</div>
 <div class="note">基準日は全作品共通で1個。更新候補は基準日とは別に保持します。</div>
@@ -15718,6 +15718,43 @@ async function hydrateCandidateWorks(){
   }catch(e){ console.warn("候補作品の最新情報取得に失敗",e); }
 }
 
+async function loadV3FromIndexedDB(){
+  try{
+    const db=await new Promise((ok,no)=>{
+      const req=indexedDB.open("tomotaYomuDB",1);
+      req.onsuccess=()=>ok(req.result);
+      req.onerror=()=>no(req.error);
+    });
+    const readAll=name=>new Promise((ok,no)=>{
+      const rows=[],req=db.transaction(name,"readonly").objectStore(name).openCursor();
+      req.onsuccess=()=>{if(req.result){rows.push(req.result.value);req.result.continue()}else ok(rows)};
+      req.onerror=()=>no(req.error);
+    });
+    const [placements,works,authors,positions]=await Promise.all([
+      readAll("shelf_placement"),readAll("works_cache"),readAll("authors"),readAll("reading_position")
+    ]);
+    const wm=new Map(works.map(v=>[String(v.ncode||"").toUpperCase(),v]));
+    const am=new Map(authors.map(v=>[String(v.ncode||"").toUpperCase(),v]));
+    const pm=new Map(positions.map(v=>[String(v.ncode||"").toUpperCase(),v]));
+    const cards=getCardsByNcode();
+    let applied=0,missing=0;
+    for(const p of placements){
+      const n=String(p.ncode||"").toUpperCase(),w=wm.get(n);
+      if(!w){missing++;continue;}
+      const merged={...w,writer:am.get(n)?.writer||w.writer||"",__v3:true};
+      if(pm.has(n)) setReading(n,Number(pm.get(n).episode));
+      if(cards[n]){updateCard(cards[n],merged);applied++;}
+    }
+    const status=document.getElementById("apiStatus");
+    if(status)status.textContent="v3 IndexedDB接続：本棚"+placements.length+"件｜作品情報"+works.length+"件｜作者"+authors.length+"件｜読書位置"+positions.length+"件｜カード反映"+applied+"件｜情報なし"+missing+"件";
+    console.log("v3 IndexedDB接続完了",{placements:placements.length,works:works.length,authors:authors.length,positions:positions.length,applied,missing});
+    return {placements,works,authors,positions,applied,missing};
+  }catch(e){
+    console.warn("v3 IndexedDB接続失敗",e);
+    return null;
+  }
+}
+
 function formatDate(v) { if (!v) return "—"; const d = new Date(String(v).replace(" ", "T")); if (isNaN(d)) return String(v).slice(0,10).replaceAll("-","/"); return d.toLocaleString("ja-JP", {year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}); }
 function nowUnix(){ return Math.floor(Date.now()/1000); }
 function setStatus(w) {
@@ -15900,7 +15937,7 @@ function placeR18Badges(){
 document.getElementById("updateBtn").addEventListener("click",updateInfo);
 document.addEventListener("click",e=>{ const a=e.target.closest(".resumeLink"); if(!a)return; const card=e.target.closest(".card"); if(!card)return; rememberActive(card); });
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") refreshActiveFromGAS(); });
-window.addEventListener("load",async()=>{ placeR18Badges(); seedReadingCache(); restoreReadingFromQuery(); restoreReadingPositions(); renderGlobalBaseline(); restoreLatestWorks(); await hydrateCandidateWorks(); buildUpdateView(); buildShelfFolders(); setTimeout(refreshActiveFromGAS,300); });
+window.addEventListener("load",async()=>{ placeR18Badges(); seedReadingCache(); restoreReadingFromQuery(); restoreReadingPositions(); renderGlobalBaseline(); restoreLatestWorks(); const v3=await loadV3FromIndexedDB(); if(!v3){ await hydrateCandidateWorks(); } buildUpdateView(); buildShelfFolders(); setTimeout(refreshActiveFromGAS,300); });
 </script>
 
 
