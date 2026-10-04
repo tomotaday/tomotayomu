@@ -37,7 +37,7 @@ pre{white-space:pre-wrap;background:#fff;border:1px solid #ddd;border-radius:10p
 <div class="card"><b>④ works_cacheへ作品情報を移行</b><div class="small">現在の本棚2117件だけを対象に、index.htmlで実績のあるJSONP方式で通常APIとR18 APIから作品情報を取得し、works_cacheへ保存します。</div><div class="count" id="workCount">0/0件</div><button id="migrateWorks" disabled>本棚作品情報をIndexedDBへ保存</button></div>
 <div class="card"><b>⑤ works_cache保存内容を確認</b><div class="small">保存件数と主要項目（タイトル・作者・最終更新・話数・完結/連載）を確認します。削除済み13作品は対象外です。</div><button id="verifyWorks">works_cacheを確認</button></div>
 <div class="card"><b>⑥ authorsを構築</b><div class="small">works_cacheに保存済みの作者名からauthorsを構築します。Narou APIは再取得しません。</div><div class="count" id="authorCount">0件</div><button id="buildAuthors">works_cacheからauthorsを保存</button></div>
-<button id="copy">診断結果をコピー</button>
+<div class="card"><b>⑦ reading_positionを確認</b><div class="small">現在のIndexedDBに保存されている読書位置を確認します。読書位置の移行元はまだ変更しません。</div><div class="count" id="readingCount">0件</div><button id="verifyReading">reading_positionを確認</button></div>\n<button id="copy">診断結果をコピー</button>
 <h2>診断結果</h2>
 <pre id="out">まだ開始していません。</pre>
 
@@ -239,6 +239,43 @@ $("buildAuthors").onclick=async()=>{
     $("buildAuthors").disabled=false;
   }catch(e){log("✗ authors構築エラー："+e.message);$("buildAuthors").disabled=false}
 };
-$("copy").onclick=async()=>{try{await navigator.clipboard.writeText($("out").textContent);alert("コピーしました")}catch(e){alert("コピーできませんでした")}};
+$("verifyReading").onclick=async()=>{
+  try{
+    $("verifyReading").disabled=true;
+    await openDB();
+    const rows=await new Promise((ok,no)=>{
+      const a=[],r=db.transaction("reading_position","readonly").objectStore("reading_position").openCursor();
+      r.onsuccess=()=>{if(r.result){a.push(r.result.value);r.result.continue()}else ok(a)};
+      r.onerror=()=>no(r.error);
+    });
+    $("readingCount").textContent=rows.length+"件";
+    log("reading_position："+rows.length+"件");
+    if(!rows.length) log("✓ 現在のIndexedDBには読書位置データはありません");
+    else{
+      const first=rows[0];
+      log("サンプル："+String(first.ncode||"")+"｜"+JSON.stringify(first));
+    }
+    $("verifyReading").disabled=false;
+  }catch(e){log("✗ reading_position確認エラー："+e.message);$("verifyReading").disabled=false}
+};
+$("copy").onclick=async()=>{
+  const text=$("out").textContent;
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(text);
+    }else{
+      const ta=document.createElement("textarea");
+      ta.value=text;ta.style.position="fixed";ta.style.opacity="0";
+      document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();
+    }
+    alert("コピーしました");
+  }catch(e){
+    try{
+      const ta=document.createElement("textarea");
+      ta.value=text;document.body.appendChild(ta);ta.select();
+      document.execCommand("copy");ta.remove();alert("コピーしました");
+    }catch(e2){alert("コピーできませんでした")}
+  }
+};
 refreshMigrationState();
 </script></main></body></html>
