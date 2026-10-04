@@ -40,6 +40,7 @@ pre{white-space:pre-wrap;background:#fff;border:1px solid #ddd;border-radius:10p
 <div class="card"><b>⑦ reading_positionを確認</b><div class="small">現在のIndexedDBに保存されている読書位置を確認します。読書位置の移行元はまだ変更しません。</div><div class="count" id="readingCount">0件</div><button id="verifyReading">reading_positionを確認</button></div>
 <div class="card"><b>⑧ reading_position内容を検証</b><div class="small">ncode・episodeの形式、本棚との対応、読書位置の範囲を確認します。既存データは変更しません。</div><button id="checkReading">reading_positionを検証</button></div>
 <div class="card"><b>⑨ 1作品の完成データを再構築</b><div class="small">shelf_placement・works_cache・authors・reading_positionをNコードで結合し、画面表示用の1作品データを確認します。既存データは変更しません。</div><button id="rebuildOne">1作品を再構築</button></div>
+<div class="card"><b>⑩ 本棚2117作品を一括再構築検証</b><div class="small">4つのStoreをNコードで結合し、全作品について画面表示用データが成立するか確認します。既存データは変更しません。</div><button id="rebuildAll">2117作品を検証</button></div>
 <button id="copy">診断結果をコピー</button>
 <h2>診断結果</h2>
 <pre id="out">まだ開始していません。</pre>
@@ -326,6 +327,44 @@ $("rebuildOne").onclick=async()=>{
     log(result.has_reading_position?"✓ 読書位置も結合":"○ この作品には読書位置なし");
     $("rebuildOne").disabled=false;
   }catch(e){log("✗ 1作品再構築エラー："+e.message);$("rebuildOne").disabled=false}
+};
+$("rebuildAll").onclick=async()=>{
+  try{
+    $("rebuildAll").disabled=true;
+    await openDB();
+    const readAll=name=>new Promise((ok,no)=>{
+      const a=[],r=db.transaction(name,"readonly").objectStore(name).openCursor();
+      r.onsuccess=()=>{if(r.result){a.push(r.result.value);r.result.continue()}else ok(a)};
+      r.onerror=()=>no(r.error);
+    });
+    const [placements,works,authors,positions]=await Promise.all([
+      readAll("shelf_placement"),readAll("works_cache"),readAll("authors"),readAll("reading_position")
+    ]);
+    const wm=new Map(works.map(v=>[String(v.ncode||"").toUpperCase(),v]));
+    const am=new Map(authors.map(v=>[String(v.ncode||"").toUpperCase(),v]));
+    const pm=new Map(positions.map(v=>[String(v.ncode||"").toUpperCase(),v]));
+    let missingWork=0,missingAuthor=0,withReading=0,missingReading=0,ready=0;
+    for(const p of placements){
+      const n=String(p.ncode||"").toUpperCase();
+      const w=wm.get(n),a=am.get(n),rp=pm.get(n);
+      if(!w)missingWork++;
+      if(!a)missingAuthor++;
+      if(rp)withReading++;else missingReading++;
+      if(w&&a)ready++;
+    }
+    log("⑩ 本棚一括再構築検証：");
+    log("本棚作品："+placements.length+"件");
+    log("作品情報あり："+(placements.length-missingWork)+"件");
+    log("作品情報なし："+missingWork+"件");
+    log("作者情報あり："+(placements.length-missingAuthor)+"件");
+    log("作者情報なし："+missingAuthor+"件");
+    log("読書位置あり："+withReading+"件");
+    log("読書位置なし："+missingReading+"件");
+    log("画面表示データ成立："+ready+"件");
+    if(missingWork===13)log("○ 作品情報なし13件＝既知の削除作品");
+    log(ready===placements.length-missingWork&&missingAuthor===0?"✓ 本棚作品の再構築基盤を確認":"⚠ 再構築に要確認データがあります");
+    $("rebuildAll").disabled=false;
+  }catch(e){log("✗ 一括再構築検証エラー："+e.message);$("rebuildAll").disabled=false}
 };
 $("copy").onclick=()=>{
   const text=$("out").textContent;
