@@ -12,7 +12,7 @@ pre{white-space:pre-wrap;background:#fff;border:1px solid #ddd;border-radius:10p
 .ok{color:#16733a}
 </style></head><body><main>
 <h1>ともたよむ</h1>
-<div class="sub"><b>v3.0.0｜IndexedDB初回移行・works_cache版</b><br>2026/10/04版｜本棚2117作品を対象に作品情報を移行</div>
+<div class="sub"><b>v3.0.0｜IndexedDB初回移行・works_cache版</b><br>2026/10/04版｜本棚2117作品を対象に作品情報を移行・作者項目修正版</div>
 
 <div class="card">
 <b>① CSVを選択</b>
@@ -81,7 +81,7 @@ async function fetchByNcodes(apiUrl,ncodes,label){
   const results=[];
   for(let i=0;i<chunks.length;i++){
     log(label+" API "+(i+1)+"/"+chunks.length+" を取得中…");
-    const d=await jsonp(apiUrl+"?ncode="+encodeURIComponent(chunks[i].join("-"))+"&of=n-t-s-gl-ga-e-e-nt&lim=500");
+    const d=await jsonp(apiUrl+"?ncode="+encodeURIComponent(chunks[i].join("-"))+"&of=n-t-u-w-s-gl-ga-e-e-nt&lim=500");
     results.push(...(Array.isArray(d)?d.slice(1):[]));
   }
   return results;
