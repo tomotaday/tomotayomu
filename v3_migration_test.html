@@ -38,6 +38,7 @@ pre{white-space:pre-wrap;background:#fff;border:1px solid #ddd;border-radius:10p
 <div class="card"><b>⑤ works_cache保存内容を確認</b><div class="small">保存件数と主要項目（タイトル・作者・最終更新・話数・完結/連載）を確認します。削除済み13作品は対象外です。</div><button id="verifyWorks">works_cacheを確認</button></div>
 <div class="card"><b>⑥ authorsを構築</b><div class="small">works_cacheに保存済みの作者名からauthorsを構築します。Narou APIは再取得しません。</div><div class="count" id="authorCount">0件</div><button id="buildAuthors">works_cacheからauthorsを保存</button></div>
 <div class="card"><b>⑦ reading_positionを確認</b><div class="small">現在のIndexedDBに保存されている読書位置を確認します。読書位置の移行元はまだ変更しません。</div><div class="count" id="readingCount">0件</div><button id="verifyReading">reading_positionを確認</button></div>
+<div class="card"><b>⑧ reading_position内容を検証</b><div class="small">ncode・episodeの形式、本棚との対応、読書位置の範囲を確認します。既存データは変更しません。</div><button id="checkReading">reading_positionを検証</button></div>
 <button id="copy">診断結果をコピー</button>
 <h2>診断結果</h2>
 <pre id="out">まだ開始していません。</pre>
@@ -258,6 +259,34 @@ $("verifyReading").onclick=async()=>{
     }
     $("verifyReading").disabled=false;
   }catch(e){log("✗ reading_position確認エラー："+e.message);$("verifyReading").disabled=false}
+};
+$("checkReading").onclick=async()=>{
+  try{
+    $("checkReading").disabled=true;
+    await openDB();
+    const rows=await new Promise((ok,no)=>{
+      const a=[],r=db.transaction("reading_position","readonly").objectStore("reading_position").openCursor();
+      r.onsuccess=()=>{if(r.result){a.push(r.result.value);r.result.continue()}else ok(a)};
+      r.onerror=()=>no(r.error);
+    });
+    const shelf=await new Promise((ok,no)=>{
+      const a=new Set(),r=db.transaction("shelf_placement","readonly").objectStore("shelf_placement").openCursor();
+      r.onsuccess=()=>{if(r.result){a.add(String(r.result.value.ncode||"").toUpperCase());r.result.continue()}else ok(a)};
+      r.onerror=()=>no(r.error);
+    });
+    const badN=rows.filter(v=>!/^[N][0-9A-Z]+$/.test(String(v.ncode||"").toUpperCase()));
+    const badEp=rows.filter(v=>!Number.isFinite(Number(v.episode))||Number(v.episode)<0);
+    const outside=rows.filter(v=>!shelf.has(String(v.ncode||"").toUpperCase()));
+    log("reading_position総数："+rows.length+"件");
+    log("Nコード不正："+badN.length+"件");
+    log("episode不正："+badEp.length+"件");
+    log("現在の本棚にない読書位置："+outside.length+"件");
+    if(!badN.length&&!badEp.length&&!outside.length)log("✓ reading_positionの基本形式・本棚対応を確認");
+    else log("⚠ reading_positionに要確認データがあります");
+    const first=rows[0];
+    if(first)log("確認例："+String(first.ncode||"")+"｜episode="+String(first.episode));
+    $("checkReading").disabled=false;
+  }catch(e){log("✗ reading_position検証エラー："+e.message);$("checkReading").disabled=false}
 };
 $("copy").onclick=()=>{
   const text=$("out").textContent;
