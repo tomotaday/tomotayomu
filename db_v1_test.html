@@ -8,7 +8,8 @@
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;padding:20px;background:#f7f7f7;color:#222}
 main{max-width:680px;margin:auto}h1{font-size:22px;margin:0 0 4px}.sub{color:#666;font-size:13px;margin-bottom:18px}
 button{width:100%;padding:13px 12px;margin:6px 0;border:1px solid #ccc;border-radius:10px;background:#fff;font-size:15px}
-button:disabled{opacity:.45}pre{white-space:pre-wrap;background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px;font-size:12px;line-height:1.55}
+button:disabled{opacity:.45}.danger{border-color:#d88;color:#a00}
+pre{white-space:pre-wrap;background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px;font-size:12px;line-height:1.55}
 </style></head><body><main>
 <h1>ともたよむ</h1><div class="sub">DB v1 テスト室｜tomotaYomuDB</div>
 <button id="init">① DBを初期化</button>
@@ -18,6 +19,7 @@ button:disabled{opacity:.45}pre{white-space:pre-wrap;background:#fff;border:1px 
 <button id="pos" disabled>⑤ 読書位置を100話へ変更</button>
 <button id="del" disabled>⑥ NTEST01を完全削除</button>
 <button id="verify" disabled>⑦ 削除確認</button>
+<button id="cleanup" class="danger">⑧ テストDBを端末から削除</button>
 <button id="copy">診断結果をコピー</button>
 <h2>診断結果</h2><pre id="out">まだテストしていません。</pre>
 </main>
@@ -39,5 +41,6 @@ $("move").onclick=async()=>{try{await tx(["shelf_placement"],"readwrite",s=>s.sh
 $("pos").onclick=async()=>{try{await tx(["reading_position"],"readwrite",s=>s.reading_position.put({ncode:NCODE,episode:100}));log("読書位置変更："+(await get("reading_position",NCODE)).episode+"話");$("pos").disabled=true}catch(e){log("読書位置変更エラー："+e.message,false)}};
 $("del").onclick=async()=>{if(!confirm("NTEST01を4つのNコード系ストアから完全削除します。実行しますか？"))return;try{await tx(["shelf_placement","works_cache","authors","reading_position"],"readwrite",s=>{s.shelf_placement.delete(NCODE);s.works_cache.delete(NCODE);s.authors.delete(NCODE);s.reading_position.delete(NCODE)});log("NTEST01を完全削除");$("del").disabled=true;enable(["verify"])}catch(e){log("削除エラー："+e.message,false)}};
 $("verify").onclick=async()=>{try{const v=await Promise.all([get("shelf_placement",NCODE),get("works_cache",NCODE),get("authors",NCODE),get("reading_position",NCODE)]),ok=v.every(x=>x===undefined);log("削除確認："+(ok?"NTEST01の4ストアからの消去を確認":"残存データあり"),ok);for(const s of Object.keys(STORES))log(s+" 件数="+await count(s));$("verify").disabled=true}catch(e){log("削除確認エラー："+e.message,false)}};
+$("cleanup").onclick=async()=>{if(!confirm("テスト用のtomotaYomuDBを、この端末から完全に削除します。実行しますか？"))return;try{if(db){db.close();db=null}const r=indexedDB.deleteDatabase(DB_NAME);r.onsuccess=()=>log("テストDBを端末から削除しました");r.onerror=()=>log("テストDB削除エラー："+r.error,false);r.onblocked=()=>log("テストDB削除が別の接続により保留中です。ページを閉じて再試行してください。",false)}catch(e){log("テストDB削除エラー："+e.message,false)}};
 $("copy").onclick=async()=>{try{await navigator.clipboard.writeText($("out").textContent);$("copy").textContent="コピーしました";setTimeout(()=>$("copy").textContent="診断結果をコピー",1200)}catch(e){alert("コピーできませんでした。診断結果を長押ししてコピーしてください。")}};
 </script></body></html>
