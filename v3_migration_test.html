@@ -34,6 +34,7 @@ pre{white-space:pre-wrap;background:#fff;border:1px solid #ddd;border-radius:10p
 <button id="cleanup" class="danger">DBを端末から削除</button>
 </div>
 
+<div class="card"><b>④ works_cache 1件テスト</b><div class="small">現在のshelf_placementからNコードを1件取り出し、通常API→取得できなければR18 APIの順で作品情報を取得して保存します。</div><button id="testWork">1件取得してworks_cacheへ保存</button></div>
 <button id="copy">診断結果をコピー</button>
 <h2>診断結果</h2>
 <pre id="out">まだ開始していません。</pre>
@@ -41,6 +42,8 @@ pre{white-space:pre-wrap;background:#fff;border:1px solid #ddd;border-radius:10p
 <script>
 "use strict";
 const DB="tomotaYomuDB",VER=1;
+const API_GENERAL="https://api.syosetu.com/novelapi/api/";
+const API_R18="https://api.syosetu.com/novel18api/api/";
 const PRODUCTION_URL="index.html?migration_filter_20261004";
 const ST={shelf_names:"shelf_id",shelf_placement:"ncode",works_cache:"ncode",authors:"ncode",reading_position:"ncode"};
 let db=null,target=[];
@@ -59,6 +62,45 @@ async function getBookshelfNcodes(){
   const doc=new DOMParser().parseFromString(html,"text/html");
   return [...new Set([...doc.querySelectorAll("[data-ncode]")].map(e=>String(e.dataset.ncode||"").trim().toUpperCase()).filter(n=>/^N[0-9A-Z]+$/.test(n)))];
 }
+async function getOneNcode(){
+  return new Promise((ok,no)=>{
+    const r=db.transaction("shelf_placement","readonly").objectStore("shelf_placement").openCursor();
+    r.onsuccess=()=>ok(r.result?r.result.value.ncode:null); r.onerror=()=>no(r.error);
+  });
+}
+async function fetchApi(base,ncode){
+  const u=base+"?out=json&of=t-n-u-w-s-bg-g-k-gf-gl-nt-e-ga-nu&ncode="+encodeURIComponent(ncode);
+  const res=await fetch(u,{cache:"no-store"});
+  if(!res.ok)throw Error("API HTTP "+res.status);
+  const j=await res.json();
+  return j;
+}
+$("testWork").onclick=async()=>{
+  try{
+    $("testWork").disabled=true;
+    await openDB();
+    const ncode=await getOneNcode();
+    if(!ncode)throw Error("shelf_placementにNコードがありません");
+    log("テスト対象："+ncode);
+    let j=await fetchApi(API_GENERAL,ncode),source="general";
+    if(!j[0]||j[0].allcount===0){
+      log("通常API：該当なし → R18 APIを確認");
+      j=await fetchApi(API_R18,ncode); source="r18";
+    }
+    if(!j[0]||j[0].allcount===0)throw Error("通常API/R18 APIのどちらにも該当作品がありません");
+    const work=j[1];
+    const record={ncode:String(work.ncode||ncode).toUpperCase(),source,api_fetched_at:new Date().toISOString(),...work};
+    await new Promise((ok,no)=>{
+      const t=db.transaction("works_cache","readwrite");
+      t.objectStore("works_cache").put(record);
+      t.oncomplete=ok;t.onerror=()=>no(t.error);
+    });
+    log("✓ API取得："+source);
+    log("✓ title："+(record.title||"（タイトルなし）"));
+    log("✓ works_cacheへ1件保存");
+    $("testWork").disabled=false;
+  }catch(e){log("✗ works_cacheテスト："+e.message);$("testWork").disabled=false}
+};
 $("prepare").onclick=async()=>{
   try{
     $("out").textContent="CSVを確認しています。";
