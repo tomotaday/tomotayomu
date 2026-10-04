@@ -207,20 +207,18 @@ async function buildV3CardsFromIndexedDB(){
     shelfIdsByCore.get(core).add(id);
   });
 
-  const originalReadingSet=new Set(window.ORIGINAL_READING_NCODES||[]);
+  const originalShelfByNcode=window.ORIGINAL_SHELF_BY_NCODE||{};
   const readShelfId=shelfIdByCore.get("読書中")||"";
   const unclassifiedShelfId=shelfIdByCore.get("未分類")||"";
 
-  if(readShelfId && unclassifiedShelfId){
-    const readShelfIds=shelfIdsByCore.get("読書中")||new Set();
+  if(unclassifiedShelfId){
     const repaired=placements.map(p=>{
       const n=String(p.ncode||"").toUpperCase();
-      const currentId=String(p.shelf_id||"").trim();
-      let sid=currentId;
-      if(originalReadingSet.has(n)){
-        sid=readShelfId;
-      }else if(readShelfIds.has(currentId)){
-        sid=unclassifiedShelfId;
+      const originalLabel=String(originalShelfByNcode[n]||"").trim();
+      const originalCore=shelfCore(originalLabel);
+      let sid=unclassifiedShelfId;
+      if(originalCore){
+        sid=shelfIdByCore.get(originalCore)||unclassifiedShelfId;
       }
       return {...p,shelf_id:sid};
     });
