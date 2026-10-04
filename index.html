@@ -152,6 +152,7 @@ async function hydrateCandidateWorks(){
   }catch(e){ console.warn("候補作品の最新情報取得に失敗",e); }
 }
 
+const CSV_SHELF_FOLDER_MAP={};
 async function buildV3CardsFromIndexedDB(){
   const db=await new Promise((ok,no)=>{
     const r=indexedDB.open("tomotaYomuDB",1);
@@ -170,6 +171,30 @@ async function buildV3CardsFromIndexedDB(){
   const am=new Map(authors.map(v=>[String(v.ncode||"").toUpperCase(),v]));
   const pm=new Map(positions.map(v=>[String(v.ncode||"").toUpperCase(),v]));
   const sm=new Map(shelves.map(v=>[String(v.shelf_id||"").trim(),v]));
+  const shelfCore=raw=>{
+    const s=String(raw||"").replace(/[🟠🔵🌀🎈📚⏰]/g,"").replace(/\s+/g,"");
+    if(s.includes("読書中"))return "読書中";
+    if(s.includes("未分類"))return "未分類";
+    for(const k of ["あ〜お","か〜こ","さ〜そ","た〜と","な〜の","は〜ほ","ま〜も","や〜ん","更新待ち"]) if(s.includes(k)||s.includes(k.replace("〜","-"))) return k;
+    return "";
+  };
+  const shelfIdByCore=new Map();
+  shelves.forEach(v=>{const id=String(v.shelf_id||"").trim(),core=shelfCore(shelfText(v));if(id&&core&&!shelfIdByCore.has(core))shelfIdByCore.set(core,id);});
+  const allSameShelf=placements.length>0 && new Set(placements.map(v=>String(v.shelf_id||"").trim())).size===1;
+  if(allSameShelf && Object.keys(CSV_SHELF_FOLDER_MAP).length){
+    const repaired=placements.map(p=>{
+      const n=String(p.ncode||"").toUpperCase(), raw=CSV_SHELF_FOLDER_MAP[n]||"未分類", core=shelfCore(raw), sid=shelfIdByCore.get(core)||shelfIdByCore.get("未分類")||String(p.shelf_id||"").trim();
+      return {...p,shelf_id:sid};
+    });
+    const changed=repaired.some((p,i)=>String(p.shelf_id||"")!==String(placements[i].shelf_id||""));
+    if(changed){
+      await new Promise((ok,no)=>{
+        const tx=db.transaction("shelf_placement","readwrite"), st=tx.objectStore("shelf_placement");
+        repaired.forEach(p=>st.put(p)); tx.oncomplete=ok; tx.onerror=()=>no(tx.error);
+      });
+      placements.splice(0,placements.length,...repaired);
+    }
+  }
 
   const shelfText=v=>String(v?.name??v?.shelf_name??v?.title??v?.label??v?.display_name??v?.shelf_id??"").trim();
   const shelfLabel=raw=>{
