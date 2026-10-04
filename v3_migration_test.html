@@ -1,26 +1,103 @@
 <!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ともたよむ｜v3.0.0 初回Nコード移行</title>
-<style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;margin:0;padding:18px;background:#f7f7f7;color:#222}main{max-width:700px;margin:auto}.sub{color:#666;font-size:13px;margin-bottom:16px}.card{background:#fff;border:1px solid #ddd;border-radius:12px;padding:14px;margin:10px 0}button{width:100%;padding:13px;margin:6px 0;border:1px solid #ccc;border-radius:10px;background:#fff;font-size:15px}button:disabled{opacity:.45}.danger{border-color:#d88;color:#a00}input{width:100%;box-sizing:border-box;margin:7px 0}pre{white-space:pre-wrap;background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px;font-size:12px;line-height:1.55}.small{font-size:12px;color:#666;line-height:1.55}</style></head><body><main>
-<h1>ともたよむ</h1><div class="sub">v3.0.0｜初回Nコード移行｜DB v1</div>
-<div class="card"><b>① CSVを2本選択</b><div class="small">通常CSV＋R18 CSV。今回は「本棚あり」のNコード2119件だけをDBへ入れます。作品情報・API取得はまだしません。</div>
-<input id="normal" type="file" accept=".csv,text/csv"><input id="r18" type="file" accept=".csv,text/csv"><button id="load">CSVを読み込む</button></div>
-<div class="card"><b>② Nコード2119件をDBへ投入</b><button id="migrate" disabled>2119件をDBへ投入</button></div>
-<div class="card"><b>③ DB件数を確認</b><button id="verify" disabled>DB件数を確認</button><button id="cleanup" class="danger">DB v1を端末から削除</button></div>
-<button id="copy">診断結果をコピー</button><h2>診断結果</h2><pre id="out">まだ開始していません。</pre>
+<title>ともたよむ｜v3.0.0 初回Nコード移行 2026-10-04</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;margin:0;padding:18px;background:#f7f7f7;color:#222}
+main{max-width:700px;margin:auto}.sub{color:#555;font-size:13px;line-height:1.6;margin-bottom:16px}
+.card{background:#fff;border:1px solid #ddd;border-radius:12px;padding:15px;margin:10px 0}
+button{width:100%;padding:14px;margin:6px 0;border:1px solid #bbb;border-radius:10px;background:#fff;font-size:15px}
+button:disabled{opacity:.45}.danger{border-color:#d88;color:#a00}
+.count{font-size:28px;font-weight:700;margin:6px 0}.ok{color:#16733a}.small{font-size:12px;color:#666;line-height:1.55}
+pre{white-space:pre-wrap;background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px;font-size:12px;line-height:1.55}
+</style></head><body><main>
+<h1>ともたよむ</h1>
+<div class="sub"><b>v3.0.0｜初回Nコード移行</b><br>移行テスト 2026/10/04版｜DB v1</div>
+
+<div class="card">
+<b>今回の移行対象</b>
+<div class="count">Nコード 2119件</div>
+<div class="small">通常 172件 ＋ R18 1947件<br>CSV選択：不要<br>作品情報・Narou API：今回は未使用</div>
+</div>
+
+<div class="card">
+<b>① 移行対象を確認</b>
+<div class="small">現在のv2.1.2本体に存在する2117件へ、CSVとの差分2件（N0212JU / N8266K）を加えて2119件を確定します。</div>
+<button id="prepare">2119件を確定する</button>
+</div>
+
+<div class="card">
+<b>② IndexedDBへ投入</b>
+<button id="migrate" disabled>2119件をIndexedDBへ投入</button>
+</div>
+
+<div class="card">
+<b>③ DB件数を確認</b>
+<button id="verify" disabled>DB件数を確認</button>
+<button id="cleanup" class="danger">DB v1を端末から削除</button>
+</div>
+
+<button id="copy">診断結果をコピー</button>
+<h2>診断結果</h2>
+<pre id="out">まだ開始していません。</pre>
+
 <script>
 "use strict";
-const DB="tomotaYomuDB",VER=1,ST={shelf_names:"shelf_id",shelf_placement:"ncode",works_cache:"ncode",authors:"ncode",reading_position:"ncode"};
-let db=null,rows=[];const $=id=>document.getElementById(id);
+const DB="tomotaYomuDB",VER=1;
+const ST={shelf_names:"shelf_id",shelf_placement:"ncode",works_cache:"ncode",authors:"ncode",reading_position:"ncode"};
+const EXTRA=["N0212JU","N8266K"];
+let db=null,target=[];
+const $=id=>document.getElementById(id);
 function log(x){$("out").textContent+=($("out").textContent==="まだ開始していません。"?"":"\n")+x}
-function splitCSV(text){let rows=[],row=[],cell="",q=false;for(let i=0;i<text.length;i++){let ch=text[i];if(ch==='"'){if(q&&text[i+1]==='"'){cell+='"';i++}else q=!q}else if(ch===","&&!q){row.push(cell);cell=""}else if((ch==="\n"||ch==="\r")&&!q){if(ch==="\r"&&text[i+1]==="\n")i++;row.push(cell);cell="";if(row.some(v=>v!==""))rows.push(row);row=[]}else cell+=ch}row.push(cell);if(row.some(v=>v!==""))rows.push(row);return rows}
-async function readFile(id,site){const f=$(id).files[0];if(!f)throw Error(site+" CSV未選択");const a=splitCSV(await f.text());const h=a.shift();return a.map(r=>{let o={__site:site};h.forEach((k,i)=>o[k]=r[i]??"");return o})}
-function nc(x){return String(x??"").trim().toUpperCase()}
 function openDB(){return new Promise((ok,no)=>{let r=indexedDB.open(DB,VER);r.onupgradeneeded=e=>{let d=e.target.result;for(let[k,v]of Object.entries(ST))if(!d.objectStoreNames.contains(k))d.createObjectStore(k,{keyPath:v})};r.onsuccess=e=>{db=e.target.result;ok()};r.onerror=()=>no(r.error)})}
 function tx(ns,fn){return new Promise((ok,no)=>{let t=db.transaction(ns,"readwrite"),s=Object.fromEntries(ns.map(n=>[n,t.objectStore(n)]));try{fn(s)}catch(e){no(e);return}t.oncomplete=ok;t.onerror=()=>no(t.error)})}
-$("load").onclick=async()=>{try{rows=[...(await readFile("normal","通常")),...(await readFile("r18","R18"))];const a=rows.filter(x=>String(x.on_shelf).toLowerCase()==="true").map(x=>nc(x.ncode)).filter(Boolean),u=[...new Set(a)];log("通常CSV："+rows.filter(x=>x.__site==="通常").length+" / R18 CSV："+rows.filter(x=>x.__site==="R18").length);log("本棚あり："+a.length+" / ユニーク："+u.length+" / 重複："+(a.length-u.length));if(u.length!==2119)throw Error("2119件ではありません："+u.length);log("✓ 移行対象2119件を確認");$("migrate").disabled=false}catch(e){log("✗ CSV読込エラー："+e.message)}};
-$("migrate").onclick=async()=>{try{$("migrate").disabled=true;await openDB();const target=[...new Map(rows.filter(x=>String(x.on_shelf).toLowerCase()==="true").map(x=>[nc(x.ncode),x])).values()];if(target.length!==2119)throw Error("移行対象が"+target.length+"件です");await tx(["shelf_placement","reading_position"],s=>target.forEach(x=>{const n=nc(x.ncode);s.shelf_placement.put({ncode:n,shelf_id:"shelf01"});const p=Number(x.current_episode);if(Number.isFinite(p)&&p>0)s.reading_position.put({ncode:n,episode:p})}));log("✓ shelf_placement：2119件");log("✓ Nコード重複：0件");log("✓ Nコード2119件のDB投入完了");$("verify").disabled=false}catch(e){log("✗ DB投入エラー："+e.message);$("migrate").disabled=false}}};
-$("verify").onclick=async()=>{let a=[];for(const s of Object.keys(ST))a.push(s+"="+await new Promise((ok,no)=>{let r=db.transaction(s,"readonly").objectStore(s).count();r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)}));log("DB件数："+a.join(" / "))};
-$("cleanup").onclick=()=>{if(db){db.close();db=null}let r=indexedDB.deleteDatabase(DB);r.onsuccess=()=>$("out").textContent="✓ DBを端末から削除しました。";r.onerror=()=>log("✗ DB削除エラー")};
+async function getNcodesFromProduction(){
+  const url="2_1_2_index.html?migration_test_20261004";
+  const html=await (await fetch(url,{cache:"no-store"})).text();
+  const doc=new DOMParser().parseFromString(html,"text/html");
+  const a=[...doc.querySelectorAll("[data-ncode]")].map(e=>String(e.dataset.ncode||"").trim().toUpperCase()).filter(n=>/^N[0-9A-Z]+$/.test(n));
+  return [...new Set(a)];
+}
+$("prepare").onclick=async()=>{
+  try{
+    $("prepare").disabled=true;
+    const base=await getNcodesFromProduction();
+    log("v2.1.2本体：有効Nコード "+base.length+"件");
+    const merged=[...new Set([...base,...EXTRA])];
+    target=merged;
+    log("CSV差分として追加：N0212JU / N8266K");
+    log("重複除外後："+target.length+"件");
+    if(base.length!==2117)throw Error("v2.1.2本体の件数が想定2117件ではありません："+base.length);
+    if(target.length!==2119)throw Error("移行対象が2119件になりません："+target.length);
+    log("✓ 移行対象2119件を確定");
+    $("migrate").disabled=false;
+  }catch(e){log("✗ 対象確認エラー："+e.message);$("prepare").disabled=false}
+};
+$("migrate").onclick=async()=>{
+  try{
+    $("migrate").disabled=true;
+    await openDB();
+    if(target.length!==2119)throw Error("移行対象が2119件ではありません");
+    await tx(["shelf_placement"],s=>target.forEach(n=>s.shelf_placement.put({ncode:n,shelf_id:"shelf01"})));
+    log("✓ shelf_placement：2119件");
+    log("✓ Nコード重複：0件");
+    log("✓ Nコード2119件のDB投入完了");
+    log("作品情報：未投入（次段階）");
+    log("Narou API：未使用");
+    $("verify").disabled=false;
+  }catch(e){log("✗ DB投入エラー："+e.message);$("migrate").disabled=false}
+};
+$("verify").onclick=async()=>{
+  try{
+    const n=await new Promise((ok,no)=>{let r=db.transaction("shelf_placement","readonly").objectStore("shelf_placement").count();r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});
+    log("shelf_placement="+n);
+    log(n===2119?"✓ DB件数2119件で一致":"✗ DB件数不一致："+n);
+  }catch(e){log("✗ DB確認エラー："+e.message)}
+};
+$("cleanup").onclick=()=>{
+  if(db){db.close();db=null}
+  const r=indexedDB.deleteDatabase(DB);
+  r.onsuccess=()=>$("out").textContent="✓ DBを端末から削除しました。";
+  r.onerror=()=>log("✗ DB削除エラー");
+};
 $("copy").onclick=async()=>{try{await navigator.clipboard.writeText($("out").textContent);alert("コピーしました")}catch(e){alert("コピーできませんでした")}};
 </script></main></body></html>
