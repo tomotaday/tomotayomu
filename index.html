@@ -217,7 +217,7 @@ async function buildV3CardsFromIndexedDB(){
   const readShelfId=shelfIdByCore.get("読書中")||"";
   const unclassifiedShelfId=shelfIdByCore.get("未分類")||"";
 
-  if(unclassifiedShelfId){
+  {
     const repaired=placements.map(p=>{
       const n=String(p.ncode||"").toUpperCase();
       const originalLabel=String(originalShelfByNcode[n]||"").trim();
