@@ -72,11 +72,20 @@ function buildIndexes(){
   placementNs.forEach((ns,id)=>workMap.set(id,ns.map(n=>byN.get(n)).filter(Boolean)));
 }
 function setOrderInitial(){
-  const active=new Map();
-  shelves.forEach(v=>{const id=getId(v),c=core(shelfText(v));if(id&&c&&!active.has(c))active.set(c,v)});
-  const used=new Set();rows=[];
-  DESIRED_ORDER.forEach(c=>{const v=active.get(c);if(v){rows.push({kind:"shelf",shelf:v,core:c});used.add(getId(v))}});
-  shelves.forEach(v=>{const id=getId(v);if(id&&!used.has(id)){rows.push({kind:"shelf",shelf:v,core:core(shelfText(v))});used.add(id)}});
+  const hasSavedOrder=shelves.some(v=>Number.isFinite(Number(v.display_order)));
+  rows=[];
+  if(hasSavedOrder){
+    shelves.slice().sort((a,b)=>{
+      const ao=Number(a.display_order),bo=Number(b.display_order);
+      return (Number.isFinite(ao)?ao:999999)-(Number.isFinite(bo)?bo:999999);
+    }).forEach(v=>rows.push({kind:"shelf",shelf:v,core:core(shelfText(v))}));
+  }else{
+    const active=new Map();
+    shelves.forEach(v=>{const id=getId(v),c=core(shelfText(v));if(id&&c&&!active.has(c))active.set(c,v)});
+    const used=new Set();
+    DESIRED_ORDER.forEach(c=>{const v=active.get(c);if(v){rows.push({kind:"shelf",shelf:v,core:c});used.add(getId(v))}});
+    shelves.forEach(v=>{const id=getId(v);if(id&&!used.has(id)){rows.push({kind:"shelf",shelf:v,core:core(shelfText(v))});used.add(id)}});
+  }
   while(rows.length<Math.max(17,shelves.length))rows.push({kind:"unused"});
 }
 function render(){
