@@ -259,7 +259,7 @@ async function buildV3CardsFromIndexedDB(){
     if(!w){deleted++;continue;}
     const sid=String(p.shelf_id||"").trim();
     const rawShelf=shelfText(sm.get(sid));
-    const shelf=shelfLabel(rawShelf);
+    const shelf=rawShelf;
     if(sid && !sm.has(sid))unmapped++;
 
     const card=document.createElement("article");
