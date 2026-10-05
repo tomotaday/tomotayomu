@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#f6f3ed" name="theme-color"/>
-<title>ともたよむ v3.1.0.2【更新矢印サイズ統一版】</title>
+<title>ともたよむ v3.1.0.3【本棚反映状態表示版】</title>
 <style>
 :root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195}
 *{box-sizing:border-box}
@@ -63,9 +63,8 @@ summary{cursor:pointer}
 <h1>ともたよむ</h1>
 <div class="note" style="font-weight:800;font-size:15px">🧪 v3.1.0.2【更新矢印サイズ統一版】</div>
 <button id="updateBtn" type="button">🔄 更新情報を確認</button>
-<div id="baselineDate">基準日：未設定</div>
-<div class="note">基準日は全作品共通で1個。更新候補は基準日とは別に保持します。</div>
-<div id="apiStatus">初回取得待ち</div>
+<div id="baselineDate">基準日：反映待ち</div>
+<div id="apiStatus">本棚情報未反映</div>
 <details class="updateDetails">
 <summary id="updateTitle">🆙 更新0</summary>
 <div class="update-empty" id="updateEmpty">作品はありません。</div>
@@ -124,7 +123,7 @@ function restoreLatestWorks(){
     if(c) updateCard(c,latest[n]);
   });
 }
-function renderGlobalBaseline(){ const el=document.getElementById("baselineDate"); if(el)el.textContent="基準日："+formatDate(getGlobalBaseline()); }
+function renderGlobalBaseline(){ const el=document.getElementById("baselineDate"); if(el){ const v=getGlobalBaseline(); el.textContent=v?("基準日："+formatDate(v)):"基準日：反映待ち"; } }
 async function hydrateCandidateWorks(){
   const candidates=getUpdateCandidates();
   const ncodes=Object.keys(candidates||{});
@@ -163,6 +162,8 @@ function loadShelfRestoreMap(){
 let v3Shelves=[];
 let v3ShelfText=null;
 async function buildV3CardsFromIndexedDB(){
+  const status=document.getElementById("apiStatus");
+  if(status)status.textContent="本棚情報反映中";
   await loadShelfRestoreMap();
   const db=await new Promise((ok,no)=>{
     const r=indexedDB.open("tomotaYomuDB",1);
@@ -283,6 +284,7 @@ async function buildV3CardsFromIndexedDB(){
   if(s){ s.textContent=""; }
   const sum=document.getElementById("bookshelfSummary");
   if(sum)sum.textContent="📚 本棚 "+made;
+  if(status)status.textContent="本棚情報反映済み";
   return {shelves:v3Shelves,placements,made,deleted,works,authors,positions,unmapped};
 }
 function formatDate(v) { if (!v) return "—"; const d = new Date(String(v).replace(" ", "T")); if (isNaN(d)) return String(v).slice(0,10).replaceAll("-","/"); return d.toLocaleString("ja-JP", {year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}); }
@@ -583,7 +585,7 @@ document.addEventListener("click",e=>{
   rememberActive(card);
 });
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") refreshActiveFromGAS(); });
-window.addEventListener("load",async()=>{ try{ await buildV3CardsFromIndexedDB(); seedReadingCache(); restoreReadingFromQuery(); restoreReadingPositions(); renderGlobalBaseline(); restoreLatestWorks(); buildUpdateView(); buildShelfFolders(); setTimeout(refreshActiveFromGAS,300); }catch(e){ console.warn("v3 IndexedDB本棚再構築失敗",e); const s=document.getElementById("apiStatus"); if(s)s.textContent="v3 IndexedDB接続失敗："+e.message; } });
+window.addEventListener("load",async()=>{ try{ const s=document.getElementById("apiStatus"); if(s)s.textContent="本棚情報反映中"; await buildV3CardsFromIndexedDB(); seedReadingCache(); restoreReadingFromQuery(); restoreReadingPositions(); renderGlobalBaseline(); restoreLatestWorks(); buildUpdateView(); buildShelfFolders(); setTimeout(refreshActiveFromGAS,300); }catch(e){ console.warn("v3 IndexedDB本棚再構築失敗",e); const s=document.getElementById("apiStatus"); if(s)s.textContent="v3 IndexedDB接続失敗："+e.message; } });
 </script>
 
 
