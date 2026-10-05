@@ -10,201 +10,103 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.5}
 main{width:min(100%,720px);margin:auto;padding:20px 14px 44px}
-h1{font-size:25px;margin:0 0 3px}
-.note{font-size:13px;color:var(--muted);margin-bottom:18px}
+h1{font-size:25px;margin:0 0 3px}.note{font-size:13px;color:var(--muted);margin-bottom:10px}
+.source{font-size:12px;padding:7px 9px;border:1px solid #c8c0b5;border-radius:8px;margin-bottom:14px}
 .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
 button{border:1px solid #c8c0b5;border-radius:8px;background:transparent;padding:7px 11px;font-size:14px;color:var(--ink)}
 #status{font-size:13px;color:var(--muted);min-height:20px;margin:8px 0 14px}
 #shelfList{display:flex;flex-direction:column;gap:8px}
-.row{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 11px;min-height:50px;touch-action:none}
+.row{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;touch-action:none}
+.head{display:flex;align-items:center;gap:10px;padding:10px 11px;min-height:50px}
 .handle{font-size:22px;line-height:1;color:#777;width:30px;text-align:center;user-select:none;-webkit-user-select:none;cursor:grab}
-.name{font-size:16px;font-weight:700;flex:1}
-.name.unused{color:#aaa;font-weight:400}
-.order{font-size:12px;color:#999;width:24px;text-align:right}
-.row.dragging{opacity:.45}
-.row.drop-before{border-top:3px solid #777}
-.row.drop-after{border-bottom:3px solid #777}
+.name{font-size:16px;font-weight:700;flex:1}.name.unused{color:#aaa;font-weight:400}
+.order{font-size:12px;color:#999;width:24px;text-align:right}.count{font-size:12px;color:#888;white-space:nowrap}
+.row.dragging{opacity:.45}.row.drop-before{border-top:3px solid #777}.row.drop-after{border-bottom:3px solid #777}
+.body{display:none;border-top:1px solid #d5cec4;padding:11px 13px 13px;background:#faf7f1}
+.row.open .body{display:block}
+.shelfId{font-size:11px;color:#888;margin-bottom:9px;word-break:break-all}
+.work{padding:8px 0;border-top:1px solid #ddd5ca}
+.work:first-child{border-top:0;padding-top:0}
+.workTitle{font-size:14px;font-weight:600}.workMeta{font-size:11px;color:#888;margin-top:2px}
+.empty{font-size:13px;color:#999}.more{font-size:12px;color:#777;margin-top:8px}
 .hint{font-size:12px;color:#777;margin:14px 2px}
 </style>
 </head>
 <body>
 <main>
 <h1>📚 本棚管理</h1>
-<div class="note">テスト版｜棚の表示順だけを変更します。作品の所属棚は変更しません。</div>
-<div class="toolbar">
-<button id="saveBtn" type="button">保存する</button>
-<button id="resetBtn" type="button">初期順に戻す</button>
-</div>
+<div class="note">棚卸しテスト版｜既存IndexedDBを直接読み込みます。作品の所属棚は変更しません。</div>
+<div class="source">データ源：tomotaYomuDB → shelf_names / shelf_placement / works_cache　｜　CSV再読込なし</div>
+<div class="toolbar"><button id="saveBtn" type="button">表示順を保存</button><button id="resetBtn" type="button">初期順に戻す</button></div>
 <div id="status">IndexedDBから棚情報を読み込み中…</div>
 <div id="shelfList"></div>
-<div class="hint">☰ を押したまま動かして、好きな順番に並べ替えます。保存後、index.html側がこの順番を読む設計です。</div>
+<div class="hint">棚をタップすると中身を確認できます。☰ は並べ替え用です。保存しても作品の所属棚は変更しません。</div>
 </main>
 <script>
-const DB_NAME="tomotaYomuDB";
-const DB_VERSION=1;
-const STORE="shelf_names";
+const DB_NAME="tomotaYomuDB",DB_VERSION=1;
+const STORES={shelves:"shelf_names",placements:"shelf_placement",works:"works_cache"};
 const DESIRED_ORDER=["読書中","あ〜お","か〜こ","さ〜そ","た〜と","な〜の","は〜ほ","ま〜も","や〜ん","更新待ち"];
+let db=null,shelves=[],placements=[],works=[],rows=[],dragRow=null,dragPointerId=null;
 
-let db=null;
-let shelves=[];
-let rows=[];
-let dragRow=null;
-let dragPointerId=null;
-
-function openDB(){
-  return new Promise((resolve,reject)=>{
-    const r=indexedDB.open(DB_NAME,DB_VERSION);
-    r.onsuccess=()=>{db=r.result;resolve(db)};
-    r.onerror=()=>reject(r.error||new Error("IndexedDBを開けません"));
-  });
-}
-function readAll(storeName){
-  return new Promise((resolve,reject)=>{
-    const tx=db.transaction(storeName,"readonly"),st=tx.objectStore(storeName),out=[];
-    const req=st.openCursor();
-    req.onsuccess=()=>{const c=req.result;if(c){out.push(c.value);c.continue()}else resolve(out)};
-    req.onerror=()=>reject(req.error||new Error(storeName+"読込失敗"));
-  });
-}
-function shelfText(v){
-  if(!v)return "";
-  const direct=v.shelf_name??v.name??v.title??v.label??v.display_name;
-  if(direct!=null&&String(direct).trim())return String(direct).trim();
-  const values=Object.values(v);
-  const hit=values.find(x=>typeof x==="string"&&/読書中|未分類|あ〜お|か〜こ|さ〜そ|た〜と|な〜の|は〜ほ|ま〜も|や〜ん|更新待ち/.test(x));
-  return String(hit??"").trim();
-}
-function core(raw){
-  const s=String(raw||"").replace(/[🟠🔵🌀🎈📚⏰]/g,"").replace(/\s+/g,"");
-  if(s.includes("読書中"))return "読書中";
-  if(s.includes("未分類"))return "未分類";
-  for(const k of DESIRED_ORDER.slice(1))if(s.includes(k)||s.includes(k.replace("〜","-")))return k;
-  return "";
-}
-function label(c){
-  if(c==="読書中")return "🟠読書中";
-  if(c==="更新待ち")return "⏰更新待ち";
-  if(c==="未分類")return "未分類";
-  return c?"🎈"+c:"（未使用）";
-}
+function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onsuccess=()=>{db=r.result;resolve(db)};r.onerror=()=>reject(r.error||new Error("IndexedDBを開けません"))})}
+function readAll(name){return new Promise((resolve,reject)=>{const tx=db.transaction(name,"readonly"),st=tx.objectStore(name),out=[];const req=st.openCursor();req.onsuccess=()=>{const c=req.result;if(c){out.push(c.value);c.continue()}else resolve(out)};req.onerror=()=>reject(req.error||new Error(name+"読込失敗"))})}
+function shelfText(v){if(!v)return "";const direct=v.shelf_name??v.name??v.title??v.label??v.display_name;if(direct!=null&&String(direct).trim())return String(direct).trim();const hit=Object.values(v).find(x=>typeof x==="string"&&/読書中|未分類|あ〜お|か〜こ|さ〜そ|た〜と|な〜の|は〜ほ|ま〜も|や〜ん|更新待ち/.test(x));return String(hit??"").trim()}
+function core(raw){const s=String(raw||"").replace(/[🟠🔵🌀🎈📚⏰]/g,"").replace(/s+/g,"");if(s.includes("読書中"))return"読書中";if(s.includes("未分類"))return"未分類";for(const k of DESIRED_ORDER.slice(1))if(s.includes(k)||s.includes(k.replace("〜","-")))return k;return""}
+function label(c){if(c==="読書中")return"🟠読書中";if(c==="更新待ち")return"⏰更新待ち";if(c==="未分類")return"未分類";return c?"🎈"+c:"（未使用）"}
 function getId(v){return String(v?.shelf_id??"").trim()}
+function placementShelf(v){return String(v?.shelf_id??v?.shelfId??"").trim()}
+function placementN(v){return String(v?.ncode??v?.Ncode??"").trim().toUpperCase()}
+function workN(v){return String(v?.ncode??"").trim().toUpperCase()}
+function workTitle(v){return String(v?.title??v?.novel_title??v?.name??"（タイトル未取得）").trim()}
+function countFor(id){if(!id)return 0;return placements.reduce((n,p)=>n+(placementShelf(p)===id?1:0),0)}
+function worksFor(id){if(!id)return[];const wanted=new Set(placements.filter(p=>placementShelf(p)===id).map(placementN).filter(Boolean));return works.filter(w=>wanted.has(workN(w)))}
 function setOrderInitial(){
   const active=new Map();
-  shelves.forEach(v=>{
-    const id=getId(v),c=core(shelfText(v));
-    if(id&&c&&!active.has(c))active.set(c,v);
-  });
-  const used=new Set();
-  rows=[];
-  DESIRED_ORDER.forEach(c=>{
-    const v=active.get(c);
-    if(v){rows.push({kind:"shelf",shelf:v,core:c});used.add(getId(v));}
-  });
-  shelves.forEach(v=>{
-    const id=getId(v);
-    if(id&&!used.has(id)&&!rows.some(r=>r.kind==="shelf"&&getId(r.shelf)===id)){
-      rows.push({kind:"shelf",shelf:v,core:core(shelfText(v))});
-      used.add(id);
-    }
-  });
+  shelves.forEach(v=>{const id=getId(v),c=core(shelfText(v));if(id&&c&&!active.has(c))active.set(c,v)});
+  const used=new Set();rows=[];
+  DESIRED_ORDER.forEach(c=>{const v=active.get(c);if(v){rows.push({kind:"shelf",shelf:v,core:c});used.add(getId(v))}});
+  shelves.forEach(v=>{const id=getId(v);if(id&&!used.has(id)){rows.push({kind:"shelf",shelf:v,core:core(shelfText(v))});used.add(id)}});
   while(rows.length<Math.max(17,shelves.length))rows.push({kind:"unused"});
 }
 function render(){
-  const list=document.getElementById("shelfList");
-  list.innerHTML="";
+  const list=document.getElementById("shelfList");list.innerHTML="";
   rows.forEach((r,i)=>{
-    const el=document.createElement("div");
-    el.className="row";
-    el.dataset.index=String(i);
-    const n=document.createElement("div");
-    n.className="order";
-    n.textContent=String(i+1);
-    const h=document.createElement("div");
-    h.className="handle";
-    h.textContent="☰";
-    h.setAttribute("aria-label","棚を並べ替える");
-    const name=document.createElement("div");
-    name.className="name"+(r.kind==="unused"?" unused":"");
-    name.textContent=r.kind==="unused"?"（未使用）":label(r.core||core(shelfText(r.shelf)));
-    el.append(h,name,n);
+    const el=document.createElement("div");el.className="row";el.dataset.index=String(i);
+    if(r.kind==="unused"){
+      el.innerHTML='<div class="head"><div class="handle">☰</div><div class="name unused">（未使用）</div><div class="order">'+(i+1)+'</div></div>';
+      list.appendChild(el);el.querySelector(".handle").addEventListener("pointerdown",startDrag);return;
+    }
+    const id=getId(r.shelf),name=label(r.core||core(shelfText(r.shelf))),count=countFor(id),items=worksFor(id);
+    const head=document.createElement("div");head.className="head";
+    const h=document.createElement("div");h.className="handle";h.textContent="☰";h.setAttribute("aria-label","棚を並べ替える");
+    const nm=document.createElement("div");nm.className="name";nm.textContent=name;
+    const ct=document.createElement("div");ct.className="count";ct.textContent=count+"作品";
+    const ord=document.createElement("div");ord.className="order";ord.textContent=String(i+1);
+    head.append(h,nm,ct,ord);
+    const body=document.createElement("div");body.className="body";
+    const sid=document.createElement("div");sid.className="shelfId";sid.textContent="shelf_id："+(id||"（なし）");
+    body.appendChild(sid);
+    if(!items.length){const e=document.createElement("div");e.className="empty";e.textContent=count?"所属作品あり・作品情報未取得":"この棚に所属する作品はありません";body.appendChild(e)}
+    else{
+      const limit=items.slice(0,30);
+      limit.forEach(w=>{const d=document.createElement("div");d.className="work";const t=document.createElement("div");t.className="workTitle";t.textContent=workTitle(w);const m=document.createElement("div");m.className="workMeta";m.textContent=workN(w);d.append(t,m);body.appendChild(d)});
+      if(items.length>30){const m=document.createElement("div");m.className="more";m.textContent="ほか "+(items.length-30)+"作品";body.appendChild(m)}
+    }
+    el.append(head,body);
     h.addEventListener("pointerdown",startDrag);
+    head.addEventListener("click",e=>{if(e.target===h)return;el.classList.toggle("open")});
     list.appendChild(el);
   });
 }
 function clearMarks(){document.querySelectorAll(".row").forEach(x=>x.classList.remove("drop-before","drop-after"))}
-function startDrag(e){
-  e.preventDefault();
-  dragRow=e.currentTarget.closest(".row");
-  dragPointerId=e.pointerId;
-  dragRow.classList.add("dragging");
-  dragRow.setPointerCapture?.(dragPointerId);
-  document.addEventListener("pointermove",moveDrag,{passive:false});
-  document.addEventListener("pointerup",endDrag,{once:true});
-  document.addEventListener("pointercancel",endDrag,{once:true});
-}
-function moveDrag(e){
-  if(!dragRow||e.pointerId!==dragPointerId)return;
-  e.preventDefault();
-  clearMarks();
-  const target=document.elementFromPoint(e.clientX,e.clientY)?.closest(".row");
-  if(!target||target===dragRow)return;
-  const rect=target.getBoundingClientRect();
-  target.classList.add(e.clientY<rect.top+rect.height/2?"drop-before":"drop-after");
-}
-function endDrag(e){
-  if(!dragRow)return;
-  const target=document.elementFromPoint(e.clientX,e.clientY)?.closest(".row");
-  clearMarks();
-  const from=Number(dragRow.dataset.index);
-  if(target&&target!==dragRow){
-    let to=Number(target.dataset.index);
-    const rect=target.getBoundingClientRect();
-    if(e.clientY>=rect.top+rect.height/2)to++;
-    const moved=rows.splice(from,1)[0];
-    if(from<to)to--;
-    rows.splice(to,moved);
-  }
-  dragRow.classList.remove("dragging");
-  dragRow=null;
-  dragPointerId=null;
-  document.removeEventListener("pointermove",moveDrag);
-  render();
-  document.getElementById("status").textContent="並べ替え中。保存するとIndexedDBへ記録します。";
-}
-async function save(){
-  const order=rows.map((r,i)=>({row:r,order:i+1})).filter(x=>x.row.kind==="shelf");
-  const tx=db.transaction(STORE,"readwrite"),st=tx.objectStore(STORE);
-  order.forEach(x=>{
-    const v={...x.row.shelf,display_order:x.order};
-    st.put(v);
-  });
-  await new Promise((resolve,reject)=>{
-    tx.oncomplete=resolve;
-    tx.onerror=()=>reject(tx.error);
-    tx.onabort=()=>reject(tx.error||new Error("保存中止"));
-  });
-  document.getElementById("status").textContent="保存しました。表示順をIndexedDBに記録しました。";
-}
-function resetOrder(){
-  setOrderInitial();
-  render();
-  document.getElementById("status").textContent="初期順に戻しました。まだ保存はしていません。";
-}
-async function init(){
-  try{
-    await openDB();
-    shelves=await readAll(STORE);
-    setOrderInitial();
-    render();
-    document.getElementById("status").textContent="棚情報を読み込みました："+shelves.length+"件";
-  }catch(e){
-    console.error(e);
-    document.getElementById("status").textContent="読み込み失敗："+e.message;
-  }
-}
+function startDrag(e){e.preventDefault();dragRow=e.currentTarget.closest(".row");dragPointerId=e.pointerId;dragRow.classList.add("dragging");dragRow.setPointerCapture?.(dragPointerId);document.addEventListener("pointermove",moveDrag,{passive:false});document.addEventListener("pointerup",endDrag,{once:true});document.addEventListener("pointercancel",endDrag,{once:true})}
+function moveDrag(e){if(!dragRow||e.pointerId!==dragPointerId)return;e.preventDefault();clearMarks();const target=document.elementFromPoint(e.clientX,e.clientY)?.closest(".row");if(!target||target===dragRow)return;const rect=target.getBoundingClientRect();target.classList.add(e.clientY<rect.top+rect.height/2?"drop-before":"drop-after")}
+function endDrag(e){if(!dragRow)return;const target=document.elementFromPoint(e.clientX,e.clientY)?.closest(".row");clearMarks();const from=Number(dragRow.dataset.index);if(target&&target!==dragRow){let to=Number(target.dataset.index);const rect=target.getBoundingClientRect();if(e.clientY>=rect.top+rect.height/2)to++;const moved=rows.splice(from,1)[0];if(from<to)to--;rows.splice(to,moved)}dragRow.classList.remove("dragging");dragRow=null;dragPointerId=null;document.removeEventListener("pointermove",moveDrag);render();document.getElementById("status").textContent="並べ替え中。保存するとIndexedDBへ記録します。"}
+async function save(){const order=rows.map((r,i)=>({row:r,order:i+1})).filter(x=>x.row.kind==="shelf");const tx=db.transaction(STORES.shelves,"readwrite"),st=tx.objectStore(STORES.shelves);order.forEach(x=>st.put({...x.row.shelf,display_order:x.order}));await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error("保存中止"))});document.getElementById("status").textContent="保存しました。display_orderをIndexedDBへ記録しました。"}
+function resetOrder(){setOrderInitial();render();document.getElementById("status").textContent="初期順に戻しました。まだ保存はしていません。"}
+async function init(){try{await openDB();[shelves,placements,works]=await Promise.all([readAll(STORES.shelves),readAll(STORES.placements),readAll(STORES.works)]);setOrderInitial();render();document.getElementById("status").textContent="実データを読み込みました："+shelves.length+"棚 / "+placements.length+"配置 / "+works.length+"作品情報"}catch(e){console.error(e);document.getElementById("status").textContent="読み込み失敗："+e.message}}
 document.getElementById("saveBtn").addEventListener("click",()=>save().catch(e=>document.getElementById("status").textContent="保存失敗："+e.message));
-document.getElementById("resetBtn").addEventListener("click",resetOrder);
-init();
+document.getElementById("resetBtn").addEventListener("click",resetOrder);init();
 </script>
 </body>
 </html>
