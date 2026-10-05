@@ -52,7 +52,7 @@ let countMap=new Map(),workMap=new Map();
 function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onsuccess=()=>{db=r.result;resolve(db)};r.onerror=()=>reject(r.error||new Error("IndexedDBを開けません"))})}
 function readAll(name){return new Promise((resolve,reject)=>{const tx=db.transaction(name,"readonly"),st=tx.objectStore(name),out=[];const req=st.openCursor();req.onsuccess=()=>{const c=req.result;if(c){out.push(c.value);c.continue()}else resolve(out)};req.onerror=()=>reject(req.error||new Error(name+"読込失敗"))})}
 function shelfText(v){if(!v)return "";const direct=v.shelf_name??v.name??v.title??v.label??v.display_name;if(direct!=null&&String(direct).trim())return String(direct).trim();const hit=Object.values(v).find(x=>typeof x==="string"&&/読書中|未分類|あ〜お|か〜こ|さ〜そ|た〜と|な〜の|は〜ほ|ま〜も|や〜ん|更新待ち/.test(x));return String(hit??"").trim()}
-function core(raw){const s=String(raw||"").replace(/[🟠🔵🌀🎈📚⏰]/g,"").replace(/s+/g,"");if(s.includes("読書中"))return"読書中";if(s.includes("未分類"))return"未分類";for(const k of DESIRED_ORDER.slice(1))if(s.includes(k)||s.includes(k.replace("〜","-")))return k;return""}
+function core(raw){const s=String(raw||"").replace(/[🟠🔵🌀🎈📚⏰]/g,"").replace(/\s+/g,"");if(s.includes("読書中"))return"読書中";if(s.includes("未分類"))return"未分類";for(const k of DESIRED_ORDER.slice(1))if(s.includes(k)||s.includes(k.replace("〜","-")))return k;return""}
 function label(c){if(c==="読書中")return"🟠読書中";if(c==="更新待ち")return"⏰更新待ち";if(c==="未分類")return"未分類";return c?"🎈"+c:"（未使用）"}
 function getId(v){return String(v?.shelf_id??"").trim()}
 function placementShelf(v){return String(v?.shelf_id??v?.shelfId??"").trim()}
@@ -96,10 +96,12 @@ function render(){
       el.innerHTML='<div class="head"><div class="handle">☰</div><div class="name unused">（未使用）</div><div class="order">'+(i+1)+'</div></div>';
       list.appendChild(el);el.querySelector(".handle").addEventListener("pointerdown",startDrag);return;
     }
-    const id=getId(r.shelf),name=label(r.core||core(shelfText(r.shelf))),count=countMap.get(id)||0,items=workMap.get(id)||[];
+    const id=getId(r.shelf),name=shelfText(r.shelf)||label(r.core||core(shelfText(r.shelf))),count=countMap.get(id)||0,items=workMap.get(id)||[];
     const head=document.createElement("div");head.className="head";
     const h=document.createElement("div");h.className="handle";h.textContent="☰";h.setAttribute("aria-label","棚を並べ替える");
-    const nm=document.createElement("div");nm.className="name";\n    const inp=document.createElement("input");inp.className="nameInput";inp.type="text";inp.value=name;inp.setAttribute("aria-label","本棚名");inp.addEventListener("click",e=>e.stopPropagation());inp.addEventListener("pointerdown",e=>e.stopPropagation());\n    nm.appendChild(inp);
+    const nm=document.createElement("div");nm.className="name";
+    const inp=document.createElement("input");inp.className="nameInput";inp.type="text";inp.value=name;inp.setAttribute("aria-label","本棚名");inp.addEventListener("click",e=>e.stopPropagation());inp.addEventListener("pointerdown",e=>e.stopPropagation());
+    nm.appendChild(inp);
     const ct=document.createElement("div");ct.className="count";ct.textContent=count+"作品";
     const ord=document.createElement("div");ord.className="order";ord.textContent=String(i+1);
     head.append(h,nm,ct);
