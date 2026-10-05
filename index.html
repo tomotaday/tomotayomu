@@ -46,7 +46,7 @@ summary{cursor:pointer}
 .bookshelfDetails>summary::-webkit-details-marker{display:none}
 .bookshelfDetails>summary::before{content:"▸ ";font-size:18px}
 .bookshelfDetails[open]>summary::before{content:"▾ ";font-size:18px}
-.managementDetails{margin-top:14px;padding-top:10px;border-top:1px solid #d0c8bd}.managementDetails>summary{list-style:none;cursor:pointer}.managementDetails>summary::-webkit-details-marker{display:none}.managementDetails>summary::before{content:"▸ "}.managementDetails[open]>summary::before{content:"▾ "}.managementBody{display:flex;gap:10px;flex-wrap:wrap;margin-top:9px;align-items:center}.managementBody .ncode{width:100%;padding-right:0}.managementBody button{font-size:13px}..folderDetails{margin:14px 0}
+.managementSettingsDetails{margin:20px 0 8px}.managementSettingsDetails>summary{list-style:none;cursor:pointer;font-size:18px;font-weight:700;padding:4px 2px}.managementSettingsDetails>summary::-webkit-details-marker{display:none}.managementSettingsDetails>summary::before{content:"▸ ";font-size:15px}.managementSettingsDetails[open]>summary::before{content:"▾ ";font-size:15px}.managementSettingsBody{display:flex;flex-direction:column;gap:8px;padding:9px 4px}.managementSettingsBody a{color:inherit;text-decoration:none;border-bottom:1px solid #aaa195;width:max-content;font-size:14px}..managementDetails{margin-top:14px;padding-top:10px;border-top:1px solid #d0c8bd}.managementDetails>summary{list-style:none;cursor:pointer}.managementDetails>summary::-webkit-details-marker{display:none}.managementDetails>summary::before{content:"▸ "}.managementDetails[open]>summary::before{content:"▾ "}.managementBody{display:flex;gap:10px;flex-wrap:wrap;margin-top:9px;align-items:center}.managementBody .ncode{width:100%;padding-right:0}.managementBody button{font-size:13px}..folderDetails{margin:14px 0}
 .folderDetails>summary{list-style:none;cursor:pointer;font-size:18px;font-weight:700;padding:3px 2px}
 .folderDetails>summary::-webkit-details-marker{display:none}
 .folderDetails>summary::before{content:"▸ ";font-size:15px}
@@ -369,9 +369,11 @@ function updateCard(card,w){
 }
 function applyCardState(card){
   const n=card.dataset.ncode.toUpperCase(), candidates=getUpdateCandidates(), candidate=candidates[n], current=readingFor(n), total=Number(card.dataset.totalEpisodes||0);
+  const shelfName=String(card.dataset.shelf||"").replace(/[🟠🔵🌀🎈📚⏰]/g,"").replace(/\s+/g,"");
+  const isUnclassified=shelfName.includes("未分類") || !String(card.dataset.shelf||"").trim();
   const unread=current!=null && total>0 && current<total;
   const mark=card.querySelector(".newMark");
-  if(mark)mark.hidden=!(!!candidate && unread);
+  if(mark)mark.hidden=isUnclassified || !(!!candidate && unread);
 }
 function buildShelfFolders(){
   const root=document.getElementById("shelfSections"), source=document.getElementById("shelf"); if(!root||!source)return; root.innerHTML="";
@@ -383,6 +385,15 @@ function buildShelfFolders(){
   const getFolder=card=>{const text=(card.querySelector(".meta")?.textContent||"").replace(/\s+/g,"");for(const x of order){const key=x.name.replace(/[🟠🔵🌀🎈📚⏰]/g,"").replace(/\s+/g,"");if(key&&text.includes(key))return x.id;}return "";};
   for(const x of order){const members=cards.filter(c=>getFolder(c)===x.id).sort((a,b)=>(b.dataset.lastUpdated||"").localeCompare(a.dataset.lastUpdated||""));if(!members.length)continue;const d=document.createElement("details");d.className="folderDetails";const sm=document.createElement("summary");sm.textContent=x.name+" "+members.length;const wrap=document.createElement("div");wrap.className="folderCards";members.forEach(c=>wrap.appendChild(c.cloneNode(true)));d.append(sm,wrap);root.appendChild(d);}
   source.hidden=true;
+  const management=document.createElement("details");
+  management.className="managementSettingsDetails";
+  const managementSummary=document.createElement("summary");
+  managementSummary.textContent="⚙️管理設定用";
+  const managementBody=document.createElement("div");
+  managementBody.className="managementSettingsBody";
+  managementBody.innerHTML='<a href="v3.0.0_shelf_manager_test.html">本棚管理</a><a href="author.html">作者管理</a>';
+  management.append(managementSummary,managementBody);
+  root.appendChild(management);
 }
 function buildUpdateView(){
   const candidates=getUpdateCandidates(), cards=[...document.querySelectorAll("#shelf .card")], updates=[];
