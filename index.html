@@ -46,7 +46,7 @@ summary{cursor:pointer}
 .bookshelfDetails>summary::-webkit-details-marker{display:none}
 .bookshelfDetails>summary::before{content:"▸ ";font-size:18px}
 .bookshelfDetails[open]>summary::before{content:"▾ ";font-size:18px}
-.folderDetails{margin:14px 0}
+.managementDetails{margin-top:14px;padding-top:10px;border-top:1px solid #d0c8bd}.managementDetails>summary{list-style:none;cursor:pointer}.managementDetails>summary::-webkit-details-marker{display:none}.managementDetails>summary::before{content:"▸ "}.managementDetails[open]>summary::before{content:"▾ "}.managementBody{display:flex;gap:10px;flex-wrap:wrap;margin-top:9px;align-items:center}.managementBody .ncode{width:100%;padding-right:0}.managementBody button{font-size:13px}..folderDetails{margin:14px 0}
 .folderDetails>summary{list-style:none;cursor:pointer;font-size:18px;font-weight:700;padding:3px 2px}
 .folderDetails>summary::-webkit-details-marker{display:none}
 .folderDetails>summary::before{content:"▸ ";font-size:15px}
@@ -269,7 +269,7 @@ async function buildV3CardsFromIndexedDB(){
     card.dataset.current=pm.has(n)?String(pm.get(n).episode||""):"";
     const writer=am.get(n)?.writer||w.writer||"";
 
-    card.innerHTML='<div class="meta"><span class="newMark" hidden>🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ '+shelf+'</div><h2></h2><div class="author"></div><div class="ncode">Nコード：'+n+'</div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから　📖 未読 / —話</a></div></article>';
+    card.innerHTML='<div class="meta"><span class="newMark" hidden>🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ '+shelf+'</div><h2></h2><div class="author"></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから　📖 未読 / —話</a></div><details class="managementDetails"><summary>詳細を開く</summary><div class="managementBody"><div class="ncode">Nコード：'+n+'</div><button type="button" class="moveShelfBtn">本棚を移動</button><button type="button" class="deleteWorkBtn">削除</button></div></details></article>';
     card.querySelector("h2").textContent=w.title||"";
     card.querySelector(".author").textContent="作者："+writer;
     updateCard(card,{...w,writer});
