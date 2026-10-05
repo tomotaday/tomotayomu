@@ -159,6 +159,8 @@ function loadShelfRestoreMap(){
     document.head.appendChild(s);
   });
 }
+let v3Shelves=[];
+let v3ShelfText=null;
 async function buildV3CardsFromIndexedDB(){
   await loadShelfRestoreMap();
   const db=await new Promise((ok,no)=>{
@@ -171,9 +173,11 @@ async function buildV3CardsFromIndexedDB(){
     r.onsuccess=()=>{if(r.result){a.push(r.result.value);r.result.continue()}else ok(a)};
     r.onerror=()=>no(r.error);
   });
-  const [shelves,placements,works,authors,positions]=await Promise.all([
+  const [shelfRows,placements,works,authors,positions]=await Promise.all([
     readAll("shelf_names"),readAll("shelf_placement"),readAll("works_cache"),readAll("authors"),readAll("reading_position")
   ]);
+  v3Shelves=shelfRows;
+  const shelves=v3Shelves;
   const wm=new Map(works.map(v=>[String(v.ncode||"").toUpperCase(),v]));
   const am=new Map(authors.map(v=>[String(v.ncode||"").toUpperCase(),v]));
   const pm=new Map(positions.map(v=>[String(v.ncode||"").toUpperCase(),v]));
@@ -185,6 +189,7 @@ async function buildV3CardsFromIndexedDB(){
     const hit=values.find(x=>typeof x==="string"&&/読書中|未分類|あ〜お|か〜こ|さ〜そ|た〜と|な〜の|は〜ほ|ま〜も|や〜ん|更新待ち/.test(x));
     return String(hit??v?.shelf_id??"").trim();
   };
+  v3ShelfText=shelfText;
   const shelfCore=raw=>{
     const s=String(raw||"").replace(/[🟠🔵🌀🎈📚⏰]/g,"").replace(/\s+/g,"");
     if(s.includes("読書中"))return "読書中";
@@ -276,7 +281,7 @@ async function buildV3CardsFromIndexedDB(){
   if(s){ s.textContent=""; }
   const sum=document.getElementById("bookshelfSummary");
   if(sum)sum.textContent="📚 本棚 "+made;
-  return {shelves,placements,made,deleted,works,authors,positions,unmapped};
+  return {shelves:v3Shelves,placements,made,deleted,works,authors,positions,unmapped};
 }
 function formatDate(v) { if (!v) return "—"; const d = new Date(String(v).replace(" ", "T")); if (isNaN(d)) return String(v).slice(0,10).replaceAll("-","/"); return d.toLocaleString("ja-JP", {year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}); }
 function nowUnix(){ return Math.floor(Date.now()/1000); }
@@ -371,7 +376,7 @@ function applyCardState(card){
 function buildShelfFolders(){
   const root=document.getElementById("shelfSections"), source=document.getElementById("shelf"); if(!root||!source)return; root.innerHTML="";
   const order=[];
-  shelves.forEach(v=>{const id=String(v.shelf_id||"").trim(),name=shelfText(v);if(id&&name)order.push({id:id,name:String(name).trim(),sort:Number.isFinite(Number(v.display_order))?Number(v.display_order):999999});});
+  v3Shelves.forEach(v=>{const id=String(v.shelf_id||"").trim(),name=v3ShelfText(v);if(id&&name)order.push({id:id,name:String(name).trim(),sort:Number.isFinite(Number(v.display_order))?Number(v.display_order):999999});});
   order.sort((a,b)=>a.sort-b.sort);
   order.push({id:"",name:"未分類",sort:Infinity});
   const cards=[...source.querySelectorAll(":scope > .card")];
