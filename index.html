@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#f6f3ed" name="theme-color"/>
-<title>ともたよむ v3.1.0.1【矢印見やすさ修正版】</title>
+<title>ともたよむ v3.1.0.2【更新矢印サイズ統一版】</title>
 <style>
 :root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195}
 *{box-sizing:border-box}
@@ -39,8 +39,8 @@ summary{cursor:pointer}
 .updateDetails{margin:20px 0 8px}
 .updateDetails>summary{list-style:none;cursor:pointer;font-size:18px;font-weight:700;padding:3px 2px}
 .updateDetails>summary::-webkit-details-marker{display:none}
-.updateDetails>summary::before{content:"▸ ";font-size:15px}
-.updateDetails[open]>summary::before{content:"▾ ";font-size:15px}
+.updateDetails>summary::before{content:"▸ ";display:inline-block;font-size:20px;line-height:1;vertical-align:-2px}
+.updateDetails[open]>summary::before{content:"▾ ";display:inline-block;font-size:20px;line-height:1;vertical-align:-2px}
 .bookshelfDetails{margin:20px 0 8px}
 .bookshelfDetails>summary{list-style:none;cursor:pointer;font-size:22px;font-weight:800;padding:4px 2px}
 .bookshelfDetails>summary::-webkit-details-marker{display:none}
@@ -61,7 +61,7 @@ summary{cursor:pointer}
 
 <main>
 <h1>ともたよむ</h1>
-<div class="note" style="font-weight:800;font-size:15px">🧪 v3.1.0.1【矢印見やすさ修正版】</div>
+<div class="note" style="font-weight:800;font-size:15px">🧪 v3.1.0.2【更新矢印サイズ統一版】</div>
 <button id="updateBtn" type="button">🔄 更新情報を確認</button>
 <div id="baselineDate">基準日：未設定</div>
 <div class="note">基準日は全作品共通で1個。更新候補は基準日とは別に保持します。</div>
