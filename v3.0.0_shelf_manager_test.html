@@ -19,7 +19,7 @@ button{border:1px solid #c8c0b5;border-radius:8px;background:transparent;padding
 .row{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;touch-action:none}
 .head{display:flex;align-items:center;gap:10px;padding:10px 11px;min-height:50px}
 .handle{font-size:22px;line-height:1;color:#777;width:30px;text-align:center;user-select:none;-webkit-user-select:none;cursor:grab}
-.name{font-size:16px;font-weight:700;flex:1}.name.unused{color:#aaa;font-weight:400}
+.name{font-size:16px;font-weight:700;flex:1}.name.unused{color:#aaa;font-weight:400}.nameInput{width:100%;border:0;border-bottom:1px solid #c8c0b5;background:transparent;color:var(--ink);font:inherit;font-weight:700;padding:2px 0;outline:none}
 .order{font-size:12px;color:#999;width:24px;text-align:right}.count{font-size:12px;color:#888;white-space:nowrap}
 .deleteBtn{font-size:12px;padding:5px 7px;border-color:#c8c0b5}
 .row.dragging{opacity:.45}.row.drop-before{border-top:3px solid #777}.row.drop-after{border-bottom:3px solid #777}
@@ -40,7 +40,7 @@ button{border:1px solid #c8c0b5;border-radius:8px;background:transparent;padding
 <div class="toolbar"><button id="saveBtn" type="button">表示順を保存</button><button id="resetBtn" type="button">初期順に戻す</button></div>
 <div id="status">IndexedDBから棚情報を読み込み中…</div>
 <div id="shelfList"></div>
-<div class="hint">棚をタップすると中身を確認できます。☰ は並べ替え用です。空棚には削除ボタンが表示されます。</div>
+<div class="hint">棚をタップすると中身を確認できます。☰ は並べ替え用です。棚名はその場で変更できます。空棚には削除ボタンが表示されます。</div>
 </main>
 <script>
 const DB_NAME="tomotaYomuDB",DB_VERSION=1;
@@ -90,7 +90,7 @@ function render(){
     const id=getId(r.shelf),name=label(r.core||core(shelfText(r.shelf))),count=countMap.get(id)||0,items=workMap.get(id)||[];
     const head=document.createElement("div");head.className="head";
     const h=document.createElement("div");h.className="handle";h.textContent="☰";h.setAttribute("aria-label","棚を並べ替える");
-    const nm=document.createElement("div");nm.className="name";nm.textContent=name;
+    const nm=document.createElement("div");nm.className="name";\n    const inp=document.createElement("input");inp.className="nameInput";inp.type="text";inp.value=name;inp.setAttribute("aria-label","本棚名");inp.addEventListener("click",e=>e.stopPropagation());inp.addEventListener("pointerdown",e=>e.stopPropagation());\n    nm.appendChild(inp);
     const ct=document.createElement("div");ct.className="count";ct.textContent=count+"作品";
     const ord=document.createElement("div");ord.className="order";ord.textContent=String(i+1);
     head.append(h,nm,ct);
@@ -131,7 +131,7 @@ function clearMarks(){document.querySelectorAll(".row").forEach(x=>x.classList.r
 function startDrag(e){e.preventDefault();dragRow=e.currentTarget.closest(".row");dragPointerId=e.pointerId;dragRow.classList.add("dragging");dragRow.setPointerCapture?.(dragPointerId);document.addEventListener("pointermove",moveDrag,{passive:false});document.addEventListener("pointerup",endDrag,{once:true});document.addEventListener("pointercancel",endDrag,{once:true})}
 function moveDrag(e){if(!dragRow||e.pointerId!==dragPointerId)return;e.preventDefault();clearMarks();const target=document.elementFromPoint(e.clientX,e.clientY)?.closest(".row");if(!target||target===dragRow)return;const rect=target.getBoundingClientRect();target.classList.add(e.clientY<rect.top+rect.height/2?"drop-before":"drop-after")}
 function endDrag(e){if(!dragRow)return;const target=document.elementFromPoint(e.clientX,e.clientY)?.closest(".row");clearMarks();const from=Number(dragRow.dataset.index);if(target&&target!==dragRow){let to=Number(target.dataset.index);const rect=target.getBoundingClientRect();if(e.clientY>=rect.top+rect.height/2)to++;const moved=rows.splice(from,1)[0];if(from<to)to--;rows.splice(to,0,moved)}dragRow.classList.remove("dragging");dragRow=null;dragPointerId=null;document.removeEventListener("pointermove",moveDrag);render();document.getElementById("status").textContent="並べ替え中。保存するとIndexedDBへ記録します。"}
-async function save(){const order=rows.map((r,i)=>({row:r,order:i+1})).filter(x=>x.row.kind==="shelf");const tx=db.transaction(STORES.shelves,"readwrite"),st=tx.objectStore(STORES.shelves);order.forEach(x=>st.put({...x.row.shelf,display_order:x.order}));await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error("保存中止"))});document.getElementById("status").textContent="保存しました。display_orderをIndexedDBへ記録しました。"}
+async function save(){const order=rows.map((r,i)=>({row:r,order:i+1})).filter(x=>x.row.kind==="shelf");const tx=db.transaction(STORES.shelves,"readwrite"),st=tx.objectStore(STORES.shelves);const seen=new Set();for(const x of order){const id=getId(x.row.shelf),el=document.querySelector(`.row[data-index="${x.row===rows[Number(x.row===rows[Number(x.row===rows.length-1)])]?"":"") }"]`);void el;const rowEl=[...document.querySelectorAll(".row")].find(r=>Number(r.dataset.index)===rows.indexOf(x.row));const input=rowEl?.querySelector(".nameInput");const newName=String(input?.value??shelfText(x.row.shelf)).trim();if(!newName)throw new Error("棚名を空欄にはできません。");const key=newName.replace(/[🟠🔵🌀🎈📚⏰]/g,"").replace(/\s+/g,"");if(key&&seen.has(key))throw new Error("同名の棚があります：「"+newName+"」");seen.add(key);x.row.shelf={...x.row.shelf,shelf_name:newName,display_order:x.order};st.put(x.row.shelf)}await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error("保存中止"))});shelves=order.map(x=>x.row.shelf);document.getElementById("status").textContent="保存しました。棚名と表示順をIndexedDBへ記録しました。"}
 function resetOrder(){setOrderInitial();render();document.getElementById("status").textContent="初期順に戻しました。まだ保存はしていません。"}
 async function init(){try{await openDB();[shelves,placements,works]=await Promise.all([readAll(STORES.shelves),readAll(STORES.placements),readAll(STORES.works)]);buildIndexes();setOrderInitial();render();document.getElementById("status").textContent="実データを読み込みました："+shelves.length+"棚 / "+placements.length+"配置 / "+works.length+"作品情報"}catch(e){console.error(e);document.getElementById("status").textContent="読み込み失敗："+e.message}}
 document.getElementById("saveBtn").addEventListener("click",()=>save().catch(e=>document.getElementById("status").textContent="保存失敗："+e.message));
