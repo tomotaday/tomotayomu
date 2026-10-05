@@ -265,6 +265,7 @@ async function buildV3CardsFromIndexedDB(){
     const card=document.createElement("article");
     card.className="card";
     card.dataset.ncode=n;
+    card.dataset.shelfId=sid;
     card.dataset.shelf=shelf;
     card.dataset.current=pm.has(n)?String(pm.get(n).episode||""):"";
     const writer=am.get(n)?.writer||w.writer||"";
@@ -369,11 +370,10 @@ function updateCard(card,w){
 }
 function applyCardState(card){
   const n=card.dataset.ncode.toUpperCase(), candidates=getUpdateCandidates(), candidate=candidates[n], current=readingFor(n), total=Number(card.dataset.totalEpisodes||0);
-  const shelfName=String(card.dataset.shelf||"").replace(/[🟠🔵🌀🎈📚⏰]/g,"").replace(/\s+/g,"");
-  const isUnclassified=shelfName.includes("未分類") || !String(card.dataset.shelf||"").trim();
+  const isShelfRegistered=String(card.dataset.shelfId||"").trim()!=="";
   const unread=current!=null && total>0 && current<total;
   const mark=card.querySelector(".newMark");
-  if(mark)mark.hidden=isUnclassified || !(!!candidate && unread);
+  if(mark)mark.hidden=!isShelfRegistered || !(!!candidate && unread);
 }
 function buildShelfFolders(){
   const root=document.getElementById("shelfSections"), source=document.getElementById("shelf"); if(!root||!source)return; root.innerHTML="";
@@ -401,9 +401,8 @@ function buildUpdateView(){
     applyCardState(card);
     const n=card.dataset.ncode.toUpperCase(), candidate=candidates[n], current=readingFor(n), total=Number(card.dataset.totalEpisodes||0);
     const unread=current!=null && total>0 && current<total;
-    const metaText=(card.querySelector(".meta")?.textContent||"").replace(/\s+/g,"");
-    const isUnclassified=metaText.includes("未分類");
-    if(candidate&&unread&&!isUnclassified)updates.push(card);
+    const isShelfRegistered=String(card.dataset.shelfId||"").trim()!=="";
+    if(candidate&&unread&&isShelfRegistered)updates.push(card);
   });
   updates.sort((a,b)=>(candidates[b.dataset.ncode.toUpperCase()]||"").localeCompare(candidates[a.dataset.ncode.toUpperCase()]||""));
   const list=document.getElementById("updateList"); list.innerHTML=""; updates.forEach(c=>list.appendChild(c.cloneNode(true)));
@@ -453,7 +452,11 @@ async function updateInfo(){
         const saved=slimWork(w);
         latest[n]=saved;
         updateCard(c,saved);
-        candidates[n]=lastup;
+        if(String(c.dataset.shelfId||"").trim()!==""){
+          candidates[n]=lastup;
+        }else{
+          delete candidates[n];
+        }
         reflected++;
       }
     });
