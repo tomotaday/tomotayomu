@@ -183,7 +183,7 @@ async function buildV3CardsFromIndexedDB(){
   const pm=new Map(positions.map(v=>[String(v.ncode||"").toUpperCase(),v]));
   const sm=new Map(shelves.map(v=>[String(v.shelf_id||"").trim(),v]));
   const shelfText=v=>{
-    const direct=v?.name??v?.shelf_name??v?.title??v?.label??v?.display_name;
+    const direct=v?.shelf_name??v?.name??v?.title??v?.label??v?.display_name;
     if(direct!=null&&String(direct).trim())return String(direct).trim();
     const values=Object.values(v||{});
     const hit=values.find(x=>typeof x==="string"&&/読書中|未分類|あ〜お|か〜こ|さ〜そ|た〜と|な〜の|は〜ほ|ま〜も|や〜ん|更新待ち/.test(x));
