@@ -476,6 +476,70 @@ async function updateInfo(){
 function gasRead(n){ return new Promise((resolve,reject)=>{ const x=new XMLHttpRequest(); x.open("GET",GAS_URL+"?ncode="+encodeURIComponent(n),true); x.timeout=20000; x.onload=()=>resolve({status:x.status,text:x.responseText.trim()}); x.onerror=()=>reject(new Error("GAS通信エラー")); x.ontimeout=()=>reject(new Error("GASタイムアウト")); x.send(); }); }
 async function refreshActiveFromGAS(){ const n=(localStorage.getItem(ACTIVE_KEY)||"").toUpperCase(); if(!n)return; const card=document.querySelector(`#shelf .card[data-ncode="${n}"]`); if(!card)return; try{ const r=await gasRead(n); const p=r.text.split(/\s+/); if(r.status===200&&p[0]==="READ"&&/^\d+$/.test(p[2])){ setReading(n,Number(p[2])); updateCard(card,{ncode:n,general_lastup:card.dataset.lastUpdated,general_all_no:card.dataset.totalEpisodes,story:card.querySelector(".synopsis")?.textContent||"",__r18:card.querySelector(".r18Badge")!=null}); } else if(r.status===200&&p[0]==="NOT_FOUND"){ const m=readingMap(); m[n]=null; saveJSON(READ_KEY,m); updateCard(card,{ncode:n,general_lastup:card.dataset.lastUpdated,general_all_no:card.dataset.totalEpisodes,story:card.querySelector(".synopsis")?.textContent||"",__r18:card.querySelector(".r18Badge")!=null}); } else throw new Error("GAS応答不明："+r.text); buildUpdateView(); buildShelfFolders(); localStorage.removeItem(ACTIVE_KEY); }catch(e){ console.warn(e); }
 }
+async function moveWorkToShelf(ncode,newShelfId){
+  const db=await new Promise((ok,no)=>{
+    const r=indexedDB.open("tomotaYomuDB",1);
+    r.onsuccess=()=>ok(r.result);
+    r.onerror=()=>no(r.error);
+  });
+  const rows=await new Promise((ok,no)=>{
+    const a=[],r=db.transaction("shelf_placement","readonly").objectStore("shelf_placement").openCursor();
+    r.onsuccess=()=>{if(r.result){const v=r.result.value;if(String(v?.ncode||"").toUpperCase()===String(ncode).toUpperCase())a.push(v);r.result.continue()}else ok(a)};
+    r.onerror=()=>no(r.error);
+  });
+  if(!rows.length)throw new Error("本棚所属データが見つかりません");
+  const row={...rows[0],shelf_id:String(newShelfId||"").trim()};
+  await new Promise((ok,no)=>{
+    const tx=db.transaction("shelf_placement","readwrite"),st=tx.objectStore("shelf_placement");
+    st.put(row);
+    tx.oncomplete=ok;
+    tx.onerror=()=>no(tx.error);
+    tx.onabort=()=>no(tx.error||new Error("本棚移動を保存できませんでした"));
+  });
+}
+async function showShelfMoveDialog(card){
+  const n=String(card?.dataset?.ncode||"").toUpperCase();
+  if(!n)return;
+  try{
+    const db=await new Promise((ok,no)=>{
+      const r=indexedDB.open("tomotaYomuDB",1);
+      r.onsuccess=()=>ok(r.result);
+      r.onerror=()=>no(r.error);
+    });
+    const shelves=await new Promise((ok,no)=>{
+      const a=[],r=db.transaction("shelf_names","readonly").objectStore("shelf_names").openCursor();
+      r.onsuccess=()=>{if(r.result){a.push(r.result.value);r.result.continue()}else ok(a)};
+      r.onerror=()=>no(r.error);
+    });
+    const usable=shelves
+      .map(v=>({id:String(v?.shelf_id||"").trim(),name:String(v?.shelf_name??v?.name??v?.title??v?.label??v?.display_name??v?.shelf_id??"").trim(),order:Number(v?.display_order)||999999}))
+      .filter(v=>v.id&&v.name)
+      .sort((a,b)=>a.order-b.order);
+    if(!usable.length){alert("移動先の本棚がありません。");return;}
+    const currentId=String(card.dataset.shelfId||"").trim();
+    const lines=["移動先の本棚番号を入力してください。",""];
+    usable.forEach((v,i)=>lines.push((i+1)+"： "+v.name+(v.id===currentId?"（現在）":"")));
+    lines.push("0： 本棚から外す（未登録）");
+    const answer=window.prompt(lines.join("\n"));
+    if(answer===null)return;
+    const no=Number(answer);
+    if(!Number.isInteger(no)||no<0||no>usable.length){alert("番号が正しくありません。");return;}
+    const newId=no===0?"":usable[no-1].id;
+    if(newId===currentId)return;
+    await moveWorkToShelf(n,newId);
+    await buildV3CardsFromIndexedDB();
+    seedReadingCache();
+    restoreReadingPositions();
+    renderGlobalBaseline();
+    restoreLatestWorks();
+    buildUpdateView();
+    buildShelfFolders();
+    document.getElementById("apiStatus").textContent="本棚を移動しました："+(no===0?"未登録":usable[no-1].name);
+  }catch(e){
+    console.error(e);
+    alert("本棚移動に失敗しました："+e.message);
+  }
+}
 function rememberActive(card){ localStorage.setItem(ACTIVE_KEY,card.dataset.ncode.toUpperCase()); }
 function placeR18Badges(){
   document.querySelectorAll("#shelf .card").forEach(card=>{
@@ -484,7 +548,19 @@ function placeR18Badges(){
   });
 }
 document.getElementById("updateBtn").addEventListener("click",updateInfo);
-document.addEventListener("click",e=>{ const a=e.target.closest(".resumeLink"); if(!a)return; const card=e.target.closest(".card"); if(!card)return; rememberActive(card); });
+document.addEventListener("click",e=>{
+  const move=e.target.closest(".moveShelfBtn");
+  if(move){
+    const card=e.target.closest(".card");
+    if(card)showShelfMoveDialog(card);
+    return;
+  }
+  const a=e.target.closest(".resumeLink");
+  if(!a)return;
+  const card=e.target.closest(".card");
+  if(!card)return;
+  rememberActive(card);
+});
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") refreshActiveFromGAS(); });
 window.addEventListener("load",async()=>{ try{ await buildV3CardsFromIndexedDB(); seedReadingCache(); restoreReadingFromQuery(); restoreReadingPositions(); renderGlobalBaseline(); restoreLatestWorks(); buildUpdateView(); buildShelfFolders(); setTimeout(refreshActiveFromGAS,300); }catch(e){ console.warn("v3 IndexedDB本棚再構築失敗",e); const s=document.getElementById("apiStatus"); if(s)s.textContent="v3 IndexedDB接続失敗："+e.message; } });
 </script>
