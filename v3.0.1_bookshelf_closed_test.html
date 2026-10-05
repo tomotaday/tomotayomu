@@ -371,11 +371,11 @@ function applyCardState(card){
   const mark=card.querySelector(".newMark");
   if(mark)mark.hidden=!(!!candidate && unread);
 }
-// v3.0.1 test: bookshelf folders start closed; tap to open.\nfunction buildShelfFolders(){
+// v3.0.1 test: close bookshelf and all shelf folders after rendering.\nfunction buildShelfFolders(){
   const root=document.getElementById("shelfSections"), source=document.getElementById("shelf"); if(!root||!source)return; root.innerHTML="";
   const order=[["🟠 読書中","🟠読書中"],["🎈 あ〜お","🎈あ〜お"],["🎈 か〜こ","🎈か〜こ"],["🎈 さ〜そ","🎈さ〜そ"],["🎈 た〜と","🎈た〜と"],["🎈 な〜の","🎈な〜の"],["🎈 は〜ほ","🎈は〜ほ"],["🎈 ま〜も","🎈ま〜も"],["🎈 や〜ん","🎈や〜ん"],["⏰ 更新待ち","⏰更新待ち"],["📚 未分類","未分類"]];
   const cards=[...source.querySelectorAll(":scope > .card")]; const getFolder=card=>{const text=(card.querySelector(".meta")?.textContent||"").replace(/\s+/g,""); for(const [,key] of order)if(text.includes(key.replace(/\s+/g,"")))return key; return "未分類";};
-  for(const [label,key] of order){const members=cards.filter(c=>getFolder(c)===key).sort((a,b)=>(b.dataset.lastUpdated||"").localeCompare(a.dataset.lastUpdated||"")); if(!members.length)continue; const d=document.createElement("details"); d.className="folderDetails"; if(key==="🟠読書中")d.open=false; const sm=document.createElement("summary"); sm.textContent=`${label} ${members.length}`; const wrap=document.createElement("div"); wrap.className="folderCards"; members.forEach(c=>wrap.appendChild(c.cloneNode(true))); d.append(sm,wrap); root.appendChild(d);}
+  for(const [label,key] of order){const members=cards.filter(c=>getFolder(c)===key).sort((a,b)=>(b.dataset.lastUpdated||"").localeCompare(a.dataset.lastUpdated||"")); if(!members.length)continue; const d=document.createElement("details"); d.className="folderDetails";  const sm=document.createElement("summary"); sm.textContent=`${label} ${members.length}`; const wrap=document.createElement("div"); wrap.className="folderCards"; members.forEach(c=>wrap.appendChild(c.cloneNode(true))); d.append(sm,wrap); root.appendChild(d);}
   source.hidden=true;
 }
 function buildUpdateView(){
@@ -410,7 +410,7 @@ async function initializeBaseline(){
   const status=document.getElementById("apiStatus"); status.textContent="初回同期：作品情報を取得中…";
   const [works,r18]=await Promise.all([fetchByNcodes(API_URL,NCODES,"normal"),fetchByNcodes(R18_API_URL,R18_NCODES,"r18")]); r18.forEach(w=>w.__r18=true);
   const by={}; [...works,...r18].forEach(w=>by[String(w.ncode).toUpperCase()]=w); const cards=getCardsByNcode(), baseline={};
-  [...works,...r18].forEach(w=>{const n=String(w.ncode).toUpperCase(); baseline[n]=w.general_lastup||""; if(cards[n])updateCard(cards[n],w);}); saveJSON(STORAGE_KEY,baseline); saveJSON(LAST_CHECK_KEY,new Date().toISOString()); buildUpdateView(); buildShelfFolders(); return [...works,...r18].length;
+  [...works,...r18].forEach(w=>{const n=String(w.ncode).toUpperCase(); baseline[n]=w.general_lastup||""; if(cards[n])updateCard(cards[n],w);}); saveJSON(STORAGE_KEY,baseline); saveJSON(LAST_CHECK_KEY,new Date().toISOString()); buildUpdateView(); buildShelfFolders(); document.querySelectorAll(".bookshelfDetails,.folderDetails").forEach(d=>d.open=false); return [...works,...r18].length;
 }
 async function updateInfo(){
   const btn=document.getElementById("updateBtn"),status=document.getElementById("apiStatus");
@@ -454,7 +454,7 @@ async function updateInfo(){
   }finally{btn.disabled=false;}
 }
 function gasRead(n){ return new Promise((resolve,reject)=>{ const x=new XMLHttpRequest(); x.open("GET",GAS_URL+"?ncode="+encodeURIComponent(n),true); x.timeout=20000; x.onload=()=>resolve({status:x.status,text:x.responseText.trim()}); x.onerror=()=>reject(new Error("GAS通信エラー")); x.ontimeout=()=>reject(new Error("GASタイムアウト")); x.send(); }); }
-async function refreshActiveFromGAS(){ const n=(localStorage.getItem(ACTIVE_KEY)||"").toUpperCase(); if(!n)return; const card=document.querySelector(`#shelf .card[data-ncode="${n}"]`); if(!card)return; try{ const r=await gasRead(n); const p=r.text.split(/\s+/); if(r.status===200&&p[0]==="READ"&&/^\d+$/.test(p[2])){ setReading(n,Number(p[2])); updateCard(card,{ncode:n,general_lastup:card.dataset.lastUpdated,general_all_no:card.dataset.totalEpisodes,story:card.querySelector(".synopsis")?.textContent||"",__r18:card.querySelector(".r18Badge")!=null}); } else if(r.status===200&&p[0]==="NOT_FOUND"){ const m=readingMap(); m[n]=null; saveJSON(READ_KEY,m); updateCard(card,{ncode:n,general_lastup:card.dataset.lastUpdated,general_all_no:card.dataset.totalEpisodes,story:card.querySelector(".synopsis")?.textContent||"",__r18:card.querySelector(".r18Badge")!=null}); } else throw new Error("GAS応答不明："+r.text); buildUpdateView(); buildShelfFolders(); localStorage.removeItem(ACTIVE_KEY); }catch(e){ console.warn(e); }
+async function refreshActiveFromGAS(){ const n=(localStorage.getItem(ACTIVE_KEY)||"").toUpperCase(); if(!n)return; const card=document.querySelector(`#shelf .card[data-ncode="${n}"]`); if(!card)return; try{ const r=await gasRead(n); const p=r.text.split(/\s+/); if(r.status===200&&p[0]==="READ"&&/^\d+$/.test(p[2])){ setReading(n,Number(p[2])); updateCard(card,{ncode:n,general_lastup:card.dataset.lastUpdated,general_all_no:card.dataset.totalEpisodes,story:card.querySelector(".synopsis")?.textContent||"",__r18:card.querySelector(".r18Badge")!=null}); } else if(r.status===200&&p[0]==="NOT_FOUND"){ const m=readingMap(); m[n]=null; saveJSON(READ_KEY,m); updateCard(card,{ncode:n,general_lastup:card.dataset.lastUpdated,general_all_no:card.dataset.totalEpisodes,story:card.querySelector(".synopsis")?.textContent||"",__r18:card.querySelector(".r18Badge")!=null}); } else throw new Error("GAS応答不明："+r.text); buildUpdateView(); buildShelfFolders(); document.querySelectorAll(".bookshelfDetails,.folderDetails").forEach(d=>d.open=false); localStorage.removeItem(ACTIVE_KEY); }catch(e){ console.warn(e); }
 }
 function rememberActive(card){ localStorage.setItem(ACTIVE_KEY,card.dataset.ncode.toUpperCase()); }
 function placeR18Badges(){
