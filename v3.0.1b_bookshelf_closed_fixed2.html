@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
+<meta content="#f6f3ed" name="theme-color"/>
+<title>ともたよむ v3.0.1b【本棚初期折りたたみ・修正版】</title>
+<style>
+:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.55}
+main{width:min(100%,720px);margin:auto;padding:18px 14px 40px}
+h1{font-size:30px;margin:0 0 4px}
+.note{font-size:13px;color:var(--muted);margin-bottom:15px}
+button{border:1px solid #c8c0b5;border-radius:8px;background:transparent;padding:5px 9px;font-size:14px;color:var(--ink)}
+#apiStatus{font-size:13px;margin:10px 0 15px}
+.section{margin:20px 0 8px;font-weight:700;font-size:18px}
+.update-empty{color:var(--muted);margin-bottom:16px}
+.update-list .card{margin-bottom:10px}
+.card{background:var(--card);border:1px solid #aaa195;border-radius:12px;padding:13px;margin:10px 0}
+.meta{font-size:12px;color:#555;margin-bottom:8px}
+.newMark{font-size:12px}
+h2{font-size:15px;line-height:1.45;font-weight:700;margin:0 0 4px}
+.author,.ncode{font-size:13px;color:#555}
+details{margin-top:9px;font-size:13px}
+summary{cursor:pointer}
+.synopsis{white-space:pre-wrap;color:#555;margin:7px 0}
+.actions{display:flex;gap:10px;margin-top:12px;font-size:13px;flex-wrap:wrap}
+.actions a{color:inherit;text-decoration:none;border-bottom:1px solid #aaa}
+.hidden{display:none!important}
+</style>
+<style id="v19-folder-style">
+.folderSection{margin:18px 0 22px}
+.folderTitle{font-size:17px;font-weight:700;margin:0 0 10px;padding:0 2px}
+.folderCards{display:flex;flex-direction:column;gap:10px}
+</style>
+<style id="v203-fold-style">
+.updateDetails{margin:20px 0 8px}
+.updateDetails>summary{list-style:none;cursor:pointer;font-size:18px;font-weight:700;padding:3px 2px}
+.updateDetails>summary::-webkit-details-marker{display:none}
+.updateDetails>summary::before{content:"▸ ";font-size:15px}
+.updateDetails[open]>summary::before{content:"▾ ";font-size:15px}
+.bookshelfDetails{margin:20px 0 8px}
+.bookshelfDetails>summary{list-style:none;cursor:pointer;font-size:22px;font-weight:800;padding:4px 2px}
+.bookshelfDetails>summary::-webkit-details-marker{display:none}
+.bookshelfDetails>summary::before{content:"▸ ";font-size:18px}
+.bookshelfDetails[open]>summary::before{content:"▾ ";font-size:18px}
+.folderDetails{margin:14px 0}
+.folderDetails>summary{list-style:none;cursor:pointer;font-size:18px;font-weight:700;padding:3px 2px}
+.folderDetails>summary::-webkit-details-marker{display:none}
+.folderDetails>summary::before{content:"▸ ";font-size:15px}
+.folderDetails[open]>summary::before{content:"▾ ";font-size:15px}
+
+.ncode{position:relative;padding-right:48px;min-height:20px}.r18Badge{position:absolute;right:0;top:50%;transform:translateY(-50%);font-size:10px;line-height:1;padding:3px 5px;border:1px solid #aaa195;border-radius:5px;color:#666;background:#f6f3ed;letter-spacing:.2px;z-index:2}
+</style>
+</head>
+<body>
+
+
+<main>
+<h1>ともたよむ</h1>
+<div class="note" style="font-weight:800;font-size:15px">🧪 v3.0.0【本棚設置済base版】</div>
+<button id="updateBtn" type="button">🔄 更新情報を確認</button>
+<div id="baselineDate">基準日：未設定</div>
+<div class="note">基準日は全作品共通で1個。更新候補は基準日とは別に保持します。</div>
+<div id="apiStatus">初回取得待ち</div>
+<details class="updateDetails" open>
+<summary id="updateTitle">🆙 更新0</summary>
+<div class="update-empty" id="updateEmpty">作品はありません。</div>
+<section class="update-list" id="updateList"></section>
+</details>
+<details class="bookshelfDetails">
+<summary id="bookshelfSummary">📚 本棚</summary>
+<div id="shelfSections"></div>
+</details>
+<section id="shelf"></section>
+</main>
+<script>
+const API_URL = "https://api.syosetu.com/novelapi/api/";
+const R18_API_URL = "https://api.syosetu.com/novel18api/api/";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxbvywLmy4aWh-_u_o_iDVDq_7AMxf9K2wPY-BhXphGbnaBp0JZ4R78_eplmYfXH3obHA/exec";
+const NCODES = ["N0002IK", "N0030HU", "N0033BS", "N0051GP", "N0093BS", "N0123IV", "N0152GD", "N0171DI", "N0273BA", "N0370LQ", "N0397BC", "N0442GJ", "N0565FN", "N0593IQ", "N0600JD", "N0635GW", "N0644GM", "N0645GG", "N0649Z", "N0753HR", "N0760HO", "N0874LC", "N0989GV", "N1028JP", "N1151BV", "N1238HC", "N1266FJ", "N1437II", "N1450IE", "N1518CR", "N1594GH", "N1598IK", "N1673KH", "N1728KP", "N1742IE", "N1750GX", "N1758HB", "N1762GO", "N1763JP", "N1782BS", "N1800GT", "N1839CX", "N1888HH", "N1997BA", "N2008CE", "N2026BM", "N2049GR", "N2121BF", "N2251HS", "N2319IK", "N2336GG", "N2445BS", "N2449HO", "N2504HW", "N2750JS", "N2752LG", "N2774IL", "N2833KW", "N2862JB", "N2902IC", "N2919JC", "N3072LS", "N3214LI", "N3304II", "N3471IM", "N3556IG", "N3580EU", "N3609DD", "N3609GS", "N3648FT", "N3696HD", "N3720HM", "N3759IC", "N4060GJ", "N4286JI", "N4291LI", "N4402BD", "N4505EU", "N4545EW", "N4600HI", "N4608LR", "N4644HT", "N4712FW", "N4719LT", "N4895KQ", "N5057IC", "N5124JV", "N5124KF", "N5171IG", "N5225IA", "N5277IL", "N5315GK", "N5531GE", "N5582JM", "N5599IN", "N5632Z", "N5651FM", "N5795HQ", "N5890LH", "N6014GW", "N6025KL", "N6057LJ", "N6066KQ", "N6074IJ", "N6106LC", "N6261FV", "N6398IO", "N6526LK", "N6577IM", "N6682GF", "N6706IE", "N6711HW", "N6753LE", "N6845HG", "N6981GK", "N6981GN", "N7001JW", "N7006CM", "N7025FC", "N7038HV", "N7060BR", "N7072KM", "N7224HV", "N7412GL", "N7413HM", "N7443KL", "N7466II", "N7469KT", "N7483BV", "N7721HX", "N7806CE", "N7812S", "N7909CL", "N7942GK", "N7968JL", "N7998LI", "N8005GA", "N8095KT", "N8177JN", "N8180GW", "N8188IG", "N8303IO", "N8462KW", "N8523HP", "N8549GC", "N8607CM", "N8697GP", "N8906CE", "N8909IH", "N8922HW", "N8996BW", "N9024JI", "N9237HN", "N9293BY", "N9331HZ", "N9429IC", "N9449HT", "N9525LL", "N9595GJ", "N9601JO", "N9647IA", "N9711HL", "N9712BK", "N9770ML", "N9824JW", "N9856LK", "N9894DK", "N9969II", "N9978II", "N9991IQ"];
+const R18_NCODES = ["N9735HP", "N9801CV", "N0001HD", "N0011GR", "N0011HH", "N0034LU", "N0052GG", "N0053HQ", "N0060GV", "N0064FU", "N0064HK", "N0073ID", "N0076DK", "N0079FD", "N0088JI", "N0089JC", "N0094GS", "N0098GC", "N0105EJ", "N0105HL", "N0108DQ", "N0119HV", "N0121HV", "N0129BK", "N0130HT", "N0135HI", "N0136EV", "N0147HR", "N0151JO", "N0154BV", "N0157HH", "N0157MM", "N0174HV", "N0181GK", "N0183GW", "N0193Y", "N0202HZ", "N0220HQ", "N0224JR", "N0239HC", "N0240II", "N0243IK", "N0245DI", "N0245IE", "N0250EM", "N0252GF", "N0252IP", "N0256GL", "N0260HT", "N0264HX", "N0268GY", "N0290GK", "N0291FO", "N0305EA", "N0310HG", "N0312BC", "N0312KK", "N0319BU", "N0325EQ", "N0330DV", "N0334FS", "N0334IM", "N0338KH", "N0349GX", "N0359GS", "N0360HN", "N0360IU", "N0374HO", "N0376CM", "N0381LC", "N0388FZ", "N0406JO", "N0409HT", "N0411HW", "N0412FR", "N0413FM", "N0413HW", "N0432KR", "N0437EQ", "N0438HG", "N0438IG", "N0440GV", "N0440GW", "N0445HS", "N0453IK", "N0454IL", "N0455FP", "N0469HL", "N0483IF", "N0489HF", "N0510GV", "N0511HN", "N0512HF", "N0515IP", "N0532HA", "N0536FJ", "N0541GR", "N0546HB", "N0563HP", "N0564GY", "N0567HP", "N0568DV", "N0580FP", "N0582EP", "N0591IL", "N0592BS", "N0621DT", "N0621HZ", "N0627GG", "N0637GG", "N0640GY", "N0651CC", "N0662EM", "N0663IC", "N0667CZ", "N0669HP", "N0678GP", "N0680DC", "N0683EL", "N0688HZ", "N0691IJ", "N0694JF", "N0712GC", "N0717DF", "N0717HV", "N0720HW", "N0721GR", "N0731EV", "N0733HS", "N0745BX", "N0747JE", "N0749GP", "N0770EQ", "N0789FP", "N0790HB", "N0796DD", "N0797LK", "N0804LP", "N0817HG", "N0827HJ", "N0829HX", "N0836CI", "N0842GS", "N0852GN", "N0856HA", "N0857GO", "N0869IN", "N0888FM", "N0891GY", "N0894FE", "N0897IH", "N0899IG", "N0903DC", "N0913IH", "N0914FY", "N0914HK", "N0923BP", "N0930IH", "N0935FR", "N0935KF", "N0942BX", "N0942GX", "N0944EQ", "N0964DX", "N0972EW", "N0996GF", "N0996HA", "N0999HV", "N1004IG", "N1013FP", "N1015CH", "N1015DC", "N1019HK", "N1023CR", "N1026EB", "N1026GH", "N1031CU", "N1034HY", "N1035EK", "N1041EB", "N1053GF", "N1065IO", "N1068GB", "N1072LH", "N1080DG", "N1081IK", "N1087JU", "N1095HO", "N1106FW", "N1113FS", "N1114GU", "N1118IQ", "N1122GX", "N1126FB", "N1127IF", "N1138GB", "N1166FU", "N1166IN", "N1168EX", "N1174IL", "N1178JU", "N1179JX", "N1188CI", "N1192EX", "N1194KE", "N1198BS", "N1201IH", "N1202FL", "N1209FX", "N1210IP", "N1219KS", "N1223GF", "N1223JJ", "N1227GT", "N1231GY", "N1233JJ", "N1236EH", "N1236FL", "N1236GE", "N1246JY", "N1248FJ", "N1251EI", "N1252HH", "N1253FS", "N1257DT", "N1260HT", "N1261GG", "N1263FK", "N1265GH", "N1268HQ", "N1270BX", "N1273CE", "N1281HT", "N1283GP", "N1283HV", "N1283IL", "N1289HL", "N1291X", "N1300IM", "N1301IF", "N1302LQ", "N1303DE", "N1309JC", "N1311IJ", "N1316EB", "N1319IM", "N1320ES", "N1322MD", "N1328JS", "N1334IR", "N1338HN", "N1346DH", "N1350GV", "N1351MD", "N1370HJ", "N1374CF", "N1381GY", "N1382BY", "N1385HT", "N1392LN", "N1398HE", "N1404IA", "N1412FY", "N1417IL", "N1419JS", "N1421HT", "N1422FX", "N1422U", "N1431HG", "N1435FW", "N1435HB", "N1437GQ", "N1439HZ", "N1444KS", "N1446JH", "N1450JK", "N1452GI", "N1457DX", "N1458HF", "N1459HW", "N1466IR", "N1470HC", "N1471FO", "N1479GT", "N1480HO", "N1488EE", "N1489IC", "N1499CV", "N1500IK", "N1507EG", "N1513EV", "N1518FQ", "N1524FZ", "N1524IN", "N1535GQ", "N1538GF", "N1550JQ", "N1553IU", "N1559HU", "N1565EC", "N1575FB", "N1584CW", "N1596HD", "N1605HC", "N1607HS", "N1608GO", "N1612GU", "N1613JY", "N1618EP", "N1623GL", "N1629FQ", "N1632IO", "N1644HR", "N1651IO", "N1655FP", "N1659HM", "N1661IH", "N1667DD", "N1668KH", "N1669DD", "N1682KJ", "N1683CF", "N1694HW", "N1702HH", "N1711EY", "N1719HY", "N1723GE", "N1730GZ", "N1731JY", "N1735HJ", "N1746GW", "N1750HE", "N1752IO", "N1756KN", "N1766GL", "N1769HB", "N1769JT", "N1781GS", "N1788FR", "N1797DK", "N1799FS", "N1802GQ", "N1804CH", "N1811IM", "N1817EQ", "N1818HP", "N1837EJ", "N1837EO", "N1843HW", "N1850HP", "N1853FE", "N1865DV", "N1867EW", "N1870HD", "N1871HE", "N1873HU", "N1880GF", "N1884GF", "N1885GQ", "N1897GU", "N1901JH", "N1904BE", "N1911EH", "N1914KD", "N1914LH", "N1915HK", "N1916KJ", "N1927GZ", "N1927KD", "N1938KH", "N1942GH", "N1945IE", "N1954HH", "N1960GQ", "N1968CA", "N1976GS", "N1983HR", "N1992HF", "N1996HB", "N1997GY", "N1999HG", "N2003IK", "N2008JT", "N2008K", "N2012IJ", "N2020GV", "N2023GM", "N2023GQ", "N2029BW", "N2030KI", "N2035GR", "N2040BY", "N2044GZ", "N2045JU", "N2051FC", "N2058GZ", "N2089GV", "N2090GE", "N2093IQ", "N2096EL", "N2101JY", "N2103BO", "N2103LM", "N2109JJ", "N2122HW", "N2128DT", "N2142HM", "N2147HS", "N2148HB", "N2157EW", "N2167IK", "N2170IL", "N2184HF", "N2201CY", "N2201HI", "N2202GC", "N2209GR", "N2213GI", "N2215GB", "N2218JU", "N2231LO", "N2232BO", "N2236CW", "N2239GR", "N2242EO", "N2255HZ", "N2261FY", "N2268KK", "N2269GP", "N2270IG", "N2271DJ", "N2274IP", "N2277IL", "N2280JP", "N2288EU", "N2296EE", "N2305HH", "N2349CW", "N2355HL", "N2381KU", "N2382KF", "N2386LM", "N2387GT", "N2387HB", "N2388GS", "N2388HS", "N2399GA", "N2399HM", "N2403FQ", "N2413GI", "N2418KV", "N2422JS", "N2423GK", "N2427HG", "N2429FW", "N2430FE", "N2461HQ", "N2462HY", "N2471DB", "N2472GI", "N2473GK", "N2487GF", "N2489GN", "N2492CC", "N2492FV", "N2495HV", "N2497DI", "N2498HQ", "N2499FP", "N2499HR", "N2499IB", "N2506IG", "N2509HS", "N2512JX", "N2516HF", "N2518HC", "N2525DA", "N2527GS", "N2530GP", "N2532HB", "N2535FL", "N2536HA", "N2540CS", "N2545BX", "N2546JO", "N2548GO", "N2557BT", "N2562IB", "N2573IQ", "N2576EO", "N2592GF", "N2597DB", "N2602HS", "N2612DF", "N2616GB", "N2623CI", "N2623HA", "N2631DC", "N2640GG", "N2646HD", "N2647GN", "N2657GZ", "N2659EH", "N2660DQ", "N2665DJ", "N2668DY", "N2672KJ", "N2673EG", "N2676FR", "N2678IG", "N2680HX", "N2681IC", "N2685EP", "N2694HU", "N2718IM", "N2724IL", "N2726IL", "N2737EX", "N2744GB", "N2745IL", "N2752HD", "N2760HJ", "N2765KJ", "N2774IP", "N2777HB", "N2777ID", "N2779HK", "N2791HT", "N2793EY", "N2794HS", "N2802EL", "N2814HW", "N2815JE", "N2819HY", "N2827HV", "N2836CR", "N2837HY", "N2846IB", "N2855GW", "N2857CN", "N2861FP", "N2864CT", "N2868HI", "N2869GC", "N2875HV", "N2877GI", "N2878GZ", "N2881DY", "N2891EC", "N2891FZ", "N2903HL", "N2932GK", "N2933EI", "N2939HG", "N2950CV", "N2950HY", "N2951IO", "N2967HN", "N2968DZ", "N2982DS", "N2984JZ", "N2984KX", "N2990JX", "N2995EQ", "N2998IJ", "N3005CQ", "N3007IF", "N3008BW", "N3013CW", "N3016FS", "N3017DN", "N3027HW", "N3043KG", "N3061GL", "N3061HR", "N3063JX", "N3068GF", "N3072HK", "N3076HH", "N3090FY", "N3096FY", "N3099GC", "N3101ES", "N3101FE", "N3103HD", "N3118IG", "N3119GT", "N3123HO", "N3133DH", "N3137HR", "N3144JI", "N3149FU", "N3152MA", "N3154DO", "N3156IF", "N3161HA", "N3163GT", "N3164GR", "N3164GU", "N3166EL", "N3174BV", "N3176GL", "N3181BA", "N3182GZ", "N3183CR", "N3192IO", "N3194KR", "N3195GB", "N3199HJ", "N3201EP", "N3202GX", "N3203FA", "N3204HA", "N3208FG", "N3209IL", "N3217CL", "N3217DB", "N3225EW", "N3225MK", "N3226GI", "N3239ML", "N3255FZ", "N3255IW", "N3258HG", "N3266HA", "N3267HB", "N3270DO", "N3275GT", "N3277FE", "N3288HO", "N3297JB", "N3298GK", "N3299CY", "N3299LH", "N3302HS", "N3315DR", "N3315EV", "N3318GN", "N3322EY", "N3330CR", "N3338GT", "N3339LE", "N3341KB", "N3348IU", "N3351FZ", "N3356IA", "N3358HM", "N3362FN", "N3377HN", "N3378HX", "N3382IH", "N3383CI", "N3389JB", "N3396GU", "N3413IG", "N3417HG", "N3425IL", "N3432HC", "N3432HS", "N3435II", "N3442GY", "N3442HM", "N3451KT", "N3466JB", "N3487GU", "N3505HW", "N3506MF", "N3512DD", "N3515GT", "N3524DS", "N3527GV", "N3527JX", "N3536HQ", "N3547GZ", "N3549FC", "N3558GU", "N3558KJ", "N3564HA", "N3565S", "N3571HC", "N3574GV", "N3576IE", "N3593HM", "N3593LG", "N3597FS", "N3600HQ", "N3617CG", "N3617FD", "N3624HA", "N3627MQ", "N3628MI", "N3633JN", "N3649CT", "N3651CI", "N3654GR", "N3659FA", "N3660GP", "N3663DO", "N3663KZ", "N3669JY", "N3673GW", "N3676EO", "N3684HS", "N3690HD", "N3692IC", "N3711II", "N3712DY", "N3712GX", "N3718LW", "N3720IV", "N3723GT", "N3728FR", "N3728HP", "N3733GN", "N3736GC", "N3738KQ", "N3746GH", "N3747HZ", "N3749GJ", "N3750IF", "N3751GN", "N3753HB", "N3755FZ", "N3755MH", "N3758DX", "N3764JC", "N3764LQ", "N3765GS", "N3766GA", "N3767HX", "N3768FO", "N3771GX", "N3774DE", "N3778HN", "N3782HT", "N3787CN", "N3790FV", "N3792IY", "N3803IB", "N3805GN", "N3811GE", "N3814LJ", "N3824IG", "N3825GE", "N3826BE", "N3827HE", "N3836KD", "N3839CQ", "N3844FL", "N3846GO", "N3853HM", "N3854GA", "N3863FP", "N3881HU", "N3884KP", "N3899IQ", "N3901IO", "N3911HL", "N3915EC", "N3919JC", "N3943IY", "N3944CY", "N3944IQ", "N3945GV", "N3945HB", "N3946LZ", "N3949BA", "N3967EB", "N3977IM", "N3989IF", "N3997ES", "N4000GI", "N4005FJ", "N4006HM", "N4020HE", "N4021HF", "N4025CS", "N4027MB", "N4030GL", "N4032IR", "N4032IV", "N4033GZ", "N4038EL", "N4046GE", "N4048IP", "N4055JA", "N4057HE", "N4057HZ", "N4060HY", "N4087KQ", "N4088FO", "N4089HV", "N4093GB", "N4095GN", "N4107CW", "N4109HF", "N4110EX", "N4133FZ", "N4138JF", "N4141HM", "N4152GS", "N4156GS", "N4161HI", "N4173JW", "N4182IV", "N4185EX", "N4190HG", "N4192FL", "N4192HP", "N4216LB", "N4218JZ", "N4221CP", "N4231FN", "N4251HT", "N4251KD", "N4254GW", "N4260IR", "N4261IN", "N4269HO", "N4271EN", "N4281FZ", "N4281GJ", "N4288LJ", "N4293FU", "N4294FW", "N4298GM", "N4304CY", "N4306HF", "N4311HF", "N4320CC", "N4321IR", "N4323HB", "N4325GS", "N4329IO", "N4334EK", "N4337BI", "N4337GT", "N4349FC", "N4350CU", "N4360HG", "N4361EY", "N4361KU", "N4363CM", "N4363LV", "N4366GP", "N4375GH", "N4379IO", "N4382GO", "N4384FV", "N4397IE", "N4400HB", "N4400IA", "N4404LO", "N4411DT", "N4414EO", "N4424GO", "N4432GH", "N4435FG", "N4435KN", "N4436LO", "N4442GX", "N4451FI", "N4458EM", "N4461DX", "N4467MF", "N4468HM", "N4469GM", "N4469HE", "N4471HL", "N4471HY", "N4475HK", "N4479FN", "N4479KX", "N4487JJ", "N4497HQ", "N4502DB", "N4503GU", "N4503GY", "N4518CF", "N4520BY", "N4520FX", "N4520IA", "N4521CZ", "N4521EI", "N4528HR", "N4529IP", "N4530HR", "N4531KA", "N4533DG", "N4534ES", "N4537CG", "N4539FM", "N4541JP", "N4548HI", "N4552HD", "N4560JQ", "N4561GR", "N4561MJ", "N4563DC", "N4567HS", "N4575HX", "N4576HC", "N4579IG", "N4580IG", "N4594LO", "N4596HO", "N4600HS", "N4608IQ", "N4609HK", "N4635KD", "N4635LA", "N4640GK", "N4642DO", "N4648GY", "N4651HK", "N4658GH", "N4658IJ", "N4659V", "N4660EG", "N4660KH", "N4677KX", "N4678GZ", "N4679GL", "N4682HD", "N4683HK", "N4685LO", "N4686FF", "N4688GH", "N4690GF", "N4695HP", "N4695HT", "N4698KK", "N4708EI", "N4711GJ", "N4719BU", "N4722HW", "N4722MQ", "N4723EH", "N4737GQ", "N4741HD", "N4745EM", "N4753HE", "N4762FH", "N4763CW", "N4767EL", "N4768HA", "N4769FZ", "N4774HM", "N4775GE", "N4781FR", "N4784EZ", "N4786HS", "N4788HJ", "N4790BL", "N4795GU", "N4795JS", "N4798HM", "N4808CH", "N4824HG", "N4841HD", "N4845CM", "N4855DL", "N4858HO", "N4861IC", "N4863DJ", "N4864DH", "N4864HK", "N4864HT", "N4878DL", "N4886DH", "N4896GZ", "N4900HH", "N4901GG", "N4901HU", "N4902IF", "N4909MB", "N4922IC", "N4940GB", "N4943HB", "N4946EL", "N4962HJ", "N4965IR", "N4969HH", "N4974HS", "N4981GX", "N4990BQ", "N4995GR", "N4998JE", "N5023HQ", "N5026IO", "N5042GI", "N5043X", "N5044HZ", "N5050GQ", "N5052CT", "N5054IQ", "N5056HU", "N5075CA", "N5084IE", "N5090HQ", "N5094HB", "N5097EK", "N5103BN", "N5103HN", "N5116HR", "N5122LH", "N5132HY", "N5133EZ", "N5136ES", "N5137FZ", "N5142HP", "N5150HF", "N5152FH", "N5162FT", "N5170KF", "N5188EU", "N5190HA", "N5200HG", "N5224DE", "N5229IZ", "N5236DE", "N5237FA", "N5239IK", "N5240JV", "N5245IB", "N5246IJ", "N5250IE", "N5264MD", "N5266IR", "N5268LX", "N5272JQ", "N5284IA", "N5285HL", "N5285IN", "N5288HW", "N5292GN", "N5299HH", "N5299HK", "N5303ML", "N5314HY", "N5318FI", "N5327GI", "N5328EW", "N5335HL", "N5342FS", "N5355FG", "N5355FP", "N5357HD", "N5359GM", "N5360HR", "N5362DX", "N5365IG", "N5367EH", "N5372HX", "N5374HC", "N5399HU", "N5406DQ", "N5408GG", "N5409GU", "N5413DQ", "N5420MC", "N5421FZ", "N5433HD", "N5437EE", "N5438GB", "N5447HU", "N5450GM", "N5453FZ", "N5457KT", "N5459ET", "N5477GH", "N5480GI", "N5483HM", "N5486HV", "N5487IE", "N5488IC", "N5492IL", "N5494FH", "N5497EY", "N5499KS", "N5501IC", "N5502HV", "N5505FM", "N5506CL", "N5533JJ", "N5541HP", "N5543HB", "N5553EK", "N5553HP", "N5562GM", "N5566CP", "N5569FU", "N5569LL", "N5580GZ", "N5588JF", "N5591HD", "N5598DA", "N5604GM", "N5604LK", "N5607HW", "N5612GH", "N5618LU", "N5624GZ", "N5624MR", "N5626GV", "N5628HN", "N5634BD", "N5636HK", "N5637GF", "N5640GY", "N5642EZ", "N5655HJ", "N5656HF", "N5667EU", "N5667HO", "N5668JK", "N5668JV", "N5681GL", "N5682IB", "N5694FS", "N5701HA", "N5717HM", "N5718EY", "N5729GM", "N5739CG", "N5742HS", "N5743JG", "N5747KS", "N5750KK", "N5755GB", "N5756GZ", "N5758IC", "N5761ET", "N5764GN", "N5772HG", "N5775FL", "N5778EL", "N5782JD", "N5787DZ", "N5790GR", "N5794HK", "N5794LY", "N5804DV", "N5804EH", "N5809GI", "N5814ES", "N5815GQ", "N5819EJ", "N5822IE", "N5833GX", "N5837DV", "N5838GI", "N5841GV", "N5844JN", "N5845ES", "N5849HA", "N5852GC", "N5852GT", "N5853FP", "N5856ME", "N5861IJ", "N5864HX", "N5873GK", "N5881GW", "N5882LD", "N5888FN", "N5898HV", "N5899HY", "N5900HM", "N5900KV", "N5901CI", "N5905CQ", "N5909FO", "N5910CY", "N5911BQ", "N5915IA", "N5922ID", "N5925DT", "N5932EY", "N5938GY", "N5940LQ", "N5953GE", "N5961IZ", "N5965GH", "N5967GY", "N5972KT", "N5974GA", "N5978II", "N5981II", "N5989DH", "N5993GI", "N6006IK", "N6025CF", "N6038HE", "N6043HH", "N6044EX", "N6062GZ", "N6065HY", "N6078GZ", "N6079IJ", "N6083JO", "N6087EX", "N6087IG", "N6093KE", "N6097HD", "N6100GZ", "N6105HA", "N6113EK", "N6117JH", "N6119FZ", "N6119JF", "N6121FU", "N6125HQ", "N6128CH", "N6132DM", "N6146EV", "N6158JM", "N6160GY", "N6183HF", "N6187JF", "N6190GA", "N6192HY", "N6211GL", "N6217IA", "N6243GI", "N6244HL", "N6245DU", "N6270GV", "N6278FD", "N6282GQ", "N6314HQ", "N6326HU", "N6333HX", "N6335IC", "N6343GP", "N6348JB", "N6350JY", "N6355CH", "N6357GJ", "N6360LE", "N6363CL", "N6363GL", "N6372IP", "N6374HU", "N6380HV", "N6383GY", "N6387HW", "N6399II", "N6404GQ", "N6409ES", "N6414GM", "N6418FO", "N6419GV", "N6423GW", "N6424HP", "N6429EW", "N6441EY", "N6452GO", "N6463GS", "N6472HK", "N6473KA", "N6477IA", "N6493HD", "N6496HR", "N6499HA", "N6499IG", "N6512HA", "N6513GC", "N6514HJ", "N6520JV", "N6524GW", "N6525HN", "N6527GB", "N6529FH", "N6536HK", "N6539EL", "N6558HK", "N6559JY", "N6564EZ", "N6573DW", "N6579FJ", "N6586IG", "N6590HI", "N6594FN", "N6594HE", "N6601EX", "N6601HL", "N6611JX", "N6613HV", "N6619HF", "N6632GD", "N6634IB", "N6653GX", "N6659FI", "N6661IG", "N6665EX", "N6669HK", "N6670LA", "N6673IB", "N6683GH", "N6683HJ", "N6688BY", "N6689FP", "N6689HJ", "N6696GQ", "N6706DL", "N6708HD", "N6711KQ", "N6712GF", "N6713JO", "N6716CF", "N6716GW", "N6740JK", "N6757EI", "N6762GR", "N6765FD", "N6775DK", "N6775DQ", "N6778GH", "N6796FS", "N6798IH", "N6800GI", "N6804EN", "N6815GB", "N6819IB", "N6821FE", "N6823IA", "N6827LS", "N6828ED", "N6832DU", "N6832IY", "N6834GK", "N6834HO", "N6841HF", "N6846IM", "N6851GG", "N6857JV", "N6858GH", "N6881DD", "N6884CY", "N6885GU", "N6896DH", "N6899GC", "N6904JM", "N6911JQ", "N6914GU", "N6918IC", "N6925GR", "N6927FC", "N6940CR", "N6940HM", "N6942FG", "N6944GR", "N6945EJ", "N6945EX", "N6952HQ", "N6953GM", "N6955JQ", "N6965HT", "N6966EX", "N6968JS", "N6969GZ", "N6977FO", "N6978DY", "N6979FK", "N6981LI", "N6982LL", "N6990FU", "N6998IX", "N7022HK", "N7027JM", "N7028GH", "N7032GQ", "N7035MQ", "N7040HS", "N7042IG", "N7046HN", "N7051GD", "N7053HT", "N7054BI", "N7066GZ", "N7076IA", "N7081FK", "N7082HH", "N7085HB", "N7086CU", "N7091JZ", "N7094GP", "N7107LR", "N7118ID", "N7119CH", "N7122HE", "N7126IB", "N7129HN", "N7132GU", "N7133FZ", "N7135GX", "N7146HX", "N7153FS", "N7153GA", "N7158GR", "N7162CZ", "N7162KA", "N7174CC", "N7176DM", "N7176IP", "N7181CQ", "N7182IC", "N7184DR", "N7188HM", "N7196HK", "N7202ES", "N7203EJ", "N7207HA", "N7213DL", "N7213JY", "N7226FY", "N7234EO", "N7240MH", "N7242HB", "N7248HE", "N7256FB", "N7260GJ", "N7265GT", "N7266HC", "N7274GN", "N7281DD", "N7287CT", "N7293FW", "N7297KB", "N7305GN", "N7305HU", "N7313ID", "N7315HS", "N7317HL", "N7319GP", "N7322GF", "N7325GR", "N7328CT", "N7329V", "N7331CU", "N7337GU", "N7340HW", "N7342GO", "N7348CS", "N7361HC", "N7362DA", "N7368FC", "N7369GE", "N7370IA", "N7390JO", "N7395GE", "N7398ES", "N7400DV", "N7400IG", "N7403HW", "N7405HV", "N7419FJ", "N7420HP", "N7427IJ", "N7429CF", "N7435BS", "N7435HV", "N7435IO", "N7436IF", "N7447GO", "N7457DE", "N7459HJ", "N7459IJ", "N7470HW", "N7478CJ", "N7504HA", "N7506MO", "N7509HA", "N7509HN", "N7521GD", "N7541HM", "N7546KZ", "N7548HC", "N7551BT", "N7551FW", "N7552HJ", "N7557IC", "N7578FY", "N7595HE", "N7600IP", "N7620LR", "N7624HW", "N7644HW", "N7647FG", "N7647HN", "N7666HK", "N7670CU", "N7675GW", "N7688KC", "N7694FC", "N7696EA", "N7699GY", "N7701DD", "N7709FN", "N7711FP", "N7715GP", "N7718GI", "N7727GB", "N7728GN", "N7729EK", "N7730MO", "N7731HU", "N7733GC", "N7736HX", "N7749FS", "N7752GB", "N7755DJ", "N7763FL", "N7772GM", "N7787HX", "N7789IP", "N7797IW", "N7813KE", "N7822GF", "N7836KH", "N7840DZ", "N7849HA", "N7854HO", "N7858J", "N7859FK", "N7861DK", "N7866JJ", "N7871FJ", "N7872GZ", "N7872JO", "N7879DX", "N7882CU", "N7885KI", "N7886MA", "N7890HL", "N7892CS", "N7895IF", "N7915IN", "N7921HQ", "N7928HL", "N7929JQ", "N7931GJ", "N7938JP", "N7950JR", "N7951HP", "N7954IM", "N7966GS", "N7968IC", "N7976JO", "N7985HO", "N7992IC", "N7993GG", "N7995EW", "N8005GW", "N8011X", "N8017IL", "N8034IL", "N8044IE", "N8045FF", "N8046HU", "N8051HB", "N8052GJ", "N8065BH", "N8069HP", "N8080EZ", "N8108HS", "N8110GX", "N8111BQ", "N8120CX", "N8122DB", "N8126HL", "N8135BT", "N8138FX", "N8139EY", "N8147FH", "N8170HR", "N8175GJ", "N8179IH", "N8189GW", "N8198CW", "N8203EO", "N8223HG", "N8229GY", "N8240EL", "N8241KQ", "N8248LZ", "N8289MH", "N8293EY", "N8303HJ", "N8304FY", "N8306HE", "N8308BR", "N8316GX", "N8337GI", "N8344GR", "N8355EF", "N8355FA", "N8368GL", "N8374FO", "N8377HR", "N8384LC", "N8385IR", "N8387Z", "N8391DO", "N8392GZ", "N8394CX", "N8397GW", "N8401HE", "N8409GS", "N8415JN", "N8416BX", "N8416GV", "N8417HC", "N8420IC", "N8422EW", "N8422JE", "N8430KR", "N8434DZ", "N8443EB", "N8449HC", "N8450GV", "N8454IK", "N8461EV", "N8476FJ", "N8480MB", "N8482JV", "N8489HJ", "N8491DT", "N8494DP", "N8508EK", "N8517HG", "N8520BY", "N8521HH", "N8522CW", "N8522IP", "N8529CV", "N8529JS", "N8536FQ", "N8536GU", "N8537GB", "N8544HP", "N8546MG", "N8548LO", "N8555EY", "N8556IK", "N8562HJ", "N8564MC", "N8565HV", "N8570HW", "N8572DH", "N8580HH", "N8582MQ", "N8588ES", "N8591HA", "N8594HK", "N8613GG", "N8614IG", "N8614JS", "N8620IG", "N8639DS", "N8649JS", "N8655HY", "N8660FL", "N8660IA", "N8671HB", "N8671HH", "N8689GR", "N8689HS", "N8693EU", "N8697FE", "N8707CR", "N8711GG", "N8712CF", "N8715GL", "N8715GW", "N8718HC", "N8719HB", "N8720IH", "N8741EN", "N8744KX", "N8747FP", "N8752GG", "N8754GQ", "N8757GN", "N8766FL", "N8771BU", "N8778GS", "N8778HZ", "N8779HJ", "N8781GV", "N8782CW", "N8784CZ", "N8787HO", "N8792IQ", "N8796JA", "N8801EG", "N8820FG", "N8843IJ", "N8856GL", "N8859EZ", "N8859IN", "N8876GO", "N8892HO", "N8894HA", "N8899KU", "N8901HN", "N8907FB", "N8913HH", "N8930FP", "N8937GY", "N8939HV", "N8941GX", "N8942FP", "N8955GV", "N8955HQ", "N8960JB", "N8975LA", "N8982EY", "N8988IB", "N8992JG", "N9005GH", "N9005HL", "N9014GT", "N9022BH", "N9025HV", "N9026N", "N9029GN", "N9034JO", "N9035IH", "N9036GT", "N9042CF", "N9043HZ", "N9048EY", "N9050CI", "N9053GN", "N9058LH", "N9069IQ", "N9072HV", "N9075FC", "N9077IK", "N9085HT", "N9086IF", "N9095KU", "N9102BD", "N9102EY", "N9120CR", "N9137HG", "N9141IM", "N9158GP", "N9165IU", "N9195DB", "N9207FF", "N9211HM", "N9212EV", "N9229HU", "N9232JC", "N9234GV", "N9239HG", "N9244JV", "N9245CZ", "N9259FH", "N9259LT", "N9261FE", "N9264HS", "N9270GN", "N9273IM", "N9277GK", "N9277IA", "N9279IA", "N9282IG", "N9293FX", "N9295GR", "N9296BM", "N9297HT", "N9308JV", "N9314HM", "N9322HT", "N9327GM", "N9329GS", "N9352GO", "N9355GQ", "N9361GY", "N9365HX", "N9387HC", "N9387JF", "N9390CF", "N9391JP", "N9394CZ", "N9398GT", "N9418FF", "N9423HX", "N9423IH", "N9441HP", "N9444EL", "N9454CK", "N9462IN", "N9470HQ", "N9479HN", "N9480GH", "N9486JL", "N9498DY", "N9501GQ", "N9502FU", "N9502HR", "N9504HA", "N9518CP", "N9520BZ", "N9520GE", "N9524IK", "N9527JO", "N9532EN", "N9537FM", "N9538IG", "N9554GE", "N9561FX", "N9563LE", "N9567EQ", "N9568HG", "N9572GX", "N9581GY", "N9585HH", "N9587DY", "N9588FN", "N9590FU", "N9593GK", "N9595HD", "N9596HN", "N9599GK", "N9603IB", "N9606CS", "N9609LL", "N9610DW", "N9619JL", "N9632JW", "N9645FE", "N9646KW", "N9649FV", "N9665HR", "N9666GW", "N9667IV", "N9670IE", "N9671GL", "N9676GD", "N9678IB", "N9686HO", "N9691HX", "N9712HO", "N9713HI", "N9720BZ", "N9724HX", "N9725HY", "N9731HN", "N9732JD", "N9737GU", "N9740FK", "N9743ME", "N9744GQ", "N9747EO", "N9749EJ", "N9753HL", "N9758GS", "N9763DB", "N9767IC", "N9773HY", "N9776FN", "N9779FE", "N9782JG", "N9787HC", "N9787IN", "N9793GW", "N9812GW", "N9819HT", "N9829GF", "N9831DY", "N9834HI", "N9866GG", "N9872GT", "N9877H", "N9878BY", "N9881HE", "N9888FE", "N9893GU", "N9897DN", "N9905HK", "N9908BE", "N9908MM", "N9921HA", "N9922IY", "N9929CY", "N9937KV", "N9940HJ", "N9944IF", "N9951W", "N9961HP", "N9968CO", "N9971GU", "N9974JU", "N9989FM", "N9994V", "N9995FL", "N0175GW", "N0202HB", "N0442GC", "N0449GO", "N0715IW", "N0837HA", "N0890IJ", "N0914FT", "N1309HK", "N1342GV", "N1347HT", "N1891GV", "N2296GK", "N2382GV", "N2826EZ", "N2954IL", "N2990CS", "N3200HH", "N3309GV", "N3520DU", "N3731CQ", "N5108GP", "N5255GQ", "N5481GX", "N5492GJ", "N5631HW", "N6173IU", "N6485KV", "N6603HI", "N6612HK", "N6750BL", "N7222HC", "N7262HX", "N7601GE", "N7752HW", "N7814IY", "N7816HJ", "N8054GF", "N8168HJ", "N8261DQ", "N8478GY", "N8955FH", "N9080GG", "N9373FK", "N9513IQ", "N1781FT"];
+const STORAGE_KEY = "tomotaYomu_v211_update_baseline";
+const READ_KEY = "tomotaYomu_v211_reading";
+const ACTIVE_KEY = "tomotaYomu_v211_active_ncode";
+const LAST_CHECK_KEY = "tomotaYomu_v211_last_check";
+const GLOBAL_BASELINE_KEY = "tomotaYomu_v214_global_baseline";
+const UPDATE_CANDIDATES_KEY = "tomotaYomu_v214_update_candidates";
+const LATEST_WORKS_KEY = "tomotaYomu_v214_latest_works";
+const INITIAL_GLOBAL_BASELINE = "2026-09-25T00:00:00+09:00";
+const MAX_ST = 2000;
+const INIT_START = 0;
+
+function loadJSON(key, fallback) { try { return JSON.parse(localStorage.getItem(key) || "null") ?? fallback; } catch(e) { return fallback; } }
+function saveJSON(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+function getGlobalBaseline(){ return localStorage.getItem(GLOBAL_BASELINE_KEY) || INITIAL_GLOBAL_BASELINE; }
+function setGlobalBaseline(value){ localStorage.setItem(GLOBAL_BASELINE_KEY, value); }
+function getUpdateCandidates(){ return loadJSON(UPDATE_CANDIDATES_KEY,{}); }
+function saveUpdateCandidates(value){ saveJSON(UPDATE_CANDIDATES_KEY,value); }
+function getLatestWorks(){ return loadJSON(LATEST_WORKS_KEY,{}); }
+function saveLatestWorks(value){ saveJSON(LATEST_WORKS_KEY,value); }
+function slimWork(w){
+  return {
+    ncode:String(w.ncode||"").toUpperCase(),
+    general_lastup:w.general_lastup||"",
+    general_all_no:w.general_all_no||0,
+    end:w.end??0,
+    story:w.story||"",
+    title:w.title||"",
+    writer:w.writer||"",
+    keyword:w.keyword||"",
+    genre:w.genre??0,
+    userid:w.userid??0,
+    noveltype:w.noveltype??0,
+    isstop:w.isstop??0,
+    novelupdated_at:w.novelupdated_at||"",
+    __r18:!!w.__r18
+  };
+}
+function restoreLatestWorks(){
+  const latest=getLatestWorks(), cards=getCardsByNcode();
+  Object.keys(latest).forEach(n=>{
+    const c=cards[n];
+    if(c) updateCard(c,latest[n]);
+  });
+}
+function renderGlobalBaseline(){ const el=document.getElementById("baselineDate"); if(el)el.textContent="基準日："+formatDate(getGlobalBaseline()); }
+async function hydrateCandidateWorks(){
+  const candidates=getUpdateCandidates();
+  const ncodes=Object.keys(candidates||{});
+  if(!ncodes.length)return;
+  try{
+    const [normal,r18]=await Promise.all([
+      fetchByNcodes(API_URL,ncodes,"normal"),
+      fetchByNcodes(R18_API_URL,ncodes,"r18")
+    ]);
+    r18.forEach(w=>w.__r18=true);
+    const rows=[...normal,...r18], cards=getCardsByNcode(), latest=getLatestWorks();
+    rows.forEach(w=>{
+      const n=String(w.ncode||"").toUpperCase();
+      if(!candidates[n])return;
+      if(w.general_lastup && new Date(String(w.general_lastup).replace(" ","T")).getTime() >= new Date(String(candidates[n]).replace(" ","T")).getTime()){
+        const saved=slimWork(w);
+        latest[n]=saved;
+        const c=cards[n];
+        if(c)updateCard(c,saved);
+      }
+    });
+    saveLatestWorks(latest);
+  }catch(e){ console.warn("候補作品の最新情報取得に失敗",e); }
+}
+
+function loadShelfRestoreMap(){
+  return new Promise((ok,no)=>{
+    if(window.ORIGINAL_READING_NCODES){ok();return;}
+    const s=document.createElement("script");
+    s.src="v3_shelf_restore_map.js";
+    s.onload=()=>ok();
+    s.onerror=()=>no(new Error("shelf restore map load failed"));
+    document.head.appendChild(s);
+  });
+}
+async function buildV3CardsFromIndexedDB(){
+  await loadShelfRestoreMap();
+  const db=await new Promise((ok,no)=>{
+    const r=indexedDB.open("tomotaYomuDB",1);
+    r.onsuccess=()=>ok(r.result);
+    r.onerror=()=>no(r.error);
+  });
+  const readAll=name=>new Promise((ok,no)=>{
+    const a=[],r=db.transaction(name,"readonly").objectStore(name).openCursor();
+    r.onsuccess=()=>{if(r.result){a.push(r.result.value);r.result.continue()}else ok(a)};
+    r.onerror=()=>no(r.error);
+  });
+  const [shelves,placements,works,authors,positions]=await Promise.all([
+    readAll("shelf_names"),readAll("shelf_placement"),readAll("works_cache"),readAll("authors"),readAll("reading_position")
+  ]);
+  const wm=new Map(works.map(v=>[String(v.ncode||"").toUpperCase(),v]));
+  const am=new Map(authors.map(v=>[String(v.ncode||"").toUpperCase(),v]));
+  const pm=new Map(positions.map(v=>[String(v.ncode||"").toUpperCase(),v]));
+  const sm=new Map(shelves.map(v=>[String(v.shelf_id||"").trim(),v]));
+  const shelfText=v=>{
+    const direct=v?.name??v?.shelf_name??v?.title??v?.label??v?.display_name;
+    if(direct!=null&&String(direct).trim())return String(direct).trim();
+    const values=Object.values(v||{});
+    const hit=values.find(x=>typeof x==="string"&&/読書中|未分類|あ〜お|か〜こ|さ〜そ|た〜と|な〜の|は〜ほ|ま〜も|や〜ん|更新待ち/.test(x));
+    return String(hit??v?.shelf_id??"").trim();
+  };
+  const shelfCore=raw=>{
+    const s=String(raw||"").replace(/[🟠🔵🌀🎈📚⏰]/g,"").replace(/\s+/g,"");
+    if(s.includes("読書中"))return "読書中";
+    if(s.includes("未分類"))return "未分類";
+    for(const k of ["あ〜お","か〜こ","さ〜そ","た〜と","な〜の","は〜ほ","ま〜も","や〜ん","更新待ち"]) if(s.includes(k)||s.includes(k.replace("〜","-"))) return k;
+    return "";
+  };
+  const shelfLabel=raw=>{
+    const core=shelfCore(raw);
+    if(core==="読書中")return "🟠読書中";
+    if(core==="未分類")return "未分類";
+    if(core==="更新待ち")return "⏰更新待ち";
+    if(core)return "🎈"+core;
+    return String(raw||"").trim();
+  };
+  const shelfIdByCore=new Map();
+  const shelfIdsByCore=new Map();
+  shelves.forEach(v=>{
+    const id=String(v.shelf_id||"").trim(),core=shelfCore(shelfText(v));
+    if(!id||!core)return;
+    if(!shelfIdByCore.has(core))shelfIdByCore.set(core,id);
+    if(!shelfIdsByCore.has(core))shelfIdsByCore.set(core,new Set());
+    shelfIdsByCore.get(core).add(id);
+  });
+
+  const originalShelfByNcode=window.ORIGINAL_SHELF_BY_NCODE||{};
+  const readShelfId=shelfIdByCore.get("読書中")||"";
+  const unclassifiedShelfId=shelfIdByCore.get("未分類")||"";
+
+  {
+    const repaired=placements.map(p=>{
+      const n=String(p.ncode||"").toUpperCase();
+      const originalLabel=String(originalShelfByNcode[n]||"").trim();
+      const originalCore=shelfCore(originalLabel);
+      let sid="";
+      if(originalCore){
+        sid=shelfIdByCore.get(originalCore)||"";
+      }
+      return {...p,shelf_id:sid};
+    });
+    const changed=repaired.some((p,i)=>String(p.shelf_id||"")!==String(placements[i].shelf_id||""));
+    if(changed){
+      await new Promise((ok,no)=>{
+        const tx=db.transaction("shelf_placement","readwrite"),st=tx.objectStore("shelf_placement");
+        repaired.forEach(p=>st.put(p));
+        tx.oncomplete=ok;
+        tx.onerror=()=>no(tx.error);
+        tx.onabort=()=>no(tx.error||new Error("shelf repair aborted"));
+      });
+      placements.splice(0,placements.length,...repaired);
+    }
+  }
+
+  const readMap=readingMap();
+  positions.forEach(v=>{
+    const n=String(v.ncode||"").toUpperCase();
+    if(/^N[0-9A-Z]+$/.test(n)&&Number.isFinite(Number(v.episode)))readMap[n]=Number(v.episode);
+  });
+  saveJSON(READ_KEY,readMap);
+
+  const source=document.getElementById("shelf");
+  source.innerHTML="";
+  let made=0,deleted=0,unmapped=0;
+
+  for(const p of placements){
+    const n=String(p.ncode||"").toUpperCase(),w=wm.get(n);
+    if(!w){deleted++;continue;}
+    const sid=String(p.shelf_id||"").trim();
+    const rawShelf=shelfText(sm.get(sid));
+    const shelf=shelfLabel(rawShelf);
+    if(sid && !sm.has(sid))unmapped++;
+
+    const card=document.createElement("article");
+    card.className="card";
+    card.dataset.ncode=n;
+    card.dataset.shelf=shelf;
+    card.dataset.current=pm.has(n)?String(pm.get(n).episode||""):"";
+    const writer=am.get(n)?.writer||w.writer||"";
+
+    card.innerHTML='<div class="meta"><span class="newMark" hidden>🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ '+shelf+'</div><h2></h2><div class="author"></div><div class="ncode">Nコード：'+n+'</div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから　📖 未読 / —話</a></div></article>';
+    card.querySelector("h2").textContent=w.title||"";
+    card.querySelector(".author").textContent="作者："+writer;
+    updateCard(card,{...w,writer});
+    source.appendChild(card);
+    made++;
+  }
+
+  const s=document.getElementById("apiStatus");
+  if(s){ s.textContent=""; }
+  const sum=document.getElementById("bookshelfSummary");
+  if(sum)sum.textContent="📚 本棚 "+made;
+  return {shelves,placements,made,deleted,works,authors,positions,unmapped};
+}
+function formatDate(v) { if (!v) return "—"; const d = new Date(String(v).replace(" ", "T")); if (isNaN(d)) return String(v).slice(0,10).replaceAll("-","/"); return d.toLocaleString("ja-JP", {year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}); }
+function nowUnix(){ return Math.floor(Date.now()/1000); }
+function setStatus(w) {
+  if (String(w.noveltype ?? "").trim() === "2") return "🟣 短編";
+  return String(w.end) === "0" ? "🔵 完結" : "🟢 連載中";
+}
+function siteUrl(w) { return w.__r18 ? "https://novel18.syosetu.com/" + String(w.ncode).toLowerCase() + "/" : "https://ncode.syosetu.com/" + String(w.ncode).toLowerCase() + "/"; }
+function restoreReadingFromQuery(){
+  const params = new URLSearchParams(location.search);
+  const n = (params.get("ncode") || "").trim().toUpperCase();
+  const episode = params.get("episode") || "";
+
+  if(!/^N[0-9A-Z]+$/.test(n) || !/^\d+$/.test(episode)) return false;
+
+  setReading(n, Number(episode));
+  localStorage.removeItem(ACTIVE_KEY);
+
+  const cleanUrl = new URL(location.href);
+  cleanUrl.searchParams.delete("ncode");
+  cleanUrl.searchParams.delete("episode");
+  history.replaceState(null, "", cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
+
+  return true;
+}
+
+function restoreReadingPositions(){
+  document.querySelectorAll("#shelf .card").forEach(card=>{
+    const n = card.dataset.ncode.toUpperCase();
+    const current = readingFor(n);
+    const total = Number(card.dataset.totalEpisodes || 0);
+    const resumeLink = card.querySelector(".resumeLink");
+
+    card.dataset.current = current == null ? "" : String(current);
+
+    if(!resumeLink) return;
+
+    const workUrl = card.querySelector(".workLink")?.href || "";
+
+    if(current == null){
+      resumeLink.textContent =
+        "続きから　📖 📝 読書記録なし / " + (total || "—") + "話";
+      resumeLink.href = workUrl;
+    }else{
+      resumeLink.textContent =
+        "続きから　📖 " + current + " / " + (total || "—") + "話";
+      resumeLink.href =
+        current > 0 ? workUrl + String(current) + "/" : workUrl;
+    }
+  });
+}
+
+function readingMap(){ return loadJSON(READ_KEY,{}); }
+function readingFor(n){ const r=readingMap()[String(n).toUpperCase()]; return Number.isFinite(Number(r)) ? Number(r) : null; }
+function setReading(n,episode){ const key=String(n).toUpperCase(), value=Number(episode); const m=readingMap(); m[key]=value; saveJSON(READ_KEY,m); saveReadingToIndexedDB(key,value); }
+function saveReadingToIndexedDB(n,episode){ try{ const r=indexedDB.open("tomotaYomuDB",1); r.onsuccess=()=>{ const d=r.result; if(!d.objectStoreNames.contains("reading_position"))return; const t=d.transaction("reading_position","readwrite"); t.objectStore("reading_position").put({ncode:n,episode:Number(episode)}); }; }catch(e){ console.warn("reading_position保存失敗",e); } }
+function seedReadingCache(){
+  const m=readingMap(); let changed=false;
+  document.querySelectorAll("#shelf .card").forEach(card=>{
+    const n=card.dataset.ncode.toUpperCase();
+    if(!(n in m)){
+      const v=card.dataset.current;
+      if(v!=="" && /^\d+$/.test(v)) m[n]=Number(v); else m[n]=null;
+      changed=true;
+    }
+  });
+  if(changed)saveJSON(READ_KEY,m);
+}
+function updateCard(card,w){
+  const n=String(w.ncode||card.dataset.ncode).toUpperCase();
+  const titleEl=card.querySelector("h2"); if(titleEl&&w.title)titleEl.textContent=w.title;
+  const authorEl=card.querySelector(".author"); if(authorEl&&w.writer)authorEl.textContent="作者："+w.writer;
+  card.dataset.lastUpdated = w.general_lastup || card.dataset.lastUpdated || "";
+  card.dataset.totalEpisodes = w.general_all_no || card.dataset.totalEpisodes || "";
+  card.querySelector(".lastUpdated").textContent = formatDate(card.dataset.lastUpdated);
+  if(Object.prototype.hasOwnProperty.call(w,"end") || Object.prototype.hasOwnProperty.call(w,"novel_type") || Object.prototype.hasOwnProperty.call(w,"noveltype")) card.querySelector(".status").textContent = setStatus(w);
+  card.querySelector(".synopsis").textContent = w.story || "あらすじなし";
+  const workUrl = siteUrl(w); card.querySelector(".workLink").href = workUrl;
+  const current = readingFor(n), total = Number(w.general_all_no || card.dataset.totalEpisodes || 0), resumeLink = card.querySelector(".resumeLink");
+  card.dataset.current = current==null ? "" : String(current);
+  const isShortStory = String(w.noveltype ?? "").trim() === "2";
+  if(current==null){ resumeLink.textContent = "続きから　📖 📝 読書記録なし / " + (total||"—") + "話"; resumeLink.href = workUrl; }
+  else { resumeLink.textContent = "続きから　📖 " + current + " / " + (total||"—") + "話"; resumeLink.href = isShortStory ? workUrl : (current>0 ? workUrl + String(current) + "/" : workUrl); }
+  applyCardState(card);
+}
+function applyCardState(card){
+  const n=card.dataset.ncode.toUpperCase(), candidates=getUpdateCandidates(), candidate=candidates[n], current=readingFor(n), total=Number(card.dataset.totalEpisodes||0);
+  const unread=current!=null && total>0 && current<total;
+  const mark=card.querySelector(".newMark");
+  if(mark)mark.hidden=!(!!candidate && unread);
+}
+function buildShelfFolders(){
+  const root=document.getElementById("shelfSections"), source=document.getElementById("shelf"); if(!root||!source)return; root.innerHTML="";
+  const order=[["🟠 読書中","🟠読書中"],["🎈 あ〜お","🎈あ〜お"],["🎈 か〜こ","🎈か〜こ"],["🎈 さ〜そ","🎈さ〜そ"],["🎈 た〜と","🎈た〜と"],["🎈 な〜の","🎈な〜の"],["🎈 は〜ほ","🎈は〜ほ"],["🎈 ま〜も","🎈ま〜も"],["🎈 や〜ん","🎈や〜ん"],["⏰ 更新待ち","⏰更新待ち"],["📚 未分類","未分類"]];
+  const cards=[...source.querySelectorAll(":scope > .card")]; const getFolder=card=>{const text=(card.querySelector(".meta")?.textContent||"").replace(/\s+/g,""); for(const [,key] of order)if(text.includes(key.replace(/\s+/g,"")))return key; return "未分類";};
+  for(const [label,key] of order){const members=cards.filter(c=>getFolder(c)===key).sort((a,b)=>(b.dataset.lastUpdated||"").localeCompare(a.dataset.lastUpdated||"")); if(!members.length)continue; const d=document.createElement("details"); d.className="folderDetails"; if(key==="🟠読書中")d.open=true; const sm=document.createElement("summary"); sm.textContent=`${label} ${members.length}`; const wrap=document.createElement("div"); wrap.className="folderCards"; members.forEach(c=>wrap.appendChild(c.cloneNode(true))); d.append(sm,wrap); root.appendChild(d);}
+  source.hidden=true;
+}
+function buildUpdateView(){
+  const candidates=getUpdateCandidates(), cards=[...document.querySelectorAll("#shelf .card")], updates=[];
+  cards.forEach(card=>{
+    applyCardState(card);
+    const n=card.dataset.ncode.toUpperCase(), candidate=candidates[n], current=readingFor(n), total=Number(card.dataset.totalEpisodes||0);
+    const unread=current!=null && total>0 && current<total;
+    const metaText=(card.querySelector(".meta")?.textContent||"").replace(/\s+/g,"");
+    const isUnclassified=metaText.includes("未分類");
+    if(candidate&&unread&&!isUnclassified)updates.push(card);
+  });
+  updates.sort((a,b)=>(candidates[b.dataset.ncode.toUpperCase()]||"").localeCompare(candidates[a.dataset.ncode.toUpperCase()]||""));
+  const list=document.getElementById("updateList"); list.innerHTML=""; updates.forEach(c=>list.appendChild(c.cloneNode(true)));
+  document.getElementById("updateTitle").textContent="🆙 更新"+updates.length;
+  document.getElementById("updateEmpty").classList.toggle("hidden",updates.length!==0);
+}
+function jsonp(url){ return new Promise((resolve,reject)=>{ const cb="tomotaYomu_v211_"+Date.now()+"_"+Math.random().toString(36).slice(2); const s=document.createElement("script"), timer=setTimeout(()=>{cleanup();reject(new Error("JSONP timeout"))},20000); function cleanup(){clearTimeout(timer);try{s.remove()}catch(e){};try{delete window[cb]}catch(e){window[cb]=undefined}} window[cb]=d=>{cleanup();resolve(d)}; s.onerror=()=>{cleanup();reject(new Error("JSONP load error"))}; s.src=url+"&out=jsonp&callback="+cb+"&_cb="+Date.now(); document.head.appendChild(s); }); }
+function range(a,b){ return Math.floor(a)+"-"+Math.floor(b); }
+async function countRange(base,a,b){ const d=await jsonp(base+"?lastup="+range(a,b)+"&of=n-t-s-gl-ga-e-e&lim=1&st=1"); return Number(d?.[0]?.allcount||0); }
+async function collectRange(base,a,b,depth=0){
+  const n=await countRange(base,a,b); if(n===0)return []; if(n<=MAX_ST){ let out=[]; for(let st=1;st<=n;st+=500){ const lim=Math.min(500,n-st+1),d=await jsonp(base+"?lastup="+range(a,b)+"&of=n-t-s-gl-ga-e-e&lim="+lim+"&st="+st); out.push(...(d||[]).filter(x=>x.ncode)); } return out; }
+  if(depth>20)throw new Error("lastup時間分割上限"); const m=Math.floor((a+b)/2); return (await collectRange(base,a,m,depth+1)).concat(await collectRange(base,m+1,b,depth+1));
+}
+async function fetchByNcodes(apiUrl,ncodes,label){
+  const chunks=[]; for(let i=0;i<ncodes.length;i+=400)chunks.push(ncodes.slice(i,i+400)); const results=[];
+  for(let i=0;i<chunks.length;i++){ const chunk=chunks[i]; const d=await jsonp(apiUrl+"?ncode="+encodeURIComponent(chunk.join("-"))+"&of=n-t-s-gl-ga-e-e-nt&lim=500"); results.push(...(Array.isArray(d)?d.slice(1):[])); }
+  return results;
+}
+function getCardsByNcode(){ const m={}; document.querySelectorAll("#shelf .card").forEach(c=>m[c.dataset.ncode.toUpperCase()]=c); return m; }
+async function initializeBaseline(){
+  const status=document.getElementById("apiStatus"); status.textContent="初回同期：作品情報を取得中…";
+  const [works,r18]=await Promise.all([fetchByNcodes(API_URL,NCODES,"normal"),fetchByNcodes(R18_API_URL,R18_NCODES,"r18")]); r18.forEach(w=>w.__r18=true);
+  const by={}; [...works,...r18].forEach(w=>by[String(w.ncode).toUpperCase()]=w); const cards=getCardsByNcode(), baseline={};
+  [...works,...r18].forEach(w=>{const n=String(w.ncode).toUpperCase(); baseline[n]=w.general_lastup||""; if(cards[n])updateCard(cards[n],w);}); saveJSON(STORAGE_KEY,baseline); saveJSON(LAST_CHECK_KEY,new Date().toISOString()); buildUpdateView(); buildShelfFolders(); return [...works,...r18].length;
+}
+async function updateInfo(){
+  const btn=document.getElementById("updateBtn"),status=document.getElementById("apiStatus");
+  btn.disabled=true;
+  try{
+    seedReadingCache();
+    const oldBaseline=getGlobalBaseline();
+    const newBaseline=new Date().toISOString();
+    const start=Math.floor(new Date(oldBaseline).getTime()/1000);
+    const end=Math.floor(new Date(newBaseline).getTime()/1000);
+    if(!Number.isFinite(start)||!Number.isFinite(end))throw new Error("基準日の日時が不正です");
+    status.textContent="更新候補を確認中…";
+    const [normal,r18]=await Promise.all([collectRange(API_URL,start,end),collectRange(R18_API_URL,start,end)]);
+    r18.forEach(w=>w.__r18=true);
+    const rows=[...normal,...r18];
+    const cards=getCardsByNcode(), candidates=getUpdateCandidates(), latest=getLatestWorks();
+    let reflected=0;
+    rows.forEach(w=>{
+      const n=String(w.ncode||"").toUpperCase(), c=cards[n];
+      if(!c)return;
+      const lastup=w.general_lastup||"";
+      if(lastup&&new Date(lastup.replace(" ","T")).getTime()>new Date(oldBaseline).getTime()){
+        const saved=slimWork(w);
+        latest[n]=saved;
+        updateCard(c,saved);
+        candidates[n]=lastup;
+        reflected++;
+      }
+    });
+    saveLatestWorks(latest);
+    saveUpdateCandidates(candidates);
+    setGlobalBaseline(newBaseline);
+    saveJSON(LAST_CHECK_KEY,newBaseline);
+    renderGlobalBaseline();
+    buildUpdateView();
+    buildShelfFolders();
+    status.textContent=`更新確認完了：取得 ${rows.length}作品｜反映 ${reflected}作品｜更新候補 ${Object.keys(candidates).length}作品｜最新情報を保存｜新基準日 ${formatDate(newBaseline)}`;
+  }catch(e){
+    console.error(e);
+    status.textContent="更新確認に失敗しました："+e.message;
+  }finally{btn.disabled=false;}
+}
+function gasRead(n){ return new Promise((resolve,reject)=>{ const x=new XMLHttpRequest(); x.open("GET",GAS_URL+"?ncode="+encodeURIComponent(n),true); x.timeout=20000; x.onload=()=>resolve({status:x.status,text:x.responseText.trim()}); x.onerror=()=>reject(new Error("GAS通信エラー")); x.ontimeout=()=>reject(new Error("GASタイムアウト")); x.send(); }); }
+async function refreshActiveFromGAS(){ const n=(localStorage.getItem(ACTIVE_KEY)||"").toUpperCase(); if(!n)return; const card=document.querySelector(`#shelf .card[data-ncode="${n}"]`); if(!card)return; try{ const r=await gasRead(n); const p=r.text.split(/\s+/); if(r.status===200&&p[0]==="READ"&&/^\d+$/.test(p[2])){ setReading(n,Number(p[2])); updateCard(card,{ncode:n,general_lastup:card.dataset.lastUpdated,general_all_no:card.dataset.totalEpisodes,story:card.querySelector(".synopsis")?.textContent||"",__r18:card.querySelector(".r18Badge")!=null}); } else if(r.status===200&&p[0]==="NOT_FOUND"){ const m=readingMap(); m[n]=null; saveJSON(READ_KEY,m); updateCard(card,{ncode:n,general_lastup:card.dataset.lastUpdated,general_all_no:card.dataset.totalEpisodes,story:card.querySelector(".synopsis")?.textContent||"",__r18:card.querySelector(".r18Badge")!=null}); } else throw new Error("GAS応答不明："+r.text); buildUpdateView(); buildShelfFolders(); localStorage.removeItem(ACTIVE_KEY); }catch(e){ console.warn(e); }
+}
+function rememberActive(card){ localStorage.setItem(ACTIVE_KEY,card.dataset.ncode.toUpperCase()); }
+function placeR18Badges(){
+  document.querySelectorAll("#shelf .card").forEach(card=>{
+    const badge=card.querySelector(".r18Badge"), ncode=card.querySelector(".ncode");
+    if(badge && ncode && !ncode.contains(badge)) ncode.appendChild(badge);
+  });
+}
+document.getElementById("updateBtn").addEventListener("click",updateInfo);
+document.addEventListener("click",e=>{ const a=e.target.closest(".resumeLink"); if(!a)return; const card=e.target.closest(".card"); if(!card)return; rememberActive(card); });
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") refreshActiveFromGAS(); });
+window.addEventListener("load",async()=>{ try{ await buildV3CardsFromIndexedDB(); seedReadingCache(); restoreReadingFromQuery(); restoreReadingPositions(); renderGlobalBaseline(); restoreLatestWorks(); buildUpdateView(); buildShelfFolders(); setTimeout(refreshActiveFromGAS,300); }catch(e){ console.warn("v3 IndexedDB本棚再構築失敗",e); const s=document.getElementById("apiStatus"); if(s)s.textContent="v3 IndexedDB接続失敗："+e.message; } });
+</script>
+
+
+
+</body>
+</html>
