@@ -60,7 +60,7 @@ summary{cursor:pointer}
 
 <main>
 <h1>ともたよむ</h1>
-<div class="note" style="font-weight:800;font-size:15px">🧪 v3.0.0【IndexedDB本棚テスト版】｜TEST-3007｜この表示なら今回の更新版</div>
+<div class="note" style="font-weight:800;font-size:15px">🧪 v3.0.0【本棚設置済base版】</div>
 <button id="updateBtn" type="button">🔄 更新情報を確認</button>
 <div id="baselineDate">基準日：未設定</div>
 <div class="note">基準日は全作品共通で1個。更新候補は基準日とは別に保持します。</div>
@@ -276,9 +276,9 @@ async function buildV3CardsFromIndexedDB(){
   }
 
   const s=document.getElementById("apiStatus");
-  if(s){ const shelfCounts={}; placements.forEach(p=>{const id=String(p.shelf_id||"(空)").trim(); shelfCounts[id]=(shelfCounts[id]||0)+1;}); const shelfDebug=Object.entries(shelfCounts).map(([id,n])=>id+"="+n).join(" / "); s.textContent="v3 IndexedDB：本棚"+placements.length+"件｜表示"+made+"件｜削除済み"+deleted+"件｜作品情報"+works.length+"件｜作者"+authors.length+"件｜読書位置"+positions.length+"件｜棚"+shelves.length+"件｜棚未対応"+unmapped+"件｜棚ID内訳 "+shelfDebug; }
+  if(s){ s.textContent="IndexedDB接続済み"; }
   const sum=document.getElementById("bookshelfSummary");
-  if(sum)sum.textContent="📚 本棚 "+made+"｜TEST-3008";
+  if(sum)sum.textContent="📚 本棚 "+made;
   return {shelves,placements,made,deleted,works,authors,positions,unmapped};
 }
 function formatDate(v) { if (!v) return "—"; const d = new Date(String(v).replace(" ", "T")); if (isNaN(d)) return String(v).slice(0,10).replaceAll("-","/"); return d.toLocaleString("ja-JP", {year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}); }
