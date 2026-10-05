@@ -500,6 +500,7 @@ async function moveWorkToShelf(ncode,newShelfId){
 async function showShelfMoveDialog(card){
   const n=String(card?.dataset?.ncode||"").toUpperCase();
   if(!n)return;
+  if(card.querySelector(".shelfMovePanel"))return;
   try{
     const db=await new Promise((ok,no)=>{
       const r=indexedDB.open("tomotaYomuDB",1);
@@ -516,28 +517,50 @@ async function showShelfMoveDialog(card){
       .filter(v=>v.id&&v.name)
       .sort((a,b)=>a.order-b.order);
     if(!usable.length){alert("移動先の本棚がありません。");return;}
+
     const currentId=String(card.dataset.shelfId||"").trim();
-    const lines=["移動先の本棚番号を入力してください。",""];
-    usable.forEach((v,i)=>lines.push((i+1)+"： "+v.name+(v.id===currentId?"（現在）":"")));
-    lines.push("0： 本棚から外す（未登録）");
-    const answer=window.prompt(lines.join("\n"));
-    if(answer===null)return;
-    const no=Number(answer);
-    if(!Number.isInteger(no)||no<0||no>usable.length){alert("番号が正しくありません。");return;}
-    const newId=no===0?"":usable[no-1].id;
-    if(newId===currentId)return;
-    await moveWorkToShelf(n,newId);
-    await buildV3CardsFromIndexedDB();
-    seedReadingCache();
-    restoreReadingPositions();
-    renderGlobalBaseline();
-    restoreLatestWorks();
-    buildUpdateView();
-    buildShelfFolders();
-    document.getElementById("apiStatus").textContent="本棚を移動しました："+(no===0?"未登録":usable[no-1].name);
+    const panel=document.createElement("div");
+    panel.className="shelfMovePanel";
+    panel.innerHTML='<div class="shelfMoveLabel">移動先の本棚</div><select class="shelfMoveSelect"></select><div class="shelfMoveActions"><button type="button" class="shelfMoveSave">移動する</button><button type="button" class="shelfMoveCancel">キャンセル</button></div>';
+
+    const select=panel.querySelector(".shelfMoveSelect");
+    usable.forEach(v=>{
+      const o=document.createElement("option");
+      o.value=v.id;
+      o.textContent=v.name+(v.id===currentId?"（現在）":"");
+      o.selected=v.id===currentId;
+      select.appendChild(o);
+    });
+    const unclassified=document.createElement("option");
+    unclassified.value="";
+    unclassified.textContent="本棚から外す（未登録）";
+    unclassified.selected=currentId==="";
+    select.appendChild(unclassified);
+
+    card.querySelector(".managementBody")?.appendChild(panel);
+
+    panel.querySelector(".shelfMoveCancel").addEventListener("click",()=>panel.remove());
+    panel.querySelector(".shelfMoveSave").addEventListener("click",async()=>{
+      const newId=String(select.value||"").trim();
+      if(newId===currentId){panel.remove();return;}
+      try{
+        await moveWorkToShelf(n,newId);
+        await buildV3CardsFromIndexedDB();
+        seedReadingCache();
+        restoreReadingPositions();
+        renderGlobalBaseline();
+        restoreLatestWorks();
+        buildUpdateView();
+        buildShelfFolders();
+        document.getElementById("apiStatus").textContent="本棚を移動しました："+(newId?select.options[select.selectedIndex].textContent:"未登録");
+      }catch(e){
+        console.error(e);
+        alert("本棚移動に失敗しました："+e.message);
+      }
+    });
   }catch(e){
     console.error(e);
-    alert("本棚移動に失敗しました："+e.message);
+    alert("本棚一覧の取得に失敗しました："+e.message);
   }
 }
 function rememberActive(card){ localStorage.setItem(ACTIVE_KEY,card.dataset.ncode.toUpperCase()); }
