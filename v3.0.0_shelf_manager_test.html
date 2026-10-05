@@ -21,12 +21,12 @@ button{border:1px solid #c8c0b5;border-radius:8px;background:transparent;padding
 .handle{font-size:22px;line-height:1;color:#777;width:30px;text-align:center;user-select:none;-webkit-user-select:none;cursor:grab}
 .name{font-size:16px;font-weight:700;flex:1}.name.unused{color:#aaa;font-weight:400}
 .order{font-size:12px;color:#999;width:24px;text-align:right}.count{font-size:12px;color:#888;white-space:nowrap}
+.deleteBtn{font-size:12px;padding:5px 7px;border-color:#c8c0b5}
 .row.dragging{opacity:.45}.row.drop-before{border-top:3px solid #777}.row.drop-after{border-bottom:3px solid #777}
 .body{display:none;border-top:1px solid #d5cec4;padding:11px 13px 13px;background:#faf7f1}
 .row.open .body{display:block}
 .shelfId{font-size:11px;color:#888;margin-bottom:9px;word-break:break-all}
-.work{padding:8px 0;border-top:1px solid #ddd5ca}
-.work:first-child{border-top:0;padding-top:0}
+.work{padding:8px 0;border-top:1px solid #ddd5ca}.work:first-child{border-top:0;padding-top:0}
 .workTitle{font-size:14px;font-weight:600}.workMeta{font-size:11px;color:#888;margin-top:2px}
 .empty{font-size:13px;color:#999}.more{font-size:12px;color:#777;margin-top:8px}
 .hint{font-size:12px;color:#777;margin:14px 2px}
@@ -40,13 +40,14 @@ button{border:1px solid #c8c0b5;border-radius:8px;background:transparent;padding
 <div class="toolbar"><button id="saveBtn" type="button">表示順を保存</button><button id="resetBtn" type="button">初期順に戻す</button></div>
 <div id="status">IndexedDBから棚情報を読み込み中…</div>
 <div id="shelfList"></div>
-<div class="hint">棚をタップすると中身を確認できます。☰ は並べ替え用です。保存しても作品の所属棚は変更しません。</div>
+<div class="hint">棚をタップすると中身を確認できます。☰ は並べ替え用です。空棚には削除ボタンが表示されます。</div>
 </main>
 <script>
 const DB_NAME="tomotaYomuDB",DB_VERSION=1;
 const STORES={shelves:"shelf_names",placements:"shelf_placement",works:"works_cache"};
 const DESIRED_ORDER=["読書中","あ〜お","か〜こ","さ〜そ","た〜と","な〜の","は〜ほ","ま〜も","や〜ん","更新待ち"];
 let db=null,shelves=[],placements=[],works=[],rows=[],dragRow=null,dragPointerId=null;
+let countMap=new Map(),workMap=new Map();
 
 function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onsuccess=()=>{db=r.result;resolve(db)};r.onerror=()=>reject(r.error||new Error("IndexedDBを開けません"))})}
 function readAll(name){return new Promise((resolve,reject)=>{const tx=db.transaction(name,"readonly"),st=tx.objectStore(name),out=[];const req=st.openCursor();req.onsuccess=()=>{const c=req.result;if(c){out.push(c.value);c.continue()}else resolve(out)};req.onerror=()=>reject(req.error||new Error(name+"読込失敗"))})}
@@ -58,8 +59,18 @@ function placementShelf(v){return String(v?.shelf_id??v?.shelfId??"").trim()}
 function placementN(v){return String(v?.ncode??v?.Ncode??"").trim().toUpperCase()}
 function workN(v){return String(v?.ncode??"").trim().toUpperCase()}
 function workTitle(v){return String(v?.title??v?.novel_title??v?.name??"（タイトル未取得）").trim()}
-function countFor(id){if(!id)return 0;return placements.reduce((n,p)=>n+(placementShelf(p)===id?1:0),0)}
-function worksFor(id){if(!id)return[];const wanted=new Set(placements.filter(p=>placementShelf(p)===id).map(placementN).filter(Boolean));return works.filter(w=>wanted.has(workN(w)))}
+
+function buildIndexes(){
+  countMap=new Map();workMap=new Map();
+  const placementNs=new Map();
+  placements.forEach(p=>{
+    const id=placementShelf(p);if(!id)return;
+    countMap.set(id,(countMap.get(id)||0)+1);
+    const n=placementN(p);if(n){let a=placementNs.get(id);if(!a){a=[];placementNs.set(id,a)}a.push(n)}
+  });
+  const byN=new Map(works.map(w=>[workN(w),w]));
+  placementNs.forEach((ns,id)=>workMap.set(id,ns.map(n=>byN.get(n)).filter(Boolean)));
+}
 function setOrderInitial(){
   const active=new Map();
   shelves.forEach(v=>{const id=getId(v),c=core(shelfText(v));if(id&&c&&!active.has(c))active.set(c,v)});
@@ -76,35 +87,53 @@ function render(){
       el.innerHTML='<div class="head"><div class="handle">☰</div><div class="name unused">（未使用）</div><div class="order">'+(i+1)+'</div></div>';
       list.appendChild(el);el.querySelector(".handle").addEventListener("pointerdown",startDrag);return;
     }
-    const id=getId(r.shelf),name=label(r.core||core(shelfText(r.shelf))),count=countFor(id),items=worksFor(id);
+    const id=getId(r.shelf),name=label(r.core||core(shelfText(r.shelf))),count=countMap.get(id)||0,items=workMap.get(id)||[];
     const head=document.createElement("div");head.className="head";
     const h=document.createElement("div");h.className="handle";h.textContent="☰";h.setAttribute("aria-label","棚を並べ替える");
     const nm=document.createElement("div");nm.className="name";nm.textContent=name;
     const ct=document.createElement("div");ct.className="count";ct.textContent=count+"作品";
     const ord=document.createElement("div");ord.className="order";ord.textContent=String(i+1);
-    head.append(h,nm,ct,ord);
+    head.append(h,nm,ct);
+    if(count===0){
+      const del=document.createElement("button");del.className="deleteBtn";del.type="button";del.textContent="🗑削除";
+      del.addEventListener("click",e=>{e.stopPropagation();deleteEmptyShelf(id,name)});
+      head.appendChild(del);
+    }
+    head.appendChild(ord);
     const body=document.createElement("div");body.className="body";
-    const sid=document.createElement("div");sid.className="shelfId";sid.textContent="shelf_id："+(id||"（なし）");
-    body.appendChild(sid);
+    const sid=document.createElement("div");sid.className="shelfId";sid.textContent="shelf_id："+(id||"（なし）");body.appendChild(sid);
     if(!items.length){const e=document.createElement("div");e.className="empty";e.textContent=count?"所属作品あり・作品情報未取得":"この棚に所属する作品はありません";body.appendChild(e)}
     else{
-      const limit=items.slice(0,30);
-      limit.forEach(w=>{const d=document.createElement("div");d.className="work";const t=document.createElement("div");t.className="workTitle";t.textContent=workTitle(w);const m=document.createElement("div");m.className="workMeta";m.textContent=workN(w);d.append(t,m);body.appendChild(d)});
+      items.slice(0,30).forEach(w=>{const d=document.createElement("div");d.className="work";const t=document.createElement("div");t.className="workTitle";t.textContent=workTitle(w);const m=document.createElement("div");m.className="workMeta";m.textContent=workN(w);d.append(t,m);body.appendChild(d)});
       if(items.length>30){const m=document.createElement("div");m.className="more";m.textContent="ほか "+(items.length-30)+"作品";body.appendChild(m)}
     }
     el.append(head,body);
     h.addEventListener("pointerdown",startDrag);
-    head.addEventListener("click",e=>{if(e.target===h)return;el.classList.toggle("open")});
+    head.addEventListener("click",e=>{if(e.target===h||e.target.closest("button"))return;el.classList.toggle("open")});
     list.appendChild(el);
   });
+}
+async function deleteEmptyShelf(id,name){
+  if(!id)return;
+  const ok=confirm(name+" を削除します。\n\nこの棚には作品が0件です。\n棚マスターからのみ削除します。\n\n削除しますか？");
+  if(!ok)return;
+  try{
+    const tx=db.transaction(STORES.shelves,"readwrite");
+    tx.objectStore(STORES.shelves).delete(id);
+    await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error("削除中止"))});
+    shelves=shelves.filter(v=>getId(v)!==id);
+    rows=rows.filter(r=>r.kind!=="shelf"||getId(r.shelf)!==id);
+    document.getElementById("status").textContent=name+" を削除しました。空棚のみ、棚マスターから削除しています。";
+    render();
+  }catch(e){document.getElementById("status").textContent="削除失敗："+e.message}
 }
 function clearMarks(){document.querySelectorAll(".row").forEach(x=>x.classList.remove("drop-before","drop-after"))}
 function startDrag(e){e.preventDefault();dragRow=e.currentTarget.closest(".row");dragPointerId=e.pointerId;dragRow.classList.add("dragging");dragRow.setPointerCapture?.(dragPointerId);document.addEventListener("pointermove",moveDrag,{passive:false});document.addEventListener("pointerup",endDrag,{once:true});document.addEventListener("pointercancel",endDrag,{once:true})}
 function moveDrag(e){if(!dragRow||e.pointerId!==dragPointerId)return;e.preventDefault();clearMarks();const target=document.elementFromPoint(e.clientX,e.clientY)?.closest(".row");if(!target||target===dragRow)return;const rect=target.getBoundingClientRect();target.classList.add(e.clientY<rect.top+rect.height/2?"drop-before":"drop-after")}
-function endDrag(e){if(!dragRow)return;const target=document.elementFromPoint(e.clientX,e.clientY)?.closest(".row");clearMarks();const from=Number(dragRow.dataset.index);if(target&&target!==dragRow){let to=Number(target.dataset.index);const rect=target.getBoundingClientRect();if(e.clientY>=rect.top+rect.height/2)to++;const moved=rows.splice(from,1)[0];if(from<to)to--;rows.splice(to,moved)}dragRow.classList.remove("dragging");dragRow=null;dragPointerId=null;document.removeEventListener("pointermove",moveDrag);render();document.getElementById("status").textContent="並べ替え中。保存するとIndexedDBへ記録します。"}
+function endDrag(e){if(!dragRow)return;const target=document.elementFromPoint(e.clientX,e.clientY)?.closest(".row");clearMarks();const from=Number(dragRow.dataset.index);if(target&&target!==dragRow){let to=Number(target.dataset.index);const rect=target.getBoundingClientRect();if(e.clientY>=rect.top+rect.height/2)to++;const moved=rows.splice(from,1)[0];if(from<to)to--;rows.splice(to,0,moved)}dragRow.classList.remove("dragging");dragRow=null;dragPointerId=null;document.removeEventListener("pointermove",moveDrag);render();document.getElementById("status").textContent="並べ替え中。保存するとIndexedDBへ記録します。"}
 async function save(){const order=rows.map((r,i)=>({row:r,order:i+1})).filter(x=>x.row.kind==="shelf");const tx=db.transaction(STORES.shelves,"readwrite"),st=tx.objectStore(STORES.shelves);order.forEach(x=>st.put({...x.row.shelf,display_order:x.order}));await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error("保存中止"))});document.getElementById("status").textContent="保存しました。display_orderをIndexedDBへ記録しました。"}
 function resetOrder(){setOrderInitial();render();document.getElementById("status").textContent="初期順に戻しました。まだ保存はしていません。"}
-async function init(){try{await openDB();[shelves,placements,works]=await Promise.all([readAll(STORES.shelves),readAll(STORES.placements),readAll(STORES.works)]);setOrderInitial();render();document.getElementById("status").textContent="実データを読み込みました："+shelves.length+"棚 / "+placements.length+"配置 / "+works.length+"作品情報"}catch(e){console.error(e);document.getElementById("status").textContent="読み込み失敗："+e.message}}
+async function init(){try{await openDB();[shelves,placements,works]=await Promise.all([readAll(STORES.shelves),readAll(STORES.placements),readAll(STORES.works)]);buildIndexes();setOrderInitial();render();document.getElementById("status").textContent="実データを読み込みました："+shelves.length+"棚 / "+placements.length+"配置 / "+works.length+"作品情報"}catch(e){console.error(e);document.getElementById("status").textContent="読み込み失敗："+e.message}}
 document.getElementById("saveBtn").addEventListener("click",()=>save().catch(e=>document.getElementById("status").textContent="保存失敗："+e.message));
 document.getElementById("resetBtn").addEventListener("click",resetOrder);init();
 </script>
