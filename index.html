@@ -383,7 +383,7 @@ function buildShelfFolders(){
   order.sort((a,b)=>a.sort-b.sort);
   order.push({id:"",name:"未分類",sort:Infinity});
   const cards=[...source.querySelectorAll(":scope > .card")];
-  const getFolder=card=>{const text=(card.querySelector(".meta")?.textContent||"").replace(/\s+/g,"");for(const x of order){const key=x.name.replace(/[🟠🔵🌀🎈📚⏰]/g,"").replace(/\s+/g,"");if(key&&text.includes(key))return x.id;}return "";};
+  const getFolder=card=>{const sid=String(card.dataset.shelfId||"").trim();return order.some(x=>x.id===sid)?sid:"";};
   for(const x of order){const members=cards.filter(c=>getFolder(c)===x.id).sort((a,b)=>(b.dataset.lastUpdated||"").localeCompare(a.dataset.lastUpdated||""));if(!members.length)continue;const d=document.createElement("details");d.className="folderDetails";const sm=document.createElement("summary");sm.textContent=x.name+" "+members.length;const wrap=document.createElement("div");wrap.className="folderCards";members.forEach(c=>wrap.appendChild(c.cloneNode(true)));d.append(sm,wrap);root.appendChild(d);}
   source.hidden=true;
   const management=document.createElement("details");
