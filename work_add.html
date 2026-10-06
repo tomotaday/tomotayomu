@@ -28,6 +28,7 @@ h1{font-size:27px;margin:0 0 6px}.note{font-size:13px;color:var(--muted);margin-
 </div>
 </main>
 <script>
+const VERSION="3.1.0.9";
 const DB_NAME="tomotaYomuDB",DB_VERSION=1;
 const API_URL="https://api.syosetu.com/novelapi/api/";
 const R18_API_URL="https://api.syosetu.com/novel18api/api/";
@@ -84,14 +85,27 @@ async function saveWork(work,rawUrl){
   if(!shelf?.shelf_id)throw new Error("本棚「"+TARGET_SHELF_NAME+"」が見つかりません。先に本棚管理で作成してください。");
   const ncode=String(work.ncode||"").toUpperCase();
   const placements=await readAll(db,"shelf_placement");
+  const authors=await readAll(db,"authors");
   const existing=placements.find(v=>String(v?.ncode??"").toUpperCase()===ncode);
-  const tx=db.transaction(["works_cache","shelf_placement"],"readwrite");
-  const saved={...work,ncode,__r18:apiUrlFor(rawUrl,ncode)===R18_API_URL};
+  const isR18=apiUrlFor(rawUrl,ncode)===R18_API_URL;
+  const writer=String(work.writer||"").trim();
+  const authorIds=[...new Set(authors
+    .filter(a=>a&&a.authorId&&((a.authorType==="r18")===isR18)&&String(a.authorName||a.writer||"").trim()===writer)
+    .map(a=>String(a.authorId).trim())
+    .filter(Boolean))];
+  const matchedAuthorId=authorIds.length===1?authorIds[0]:"";
+  const matchedAuthor=matchedAuthorId?authors.find(a=>String(a?.authorId||"").trim()===matchedAuthorId&&((a?.authorType==="r18")===isR18))||{}:{};
+  const tx=db.transaction(["works_cache","shelf_placement","authors"],"readwrite");
+  const saved={...work,ncode,__r18:isR18};
   putRow(tx,"works_cache",saved,ncode);
   const placement={...(existing||{}),ncode,shelf_id:String(shelf.shelf_id)};
   putRow(tx,"shelf_placement",placement,ncode);
+  if(matchedAuthorId){
+    const authorRow={ncode,writer,authorId:matchedAuthorId,authorType:isR18?"r18":"normal",authorName:String(matchedAuthor.authorName||writer),authorUrl:String(matchedAuthor.authorUrl||"")};
+    putRow(tx,"authors",authorRow,ncode);
+  }
   await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存失敗"));tx.onabort=()=>reject(tx.error||new Error("保存中止"));});
-  return {shelfName:TARGET_SHELF_NAME,existing:!!existing,work:saved};
+  return {shelfName:TARGET_SHELF_NAME,existing:!!existing,work:saved,authorId:matchedAuthorId};
 }
 async function handle(){
   const params=new URLSearchParams(location.search);
@@ -112,7 +126,8 @@ async function handle(){
     const t=document.createElement("div");t.className="title";t.textContent=work.title||ncode;
     const m=document.createElement("div");m.className="meta";m.textContent="Nコード："+ncode+"｜作者："+(work.writer||"不明")+"｜保存先："+r.shelfName;
     box.append(t,m);
-    setStatus((r.existing?"✅ 作品情報を更新し、":"✅ 作品を")+"「"+r.shelfName+"」へ登録しました。","ok");
+    const authorMsg=r.authorId?"｜登録作者へ自動紐付け済み":"｜作者は未登録";
+    setStatus((r.existing?"✅ 作品情報を更新し、":"✅ 作品を")+"「"+r.shelfName+"」へ登録しました。"+authorMsg,"ok");
     history.replaceState({},document.title,location.pathname);
   }catch(e){console.error(e);setStatus("⚠️ 作品追加失敗｜"+e.message,"error")}
 }
