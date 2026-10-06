@@ -21,7 +21,7 @@ summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;
 <body>
 <div class="top">
 <h1>ともたよむ｜作者ID受け口</h1>
-<div class="version">v3.1.0.5【作者台帳移行修正版】</div>
+<div class="version">v3.1.0.6【作者台帳診断版】</div>
 <p>全年齢・R18の作者ページURLを受け取り、作者IDと作品との関係を保存します。</p>
 </div>
 
@@ -44,7 +44,7 @@ summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;
 <h2>未登録作品｜R18</h2><div id="r18List"></div>
 
 <script>
-const VERSION="3.1.0.5";
+const VERSION="3.1.0.6";
 const DB_NAME="tomotaYomuDB",DB_VERSION=1;
 const LEGACY_MASTER_KEY="tomotayomu_v214_works_master";
 const LEGACY_AUTHORS_KEY="tomotayuYomu_authors";
@@ -232,9 +232,17 @@ async function handleIncoming(){
 }
 (async()=>{
   try{
+    const legacyA=legacyAuthors(),legacyL=legacyLinks(),legacyM=legacyMaster();
+    const legacyAuthorCount=Object.keys(legacyA).length,legacyLinkCount=Object.keys(legacyL).length,legacyMasterCount=Object.keys(legacyM).length;
     const migrated=await mergeAuthorLinksToIndexedDB();
     await render();
-    if(migrated) document.getElementById("notice").textContent="旧作者台帳をIndexedDBへ移行しました："+migrated+"作品";
+    if(migrated){
+      document.getElementById("notice").textContent="旧作者台帳をIndexedDBへ移行しました："+migrated+"作品｜旧作者："+legacyAuthorCount+"｜旧紐付け："+legacyLinkCount;
+    }else if(legacyAuthorCount||legacyLinkCount){
+      document.getElementById("notice").textContent="⚠️ 旧作者台帳を検出："+legacyAuthorCount+"作者｜"+legacyLinkCount+"紐付け｜作品マスター："+legacyMasterCount+"｜IndexedDB移行対象を確認中";
+    }else{
+      document.getElementById("notice").textContent="ℹ️ このブラウザの旧作者台帳：作者0｜紐付け0｜旧作品マスター："+legacyMasterCount;
+    }
     await handleIncoming();
   }catch(e){
     document.getElementById("notice").textContent="⚠️ 作者管理のIndexedDB読込失敗｜"+e.message;
