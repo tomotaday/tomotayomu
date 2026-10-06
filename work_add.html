@@ -77,8 +77,12 @@ async function saveWork(work,rawUrl){
 }
 async function handle(){
   const params=new URLSearchParams(location.search);
-  const raw=params.get("workurl")||params.get("url")||"";
-  if(!raw){setStatus("作品URLを受信できませんでした。","error");return}
+  const raw=params.get("workurl")||params.get("url")||params.get("input")||params.get("text")||"";
+  if(!raw){
+    const qs=location.search||"（クエリなし）";
+    setStatus("作品URLを受信できませんでした。\n\n受信URL：\n"+location.href+"\n\nクエリ：\n"+qs+"\n\nworkurl / url / input のいずれにも値がありません。","error");
+    return
+  }
   const ncode=ncodeFromUrl(raw);
   if(!ncode){setStatus("Nコードを作品URLから取得できませんでした。\n"+raw,"error");return}
   try{
