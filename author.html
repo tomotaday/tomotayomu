@@ -137,7 +137,7 @@ async function mergeAuthorLinksToIndexedDB(){
 async function readIndexed(){
   const db=await openDB();
   const [works,authors]=await Promise.all([readAll(db,"works_cache"),readAll(db,"authors")]);
-  return {works,authors};
+  return {db,works,authors};
 }
 async function render(){
   const {works,authors}=await readIndexed();
