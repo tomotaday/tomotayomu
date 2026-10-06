@@ -216,16 +216,13 @@ function kanaToHiragana(v){
 function kanaGroup(v){
   const s=kanaToHiragana(v),ch=s.charAt(0);
   if(!ch)return "🔤 読み仮名未登録";
-  if(/[あ-お]/.test(ch))return "あ行";
-  if(/[か-ご]/.test(ch))return "か行";
-  if(/[さ-ぞ]/.test(ch))return "さ行";
-  if(/[た-ど]/.test(ch))return "た行";
-  if(/[な-の]/.test(ch))return "な行";
-  if(/[は-ぽ]/.test(ch))return "は行";
-  if(/[ま-も]/.test(ch))return "ま行";
-  if(/[や-よ]/.test(ch))return "や行";
-  if(/[ら-ろ]/.test(ch))return "ら行";
-  if(/[わ-ん]/.test(ch))return "わ行";
+  const sets=[
+    ["あいうえお","あ行"],["かきくけこがぎぐげご","か行"],
+    ["さしすせそざじずぜぞ","さ行"],["たちつてとだぢづでど","た行"],
+    ["なにぬねの","な行"],["はひふへほばびぶべぼぱぴぷぺぽ","は行"],
+    ["まみむめも","ま行"],["やゆよ","や行"],["らりるれろ","ら行"],["わをん","わ行"]
+  ];
+  for(const [chars,label] of sets)if(chars.includes(ch))return label;
   return "🔤 読み仮名未登録";
 }
 async function fetchNormalKanas(){
