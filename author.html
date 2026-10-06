@@ -21,7 +21,7 @@ summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;
 <body>
 <div class="top">
 <h1>ともたよむ｜作者ID受け口</h1>
-<div class="version">v3.1.0.12【全年齢ふりがな保存安定版】</div>
+<div class="version">v3.1.0.13【作者整理表示整理版】</div>
 <p>全年齢・R18の作者ページURLを受け取り、作者IDと作品との関係を保存します。</p>
 </div>
 
@@ -38,13 +38,12 @@ summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;
 <div id="authors"></div>
 </details>
 
-<div style="margin:12px 0"><button id="copyBtn" type="button">診断結果をコピー</button></div>
 
 <h2>未登録作品｜全年齢</h2><div id="normalList"></div>
 <h2>未登録作品｜R18</h2><div id="r18List"></div>
 
 <script>
-const VERSION="3.1.0.12";
+const VERSION="3.1.0.13";
 const DB_NAME="tomotaYomuDB",DB_VERSION=1;
 const LEGACY_MASTER_KEY="tomotayomu_v214_works_master";
 const LEGACY_AUTHORS_KEY="tomotaYomu_authors";
@@ -371,10 +370,10 @@ async function handleIncoming(){
     try{
       const kanaResult=await fetchNormalKanas();
       await render();
-      if(kanaResult.target){
-        document.getElementById("notice").textContent="全年齢ふりがな整理完了｜対象 "+kanaResult.target+"人｜取得済み "+kanaResult.updated+"人｜未取得 "+kanaResult.missing+"人";
+      if(kanaResult.target && kanaResult.missing){
+        document.getElementById("notice").textContent="⚠️ 全年齢ふりがな：取得できなかった作者 "+kanaResult.missing+"人が未登録のままです。";
       }else{
-        document.getElementById("notice").textContent="作者管理準備完了｜全年齢ふりがなは整理済みです。";
+        document.getElementById("notice").hidden=true;
       }
     }catch(e){
       document.getElementById("notice").textContent="⚠️ 全年齢ふりがな取得失敗｜"+e.message+"｜作者データ自体は変更していません。";
