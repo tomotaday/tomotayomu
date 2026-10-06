@@ -21,11 +21,11 @@ summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;
 <body>
 <div class="top">
 <h1>ともたよむ｜作者ID受け口</h1>
-<div class="version">v3.1.0.10【作者WEB・ふりがな手入力版】</div>
+<div class="version">v3.1.0.11【全年齢ふりがな自動整理版】</div>
 <p>全年齢・R18の作者ページURLを受け取り、作者IDと作品との関係を保存します。</p>
 </div>
 
-<div id="notice" class="notice">作者ページURLを受け取ると、全年齢・R18を自動判定して登録します。</div>
+<div id="notice" class="notice">作者ページURLを受け取ると、全年齢・R18を自動判定して登録します。全年齢作者のふりがなは公式APIから自動取得し、五十音順に整理します。</div>
 <div class="stat">
 <div class="badge">未登録・全年齢：<span id="normalCount">--</span></div>
 <div class="badge">未登録・R18：<span id="r18Count">--</span></div>
@@ -44,7 +44,7 @@ summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;
 <h2>未登録作品｜R18</h2><div id="r18List"></div>
 
 <script>
-const VERSION="3.1.0.10";
+const VERSION="3.1.0.11";
 const DB_NAME="tomotaYomuDB",DB_VERSION=1;
 const LEGACY_MASTER_KEY="tomotayomu_v214_works_master";
 const LEGACY_AUTHORS_KEY="tomotaYomu_authors";
@@ -162,20 +162,29 @@ async function render(){
   document.getElementById("authorCount").textContent=groups.size;
   const box=document.getElementById("authors");
   if(!groups.size)box.innerHTML='<p class="small">まだ作者IDは登録されていません。</p>';
-  else box.innerHTML=[...groups.values()].sort((a,b)=>a.name.localeCompare(b.name,"ja")).map(g=>{
-    const items=g.ns.map(n=>{const w=works.find(x=>ncode(x.ncode)===n);return w
-      ? '<div class="workLine">'+esc(w.title||"作品名なし")+' <span class="small">'+esc(n)+(w.__r18?'｜R18':'｜全年齢')+'</span></div>'
-      : '<div class="workLine">'+esc(n)+' <span class="small">作品マスター外</span></div>';}).join("");
-    const web=g.url?'<a class="authorWeb" href="'+esc(g.url)+'" target="_blank" rel="noopener">🌐 作者WEBを開く</a>':'<div class="small">🌐 作者WEB：未登録</div>';
-    const tools='<div class="authorTools">'+web+'<label for="kana_'+esc(g.id)+'">ふりがな</label><input id="kana_'+esc(g.id)+'" class="kanaInput" data-author-id="'+esc(g.id)+'" value="'+esc(g.kana)+'" placeholder="作者名のふりがなを入力"><button type="button" class="kanaSave" data-author-id="'+esc(g.id)+'">保存</button><span id="kanaStatus_'+esc(g.id)+'" class="kanaStatus"></span></div>';
-    return '<details class="authorBlock"><summary><span class="authorName">'+esc(g.name)+'</span>　<span class="authorId">'+esc(g.id)+'</span>　'+g.type+'　'+g.ns.length+'作品</summary><div style="margin-top:8px">'+tools+items+'</div></details>';
-  }).join("");
+  else{
+    const buckets=new Map([["あ行",[]],["か行",[]],["さ行",[]],["た行",[]],["な行",[]],["は行",[]],["ま行",[]],["や行",[]],["ら行",[]],["わ行",[]],["🔤 読み仮名未登録",[]]]);
+    [...groups.values()].forEach(g=>buckets.get(kanaGroup(g.kana)).push(g));
+    box.innerHTML=[...buckets.entries()].filter(([label,list])=>list.length).map(([label,list])=>{
+      list.sort((a,b)=>String(a.kana||"").localeCompare(String(b.kana||""),"ja")||a.name.localeCompare(b.name,"ja"));
+      const cards=list.map(g=>{
+        const items=g.ns.map(n=>{const w=works.find(x=>ncode(x.ncode)===n);return w
+          ? '<div class="workLine">'+esc(w.title||"作品名なし")+' <span class="small">'+esc(n)+(w.__r18?'｜R18':'｜全年齢')+'</span></div>'
+          : '<div class="workLine">'+esc(n)+' <span class="small">作品マスター外</span></div>';}).join("");
+        const web=g.url?'<a class="authorWeb" href="'+esc(g.url)+'" target="_blank" rel="noopener">🌐 作者WEBを開く</a>':'<div class="small">🌐 作者WEB：未登録</div>';
+        const tools='<div class="authorTools">'+web+'<label for="kana_'+esc(g.id)+'">ふりがな</label><input id="kana_'+esc(g.id)+'" class="kanaInput" data-author-id="'+esc(g.id)+'" value="'+esc(g.kana)+'" placeholder="作者名のふりがなを入力"><button type="button" class="kanaSave" data-author-id="'+esc(g.id)+'">保存</button><span id="kanaStatus_'+esc(g.id)+'" class="kanaStatus"></span></div>';
+        const kanaText=g.kana?'<span class="small">｜'+esc(g.kana)+'</span>':'';
+        return '<details class="authorBlock"><summary><span class="authorName">'+esc(g.name)+'</span>'+kanaText+'　<span class="authorId">'+esc(g.id)+'</span>　'+g.type+'　'+g.ns.length+'作品</summary><div style="margin-top:8px">'+tools+items+'</div></details>';
+      }).join("");
+      return '<details class="authorBlock"><summary>▶ '+esc(label)+'　'+list.length+'作者</summary><div style="margin-top:8px">'+cards+'</div></details>';
+    }).join("");
+  }
   renderList("normalList",normal,linkedSet);
   renderList("r18List",r18,linkedSet);
   bindKanaButtons();
 }
 async function saveAuthorKana(authorId,kana){
-  const id=String(authorId||"").trim(),value=String(kana||"").trim();
+  const id=String(authorId||"").trim(),value=kanaToHiragana(kana);
   if(!id)return;
   const db=await openDB();
   const authors=await readAll(db,"authors");
@@ -183,7 +192,7 @@ async function saveAuthorKana(authorId,kana){
   if(!rows.length)throw new Error("対象作者の作品紐付けが見つかりません。");
   await new Promise((resolve,reject)=>{
     const tx=db.transaction("authors","readwrite"),st=tx.objectStore("authors");
-    rows.forEach(row=>st.put({...row,authorKana:value}));
+    rows.forEach(row=>st.put({...row,authorKana:value,authorKanaFirst:value.charAt(0)}));
     tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("ふりがな保存失敗"));tx.onabort=()=>reject(tx.error||new Error("ふりがな保存中止"));
   });
 }
@@ -200,6 +209,61 @@ function bindKanaButtons(){
       }finally{btn.disabled=false}
     };
   });
+}
+function kanaToHiragana(v){
+  return String(v||"").trim().replace(/[ァ-ヶ]/g,ch=>String.fromCharCode(ch.charCodeAt(0)-0x60));
+}
+function kanaGroup(v){
+  const s=kanaToHiragana(v),ch=s.charAt(0);
+  if(!ch)return "🔤 読み仮名未登録";
+  if(/[あ-お]/.test(ch))return "あ行";
+  if(/[か-ご]/.test(ch))return "か行";
+  if(/[さ-ぞ]/.test(ch))return "さ行";
+  if(/[た-ど]/.test(ch))return "た行";
+  if(/[な-の]/.test(ch))return "な行";
+  if(/[は-ぽ]/.test(ch))return "は行";
+  if(/[ま-も]/.test(ch))return "ま行";
+  if(/[や-よ]/.test(ch))return "や行";
+  if(/[ら-ろ]/.test(ch))return "ら行";
+  if(/[わ-ん]/.test(ch))return "わ行";
+  return "🔤 読み仮名未登録";
+}
+async function fetchNormalKanas(){
+  const {db,authors}=await readIndexed();
+  const groups=new Map();
+  authors.forEach(a=>{
+    if(!a||String(a.authorType||"")!=="normal")return;
+    const id=String(a.authorId||"").trim();
+    if(!id)return;
+    if(!groups.has(id))groups.set(id,{id,rows:[],kana:String(a.authorKana||"").trim()});
+    const g=groups.get(id);
+    g.rows.push(a);
+    if(!g.kana&&a.authorKana)g.kana=String(a.authorKana).trim();
+  });
+  const targets=[...groups.values()].filter(g=>!g.kana);
+  if(!targets.length)return {target:0,updated:0,missing:0};
+  const ids=targets.map(g=>g.id).filter(id=>/^\d+$/.test(id));
+  if(!ids.length)return {target:targets.length,updated:0,missing:targets.length};
+  document.getElementById("notice").textContent="全年齢作者のふりがなを公式APIから取得中… "+ids.length+"人";
+  const api="https://api.syosetu.com/userapi/api/?out=jsonp&of=u-n-y-1&lim=500&userid="+encodeURIComponent(ids.join("-"));
+  const data=await jsonp(api);
+  const result=Array.isArray(data)?data.filter((x,i)=>i>0&&x&&String(x.userid||"").trim()):[];
+  const byId=new Map(result.map(x=>[String(x.userid),x]));
+  const updates=[];
+  let missing=0;
+  for(const g of targets){
+    const x=byId.get(g.id),kana=kanaToHiragana(x?.yomikata||"");
+    if(!kana){missing++;continue}
+    for(const row of g.rows)updates.push({...row,authorKana:kana,authorKanaFirst:kana.charAt(0)});
+  }
+  if(updates.length){
+    await new Promise((resolve,reject)=>{
+      const tx=db.transaction("authors","readwrite"),st=tx.objectStore("authors");
+      updates.forEach(row=>st.put(row));
+      tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("全年齢ふりがな保存失敗"));tx.onabort=()=>reject(tx.error||new Error("全年齢ふりがな保存中止"));
+    });
+  }
+  return {target:targets.length,updated:targets.filter(g=>byId.has(g.id)).length,missing};
 }
 function renderList(id,arr,linkedSet){
   const box=document.getElementById(id), works0=arr.filter(w=>!linkedSet.has(ncode(w.ncode)));
@@ -282,6 +346,17 @@ async function handleIncoming(){
       document.getElementById("notice").textContent="ℹ️ 旧作者台帳：作者0｜紐付け0｜旧v2.1.5作者："+legacyV215AuthorCount+"｜処理済みNコード："+legacyV215DoneCount+"｜旧作品マスター："+legacyMasterCount;
     }
     await handleIncoming();
+    try{
+      const kanaResult=await fetchNormalKanas();
+      await render();
+      if(kanaResult.target){
+        document.getElementById("notice").textContent="全年齢ふりがな整理完了｜対象 "+kanaResult.target+"人｜取得済み "+kanaResult.updated+"人｜未取得 "+kanaResult.missing+"人";
+      }else{
+        document.getElementById("notice").textContent="作者管理準備完了｜全年齢ふりがなは整理済みです。";
+      }
+    }catch(e){
+      document.getElementById("notice").textContent="⚠️ 全年齢ふりがな取得失敗｜"+e.message+"｜作者データ自体は変更していません。";
+    }
   }catch(e){
     document.getElementById("notice").textContent="⚠️ 作者管理のIndexedDB読込失敗｜"+e.message;
   }
