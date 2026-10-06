@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ｜R18作者ふりがな照合テスト</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;margin:0;padding:16px;line-height:1.45;background:#fafafa;color:#222}
+h1{font-size:20px;margin:0 0 3px}.version{font-size:12px;color:#888;margin-bottom:12px}
+.notice{background:#fff8d8;border-radius:10px;padding:11px;margin:10px 0}
+.card{background:#fff;border:1px solid #ddd;border-radius:12px;padding:12px;margin:9px 0}
+button{padding:10px 12px;border:0;border-radius:8px;background:#eee;font-size:14px}
+button:disabled{opacity:.45}
+input{box-sizing:border-box;width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:15px;margin:6px 0 8px}
+.stat{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.badge{background:#fff;border:1px solid #ddd;border-radius:9px;padding:7px 9px;font-size:13px}
+.row{padding:8px 0;border-top:1px solid #eee}.small{font-size:12px;color:#777}.ok{color:#176b2c}.warn{color:#9a6200}.ng{color:#a22}
+.mono{font-family:ui-monospace,monospace;font-size:12px}
+</style>
+</head>
+<body>
+<h1>ともたよむ｜R18作者ふりがな照合テスト</h1>
+<div class="version">v0.1.0【R18 10名照合室】</div>
+<div id="status" class="notice">IndexedDB接続中…</div>
+
+<div class="stat">
+ <div class="badge">R18登録作者：<span id="authorCount">--</span></div>
+ <div class="badge">照合対象：<span id="targetCount">--</span></div>
+ <div class="badge">1候補：<span id="oneCount">--</span></div>
+ <div class="badge">複数候補：<span id="multiCount">--</span></div>
+</div>
+
+<div class="card">
+ <b>まず単独テスト</b>
+ <div class="small">作者名を入力して、なろうユーザ検索APIの候補を確認します。保存はしません。</div>
+ <input id="manualName" value="矢場めろ" placeholder="作者名">
+ <button id="manualBtn">▶ この作者名を照合</button>
+ <div id="manualResult" style="margin-top:8px"></div>
+</div>
+
+<div class="card">
+ <b>R18作者 10名テスト</b>
+ <div class="small">IndexedDBのR18作者から10名を選び、名前だけでユーザ検索APIを照合します。保存・変更は一切しません。</div>
+ <button id="batchBtn" disabled>▶ 10名を照合</button>
+</div>
+
+<div id="result"></div>
+
+<script>
+const DB_NAME="tomotaYomuDB", DB_VERSION=1;
+const USER_API="https://api.syosetu.com/userapi/api/?out=jsonp&of=n-y-u&word=";
+
+function esc(s){return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function ncode(v){return String(v||"").trim().toUpperCase();}
+
+function openDB(){
+ return new Promise((resolve,reject)=>{
+  let settled=false;
+  const timer=setTimeout(()=>{if(!settled){settled=true;reject(new Error("IndexedDB接続が8秒でタイムアウトしました。"))}},8000);
+  let r;
+  try{r=indexedDB.open(DB_NAME,DB_VERSION)}catch(e){clearTimeout(timer);reject(e);return}
+  r.onsuccess=()=>{if(settled)return;settled=true;clearTimeout(timer);resolve(r.result)};
+  r.onerror=()=>{if(settled)return;settled=true;clearTimeout(timer);reject(r.error||new Error("IndexedDBを開けません"))};
+  r.onblocked=()=>{};
+ });
+}
+function readAll(db,name){
+ return new Promise((resolve,reject)=>{
+  let out=[],done=false;
+  const timer=setTimeout(()=>{if(!done){done=true;reject(new Error(name+"読込が8秒でタイムアウトしました。"))}},8000);
+  try{
+   const st=db.transaction(name,"readonly").objectStore(name),r=st.openCursor();
+   r.onsuccess=()=>{if(done)return;const c=r.result;if(c){out.push(c.value);c.continue()}else{done=true;clearTimeout(timer);resolve(out)}};
+   r.onerror=()=>{if(done)return;done=true;clearTimeout(timer);reject(r.error||new Error(name+"読込失敗"))};
+  }catch(e){if(done)return;done=true;clearTimeout(timer);reject(e)}
+ });
+}
+function jsonp(url){
+ return new Promise((resolve,reject)=>{
+  const cb="tyKanaR18_"+Date.now()+"_"+Math.random().toString(36).slice(2);
+  const s=document.createElement("script");let done=false;
+  const cleanup=()=>{if(done)return;done=true;clearTimeout(timer);try{delete window[cb]}catch(e){}s.remove()};
+  const timer=setTimeout(()=>{cleanup();reject(new Error("ユーザ検索API timeout"))},15000);
+  window[cb]=d=>{cleanup();resolve(d)};
+  s.onerror=()=>{cleanup();reject(new Error("ユーザ検索API load error"))};
+  s.src=url+encodeURIComponent(document.getElementById("manualName")?.value||"")+"&callback="+cb;
+  document.body.appendChild(s);
+ });
+}
+function searchName(name){
+ return new Promise((resolve,reject)=>{
+  const cb="tyKanaR18_"+Date.now()+"_"+Math.random().toString(36).slice(2);
+  const s=document.createElement("script");let done=false;
+  const cleanup=()=>{if(done)return;done=true;clearTimeout(timer);try{delete window[cb]}catch(e){}s.remove()};
+  const timer=setTimeout(()=>{cleanup();reject(new Error("ユーザ検索API timeout"))},15000);
+  window[cb]=d=>{cleanup();resolve(d)};
+  s.onerror=()=>{cleanup();reject(new Error("ユーザ検索API load error"))};
+  s.src=USER_API+encodeURIComponent(name)+"&callback="+cb;
+  document.body.appendChild(s);
+ });
+}
+function candidates(data){
+ if(!Array.isArray(data))return [];
+ return data.filter((x,i)=>i>0&&x&&String(x.userid||"").trim()).map(x=>({
+  userid:String(x.userid),
+  name:String(x.name||""),
+  yomikata:String(x.yomikata||""),
+  name1st:String(x.name1st||"")
+ }));
+}
+function showCandidates(box,c){
+ if(!c.length){box.innerHTML='<span class="ng">候補なし</span>';return}
+ box.innerHTML=c.map(x=>'<div class="row"><b>'+esc(x.name)+'</b>｜'+esc(x.yomikata||"（読みなし）")+'｜ID <span class="mono">'+esc(x.userid)+'</span>｜先頭 '+esc(x.name1st||"")+'</div>').join("");
+}
+async function manual(){
+ const name=document.getElementById("manualName").value.trim();
+ const box=document.getElementById("manualResult");
+ if(!name){box.innerHTML='<span class="ng">作者名を入力してください。</span>';return}
+ document.getElementById("manualBtn").disabled=true;box.innerHTML="検索中…";
+ try{
+  const c=candidates(await searchName(name));
+  box.innerHTML='<div><b>候補：'+c.length+'件</b></div>';showCandidates(box,c);
+ }catch(e){box.innerHTML='<span class="ng">エラー：'+esc(e.message)+'</span>'}
+ finally{document.getElementById("manualBtn").disabled=false}
+}
+async function loadR18(){
+ const db=await openDB();
+ const authors=await readAll(db,"authors");
+ const groups=new Map();
+ authors.forEach(a=>{
+  if(!a||String(a.authorType||"").toLowerCase()!=="r18")return;
+  const id=String(a.authorId||"").trim(),name=String(a.authorName||a.writer||"").trim();
+  if(!id||!name)return;
+  if(!groups.has(id))groups.set(id,{id,name});
+ });
+ const list=[...groups.values()].sort((a,b)=>a.name.localeCompare(b.name,"ja")).slice(0,10);
+ document.getElementById("authorCount").textContent=groups.size;
+ document.getElementById("targetCount").textContent=list.length;
+ return list;
+}
+async function batch(){
+ const btn=document.getElementById("batchBtn"),box=document.getElementById("result");
+ btn.disabled=true;box.innerHTML='<div class="notice">10名を順番に照合中…（保存はしません）</div>';
+ const list=await loadR18(),results=[];let one=0,multi=0;
+ for(let i=0;i<list.length;i++){
+  const a=list[i];
+  const card=document.createElement("div");card.className="card";
+  card.innerHTML='<b>'+(i+1)+'. '+esc(a.name)+'</b><div class="small">R18作者ID：'+esc(a.id)+'</div><div>検索中…</div>';
+  box.appendChild(card);
+  try{
+   const c=candidates(await searchName(a.name));
+   if(c.length===1)one++;if(c.length>1)multi++;
+   const head=c.length===1?'<span class="ok">1候補 → 自動化候補</span>':c.length>1?'<span class="warn">'+c.length+'候補 → 要確認</span>':'<span class="ng">候補なし → 保留</span>';
+   card.innerHTML='<b>'+(i+1)+'. '+esc(a.name)+'</b><div class="small">R18作者ID：'+esc(a.id)+'</div><div>'+head+'</div><div style="margin-top:6px"></div>';
+   showCandidates(card.lastElementChild,c);
+  }catch(e){
+   card.innerHTML='<b>'+(i+1)+'. '+esc(a.name)+'</b><div class="small">R18作者ID：'+esc(a.id)+'</div><div class="ng">エラー：'+esc(e.message)+'</div>';
+  }
+  await new Promise(r=>setTimeout(r,250));
+ }
+ document.getElementById("oneCount").textContent=one;
+ document.getElementById("multiCount").textContent=multi;
+ btn.disabled=false;
+}
+document.getElementById("manualBtn").onclick=manual;
+document.getElementById("batchBtn").onclick=batch;
+(async()=>{
+ try{
+  const list=await loadR18();
+  document.getElementById("status").innerHTML='<span class="ok">IndexedDB接続成功。R18作者 '+document.getElementById("authorCount").textContent+'名を確認。10名テストの準備完了。</span>';
+  document.getElementById("batchBtn").disabled=false;
+ }catch(e){
+  document.getElementById("status").innerHTML='<span class="ng">IndexedDB読込失敗：'+esc(e.message)+'</span>';
+ }
+})();
+</script>
+</body>
+</html>
