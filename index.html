@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#f6f3ed" name="theme-color"/>
-<title>ともたよむ v3.1.0.5【本棚カード棚枠整理版】</title>
+<title>ともたよむ v3.1.0.6【本棚カード統一版】</title>
 <style>
 :root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195}
 *{box-sizing:border-box}
@@ -36,17 +36,17 @@ summary{cursor:pointer}
 .folderCards{display:flex;flex-direction:column;gap:10px}
 </style>
 <style id="v203-fold-style">
-.updateDetails{margin:20px 0 8px}
-.updateDetails>summary{list-style:none;cursor:pointer;font-size:18px;font-weight:700;padding:3px 2px}
+.updateDetails{margin:12px 0 14px;background:#fff;border:1px solid #ddd;border-radius:12px;overflow:hidden}
+.updateDetails>summary{list-style:none;cursor:pointer;font-size:18px;font-weight:700;padding:13px 14px}
 .updateDetails>summary::-webkit-details-marker{display:none}
 .updateDetails>summary::before{content:"▸ ";display:inline-block;font-size:20px;line-height:1;vertical-align:-2px}
-.updateDetails[open]>summary::before{content:"▾ ";display:inline-block;font-size:20px;line-height:1;vertical-align:-2px}
+.updateDetails[open]>summary::before{content:"▾ ";display:inline-block;font-size:20px;line-height:1;vertical-align:-2px}.updateDetails[open]>summary{border-bottom:1px solid #eee}.updateDetails .update-list{padding:4px 10px 10px}
 .bookshelfDetails{margin:20px 0 8px}
 .bookshelfDetails>summary{list-style:none;cursor:pointer;font-size:22px;font-weight:800;padding:4px 2px}
 .bookshelfDetails>summary::-webkit-details-marker{display:none}
 .bookshelfDetails>summary::before{content:"▸ ";font-size:18px}
 .bookshelfDetails[open]>summary::before{content:"▾ ";font-size:18px}
-.managementSettingsDetails{margin:20px 0 8px}.managementSettingsDetails>summary{list-style:none;cursor:pointer;font-size:18px;font-weight:700;padding:4px 2px}.managementSettingsDetails>summary::-webkit-details-marker{display:none}.managementSettingsDetails>summary::before{content:"▸ ";font-size:15px}.managementSettingsDetails[open]>summary::before{content:"▾ ";font-size:15px}.managementSettingsBody{display:flex;flex-direction:column;gap:8px;padding:9px 4px}.managementSettingsBody a{color:inherit;text-decoration:none;border-bottom:1px solid #aaa195;width:max-content;font-size:14px}..managementDetails{margin-top:14px;padding-top:10px;border-top:1px solid #d0c8bd}.managementDetails>summary{list-style:none;cursor:pointer}.managementDetails>summary::-webkit-details-marker{display:none}.managementDetails>summary::before{content:"▸ ";display:inline-block;font-size:20px;line-height:1;vertical-align:-2px}.managementDetails[open]>summary::before{content:"▾ ";display:inline-block;font-size:20px;line-height:1;vertical-align:-2px}.managementBody{display:flex;gap:10px;flex-wrap:wrap;margin-top:9px;align-items:center}.managementBody .ncode{width:100%;padding-right:0}.managementBody button{font-size:13px}..folderDetails{margin:12px 0 14px;background:#fff;border:1px solid #ddd;border-radius:12px;overflow:hidden}
+.managementSettingsDetails{margin:20px 0 8px}.managementSettingsDetails>summary{list-style:none;cursor:pointer;font-size:18px;font-weight:700;padding:4px 2px}.managementSettingsDetails>summary::-webkit-details-marker{display:none}.managementSettingsDetails>summary::before{content:"▸ ";font-size:15px}.managementSettingsDetails[open]>summary::before{content:"▾ ";font-size:15px}.managementSettingsBody{display:flex;flex-direction:column;gap:8px;padding:9px 4px}.managementSettingsBody a{color:inherit;text-decoration:none;border-bottom:1px solid #aaa195;width:max-content;font-size:14px}..managementDetails{margin-top:14px;padding-top:10px;border-top:1px solid #d0c8bd}.managementDetails>summary{list-style:none;cursor:pointer}.managementDetails>summary::-webkit-details-marker{display:none}.managementDetails>summary::before{content:"▸ ";display:inline-block;font-size:20px;line-height:1;vertical-align:-2px}.managementDetails[open]>summary::before{content:"▾ ";display:inline-block;font-size:20px;line-height:1;vertical-align:-2px}.managementBody{display:flex;gap:10px;flex-wrap:wrap;margin-top:9px;align-items:center}.managementBody .ncode{width:100%;padding-right:0}.managementBody button{font-size:13px}.folderDetails{margin:12px 0 14px;background:#fff;border:1px solid #ddd;border-radius:12px;overflow:hidden}
 .folderDetails>summary{list-style:none;cursor:pointer;font-size:18px;font-weight:700;padding:13px 14px}
 .folderDetails>summary::-webkit-details-marker{display:none}
 .folderDetails>summary::before{content:"▸ ";font-size:18px}
@@ -63,7 +63,7 @@ summary{cursor:pointer}
 
 <main>
 <h1>ともたよむ</h1>
-<div class="note" style="font-weight:800;font-size:15px">🧪 v3.1.0.5【本棚カード棚枠整理版】</div>
+<div class="note" style="font-weight:800;font-size:15px">🧪 v3.1.0.6【本棚カード統一版】</div>
 <button id="updateBtn" type="button">🔄 更新情報を確認</button>
 <div id="baselineDate">基準日：反映待ち</div>
 <div id="apiStatus">本棚情報未反映</div>
