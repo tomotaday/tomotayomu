@@ -239,43 +239,50 @@ async function fetchNormalKanas(){
     if(a.authorKanaChecked)g.checked=true;
   });
 
-  // ふりがなが既に保存済み、または「API確認済みだが空文字」なら再取得しない。
+  // ふりがなが保存済み、またはAPI確認済みなら再取得しない。
   const targets=[...groups.values()].filter(g=>!g.kana&&!g.checked);
   if(!targets.length)return {target:0,updated:0,missing:0};
 
-  document.getElementById("notice").textContent="全年齢作者のふりがなを取得中… 0/"+targets.length;
-
   let updated=0,missing=0;
-  const wanted=new Set(targets.map(g=>g.id));
-  const ids=targets.map(g=>g.id).join("-");
-  try{
-    // 公式ユーザAPIのuserid指定で対象作者をまとめて取得。
-    // JSONPは1回だけ。1作者1リクエスト方式より負荷も通信量も小さい。
-    const api="https://api.syosetu.com/userapi/api/?out=jsonp&of=u-n-y-1&lim=500&userid="+encodeURIComponent(ids);
-    const data=await jsonp(api);
-    const rows=Array.isArray(data)?data.filter(x=>x&&x.userid!=null):[];
-    const byId=new Map(rows.map(x=>[String(x.userid),x]));
+  const errors=[];
+  for(let i=0;i<targets.length;i++){
+    const g=targets[i];
+    document.getElementById("notice").textContent="全年齢作者のふりがなを取得中… "+(i+1)+"/"+targets.length;
+    try{
+      const api="https://api.syosetu.com/userapi/api/?out=jsonp&of=u-n-y-1&lim=1&userid="+encodeURIComponent(g.id);
+      let data;
+      try{
+        data=await jsonp(api);
+      }catch(firstError){
+        // 一時的なJSONP失敗だけ1回再試行する。
+        await new Promise(r=>setTimeout(r,300));
+        data=await jsonp(api+"&_cb="+Date.now());
+      }
+      const row=Array.isArray(data)?data.find(x=>x&&String(x.userid||"")===g.id):null;
+      const kana=kanaToHiragana(row?.yomikata||"");
 
-    await new Promise((resolve,reject)=>{
-      const tx=db.transaction("authors","readwrite"),st=tx.objectStore("authors");
-      targets.forEach((g,index)=>{
-        const row=byId.get(g.id);
-        const kana=kanaToHiragana(row?.yomikata||"");
-        const checked=true;
+      await new Promise((resolve,reject)=>{
+        const tx=db.transaction("authors","readwrite"),st=tx.objectStore("authors");
         g.rows.forEach(a=>{
-          st.put({...a,authorKana:kana,authorKanaFirst:kana.charAt(0),authorKanaChecked:checked});
+          st.put({...a,authorKana:kana,authorKanaFirst:kana.charAt(0),authorKanaChecked:true});
         });
-        if(kana)updated++; else missing++;
-        document.getElementById("notice").textContent="全年齢作者のふりがなを保存中… "+(index+1)+"/"+targets.length;
+        tx.oncomplete=resolve;
+        tx.onerror=()=>reject(tx.error||new Error("ふりがな保存失敗"));
+        tx.onabort=()=>reject(tx.error||new Error("ふりがな保存中止"));
       });
-      tx.oncomplete=resolve;
-      tx.onerror=()=>reject(tx.error||new Error("ふりがな保存失敗"));
-      tx.onabort=()=>reject(tx.error||new Error("ふりがな保存中止"));
-    });
-  }catch(e){
-    // API自体に失敗した場合は「確認済み」にしない。
-    // 次回起動時に再試行できるようにする。
-    throw new Error("API取得失敗："+e.message);
+
+      if(kana)updated++;
+      else missing++;
+    }catch(e){
+      // API通信そのものに失敗した場合だけ未確認として残し、次回再試行する。
+      errors.push(g.id+":"+e.message);
+      missing++;
+    }
+    await new Promise(r=>setTimeout(r,120));
+  }
+
+  if(errors.length){
+    throw new Error("API取得に失敗した作者 "+errors.length+"人："+errors.slice(0,3).join(" / "));
   }
   return {target:targets.length,updated,missing};
 }
