@@ -330,15 +330,6 @@ async function processAuthor(authorUrl){
   await saveAuthorToIndexedDB(info,apiWorks,hits,authorName);
   return {info,authorName,apiCount:apiWorks.length,hitCount:hits.length,added:hits.length};
 }
-async function copyDiagnostic(){
-  const {works,authors}=await readIndexed();
-  const rows=authors.filter(a=>a&&a.ncode&&a.authorId),groups=new Map();
-  rows.forEach(a=>{const id=String(a.authorId);if(!groups.has(id))groups.set(id,{name:a.authorName||a.writer||"作者名不明",type:a.authorType==="r18"?"R18":"全年齢",count:0});groups.get(id).count++});
-  const normal=works.filter(w=>w&&w.__r18!==true),r18=works.filter(w=>w&&w.__r18===true),linked=new Set(rows.map(a=>ncode(a.ncode)));
-  const lines=["ともたよむ v"+VERSION+"｜作者ID受け口","作品マスター："+works.length,"全年齢作品："+normal.length+"｜未登録："+normal.filter(w=>!linked.has(ncode(w.ncode))).length,"R18作品："+r18.length+"｜未登録："+r18.filter(w=>!linked.has(ncode(w.ncode))).length,"作者ID付き作品："+linked.size,"登録作者："+groups.size];
-  groups.forEach((g,id)=>lines.push(g.name+"｜"+id+"｜"+g.type+"｜"+g.count+"作品"));
-  try{await navigator.clipboard.writeText(lines.join("\n"));document.getElementById("notice").textContent="診断結果をコピーしました。"}catch(e){document.getElementById("notice").textContent="コピーできませんでした。"}
-}
 async function handleIncoming(){
   const params=new URLSearchParams(location.search),authorUrl=params.get("authorurl");
   if(!authorUrl)return;
