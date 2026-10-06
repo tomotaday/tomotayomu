@@ -231,7 +231,7 @@ async function fetchNormalKanas(){
   authors.forEach(a=>{
     if(!a||String(a.authorType||"")!=="normal")return;
     const id=String(a.authorId||"").trim();
-    if(!id)return;
+    if(!/^\d+$/.test(id))return;
     if(!groups.has(id))groups.set(id,{id,rows:[],kana:String(a.authorKana||"").trim()});
     const g=groups.get(id);
     g.rows.push(a);
@@ -239,29 +239,30 @@ async function fetchNormalKanas(){
   });
   const targets=[...groups.values()].filter(g=>!g.kana);
   if(!targets.length)return {target:0,updated:0,missing:0};
-  const ids=targets.map(g=>g.id).filter(id=>/^\d+$/.test(id));
-  if(!ids.length)return {target:targets.length,updated:0,missing:targets.length};
-  document.getElementById("notice").textContent="全年齢作者のふりがなを公式APIから取得中… "+ids.length+"人";
-  const api="https://api.syosetu.com/userapi/api/?out=jsonp&of=u-n-y-1&lim=500&userid="+encodeURIComponent(ids.join("-"));
-  const data=await jsonp(api);
-  const result=Array.isArray(data)?data.filter((x,i)=>i>0&&x&&String(x.userid||"").trim()):[];
-  const byId=new Map(result.map(x=>[String(x.userid),x]));
-  const updates=[];
-  let missing=0;
-  for(const g of targets){
-    const x=byId.get(g.id),kana=kanaToHiragana(x?.yomikata||"");
-    if(!kana){missing++;continue}
-    for(const row of g.rows)updates.push({...row,authorKana:kana,authorKanaFirst:kana.charAt(0)});
+  let updated=0,missing=0;
+  for(let i=0;i<targets.length;i++){
+    const g=targets[i];
+    document.getElementById("notice").textContent="全年齢作者のふりがなを取得中… "+(i+1)+"/"+targets.length;
+    try{
+      const api="https://api.syosetu.com/userapi/api/?out=jsonp&of=u-n-y-1&lim=1&userid="+encodeURIComponent(g.id);
+      const data=await jsonp(api);
+      const row=Array.isArray(data)?data.find(x=>x&&String(x.userid||"")===g.id):null;
+      const kana=kanaToHiragana(row?.yomikata||"");
+      if(!kana){missing++;continue}
+      await new Promise((resolve,reject)=>{
+        const tx=db.transaction("authors","readwrite"),st=tx.objectStore("authors");
+        g.rows.forEach(a=>st.put({...a,authorKana:kana,authorKanaFirst:kana.charAt(0)}));
+        tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("ふりがな保存失敗"));tx.onabort=()=>reject(tx.error||new Error("ふりがな保存中止"));
+      });
+      updated++;
+    }catch(e){
+      missing++;
+    }
+    if(i<targets.length-1)await new Promise(r=>setTimeout(r,150));
   }
-  if(updates.length){
-    await new Promise((resolve,reject)=>{
-      const tx=db.transaction("authors","readwrite"),st=tx.objectStore("authors");
-      updates.forEach(row=>st.put(row));
-      tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("全年齢ふりがな保存失敗"));tx.onabort=()=>reject(tx.error||new Error("全年齢ふりがな保存中止"));
-    });
-  }
-  return {target:targets.length,updated:targets.filter(g=>byId.has(g.id)).length,missing};
+  return {target:targets.length,updated,missing};
 }
+
 function renderList(id,arr,linkedSet){
   const box=document.getElementById(id), works0=arr.filter(w=>!linkedSet.has(ncode(w.ncode)));
   if(!works0.length){box.innerHTML='<div class="notice">🎉 未登録作品はありません。</div>';return;}
