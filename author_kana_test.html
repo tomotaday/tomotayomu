@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ｜作者ふりがな自動取得テスト</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;margin:0;padding:16px;line-height:1.45;background:#fafafa;color:#222}
+h1{font-size:20px;margin:0 0 4px}.version{font-size:12px;color:#888;margin-bottom:12px}
+.card{background:#fff;border:1px solid #ddd;border-radius:12px;padding:13px;margin:10px 0}
+.stat{display:flex;gap:8px;flex-wrap:wrap}.badge{background:#fff;border:1px solid #ddd;border-radius:9px;padding:7px 9px}
+button{padding:10px 13px;border:0;border-radius:9px;background:#eee;font-size:14px}
+.log{font-size:13px;white-space:pre-wrap;max-height:420px;overflow:auto;background:#111;color:#eee;border-radius:10px;padding:10px}
+.ok{color:#187a37}.ng{color:#a33}.muted{color:#777}
+</style>
+</head>
+<body>
+<h1>ともたよむ｜作者ふりがな自動取得テスト</h1>
+<div class="version">v0.1.0｜検証専用・author.html非変更</div>
+<div class="card">
+  <div id="status">IndexedDB接続中…</div>
+  <div class="stat" id="stats"></div>
+  <p class="muted">全年齢作者だけを公式「なろうユーザ検索API」で照会します。R18作者はこのテストでは照会しません。</p>
+  <button id="run" disabled>▶ 自動取得テスト開始</button>
+</div>
+<div class="card">
+  <div><b>取得結果</b></div>
+  <div id="result" class="muted">まだ実行していません。</div>
+</div>
+<div class="card">
+  <div><b>ログ</b></div>
+  <div id="log" class="log"></div>
+</div>
+<script>
+const DB_NAME="tomotaYomuDB",DB_VERSION=1;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function log(s){const el=document.getElementById("log");el.textContent+=s+"\\n";el.scrollTop=el.scrollHeight}
+function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error("IndexedDB open error"))})}
+function readAll(db,name){return new Promise((resolve,reject)=>{const tx=db.transaction(name,"readonly"),st=tx.objectStore(name),r=st.getAll();r.onsuccess=()=>resolve(r.result||[]);r.onerror=()=>reject(r.error||new Error(name+" read error"))})}
+function jsonp(url,timeout=20000){return new Promise((resolve,reject)=>{const cb="tyKanaCb_"+Date.now()+"_"+Math.random().toString(36).slice(2);const s=document.createElement("script");let done=false;const cleanup=()=>{if(done)return;done=true;clearTimeout(timer);try{delete window[cb]}catch(e){}s.remove()};const timer=setTimeout(()=>{cleanup();reject(new Error("timeout"))},timeout);window[cb]=d=>{cleanup();resolve(d)};s.onerror=()=>{cleanup();reject(new Error("load error"))};s.src=url+"&callback="+cb;document.body.appendChild(s)})}
+function uniq(a){return [...new Set(a.filter(Boolean).map(x=>String(x).trim()))]}
+function updateStats(info){document.getElementById("stats").innerHTML=[
+  "作者ID付き："+info.linked,
+  "全年齢："+info.normal,
+  "R18："+info.r18,
+  "照会対象："+info.targets
+].map(x=>'<span class="badge">'+x+'</span>').join("")}
+async function fetchUser(userid){
+  const url="https://api.syosetu.com/userapi/api/?out=jsonp&of=u-n-y-1&userid="+encodeURIComponent(userid);
+  const data=await jsonp(url);
+  const rows=Array.isArray(data)?data.filter((x,i)=>i>0&&x&&x.userid):[];
+  return rows[0]||null;
+}
+let authors=[];
+async function load(){
+  try{
+    const db=await openDB();
+    authors=await readAll(db,"authors");
+    const linked=authors.filter(a=>a&&String(a.authorId||"").trim());
+    const normal=linked.filter(a=>String(a.authorType||"").toLowerCase()!=="r18" && !String(a.authorId||"").toUpperCase().startsWith("X"));
+    const r18=linked.filter(a=>String(a.authorType||"").toLowerCase()==="r18" || String(a.authorId||"").toUpperCase().startsWith("X"));
+    const ids=uniq(normal.map(a=>a.authorId));
+    updateStats({linked:uniq(linked.map(a=>a.authorId)).length,normal:uniq(normal.map(a=>a.authorId)).length,r18:uniq(r18.map(a=>a.authorId)).length,targets:ids.length});
+    document.getElementById("status").textContent="作者データ取得完了。実験開始できます。";
+    document.getElementById("run").disabled=false;
+    window._targets=ids;
+  }catch(e){document.getElementById("status").textContent="エラー："+e.message;log("ERROR "+e.stack)}
+}
+async function run(){
+  const btn=document.getElementById("run");btn.disabled=true;
+  const ids=window._targets||[];let ok=0,empty=0,err=0;const rows=[];
+  document.getElementById("result").textContent="照会中…";
+  log("照会開始："+ids.length+"作者");
+  for(let i=0;i<ids.length;i++){
+    const id=ids[i];
+    try{
+      const u=await fetchUser(id);
+      if(u&&u.yomikata){ok++;rows.push({id,name:u.name,kana:u.yomikata,first:u.name1st||""});log("OK "+id+"｜"+u.name+"｜"+u.yomikata+"｜"+(u.name1st||""))}
+      else {empty++;log("KANAなし "+id+"｜"+(u&&u.name||"ユーザ情報なし"))}
+    }catch(e){err++;log("ERROR "+id+"｜"+e.message)}
+    if((i+1)%10===0){document.getElementById("result").textContent=(i+1)+"/"+ids.length+"｜成功 "+ok+"｜読みなし "+empty+"｜エラー "+err}
+    await sleep(120);
+  }
+  document.getElementById("result").innerHTML='<b>完了</b><br>対象：'+ids.length+'作者<br><span class="ok">読み仮名取得成功：'+ok+'</span><br>読み仮名なし：'+empty+'<br><span class="ng">エラー：'+err+'</span><br><br>'+rows.slice(0,30).map(r=>r.name+"｜"+r.kana+"｜"+r.first+"｜"+r.id).join("<br>");
+  log("=== 完了 ===");
+  log("成功 "+ok+" / 読みなし "+empty+" / エラー "+err);
+  btn.disabled=false;btn.textContent="↻ もう一度実行";
+}
+document.getElementById("run").addEventListener("click",run);
+load();
+</script>
+</body>
+</html>
