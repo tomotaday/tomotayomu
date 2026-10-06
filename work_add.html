@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f3ed">
+<title>ともたよむ｜作品追加</title>
+<style>
+:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.6}
+main{width:min(100%,720px);margin:auto;padding:28px 16px 48px}
+h1{font-size:27px;margin:0 0 6px}.note{font-size:13px;color:var(--muted);margin-bottom:20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+.status{font-size:16px;white-space:pre-wrap;word-break:break-word}
+.work{margin-top:16px;padding-top:16px;border-top:1px solid #ddd5ca}
+.title{font-size:20px;font-weight:700}.meta{font-size:13px;color:var(--muted);margin-top:4px}
+.ok{font-size:18px;font-weight:700}.error{color:#9b3d32}
+</style>
+</head>
+<body>
+<main>
+<h1>📚 作品追加</h1>
+<div class="note">作品ページから受け取った作品を、ともたよむの本棚へ追加します。</div>
+<div class="card">
+<div id="status" class="status">作品URLを受信しています…</div>
+<div id="work" class="work" hidden></div>
+</div>
+</main>
+<script>
+const DB_NAME="tomotaYomuDB",DB_VERSION=1;
+const API_URL="https://api.syosetu.com/novelapi/api/";
+const R18_API_URL="https://api.syosetu.com/novel18api/api/";
+const TARGET_SHELF_NAME="🏝️とりあえず";
+
+function setStatus(t,cls=""){const e=document.getElementById("status");e.textContent=t;e.className="status "+cls}
+function ncodeFromUrl(raw){
+  const s=String(raw||"").trim();
+  let m=s.match(/(?:https?:\/\/)?(?:ncode|novel18)\.syosetu\.com\/([a-z0-9_-]+)/i);
+  if(m)return m[1].toUpperCase().replace(/[^A-Z0-9]/g,"");
+  m=s.match(/\b(N\d{1,}[A-Z]{1,5})\b/i);
+  return m?m[1].toUpperCase():"";
+}
+function apiUrlFor(raw,ncode){
+  const s=String(raw||"").toLowerCase();
+  return s.includes("novel18.syosetu.com")||s.includes("novel18")?R18_API_URL:API_URL;
+}
+async function fetchWork(api,ncode){
+  const u=api+"?ncode="+encodeURIComponent(ncode)+"&out=json";
+  const r=await fetch(u,{cache:"no-store"});
+  if(!r.ok)throw new Error("作品API通信失敗："+r.status);
+  const j=await r.json();
+  if(!j?.[0]?.ncode)throw new Error("作品情報が見つかりません："+ncode);
+  return j[0];
+}
+function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error("IndexedDBを開けません"));})}
+function readAll(db,name){return new Promise((resolve,reject)=>{const tx=db.transaction(name,"readonly"),st=tx.objectStore(name),out=[];const r=st.openCursor();r.onsuccess=()=>{const c=r.result;if(c){out.push(c.value);c.continue()}else resolve(out)};r.onerror=()=>reject(r.error||new Error(name+"読込失敗"));})}
+function putRow(tx,store,row,key){
+  const st=tx.objectStore(store);
+  return st.keyPath==null?st.put(row,key):st.put(row);
+}
+async function saveWork(work,rawUrl){
+  const db=await openDB();
+  const shelves=await readAll(db,"shelf_names");
+  const shelf=shelves.find(v=>String(v?.shelf_name??v?.name??v?.title??"").trim()===TARGET_SHELF_NAME);
+  if(!shelf?.shelf_id)throw new Error("本棚「"+TARGET_SHELF_NAME+"」が見つかりません。先に本棚管理で作成してください。");
+  const ncode=String(work.ncode||"").toUpperCase();
+  const placements=await readAll(db,"shelf_placement");
+  const existing=placements.find(v=>String(v?.ncode??"").toUpperCase()===ncode);
+  const tx=db.transaction(["works_cache","shelf_placement"],"readwrite");
+  const saved={...work,ncode,__r18:apiUrlFor(rawUrl,ncode)===R18_API_URL};
+  putRow(tx,"works_cache",saved,ncode);
+  const placement={...(existing||{}),ncode,shelf_id:String(shelf.shelf_id)};
+  putRow(tx,"shelf_placement",placement,ncode);
+  await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存失敗"));tx.onabort=()=>reject(tx.error||new Error("保存中止"));});
+  return {shelfName:TARGET_SHELF_NAME,existing:!!existing,work:saved};
+}
+async function handle(){
+  const params=new URLSearchParams(location.search);
+  const raw=params.get("workurl")||params.get("url")||"";
+  if(!raw){setStatus("作品URLを受信できませんでした。","error");return}
+  const ncode=ncodeFromUrl(raw);
+  if(!ncode){setStatus("Nコードを作品URLから取得できませんでした。\n"+raw,"error");return}
+  try{
+    setStatus("作品 "+ncode+" を確認中…");
+    const work=await fetchWork(apiUrlFor(raw,ncode),ncode);
+    const r=await saveWork(work,raw);
+    const box=document.getElementById("work");box.hidden=false;
+    box.innerHTML="";
+    const t=document.createElement("div");t.className="title";t.textContent=work.title||ncode;
+    const m=document.createElement("div");m.className="meta";m.textContent="Nコード："+ncode+"｜作者："+(work.writer||"不明")+"｜保存先："+r.shelfName;
+    box.append(t,m);
+    setStatus((r.existing?"✅ 作品情報を更新し、":"✅ 作品を")+"「"+r.shelfName+"」へ登録しました。","ok");
+    history.replaceState({},document.title,location.pathname);
+  }catch(e){console.error(e);setStatus("⚠️ 作品追加失敗｜"+e.message,"error")}
+}
+handle();
+</script>
+</body>
+</html>
