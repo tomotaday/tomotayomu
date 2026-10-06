@@ -21,7 +21,7 @@ summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;
 <body>
 <div class="top">
 <h1>ともたよむ｜作者ID受け口</h1>
-<div class="version">v3.1.0.11【全年齢ふりがな自動整理版】</div>
+<div class="version">v3.1.0.12【全年齢ふりがな保存安定版】</div>
 <p>全年齢・R18の作者ページURLを受け取り、作者IDと作品との関係を保存します。</p>
 </div>
 
@@ -44,7 +44,7 @@ summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;
 <h2>未登録作品｜R18</h2><div id="r18List"></div>
 
 <script>
-const VERSION="3.1.0.11";
+const VERSION="3.1.0.12";
 const DB_NAME="tomotaYomuDB",DB_VERSION=1;
 const LEGACY_MASTER_KEY="tomotayomu_v214_works_master";
 const LEGACY_AUTHORS_KEY="tomotaYomu_authors";
@@ -192,7 +192,7 @@ async function saveAuthorKana(authorId,kana){
   if(!rows.length)throw new Error("対象作者の作品紐付けが見つかりません。");
   await new Promise((resolve,reject)=>{
     const tx=db.transaction("authors","readwrite"),st=tx.objectStore("authors");
-    rows.forEach(row=>st.put({...row,authorKana:value,authorKanaFirst:value.charAt(0)}));
+    rows.forEach(row=>st.put({...row,authorKana:value,authorKanaFirst:value.charAt(0),authorKanaChecked:true}));
     tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("ふりがな保存失敗"));tx.onabort=()=>reject(tx.error||new Error("ふりがな保存中止"));
   });
 }
@@ -232,33 +232,50 @@ async function fetchNormalKanas(){
     if(!a||String(a.authorType||"")!=="normal")return;
     const id=String(a.authorId||"").trim();
     if(!/^\d+$/.test(id))return;
-    if(!groups.has(id))groups.set(id,{id,rows:[],kana:String(a.authorKana||"").trim()});
+    if(!groups.has(id))groups.set(id,{id,rows:[],kana:String(a.authorKana||"").trim(),checked:Boolean(a.authorKanaChecked)});
     const g=groups.get(id);
     g.rows.push(a);
     if(!g.kana&&a.authorKana)g.kana=String(a.authorKana).trim();
+    if(a.authorKanaChecked)g.checked=true;
   });
-  const targets=[...groups.values()].filter(g=>!g.kana);
+
+  // ふりがなが既に保存済み、または「API確認済みだが空文字」なら再取得しない。
+  const targets=[...groups.values()].filter(g=>!g.kana&&!g.checked);
   if(!targets.length)return {target:0,updated:0,missing:0};
+
+  document.getElementById("notice").textContent="全年齢作者のふりがなを取得中… 0/"+targets.length;
+
   let updated=0,missing=0;
-  for(let i=0;i<targets.length;i++){
-    const g=targets[i];
-    document.getElementById("notice").textContent="全年齢作者のふりがなを取得中… "+(i+1)+"/"+targets.length;
-    try{
-      const api="https://api.syosetu.com/userapi/api/?out=jsonp&of=u-n-y-1&lim=1&userid="+encodeURIComponent(g.id);
-      const data=await jsonp(api);
-      const row=Array.isArray(data)?data.find(x=>x&&String(x.userid||"")===g.id):null;
-      const kana=kanaToHiragana(row?.yomikata||"");
-      if(!kana){missing++;continue}
-      await new Promise((resolve,reject)=>{
-        const tx=db.transaction("authors","readwrite"),st=tx.objectStore("authors");
-        g.rows.forEach(a=>st.put({...a,authorKana:kana,authorKanaFirst:kana.charAt(0)}));
-        tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("ふりがな保存失敗"));tx.onabort=()=>reject(tx.error||new Error("ふりがな保存中止"));
+  const wanted=new Set(targets.map(g=>g.id));
+  const ids=targets.map(g=>g.id).join("-");
+  try{
+    // 公式ユーザAPIのuserid指定で対象作者をまとめて取得。
+    // JSONPは1回だけ。1作者1リクエスト方式より負荷も通信量も小さい。
+    const api="https://api.syosetu.com/userapi/api/?out=jsonp&of=u-n-y-1&lim=500&userid="+encodeURIComponent(ids);
+    const data=await jsonp(api);
+    const rows=Array.isArray(data)?data.filter(x=>x&&x.userid!=null):[];
+    const byId=new Map(rows.map(x=>[String(x.userid),x]));
+
+    await new Promise((resolve,reject)=>{
+      const tx=db.transaction("authors","readwrite"),st=tx.objectStore("authors");
+      targets.forEach((g,index)=>{
+        const row=byId.get(g.id);
+        const kana=kanaToHiragana(row?.yomikata||"");
+        const checked=true;
+        g.rows.forEach(a=>{
+          st.put({...a,authorKana:kana,authorKanaFirst:kana.charAt(0),authorKanaChecked:checked});
+        });
+        if(kana)updated++; else missing++;
+        document.getElementById("notice").textContent="全年齢作者のふりがなを保存中… "+(index+1)+"/"+targets.length;
       });
-      updated++;
-    }catch(e){
-      missing++;
-    }
-    if(i<targets.length-1)await new Promise(r=>setTimeout(r,150));
+      tx.oncomplete=resolve;
+      tx.onerror=()=>reject(tx.error||new Error("ふりがな保存失敗"));
+      tx.onabort=()=>reject(tx.error||new Error("ふりがな保存中止"));
+    });
+  }catch(e){
+    // API自体に失敗した場合は「確認済み」にしない。
+    // 次回起動時に再試行できるようにする。
+    throw new Error("API取得失敗："+e.message);
   }
   return {target:targets.length,updated,missing};
 }
@@ -277,7 +294,7 @@ async function saveAuthorToIndexedDB(info,apiWorks,hits,authorName){
   const am=new Map(authors.map(a=>[ncode(a.ncode),a]));
   const rows=hits.map(n=>{
     const w=wm.get(n)||{},old=am.get(n)||{};
-    return {...old,ncode:n,writer:old.writer||w.writer||"",authorId:info.id,authorType:info.type,authorName,authorUrl:String(info.url||"")};
+    return {...old,ncode:n,writer:old.writer||w.writer||"",authorId:info.id,authorType:info.type,authorName,authorUrl:String(info.url||""),authorKanaChecked:Boolean(old.authorKanaChecked)};
   });
   await new Promise((resolve,reject)=>{
     const tx=db.transaction("authors","readwrite");
