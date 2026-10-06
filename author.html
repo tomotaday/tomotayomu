@@ -15,13 +15,13 @@ a,button{display:inline-block;padding:9px 12px;border-radius:8px;background:#eee
 summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
 .badge{background:#fff;border:1px solid #ddd;border-radius:9px;padding:7px 9px;font-size:13px}
 .authorName{font-weight:600}.authorId{font-family:ui-monospace,monospace;font-size:13px;color:#555}
-.workLine{font-size:13px;padding:4px 0;border-top:1px solid #eee}.small{font-size:12px;color:#777}
+.workLine{font-size:13px;padding:4px 0;border-top:1px solid #eee}.small{font-size:12px;color:#777}.authorTools{margin-top:10px;padding:10px;background:#fafafa;border-radius:9px}.authorTools label{display:block;font-size:12px;color:#666;margin:6px 0 3px}.authorTools input{box-sizing:border-box;width:100%;padding:8px;border:1px solid #ccc;border-radius:7px;font-size:14px}.authorWeb{display:inline-block;margin:3px 0 7px}.kanaSave{margin-top:7px;padding:7px 10px;font-size:13px}.kanaStatus{font-size:12px;color:#176b2c;margin-left:6px}
 </style>
 </head>
 <body>
 <div class="top">
 <h1>ともたよむ｜作者ID受け口</h1>
-<div class="version">v3.1.0.8【旧作者台帳キー修正版】</div>
+<div class="version">v3.1.0.10【作者WEB・ふりがな手入力版】</div>
 <p>全年齢・R18の作者ページURLを受け取り、作者IDと作品との関係を保存します。</p>
 </div>
 
@@ -44,7 +44,7 @@ summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;
 <h2>未登録作品｜R18</h2><div id="r18List"></div>
 
 <script>
-const VERSION="3.1.0.8";
+const VERSION="3.1.0.10";
 const DB_NAME="tomotaYomuDB",DB_VERSION=1;
 const LEGACY_MASTER_KEY="tomotayomu_v214_works_master";
 const LEGACY_AUTHORS_KEY="tomotaYomu_authors";
@@ -153,8 +153,11 @@ async function render(){
   const groups=new Map();
   linkedRows.forEach(a=>{
     const id=String(a.authorId).trim();
-    if(!groups.has(id))groups.set(id,{id,type:a.authorType==="r18"?"R18":"全年齢",name:a.authorName||a.writer||"作者名不明",url:a.authorUrl||"",ns:[]});
-    groups.get(id).ns.push(ncode(a.ncode));
+    if(!groups.has(id))groups.set(id,{id,type:a.authorType==="r18"?"R18":"全年齢",name:a.authorName||a.writer||"作者名不明",url:a.authorUrl||"",kana:a.authorKana||"",ns:[]});
+    const g=groups.get(id);
+    if(!g.url&&a.authorUrl)g.url=a.authorUrl;
+    if(!g.kana&&a.authorKana)g.kana=a.authorKana;
+    g.ns.push(ncode(a.ncode));
   });
   document.getElementById("authorCount").textContent=groups.size;
   const box=document.getElementById("authors");
@@ -163,10 +166,40 @@ async function render(){
     const items=g.ns.map(n=>{const w=works.find(x=>ncode(x.ncode)===n);return w
       ? '<div class="workLine">'+esc(w.title||"作品名なし")+' <span class="small">'+esc(n)+(w.__r18?'｜R18':'｜全年齢')+'</span></div>'
       : '<div class="workLine">'+esc(n)+' <span class="small">作品マスター外</span></div>';}).join("");
-    return '<details class="authorBlock"><summary><span class="authorName">'+esc(g.name)+'</span>　<span class="authorId">'+esc(g.id)+'</span>　'+g.type+'　'+g.ns.length+'作品</summary><div style="margin-top:8px">'+items+'</div></details>';
+    const web=g.url?'<a class="authorWeb" href="'+esc(g.url)+'" target="_blank" rel="noopener">🌐 作者WEBを開く</a>':'<div class="small">🌐 作者WEB：未登録</div>';
+    const tools='<div class="authorTools">'+web+'<label for="kana_'+esc(g.id)+'">ふりがな</label><input id="kana_'+esc(g.id)+'" class="kanaInput" data-author-id="'+esc(g.id)+'" value="'+esc(g.kana)+'" placeholder="作者名のふりがなを入力"><button type="button" class="kanaSave" data-author-id="'+esc(g.id)+'">保存</button><span id="kanaStatus_'+esc(g.id)+'" class="kanaStatus"></span></div>';
+    return '<details class="authorBlock"><summary><span class="authorName">'+esc(g.name)+'</span>　<span class="authorId">'+esc(g.id)+'</span>　'+g.type+'　'+g.ns.length+'作品</summary><div style="margin-top:8px">'+tools+items+'</div></details>';
   }).join("");
   renderList("normalList",normal,linkedSet);
   renderList("r18List",r18,linkedSet);
+  bindKanaButtons();
+}
+async function saveAuthorKana(authorId,kana){
+  const id=String(authorId||"").trim(),value=String(kana||"").trim();
+  if(!id)return;
+  const db=await openDB();
+  const authors=await readAll(db,"authors");
+  const rows=authors.filter(a=>a&&String(a.authorId||"").trim()===id);
+  if(!rows.length)throw new Error("対象作者の作品紐付けが見つかりません。");
+  await new Promise((resolve,reject)=>{
+    const tx=db.transaction("authors","readwrite"),st=tx.objectStore("authors");
+    rows.forEach(row=>st.put({...row,authorKana:value}));
+    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("ふりがな保存失敗"));tx.onabort=()=>reject(tx.error||new Error("ふりがな保存中止"));
+  });
+}
+function bindKanaButtons(){
+  document.querySelectorAll(".kanaSave").forEach(btn=>{
+    btn.onclick=async()=>{
+      const id=btn.dataset.authorId,input=document.querySelector('.kanaInput[data-author-id="'+CSS.escape(id)+'"]'),status=document.getElementById("kanaStatus_"+id);
+      btn.disabled=true;
+      try{
+        await saveAuthorKana(id,input?.value||"");
+        status.textContent="✓ 保存しました";
+      }catch(e){
+        status.textContent="⚠️ "+e.message;
+      }finally{btn.disabled=false}
+    };
+  });
 }
 function renderList(id,arr,linkedSet){
   const box=document.getElementById(id), works0=arr.filter(w=>!linkedSet.has(ncode(w.ncode)));
