@@ -160,7 +160,26 @@ async function loadShelfWorks(id,body){
 }
 async function save(){const order=rows.map((r,i)=>({row:r,order:i+1})).filter(x=>x.row.kind==="shelf");const tx=db.transaction(STORES.shelves,"readwrite"),st=tx.objectStore(STORES.shelves);const seen=new Set();for(const x of order){const rowEl=[...document.querySelectorAll(".row")].find(r=>Number(r.dataset.index)===rows.indexOf(x.row));const input=rowEl?.querySelector(".nameInput");const newName=String(input?.value??shelfText(x.row.shelf)).trim();if(!newName)throw new Error("棚名を空欄にはできません。");const key=newName.replace(/[🟠🔵🌀🎈📚⏰]/g,"").replace(/\s+/g,"");if(key&&seen.has(key))throw new Error("同名の棚があります：「"+newName+"」");seen.add(key);x.row.shelf={...x.row.shelf,shelf_name:newName,display_order:x.order};st.put(x.row.shelf)}await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error("保存中止"))});shelves=order.map(x=>x.row.shelf);document.getElementById("status").textContent="保存しました。棚名と表示順をIndexedDBへ記録しました。"}
 function resetOrder(){setOrderInitial();render();document.getElementById("status").textContent="初期順に戻しました。まだ保存はしていません。"}
-async function init(){try{await openDB();[shelves,placements]=await Promise.all([readAll(STORES.shelves),readAll(STORES.placements)]);buildIndexes();setOrderInitial();render();document.getElementById("status").textContent="棚情報を読み込みました："+shelves.length+"棚 / "+placements.length+"配置（作品情報は棚を開いた時だけ読み込みます）"catch(e){console.error(e);document.getElementById("status").textContent="読み込み失敗："+e.message}}
+async function init(){
+  const status=document.getElementById("status");
+  try{
+    status.textContent="IndexedDB接続中…";
+    await openDB();
+    status.textContent="棚マスター取得中…";
+    shelves=await readAll(STORES.shelves);
+    setOrderInitial();
+    render();
+    status.textContent="棚マスター反映済み："+shelves.length+"棚";
+    status.textContent+="　作品数を取得中…";
+    placements=await readAll(STORES.placements);
+    buildIndexes();
+    render();
+    status.textContent="本棚管理準備完了："+shelves.length+"棚 / "+placements.length+"配置";
+  }catch(e){
+    console.error(e);
+    status.textContent="読み込み失敗："+e.message;
+  }
+}
 document.getElementById("addBtn").addEventListener("click",()=>addShelf());
 document.getElementById("saveBtn").addEventListener("click",()=>save().catch(e=>document.getElementById("status").textContent="保存失敗："+e.message));
 document.getElementById("resetBtn").addEventListener("click",resetOrder);init();
