@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#f6f3ed" name="theme-color"/>
-<title>ともたよむ v3.1.0.7【本棚カード装丁版】</title>
+<title>ともたよむ v3.1.0.8【お着替え追加版】</title>
 <style>
 :root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195;--shelf-card:#fff;--shelf-ink:#252525;--shelf-line:#ddd}
 *{box-sizing:border-box}
@@ -29,6 +29,14 @@ summary{cursor:pointer}
 .actions{display:flex;gap:10px;margin-top:12px;font-size:13px;flex-wrap:wrap}
 .actions a{color:inherit;text-decoration:none;border-bottom:1px solid #aaa}
 .hidden{display:none!important}
+</style>
+<style id="tomota-theme-style">
+body[data-theme="seiji"]{--bg:#edf4f1;--card:#f9fcfb;--ink:#20302d;--muted:#64736f;--line:#9aada7;--shelf-card:#f8fcfa;--shelf-ink:#20302d;--shelf-line:#b8c9c4}
+body[data-theme="night"]{--bg:#20242a;--card:#2b3038;--ink:#f1f3f4;--muted:#aeb5bd;--line:#59616b;--shelf-card:#303640;--shelf-ink:#f1f3f4;--shelf-line:#555f6b}
+body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806d5d;--line:#b8a18d;--shelf-card:#fff8ee;--shelf-ink:#3a2b21;--shelf-line:#cbb49e}
+.dressup{display:flex;gap:7px;flex-wrap:wrap;padding-top:2px}
+.dressup button{border:1px solid var(--shelf-line);background:var(--shelf-card);color:var(--shelf-ink);border-radius:8px;padding:6px 9px;font-size:13px}
+.dressup button.active{font-weight:800;box-shadow:inset 0 0 0 2px var(--shelf-line)}
 </style>
 <style id="v19-folder-style">
 .folderSection{margin:18px 0 22px}
@@ -63,7 +71,7 @@ summary{cursor:pointer}
 
 <main>
 <h1>ともたよむ</h1>
-<div class="note" style="font-weight:800;font-size:15px">🧪 v3.1.0.7【本棚カード装丁版】</div>
+<div class="note" style="font-weight:800;font-size:15px">🧪 v3.1.0.8【お着替え追加版】</div>
 <button id="updateBtn" type="button">🔄 更新情報を確認</button>
 <div id="baselineDate">基準日：反映待ち</div>
 <div id="apiStatus">本棚情報未反映</div>
@@ -396,10 +404,24 @@ function buildShelfFolders(){
   managementSummary.textContent="⚙️管理設定用";
   const managementBody=document.createElement("div");
   managementBody.className="managementSettingsBody";
-  managementBody.innerHTML='<a href="v3.0.0_shelf_manager_test.html">本棚管理</a><a href="author.html">作者整理（ふりがな）</a>';
+  managementBody.innerHTML='<a href="v3.0.0_shelf_manager_test.html">本棚管理</a><a href="author.html">作者整理（ふりがな）</a><div><strong>🎨 お着替え</strong><div class="dressup"><button type="button" data-theme-choice="default">🌿 生成り</button><button type="button" data-theme-choice="seiji">🌊 青磁</button><button type="button" data-theme-choice="night">🌙 夜の図鑑</button><button type="button" data-theme-choice="autumn">🍂 秋色</button></div></div>';
   management.append(managementSummary,managementBody);
   root.appendChild(management);
 }
+function applyDressup(theme){
+  const t=theme==="seiji"||theme==="night"||theme==="autumn"?theme:"default";
+  document.body.dataset.theme=t;
+  localStorage.setItem("tomotaYomu_theme",t);
+  document.querySelectorAll("[data-theme-choice]").forEach(b=>b.classList.toggle("active",(b.dataset.themeChoice||"default")===t));
+  const meta=document.querySelector('meta[name="theme-color"]');
+  if(meta)meta.content=t==="night"?"#20242a":t==="seiji"?"#edf4f1":t==="autumn"?"#f5eee4":"#f6f3ed";
+}
+function initDressup(){
+  applyDressup(localStorage.getItem("tomotaYomu_theme")||"default");
+  document.querySelectorAll("[data-theme-choice]").forEach(b=>b.addEventListener("click",()=>applyDressup(b.dataset.themeChoice)));
+}
+document.addEventListener("DOMContentLoaded",initDressup);
+
 function buildUpdateView(){
   const candidates=getUpdateCandidates(), cards=[...document.querySelectorAll("#shelf .card")], updates=[];
   cards.forEach(card=>{
