@@ -68,7 +68,7 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 .folderDetails[open]>summary{border-bottom:1px solid var(--shelf-line)}
 .folderCards{padding:3px 8px 8px}
 
-.ncode{position:relative;padding-right:48px;min-height:20px}.r18Badge{position:absolute;right:0;top:50%;transform:translateY(-50%);font-size:10px;line-height:1;padding:3px 5px;border:1px solid #aaa195;border-radius:5px;color:#666;background:#f6f3ed;letter-spacing:.2px;z-index:2}
+.r18Mark{display:inline-block;margin-left:3px;font-size:11px;font-weight:700;color:var(--muted);line-height:1;vertical-align:1px}
 .shelfMovePanel{margin-top:10px;padding:10px;border-top:1px solid #d0c8bd}.shelfMoveLabel{font-size:13px;margin-bottom:6px;color:#555}.shelfMoveSelect{width:100%;padding:8px;border:1px solid #aaa195;border-radius:8px;background:var(--card);color:var(--ink);font-size:14px}.shelfMoveActions{display:flex;gap:8px;margin-top:8px}.shelfMoveActions button{font-size:13px}
 </style>
 </head>
@@ -285,10 +285,11 @@ async function buildV3CardsFromIndexedDB(){
     card.dataset.ncode=n;
     card.dataset.shelfId=sid;
     card.dataset.shelf=shelf;
+    card.dataset.r18=w.__r18 ? "1" : "";
     card.dataset.current=pm.has(n)?String(pm.get(n).episode||""):"";
     const writer=am.get(n)?.writer||w.writer||"";
 
-    card.innerHTML='<div class="meta"><span class="newMark" hidden>🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ '+shelf+'</div><h2></h2><div class="author"></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから　📖 未読 / —話</a></div><details class="managementDetails"><summary>詳細を開く</summary><div class="managementBody"><div class="ncode">Nコード：'+n+'</div><button type="button" class="moveShelfBtn">本棚を移動</button><button type="button" class="deleteWorkBtn">削除</button></div></details></article>';
+    card.innerHTML='<div class="meta"><span class="newMark" hidden>🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ '+shelf+'<span class="r18Mark" hidden>R</span></div><h2></h2><div class="author"></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから　📖 未読 / —話</a></div><details class="managementDetails"><summary>詳細を開く</summary><div class="managementBody"><div class="ncode">Nコード：'+n+'</div><button type="button" class="moveShelfBtn">本棚を移動</button><button type="button" class="deleteWorkBtn">削除</button></div></details></article>';
     card.querySelector("h2").textContent=w.title||"";
     card.querySelector(".author").textContent="作者："+writer;
     updateCard(card,{...w,writer});
@@ -372,6 +373,11 @@ function seedReadingCache(){
 }
 function updateCard(card,w){
   const n=String(w.ncode||card.dataset.ncode).toUpperCase();
+  const hasR18=Object.prototype.hasOwnProperty.call(w,"__r18");
+  const isR18=hasR18 ? Boolean(w.__r18) : card.dataset.r18==="1";
+  if(hasR18)card.dataset.r18=isR18?"1":"";
+  const r18Mark=card.querySelector(".r18Mark");
+  if(r18Mark)r18Mark.hidden=!isR18;
   const titleEl=card.querySelector("h2"); if(titleEl&&w.title)titleEl.textContent=w.title;
   const authorEl=card.querySelector(".author"); if(authorEl&&w.writer)authorEl.textContent="作者："+w.writer;
   card.dataset.lastUpdated = w.general_lastup || card.dataset.lastUpdated || "";
@@ -511,7 +517,7 @@ async function updateInfo(){
   }finally{btn.disabled=false;}
 }
 function gasRead(n){ return new Promise((resolve,reject)=>{ const x=new XMLHttpRequest(); x.open("GET",GAS_URL+"?ncode="+encodeURIComponent(n),true); x.timeout=20000; x.onload=()=>resolve({status:x.status,text:x.responseText.trim()}); x.onerror=()=>reject(new Error("GAS通信エラー")); x.ontimeout=()=>reject(new Error("GASタイムアウト")); x.send(); }); }
-async function refreshActiveFromGAS(){ const n=(localStorage.getItem(ACTIVE_KEY)||"").toUpperCase(); if(!n)return; const card=document.querySelector(`#shelf .card[data-ncode="${n}"]`); if(!card)return; try{ const r=await gasRead(n); const p=r.text.split(/\s+/); if(r.status===200&&p[0]==="READ"&&/^\d+$/.test(p[2])){ setReading(n,Number(p[2])); updateCard(card,{ncode:n,general_lastup:card.dataset.lastUpdated,general_all_no:card.dataset.totalEpisodes,story:card.querySelector(".synopsis")?.textContent||"",__r18:card.querySelector(".r18Badge")!=null}); } else if(r.status===200&&p[0]==="NOT_FOUND"){ const m=readingMap(); m[n]=null; saveJSON(READ_KEY,m); updateCard(card,{ncode:n,general_lastup:card.dataset.lastUpdated,general_all_no:card.dataset.totalEpisodes,story:card.querySelector(".synopsis")?.textContent||"",__r18:card.querySelector(".r18Badge")!=null}); } else throw new Error("GAS応答不明："+r.text); buildUpdateView(); buildShelfFolders(); localStorage.removeItem(ACTIVE_KEY); }catch(e){ console.warn(e); }
+async function refreshActiveFromGAS(){ const n=(localStorage.getItem(ACTIVE_KEY)||"").toUpperCase(); if(!n)return; const card=document.querySelector(`#shelf .card[data-ncode="${n}"]`); if(!card)return; try{ const r=await gasRead(n); const p=r.text.split(/\s+/); if(r.status===200&&p[0]==="READ"&&/^\d+$/.test(p[2])){ setReading(n,Number(p[2])); updateCard(card,{ncode:n,general_lastup:card.dataset.lastUpdated,general_all_no:card.dataset.totalEpisodes,story:card.querySelector(".synopsis")?.textContent||"",__r18:card.dataset.r18==="1"}); } else if(r.status===200&&p[0]==="NOT_FOUND"){ const m=readingMap(); m[n]=null; saveJSON(READ_KEY,m); updateCard(card,{ncode:n,general_lastup:card.dataset.lastUpdated,general_all_no:card.dataset.totalEpisodes,story:card.querySelector(".synopsis")?.textContent||"",__r18:card.dataset.r18==="1"}); } else throw new Error("GAS応答不明："+r.text); buildUpdateView(); buildShelfFolders(); localStorage.removeItem(ACTIVE_KEY); }catch(e){ console.warn(e); }
 }
 async function moveWorkToShelf(ncode,newShelfId){
   const db=await new Promise((ok,no)=>{
@@ -598,12 +604,7 @@ function showShelfMoveDialog(card){
   });
 }
 function rememberActive(card){ localStorage.setItem(ACTIVE_KEY,card.dataset.ncode.toUpperCase()); }
-function placeR18Badges(){
-  document.querySelectorAll("#shelf .card").forEach(card=>{
-    const badge=card.querySelector(".r18Badge"), ncode=card.querySelector(".ncode");
-    if(badge && ncode && !ncode.contains(badge)) ncode.appendChild(badge);
-  });
-}
+function placeR18Badges(){}
 document.getElementById("updateBtn").addEventListener("click",updateInfo);
 document.addEventListener("click",e=>{
   const move=e.target.closest(".moveShelfBtn");
