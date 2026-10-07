@@ -333,27 +333,13 @@ function restoreReadingFromQuery(){
 
 function restoreReadingPositions(){
   document.querySelectorAll("#shelf .card").forEach(card=>{
-    const n = card.dataset.ncode.toUpperCase();
-    const current = readingFor(n);
-    const total = Number(card.dataset.totalEpisodes || 0);
-    const resumeLink = card.querySelector(".resumeLink");
-
-    card.dataset.current = current == null ? "" : String(current);
-
-    if(!resumeLink) return;
-
-    const workUrl = card.querySelector(".workLink")?.href || "";
-
-    if(current == null){
-      resumeLink.textContent =
-        "続き📖📝記録なし / " + (total || "—") + "話" + (R18_NCODE_SET.has(n) || card.dataset.r18 === "1" ? "　®️" : "");
-      resumeLink.href = workUrl;
-    }else{
-      resumeLink.textContent =
-        "続き📖" + current + "/" + (total || "—") + "話" + (card.dataset.r18 === "1" ? "　®️" : "");
-      resumeLink.href =
-        current > 0 ? workUrl + String(current) + "/" : workUrl;
-    }
+    const n=String(card.dataset.ncode||"").toUpperCase();
+    const current=readingFor(n);
+    const total=Number(card.dataset.totalEpisodes||0);
+    const workUrl=card.querySelector(".workLink")?.href||"";
+    const isShortStory=String(card.dataset.noveltype||"").trim()==="2";
+    card.dataset.current=current==null ? "" : String(current);
+    renderResumeLink(card,current,total,workUrl,isShortStory);
   });
 }
 
@@ -373,10 +359,24 @@ function seedReadingCache(){
   });
   if(changed)saveJSON(READ_KEY,m);
 }
+function renderResumeLink(card,current,total,workUrl,isShortStory){
+  const n=String(card.dataset.ncode||"").toUpperCase();
+  const r18=isR18Work({ncode:n,__r18:card.dataset.r18==="1"});
+  const mark=r18 ? "　®️" : "";
+  const resumeLink=card.querySelector(".resumeLink");
+  if(!resumeLink)return;
+  if(current==null){
+    resumeLink.textContent="続き📖📝記録なし / "+(total||"—")+"話"+mark;
+    resumeLink.href=workUrl;
+  }else{
+    resumeLink.textContent="続き📖"+current+"/"+(total||"—")+"話"+mark;
+    resumeLink.href=isShortStory ? workUrl : (current>0 ? workUrl+String(current)+"/" : workUrl);
+  }
+}
 function updateCard(card,w){
   const n=String(w.ncode||card.dataset.ncode).toUpperCase();
   const isR18=isR18Work(w);
-  if(Object.prototype.hasOwnProperty.call(w,"__r18") || R18_NCODE_SET.has(n))card.dataset.r18=isR18?"1":"";
+  card.dataset.r18=isR18?"1":"";
   const titleEl=card.querySelector("h2"); if(titleEl&&w.title)titleEl.textContent=w.title;
   const authorEl=card.querySelector(".author"); if(authorEl&&w.writer)authorEl.textContent="作者："+w.writer;
   card.dataset.lastUpdated = w.general_lastup || card.dataset.lastUpdated || "";
@@ -384,12 +384,11 @@ function updateCard(card,w){
   card.querySelector(".lastUpdated").textContent = formatDate(card.dataset.lastUpdated);
   if(Object.prototype.hasOwnProperty.call(w,"end") || Object.prototype.hasOwnProperty.call(w,"novel_type") || Object.prototype.hasOwnProperty.call(w,"noveltype")) card.querySelector(".status").textContent = setStatus(w);
   card.querySelector(".synopsis").textContent = w.story || "あらすじなし";
-  const workUrl = siteUrl(w); card.querySelector(".workLink").href = workUrl;
-  const current = readingFor(n), total = Number(w.general_all_no || card.dataset.totalEpisodes || 0), resumeLink = card.querySelector(".resumeLink");
+  const workUrl = siteUrl({...w,ncode:n}); card.querySelector(".workLink").href = workUrl;
+  const current = readingFor(n), total = Number(w.general_all_no || card.dataset.totalEpisodes || 0);
   card.dataset.current = current==null ? "" : String(current);
   const isShortStory = String(w.noveltype ?? "").trim() === "2";
-  if(current==null){ resumeLink.textContent = "続きから　📖 📝 読書記録なし / " + (total||"—") + "話"; resumeLink.href = workUrl; }
-  else { resumeLink.textContent = "続きから　📖 " + current + " / " + (total||"—") + "話"; resumeLink.href = isShortStory ? workUrl : (current>0 ? workUrl + String(current) + "/" : workUrl); }
+  renderResumeLink(card,current,total,workUrl,isShortStory);
   applyCardState(card);
 }
 function applyCardState(card){
