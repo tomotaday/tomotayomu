@@ -344,11 +344,11 @@ function restoreReadingPositions(){
 
     if(current == null){
       resumeLink.textContent =
-        "続きから　📖 📝 読書記録なし / " + (total || "—") + "話";
+        "続き📖📝記録なし / " + (total || "—") + "話" + (card.dataset.r18 === "1" ? "　®️" : "");
       resumeLink.href = workUrl;
     }else{
       resumeLink.textContent =
-        "続きから　📖 " + current + " / " + (total || "—") + "話";
+        "続き📖" + current + "/" + (total || "—") + "話" + (card.dataset.r18 === "1" ? "　®️" : "");
       resumeLink.href =
         current > 0 ? workUrl + String(current) + "/" : workUrl;
     }
