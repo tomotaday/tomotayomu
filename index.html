@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#f6f3ed" name="theme-color"/>
-<title>ともたよむ v3.1.0.9【お着替え動作修正版】</title>
+<title>ともたよむ v3.1.0.10【夜の図鑑文字調整版】</title>
 <style>
 :root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195;--shelf-card:#fff;--shelf-ink:#252525;--shelf-line:#ddd}
 *{box-sizing:border-box}
@@ -32,7 +32,13 @@ summary{cursor:pointer}
 </style>
 <style id="tomota-theme-style">
 body[data-theme="seiji"]{--bg:#edf4f1;--card:#f9fcfb;--ink:#20302d;--muted:#64736f;--line:#9aada7;--shelf-card:#f8fcfa;--shelf-ink:#20302d;--shelf-line:#b8c9c4}
-body[data-theme="night"]{--bg:#20242a;--card:#2b3038;--ink:#f1f3f4;--muted:#aeb5bd;--line:#59616b;--shelf-card:#303640;--shelf-ink:#f1f3f4;--shelf-line:#555f6b}
+body[data-theme="night"]{--bg:#20242a;--card:#2b3038;--ink:#f1f3f4;--muted:#c1c7ce;--line:#59616b;--shelf-card:#303640;--shelf-ink:#f1f3f4;--shelf-line:#555f6b}
+body[data-theme="night"] .meta,
+body[data-theme="night"] .author,
+body[data-theme="night"] .ncode,
+body[data-theme="night"] .synopsis{color:#c1c7ce}
+body[data-theme="night"] .card{border-color:#59616b}
+body[data-theme="night"] .actions a{color:#f1f3f4}
 body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806d5d;--line:#b8a18d;--shelf-card:#fff8ee;--shelf-ink:#3a2b21;--shelf-line:#cbb49e}
 .dressup{display:flex;gap:7px;flex-wrap:wrap;padding-top:2px}
 .dressup button{border:1px solid var(--shelf-line);background:var(--shelf-card);color:var(--shelf-ink);border-radius:8px;padding:6px 9px;font-size:13px}
@@ -71,7 +77,7 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 
 <main>
 <h1>ともたよむ</h1>
-<div class="note" style="font-weight:800;font-size:15px">🧪 v3.1.0.9【お着替え動作修正版】</div>
+<div class="note" style="font-weight:800;font-size:15px">🧪 v3.1.0.10【夜の図鑑文字調整版】</div>
 <button id="updateBtn" type="button">🔄 更新情報を確認</button>
 <div id="baselineDate">基準日：反映待ち</div>
 <div id="apiStatus">本棚情報未反映</div>
