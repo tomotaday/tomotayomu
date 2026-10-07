@@ -162,7 +162,7 @@ async function render(){
   const box=document.getElementById("authors");
   if(!groups.size)box.innerHTML='<p class="small">まだ作者IDは登録されていません。</p>';
   else{
-    const buckets=new Map([["あ行",[]],["か行",[]],["さ行",[]],["た行",[]],["な行",[]],["は行",[]],["ま行",[]],["や行",[]],["ら行",[]],["わ行",[]],["🔤 読み仮名未登録",[]]]);
+    const buckets=new Map([["あ行",[]],["か行",[]],["さ行",[]],["た行",[]],["な行",[]],["は行",[]],["ま行",[]],["や行",[]],["ら行",[]],["わ行",[]],["🔤 A〜Z",[]],["🔤 読み仮名未登録",[]]]);
     [...groups.values()].forEach(g=>buckets.get(kanaGroup(g.kana)).push(g));
     box.innerHTML=[...buckets.entries()].filter(([label,list])=>list.length).map(([label,list])=>{
       list.sort((a,b)=>String(a.kana||"").localeCompare(String(b.kana||""),"ja")||a.name.localeCompare(b.name,"ja"));
@@ -232,8 +232,9 @@ function kanaToHiragana(v){
 function kanaGroup(v){
   const s=kanaToHiragana(v),ch=s.charAt(0);
   if(!ch)return "🔤 読み仮名未登録";
+  if(/^[a-zA-Z]/.test(String(v||"").trim()))return "🔤 A〜Z";
   const sets=[
-    ["あいうえお","あ行"],["かきくけこがぎぐげご","か行"],
+    ["あいうえおうぁうぃうぇうぉゔ","あ行"],["かきくけこがぎぐげご","か行"],
     ["さしすせそざじずぜぞ","さ行"],["たちつてとだぢづでど","た行"],
     ["なにぬねの","な行"],["はひふへほばびぶべぼぱぴぷぺぽ","は行"],
     ["まみむめも","ま行"],["やゆよ","や行"],["らりるれろ","ら行"],["わをん","わ行"]
