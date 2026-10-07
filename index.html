@@ -29,7 +29,7 @@ summary{cursor:pointer}
 .actions{display:flex;gap:10px;margin-top:12px;font-size:13px;flex-wrap:wrap}
 .actions a{color:inherit;text-decoration:none;border-bottom:1px solid #aaa}
 .hidden{display:none!important}
-</style>
+.searchDetails{margin:8px 0 10px;background:var(--shelf-card);color:var(--shelf-ink);border:1px solid var(--shelf-line);border-radius:11px;overflow:hidden}.searchDetails>summary{list-style:none;cursor:pointer;font-size:18px;font-weight:700;padding:9px 12px}.searchDetails>summary::-webkit-details-marker{display:none}.searchDetails>summary::before{content:"▸ ";font-size:18px}.searchDetails[open]>summary::before{content:"▾ ";font-size:18px}.searchDetails[open]>summary{border-bottom:1px solid var(--shelf-line)}.searchBody{padding:9px 12px}.searchInput{width:100%;padding:9px 10px;border:1px solid var(--shelf-line);border-radius:8px;background:var(--card);color:var(--ink);font-size:15px}.searchHint{font-size:12px;color:var(--muted);margin-top:6px}.searchResults{margin-top:8px}.searchResults .card{margin:10px 0}.searchCount{font-size:13px;color:var(--muted);margin-top:8px}</style>
 <style id="tomota-theme-style">
 body[data-theme="seiji"]{--bg:#edf4f1;--card:#f9fcfb;--ink:#20302d;--muted:#64736f;--line:#9aada7;--shelf-card:#f8fcfa;--shelf-ink:#20302d;--shelf-line:#b8c9c4}
 body[data-theme="night"]{--bg:#20242a;--card:#2b3038;--ink:#f1f3f4;--muted:#c1c7ce;--line:#59616b;--shelf-card:#303640;--shelf-ink:#f1f3f4;--shelf-line:#555f6b}
@@ -80,6 +80,15 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 <button id="updateBtn" type="button">🔄 更新情報を確認</button>
 <div id="baselineDate">基準日：反映待ち</div>
 <div id="apiStatus">本棚情報未反映</div>
+<details class="searchDetails">
+<summary>🔎 検索</summary>
+<div class="searchBody">
+<input id="searchInput" class="searchInput" type="search" placeholder="作品名・作者名・作者管理名・Nコード">
+<div class="searchHint">作品名・作品ごとの作者名・作者IDの管理名・Nコードから検索できます。</div>
+<div id="searchCount" class="searchCount"></div>
+<div id="searchResults" class="searchResults"></div>
+</div>
+</details>
 <details class="updateDetails">
 <summary id="updateTitle">🆙 更新0</summary>
 <div class="update-empty" id="updateEmpty">作品はありません。</div>
@@ -288,6 +297,8 @@ async function buildV3CardsFromIndexedDB(){
     card.dataset.shelfId=sid;
     card.dataset.shelf=shelf;
     card.dataset.r18=isR18Work(w) ? "1" : "";
+    card.dataset.authorName=am.get(n)?.writer||w.writer||"";
+    card.dataset.authorManageName=am.get(n)?.authorManageName||"";
     card.dataset.current=pm.has(n)?String(pm.get(n).episode||""):"";
     const writer=am.get(n)?.writer||w.writer||"";
 
@@ -398,6 +409,35 @@ function applyCardState(card){
   const mark=card.querySelector(".newMark");
   if(mark)mark.hidden=!isShelfRegistered || !(!!candidate && unread);
 }
+function initSearch(){
+  const input=document.getElementById("searchInput");
+  const resultBox=document.getElementById("searchResults");
+  const count=document.getElementById("searchCount");
+  if(!input||!resultBox||!count)return;
+  const run=()=>{
+    const q=String(input.value||"").trim().toLocaleLowerCase("ja-JP");
+    resultBox.innerHTML="";
+    if(!q){count.textContent="";return;}
+    const cards=[...document.querySelectorAll("#shelf > .card")];
+    const hits=cards.filter(card=>{
+      const hay=[
+        card.querySelector("h2")?.textContent||"",
+        card.dataset.authorName||"",
+        card.dataset.authorManageName||"",
+        card.dataset.ncode||""
+      ].join("\n").toLocaleLowerCase("ja-JP");
+      return hay.includes(q);
+    });
+    count.textContent=hits.length+"作品";
+    if(!hits.length){
+      resultBox.innerHTML='<div class="searchHint">該当する作品はありません。</div>';
+      return;
+    }
+    hits.forEach(card=>resultBox.appendChild(card.cloneNode(true)));
+  };
+  input.addEventListener("input",run);
+  input.addEventListener("search",run);
+}
 function buildShelfFolders(){
   const root=document.getElementById("shelfSections"), source=document.getElementById("shelf"); if(!root||!source)return; root.innerHTML="";
   const order=[];
@@ -430,6 +470,7 @@ function initDressup(){
   applyDressup(localStorage.getItem("tomotaYomu_theme")||"default");
 }
 document.addEventListener("DOMContentLoaded",initDressup);
+document.addEventListener("DOMContentLoaded",initSearch);
 document.addEventListener("click",e=>{
   const b=e.target.closest("[data-theme-choice]");
   if(!b)return;
