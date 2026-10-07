@@ -15,7 +15,7 @@ a,button{display:inline-block;padding:9px 12px;border-radius:8px;background:#eee
 summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
 .badge{background:#fff;border:1px solid #ddd;border-radius:9px;padding:7px 9px;font-size:13px}
 .authorName{font-weight:600}.authorId{font-family:ui-monospace,monospace;font-size:13px;color:#555}
-.workLine{font-size:13px;padding:4px 0;border-top:1px solid #eee}.small{font-size:12px;color:#777}.authorTools{margin-top:10px;padding:10px;background:#fafafa;border-radius:9px}.authorTools label{display:block;font-size:12px;color:#666;margin:6px 0 3px}.authorTools input{box-sizing:border-box;width:100%;padding:8px;border:1px solid #ccc;border-radius:7px;font-size:14px}.authorWeb{display:inline-block;margin:3px 0 7px}.kanaSave{margin-top:7px;padding:7px 10px;font-size:13px}.kanaStatus{font-size:12px;color:#176b2c;margin-left:6px}
+.workLine{font-size:13px;padding:4px 0;border-top:1px solid #eee}.small{font-size:12px;color:#777}.authorTools{margin-top:10px;padding:10px;background:#fafafa;border-radius:9px}.authorTools label{display:block;font-size:12px;color:#666;margin:6px 0 3px}.authorTools input{box-sizing:border-box;width:100%;padding:8px;border:1px solid #ccc;border-radius:7px;font-size:14px}.authorWeb{display:inline-block;margin:3px 0 7px}.kanaSave,.kanaNext{margin-top:7px;padding:7px 10px;font-size:13px}.kanaNext{margin-left:6px}.kanaStatus{font-size:12px;color:#176b2c;margin-left:6px}
 </style>
 </head>
 <body>
@@ -171,7 +171,7 @@ async function render(){
           ? '<div class="workLine">'+esc(w.title||"作品名なし")+' <span class="small">'+esc(n)+(w.__r18?'｜R18':'｜全年齢')+'</span></div>'
           : '<div class="workLine">'+esc(n)+' <span class="small">作品マスター外</span></div>';}).join("");
         const web=g.url?'<a class="authorWeb" href="'+esc(g.url)+'" target="_blank" rel="noopener">🌐 作者WEBを開く</a>':'<div class="small">🌐 作者WEB：未登録</div>';
-        const tools='<div class="authorTools">'+web+'<label for="kana_'+esc(g.id)+'">ふりがな</label><input id="kana_'+esc(g.id)+'" class="kanaInput" data-author-id="'+esc(g.id)+'" value="'+esc(g.kana)+'" placeholder="作者名のふりがなを入力"><button type="button" class="kanaSave" data-author-id="'+esc(g.id)+'">保存</button><span id="kanaStatus_'+esc(g.id)+'" class="kanaStatus"></span></div>';
+        const tools='<div class="authorTools">'+web+'<label for="kana_'+esc(g.id)+'">ふりがな</label><input id="kana_'+esc(g.id)+'" class="kanaInput" data-author-id="'+esc(g.id)+'" value="'+esc(g.kana)+'" placeholder="作者名のふりがなを入力"><button type="button" class="kanaSave" data-author-id="'+esc(g.id)+'">保存</button><button type="button" class="kanaNext" data-author-id="'+esc(g.id)+'">保存して次へ ▶</button><span id="kanaStatus_'+esc(g.id)+'" class="kanaStatus"></span></div>';
         const kanaText=g.kana?'<span class="small">｜'+esc(g.kana)+'</span>':'';
         return '<details class="authorBlock"><summary><span class="authorName">'+esc(g.name)+'</span>'+kanaText+'　<span class="authorId">'+esc(g.id)+'</span>　'+g.type+'　'+g.ns.length+'作品</summary><div style="margin-top:8px">'+tools+items+'</div></details>';
       }).join("");
@@ -196,18 +196,35 @@ async function saveAuthorKana(authorId,kana){
   });
 }
 function bindKanaButtons(){
-  document.querySelectorAll(".kanaSave").forEach(btn=>{
-    btn.onclick=async()=>{
-      const id=btn.dataset.authorId,input=document.querySelector('.kanaInput[data-author-id="'+CSS.escape(id)+'"]'),status=document.getElementById("kanaStatus_"+id);
-      btn.disabled=true;
-      try{
-        await saveAuthorKana(id,input?.value||"");
-        status.textContent="✓ 保存しました";
-      }catch(e){
-        status.textContent="⚠️ "+e.message;
-      }finally{btn.disabled=false}
-    };
-  });
+  const saveAndMove=async(btn,moveNext)=>{
+    const id=btn.dataset.authorId,input=document.querySelector('.kanaInput[data-author-id="'+CSS.escape(id)+'"]'),status=document.getElementById("kanaStatus_"+id);
+    btn.disabled=true;
+    try{
+      await saveAuthorKana(id,input?.value||"");
+      status.textContent="✓ 保存しました";
+      if(moveNext)focusNextKana(input);
+    }catch(e){
+      status.textContent="⚠️ "+e.message;
+    }finally{btn.disabled=false}
+  };
+  document.querySelectorAll(".kanaSave").forEach(btn=>btn.onclick=()=>saveAndMove(btn,false));
+  document.querySelectorAll(".kanaNext").forEach(btn=>btn.onclick=()=>saveAndMove(btn,true));
+}
+function focusNextKana(current){
+  const inputs=[...document.querySelectorAll(".kanaInput")];
+  const i=inputs.indexOf(current);
+  const next=inputs.slice(i+1).find(el=>!String(el.value||"").trim())||inputs[i+1];
+  if(!next){
+    current?.scrollIntoView({behavior:"smooth",block:"center"});
+    return;
+  }
+  let d=next.closest("details");
+  while(d){
+    d.open=true;
+    d=d.parentElement?.closest("details");
+  }
+  next.scrollIntoView({behavior:"smooth",block:"center"});
+  setTimeout(()=>next.focus(),250);
 }
 function kanaToHiragana(v){
   return String(v||"").trim().replace(/[ァ-ヶ]/g,ch=>String.fromCharCode(ch.charCodeAt(0)-0x60));
