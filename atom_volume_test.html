@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f3ed">
+<title>ともたよむ｜Atom量調査</title>
+<style>
+:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.5}
+main{width:min(100%,720px);margin:auto;padding:18px 14px 40px}
+h1{font-size:24px;margin:0 0 4px}
+.note{font-size:13px;color:var(--muted);margin:0 0 14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px;margin:10px 0}
+button{border:1px solid #c8c0b5;border-radius:8px;background:transparent;padding:8px 11px;font-size:14px;color:var(--ink)}
+button:disabled{opacity:.45}
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+select{padding:8px;border:1px solid #c8c0b5;border-radius:8px;background:var(--card);font-size:14px}
+.stat{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.badge{background:#fff;border:1px solid #ddd;border-radius:9px;padding:9px;font-size:13px}
+.badge b{display:block;font-size:19px;margin-top:2px}
+.progress{margin-top:10px;font-size:13px;color:var(--muted)}
+.bar{height:7px;background:#e5dfd6;border-radius:99px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;width:0;background:#777}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:7px 4px;border-bottom:1px solid #e7e1d8}
+th{font-weight:700}
+.small{font-size:12px;color:var(--muted)}
+.warn{background:#fff8d8;border-radius:9px;padding:10px;margin-top:10px;font-size:13px}
+.good{background:#eef8ef;border-radius:9px;padding:10px;margin-top:10px;font-size:13px}
+.error{background:#fff0f0;border-radius:9px;padding:10px;margin-top:10px;font-size:13px}
+pre{white-space:pre-wrap;font-size:11px;overflow:auto}
+</style>
+</head>
+<body>
+<main>
+<h1>ともたよむ｜Atom量調査</h1>
+<p class="note">本番の本棚・作者データは変更しません。登録作者のAtomを少人数ずつ調べて、過去1か月の情報量を推定するための調査ページです。</p>
+
+<div class="card">
+  <div class="controls">
+    <label>全年齢 <select id="normalN"><option>10</option><option selected>25</option><option>50</option></select> 人</label>
+    <label>R18 <select id="r18N"><option>10</option><option selected>25</option><option>50</option></select> 人</label>
+    <button id="start">🔎 調査開始</button>
+  </div>
+  <div class="progress" id="progress">作者情報を読み込み中…</div>
+  <div class="bar"><i id="bar"></i></div>
+</div>
+
+<div id="summary" class="card hidden"></div>
+<div id="tableBox" class="card hidden"></div>
+<div id="errors" class="card hidden"></div>
+
+<div class="card">
+  <b>この調査で見るもの</b>
+  <p class="small">各作者について「小説Atom」「活動報告Atom」を取得し、現在時刻から31日以内の entry 数を数えます。100件すべてが31日以内なら「100+」として扱います。Atomの保存やIndexedDBの更新は行いません。</p>
+</div>
+</main>
+
+<script>
+const DB_NAME="tomotaYomuDB",DB_VERSION=1;
+const CUTOFF_DAYS=31;
+const MAX_ATOM=100;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    const r=indexedDB.open(DB_NAME,DB_VERSION);
+    r.onsuccess=()=>resolve(r.result);
+    r.onerror=()=>reject(r.error||new Error("IndexedDBを開けません"));
+  });
+}
+function readAll(db,name){
+  return new Promise((resolve,reject)=>{
+    const st=db.transaction(name,"readonly").objectStore(name),out=[],r=st.openCursor();
+    r.onsuccess=()=>{const c=r.result;if(c){out.push(c.value);c.continue()}else resolve(out)};
+    r.onerror=()=>reject(r.error||new Error(name+"読込失敗"));
+  });
+}
+async function loadAuthors(){
+  const db=await openDB();
+  return readAll(db,"authors");
+}
+function uniqueAuthors(rows){
+  const m=new Map();
+  for(const r of rows||[]){
+    const id=String(r?.authorId||"").trim();
+    if(!id)continue;
+    const type=r?.authorType==="r18"?"r18":"normal";
+    const key=type+":"+id.toUpperCase();
+    if(!m.has(key)){
+      m.set(key,{
+        key,id,type,
+        name:String(r?.authorManageName||r?.authorName||r?.writer||id).trim()
+      });
+    }
+  }
+  return [...m.values()];
+}
+function shuffle(a){
+  const x=a.slice();
+  for(let i=x.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[x[i],x[j]]=[x[j],x[i]]}
+  return x;
+}
+async function fetchAtom(type,id,kind){
+  const base=kind==="novel"?"writernovel":"writerblog";
+  const url="https://api.syosetu.com/"+base+"/"+encodeURIComponent(id)+".Atom";
+  const res=await fetch(url,{cache:"no-store"});
+  if(!res.ok)throw new Error("HTTP "+res.status);
+  const text=await res.text();
+  const xml=new DOMParser().parseFromString(text,"application/xml");
+  if(xml.querySelector("parsererror"))throw new Error("XML解析失敗");
+  const entries=[...xml.querySelectorAll("entry")];
+  const cutoff=Date.now()-CUTOFF_DAYS*24*60*60*1000;
+  const dates=entries.map(e=>new Date(e.querySelector("updated")?.textContent||"")).filter(d=>!isNaN(d.getTime())).sort((a,b)=>b-a);
+  const recent=dates.filter(d=>d.getTime()>=cutoff);
+  return {
+    total:entries.length,
+    recent:recent.length,
+    capped:entries.length>=MAX_ATOM && dates.length>0 && dates[dates.length-1].getTime()>=cutoff,
+    oldest:dates.length?dates[dates.length-1]:null,
+    url
+  };
+}
+async function fetchOne(author){
+  const [novel,blog]=await Promise.all([
+    fetchAtom(author.type,author.id,"novel"),
+    fetchAtom(author.type,author.id,"blog")
+  ]);
+  return {...author,novel,blog,total:novel.recent+blog.recent};
+}
+function fmtDate(d){return d?d.toLocaleDateString("ja-JP",{month:"numeric",day:"numeric"}):"-"}
+function valueText(n,capped){return capped?"100+":String(n)}
+function stats(values){
+  const nums=values.map(v=>v.total).sort((a,b)=>a-b);
+  if(!nums.length)return null;
+  const sum=nums.reduce((a,b)=>a+b,0);
+  const q=p=>nums[Math.min(nums.length-1,Math.floor((nums.length-1)*p))];
+  return {n:nums.length,avg:sum/nums.length,median:q(.5),p90:q(.9),max:nums[nums.length-1],zero:nums.filter(v=>v===0).length};
+}
+async function run(){
+  $("start").disabled=true;$("summary").classList.add("hidden");$("tableBox").classList.add("hidden");$("errors").classList.add("hidden");
+  try{
+    const all=uniqueAuthors(await loadAuthors());
+    const normal=shuffle(all.filter(a=>a.type==="normal")).slice(0,Number($("normalN").value));
+    const r18=shuffle(all.filter(a=>a.type==="r18")).slice(0,Number($("r18N").value));
+    const targets=[...normal,...r18];
+    if(!targets.length)throw new Error("登録作者が見つかりません");
+    let done=0,results=[],errors=[];
+    $("progress").textContent="調査中… 0 / "+targets.length;
+    $("bar").style.width="0%";
+    for(let i=0;i<targets.length;i+=2){
+      const batch=targets.slice(i,i+2);
+      const settled=await Promise.all(batch.map(async a=>{
+        try{return {ok:true,value:await fetchOne(a)}}
+        catch(e){return {ok:false,author:a,error:String(e?.message||e)}}
+      }));
+      for(const x of settled){done++;if(x.ok)results.push(x.value);else errors.push(x)}
+      $("progress").textContent="調査中… "+done+" / "+targets.length;
+      $("bar").style.width=Math.round(done/targets.length*100)+"%";
+    }
+    render(results,errors,targets.length);
+  }catch(e){
+    $("errors").className="card error";$("errors").textContent="調査失敗："+(e?.message||e);$("errors").classList.remove("hidden");
+  }finally{$("start").disabled=false}
+}
+function render(results,errors,targetCount){
+  const s=stats(results);
+  const n=results.filter(x=>x.type==="normal"),r=results.filter(x=>x.type==="r18");
+  const sn=stats(n),sr=stats(r);
+  $("summary").className="card";
+  $("summary").innerHTML="<b>今回の結果</b><div class='stat'>"+
+    "<div class='badge'>調査作者<b>"+results.length+" / "+targetCount+"</b></div>"+
+    "<div class='badge'>0件の作者<b>"+(s?s.zero:0)+"人</b></div>"+
+    "<div class='badge'>1作者あたり平均<b>"+(s?s.avg.toFixed(1):"-")+"件</b></div>"+
+    "<div class='badge'>中央値<b>"+(s?s.median:"-")+"件</b></div>"+
+    "<div class='badge'>90%点<b>"+(s?s.p90:"-")+"件</b></div>"+
+    "<div class='badge'>最大<b>"+(s?s.max:"-")+"件</b></div>"+
+    "</div>"+
+    "<p class='small'>小説＋活動報告の、過去"+CUTOFF_DAYS+"日間の件数。100件上限に達した作者は実際には「100件以上」の可能性があります。</p>"+
+    "<div class='good'>全年齢：平均 "+(sn?sn.avg.toFixed(1):"-")+" / 中央値 "+(sn?sn.median:"-")+" / 0件 "+(sn?sn.zero:"-")+"人<br>R18：平均 "+(sr?sr.avg.toFixed(1):"-")+" / 中央値 "+(sr?sr.median:"-")+" / 0件 "+(sr?sr.zero:"-")+"人</div>";
+  $("summary").classList.remove("hidden");
+
+  const rows=results.slice().sort((a,b)=>b.total-a.total).map(x=>
+    "<tr><td>"+esc(x.name)+"<br><span class='small'>"+(x.type==="r18"?"R18":"全年齢")+" / "+esc(x.id)+"</span></td>"+
+    "<td>"+valueText(x.novel.recent,x.novel.capped)+"</td><td>"+valueText(x.blog.recent,x.blog.capped)+"</td>"+
+    "<td><b>"+valueText(x.total,(x.novel.capped||x.blog.capped))+"</b></td>"+
+    "<td>"+fmtDate(x.novel.oldest)+" / "+fmtDate(x.blog.oldest)+"</td></tr>"
+  ).join("");
+  $("tableBox").className="card";
+  $("tableBox").innerHTML="<b>作者別</b><table><thead><tr><th>作者</th><th>小説</th><th>報告</th><th>計</th><th>最古日</th></tr></thead><tbody>"+rows+"</tbody></table>";
+  $("tableBox").classList.remove("hidden");
+
+  if(errors.length){
+    $("errors").className="card warn";
+    $("errors").innerHTML="<b>取得できなかった作者："+errors.length+"人</b><p class='small'>CORS・一時的なAPIエラーなどの可能性があります。</p><pre>"+esc(errors.map(x=>x.author.name+" / "+x.author.id+" / "+x.error).join("\n"))+"</pre>";
+    $("errors").classList.remove("hidden");
+  }
+}
+$("start").addEventListener("click",run);
+loadAuthors().then(rows=>{
+  const u=uniqueAuthors(rows),n=u.filter(x=>x.type==="normal").length,r=u.filter(x=>x.type==="r18").length;
+  $("progress").textContent="登録作者："+u.length+"人（全年齢 "+n+" / R18 "+r+"）。25人ずつの小規模調査から開始します。";
+}).catch(e=>{$("progress").textContent="作者情報を読めません："+(e?.message||e)});
+</script>
+</body>
+</html>
