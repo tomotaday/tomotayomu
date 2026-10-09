@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f5f7">
+<title>ともたよむ｜速報期間テスト</title>
+<style>
+:root{color-scheme:light dark;--bg:#f5f5f7;--card:#fff;--fg:#202124;--muted:#737780;--accent:#635bce;--line:#e2e4e9}
+@media(prefers-color-scheme:dark){:root{--bg:#17181b;--card:#24262b;--fg:#f4f4f5;--muted:#a6a8b0;--line:#3c3f46}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:680px;margin:auto;padding:calc(22px + env(safe-area-inset-top)) 18px calc(30px + env(safe-area-inset-bottom))}
+h1{font-size:1.45rem;margin:8px 0 4px}.sub{color:var(--muted);font-size:.9rem;line-height:1.5}
+.card{background:var(--card);border-radius:22px;padding:18px;margin:16px 0;box-shadow:0 2px 12px #00000008}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px}.value{font-size:2rem;font-weight:750;letter-spacing:-.04em}.unit{font-size:1rem;font-weight:600}
+input[type=range]{width:100%;accent-color:var(--accent);margin:20px 0 8px;height:32px}
+.marks{display:flex;justify-content:space-between;color:var(--muted);font-size:.78rem}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px}.stat{background:var(--bg);border-radius:15px;padding:13px}.stat .n{font-size:1.55rem;font-weight:750;overflow-wrap:anywhere}.stat .label{font-size:.8rem;color:var(--muted);margin-bottom:5px}
+.pills{display:flex;gap:8px;flex-wrap:wrap}.pill{font-size:.8rem;border:1px solid var(--line);padding:6px 10px;border-radius:999px;color:var(--muted)}
+h2{font-size:1.05rem;margin:0 0 12px}.entry{padding:12px 0;border-bottom:1px solid var(--line)}.entry:last-child{border-bottom:0}.entry a{color:var(--accent);text-decoration:none;font-weight:650}.meta{font-size:.78rem;color:var(--muted);margin-top:5px}
+button{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:12px;padding:10px 14px;font-size:.9rem}
+.note{font-size:.82rem;line-height:1.55;color:var(--muted)}.error{color:#c33}.empty{padding:18px 0;color:var(--muted)}
+</style>
+</head>
+<body><main>
+<h1>速報の対象期間</h1>
+<div class="sub">独立テスト画面｜本棚・index.html・IndexedDBは変更しません。</div>
+<section class="card">
+ <div class="row"><div><div class="sub">現在の設定</div><div class="value"><span id="daysLabel">30</span><span class="unit">日以内</span></div></div><button id="reset" type="button">30日に戻す</button></div>
+ <input id="days" type="range" min="7" max="90" step="1" value="30" aria-label="速報対象期間（日数）">
+ <div class="marks"><span>7日</span><span>30日</span><span>60日</span><span>90日</span></div>
+ <p class="note">期間を動かすと、現在の取得データの中で対象になる件数とJSONサイズを再計算します。未来の情報量は予測しません。</p>
+</section>
+<section class="card">
+ <h2>現在のデータ量</h2>
+ <div class="stats">
+  <div class="stat"><div class="label">作品更新</div><div class="n" id="novelCount">—</div><div class="meta" id="novelSize">JSON —</div></div>
+  <div class="stat"><div class="label">活動報告</div><div class="n" id="activityCount">—</div><div class="meta" id="activitySize">JSON —</div></div>
+  <div class="stat"><div class="label">合計エントリー</div><div class="n" id="totalCount">—</div><div class="meta">期間内に取得済みの項目</div></div>
+  <div class="stat"><div class="label">合計JSONサイズ</div><div class="n" id="totalSize">—</div><div class="meta">選択期間のデータを再シリアライズした実測値</div></div>
+ </div>
+ <div class="pills" style="margin-top:14px"><span class="pill" id="snapshotDate">取得日時を確認中</span><span class="pill" id="authorsLabel">作者数 —</span></div>
+</section>
+<section class="card"><h2>最近の項目（最大10件）</h2><div id="preview" class="empty">データを読み込んでいます…</div></section>
+<section class="card"><h2>この数値について</h2><p class="note">サイズは、選択期間に該当した作品更新・活動報告のJSONデータを、この画面の形式で再生成したUTF-8バイト数です。HTTP圧縮後の通信量や将来のデータ量を予測する値ではありません。</p><p class="note">対象はGitHub Actionsが取得したAtomフィード内の項目です。取得元の件数上限などにより、対象期間の全投稿が含まれるとは限りません。各作者の公式ページへのリンクから詳細を確認できます。</p></section>
+<div class="sub" id="status">データを確認中…</div>
+</main>
+<script>
+(() => {
+const DATA_URL = "./data/atom/author-alerts-window.json";
+const $ = id => document.getElementById(id);
+const state = { data: null, days: 30 };
+const parseDate = e => {
+ const raw = e.date || "";
+ const d = new Date(raw);
+ return Number.isNaN(d.getTime()) ? null : d;
+};
+const fmtBytes = n => n < 1024 ? n + " B" : n < 1024*1024 ? (n/1024).toFixed(1) + " KB" : (n/1024/1024).toFixed(2) + " MB";
+const fmtDate = d => d ? new Intl.DateTimeFormat("ja-JP",{year:"numeric",month:"2-digit",day:"2-digit"}).format(d) : "日付不明";
+const utf8Size = value => new TextEncoder().encode(JSON.stringify(value)).length;
+function collect(kind, days) {
+ const cutoff = new Date(new Date(state.data.fetched_at).getTime() - days*86400000);
+ const out = [];
+ for (const author of state.data.authors || []) {
+  const feed = (author.feeds || []).find(f => f.kind === kind);
+  if (!feed) continue;
+  const entries = (feed.entries || []).filter(e => {const d=parseDate(e);return d && d >= cutoff && d <= new Date(new Date(state.data.fetched_at).getTime()+86400000);})
+   .sort((a,b)=>(parseDate(b)||0)-(parseDate(a)||0))
+   .map(e=>({title:e.title||"",date:e.date||"",url:e.url||"",id:e.id||""}));
+  if (entries.length) out.push({author_id:author.author_id,author_type:author.author_type,entries});
+ }
+ return {schema_version:1,fetched_at:state.data.fetched_at,window_days:days,kind,authors:out};
+}
+function render(){
+ const days = Number($("days").value); state.days=days; $("daysLabel").textContent=days;
+ const novel=collect("novel",days), activity=collect("activity",days);
+ const nc=novel.authors.reduce((n,a)=>n+a.entries.length,0), ac=activity.authors.reduce((n,a)=>n+a.entries.length,0);
+ const ns=utf8Size(novel), as=utf8Size(activity);
+ $("novelCount").textContent=nc.toLocaleString("ja-JP"); $("activityCount").textContent=ac.toLocaleString("ja-JP");
+ $("novelSize").textContent="JSON "+fmtBytes(ns); $("activitySize").textContent="JSON "+fmtBytes(as);
+ $("totalCount").textContent=(nc+ac).toLocaleString("ja-JP"); $("totalSize").textContent=fmtBytes(ns+as);
+ $("snapshotDate").textContent="取得："+new Date(state.data.fetched_at).toLocaleString("ja-JP");
+ const authors=new Set([...novel.authors,...activity.authors].map(a=>a.author_type+":"+a.author_id));
+ $("authorsLabel").textContent="投稿あり "+authors.size+"人";
+ const items=[];
+ for (const kind of [novel,activity]) for (const a of kind.authors) for (const e of a.entries) items.push({...e,author_id:a.author_id,author_type:a.author_type,kind:kind.kind});
+ items.sort((a,b)=>(parseDate(b)||0)-(parseDate(a)||0));
+ $("preview").innerHTML="";
+ if (!items.length) $("preview").textContent="この期間に該当する取得済みデータはありません。";
+ for (const e of items.slice(0,10)){
+  const div=document.createElement("div");div.className="entry";
+  const a=document.createElement("a");a.href=e.url||"#";a.target="_blank";a.rel="noopener noreferrer";a.textContent=e.title||"(タイトルなし)";
+  const meta=document.createElement("div");meta.className="meta";meta.textContent=fmtDate(parseDate(e))+" · "+(e.kind==="novel"?"作品更新":"活動報告")+" · "+(e.author_type==="r18"?"R18":"全年齢")+" · "+e.author_id;
+  div.append(a,meta);$("preview").append(div);
+ }
+ $("status").textContent="読み込み完了｜取得元作者 "+(state.data.source_author_count||"—")+"人｜取得失敗フィード "+(state.data.source_failed_feed_count??"—")+"件";
+}
+async function init(){
+ try{const r=await fetch(DATA_URL,{cache:"no-store"});if(!r.ok)throw new Error("JSON取得失敗: HTTP "+r.status);state.data=await r.json();$("days").addEventListener("input",render);$("reset").addEventListener("click",()=>{$("days").value=30;render();});render();}
+ catch(e){$("status").className="sub error";$("status").textContent="データを読み込めませんでした："+e.message+"。先にGitHub Actionsの「Build author alert window preview」を実行してください。";$("preview").textContent="まだ表示用JSONがありません。";}
+}
+init();
+})();
+</script>
+</body></html>
