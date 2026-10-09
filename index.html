@@ -785,7 +785,7 @@ document.getElementById("saveAuthorAtomWorker")?.addEventListener("click",()=>{
   try{const u=new URL(value);if(u.protocol!=="https:")throw new Error();if(u.pathname!=="/"||u.search||u.hash)throw new Error();localStorage.setItem(ATOM_WORKER_KEY,u.origin);document.getElementById("authorAtomStatus").textContent="Worker URLを保存しました。";}catch(e){document.getElementById("authorAtomStatus").textContent="https:// から始まるWorker URLを入力してください。"}
 });
 document.getElementById("checkAuthorAtom")?.addEventListener("click",checkAuthorAtomFeeds);
-window.addEventListener("load",async()=>{try{const input=document.getElementById("authorAtomWorkerUrl");if(input)input.value=localStorage.getItem(ATOM_WORKER_KEY)||"";await renderAuthorAtom()}catch(e){console.warn("作者Atom表示準備失敗",e)}});
+window.addEventListener("load",async()=>{try{const input=document.getElementById("authorAtomWorkerUrl"),saved=localStorage.getItem(ATOM_WORKER_KEY)||"";if(input)input.value=saved;const status=document.getElementById("authorAtomStatus");if(status&&saved)status.textContent="Worker URL保存済み。必要なときに「作者更新を確認」を押してください。";await renderAuthorAtom()}catch(e){console.warn("作者Atom表示準備失敗",e)}});
 
 </script>
 
