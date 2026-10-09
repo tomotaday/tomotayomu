@@ -1,0 +1,59 @@
+name: Test author Atom feeds (small sample)
+
+on:
+  workflow_dispatch:
+    inputs:
+      author_ids:
+        description: "Comma-separated author IDs (one normal and one X... R18 ID)"
+        required: true
+        default: "1826746,X0463BP"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Prepare temporary sample list
+        env:
+          SAMPLE_IDS: ${{ inputs.author_ids }}
+        run: |
+          python - <<'PY'
+          import json, os
+          ids = list(dict.fromkeys(x.strip() for x in os.environ["SAMPLE_IDS"].split(",") if x.strip()))
+          if not ids:
+              raise SystemExit("No author IDs supplied")
+          authors = []
+          for aid in ids:
+              authors.append({
+                  "author_id": aid,
+                  "author_type": "r18" if aid.upper().startswith("X") else "normal"
+              })
+          with open("sample-authors.json", "w", encoding="utf-8") as f:
+              json.dump({"schema_version": 1, "author_count": len(authors), "authors": authors}, f)
+          print(f"Prepared {len(authors)} sample authors")
+          PY
+
+      - name: Fetch sample Atom feeds
+        env:
+          AUTHOR_LIST_PATH: sample-authors.json
+          OUTPUT_PATH: atom-test-output/author-feeds.json
+        run: python scripts/publish_author_atom_feeds.py
+
+      - name: Upload sample result
+        uses: actions/upload-artifact@v4
+        with:
+          name: author-atom-sample
+          path: atom-test-output/author-feeds.json
+          retention-days: 7
