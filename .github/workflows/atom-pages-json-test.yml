@@ -1,6 +1,8 @@
 name: Test publish Atom JSON to GitHub Pages
 
 on:
+  schedule:
+    - cron: "17 */6 * * *"
   workflow_dispatch:
     inputs:
       author_ids:
@@ -35,7 +37,7 @@ jobs:
 
       - name: Fetch Atom feeds and generate Pages JSON
         env:
-          AUTHOR_IDS: ${{ inputs.author_ids }}
+          AUTHOR_IDS: ${{ inputs.author_ids || '1826746,64980' }}
           OUTPUT_PATH: pages-test/atom/authors.json
         run: python test-source/scripts/atom_batch_test.py
 
