@@ -1,0 +1,777 @@
+{
+  "schema_version": 1,
+  "purpose": "isolated-github-actions-atom-test",
+  "author_id": "1826746",
+  "fetched_at": "2026-10-09T11:14:41.025615+00:00",
+  "feeds": [
+    {
+      "kind": "novel",
+      "url": "https://api.syosetu.com/writernovel/1826746.Atom",
+      "ok": true,
+      "http_status": 200,
+      "entry_count": 100,
+      "entries": [
+        {
+          "title": "短編作品[いつか言う日まで](短編)",
+          "id": "https://ncode.syosetu.com/n3808md/",
+          "updated": "2026-10-08T07:30:00+09:00",
+          "published": "2026-10-08T07:30:00+09:00",
+          "url": "https://ncode.syosetu.com/n3808md/"
+        },
+        {
+          "title": "短編作品[二度目の春の願いごと](短編)",
+          "id": "https://ncode.syosetu.com/n6582jx/",
+          "updated": "2026-09-25T07:30:00+09:00",
+          "published": "2026-09-25T07:30:00+09:00",
+          "url": "https://ncode.syosetu.com/n6582jx/"
+        },
+        {
+          "title": "短編作品[悪魔な悪役令嬢　〜愛猫からの余計な恩返し〜](短編)",
+          "id": "https://ncode.syosetu.com/n2611lu/",
+          "updated": "2026-09-23T07:30:00+09:00",
+          "published": "2026-09-23T07:30:00+09:00",
+          "url": "https://ncode.syosetu.com/n2611lu/"
+        },
+        {
+          "title": "短編作品[夢見る冷遇令嬢の大逆転](短編)",
+          "id": "https://ncode.syosetu.com/n2416mp/",
+          "updated": "2026-08-24T07:20:00+09:00",
+          "published": "2026-08-24T07:20:00+09:00",
+          "url": "https://ncode.syosetu.com/n2416mp/"
+        },
+        {
+          "title": "短編作品[笑顔が好きだった　【コミカライズ進行中】](短編)",
+          "id": "https://ncode.syosetu.com/n9769mf/",
+          "updated": "2026-06-10T07:20:00+09:00",
+          "published": "2026-06-10T07:20:00+09:00",
+          "url": "https://ncode.syosetu.com/n9769mf/"
+        },
+        {
+          "title": "短編作品[月神様のお気に入り](短編)",
+          "id": "https://ncode.syosetu.com/n3874mg/",
+          "updated": "2026-06-08T07:20:00+09:00",
+          "published": "2026-06-08T07:20:00+09:00",
+          "url": "https://ncode.syosetu.com/n3874mg/"
+        },
+        {
+          "title": "短編作品[金貨１枚でいかがでしょうか？　【電子書籍化】](短編)",
+          "id": "https://ncode.syosetu.com/n7579kf/",
+          "updated": "2026-04-27T07:20:00+09:00",
+          "published": "2026-04-27T07:20:00+09:00",
+          "url": "https://ncode.syosetu.com/n7579kf/"
+        },
+        {
+          "title": "短編作品[枯れ葉令嬢の決戦夜会　【コミカライズ】](短編)",
+          "id": "https://ncode.syosetu.com/n3091lr/",
+          "updated": "2026-04-14T07:22:15+09:00",
+          "published": "2026-04-14T07:22:15+09:00",
+          "url": "https://ncode.syosetu.com/n3091lr/"
+        },
+        {
+          "title": "短編作品[神の前でその真実の愛を誓えますか？](短編)",
+          "id": "https://ncode.syosetu.com/n4880lr/",
+          "updated": "2026-04-01T07:20:00+09:00",
+          "published": "2026-04-01T07:20:00+09:00",
+          "url": "https://ncode.syosetu.com/n4880lr/"
+        },
+        {
+          "title": "短編作品[天使戦線　〜金のナマケモノ、銀のコアラ〜](短編)",
+          "id": "https://ncode.syosetu.com/n0672kx/",
+          "updated": "2026-03-26T07:20:00+09:00",
+          "published": "2026-03-26T07:20:00+09:00",
+          "url": "https://ncode.syosetu.com/n0672kx/"
+        },
+        {
+          "title": "連載作品[筆頭公爵家第二夫人の楽しいオタク生活　２　〜ラスボス劇場爆誕！〜　【電子書籍化】-１０、オリヴィアの楽しい毎日](エピソード11)",
+          "id": "https://ncode.syosetu.com/n0370lq/11/",
+          "updated": "2026-03-24T08:16:50+09:00",
+          "published": "2026-03-24T08:16:50+09:00",
+          "url": "https://ncode.syosetu.com/n0370lq/11/"
+        },
+        {
+          "title": "短編作品[わらしべリリエット　](短編)",
+          "id": "https://ncode.syosetu.com/n1821jo/",
+          "updated": "2026-03-18T07:30:00+09:00",
+          "published": "2026-03-18T07:30:00+09:00",
+          "url": "https://ncode.syosetu.com/n1821jo/"
+        },
+        {
+          "title": "連載作品[筆頭公爵家第二夫人の楽しいオタク生活　２　〜ラスボス劇場爆誕！〜　【電子書籍化】-９、最後なんて永遠に来ない](エピソード10)",
+          "id": "https://ncode.syosetu.com/n0370lq/10/",
+          "updated": "2026-02-13T08:06:42+09:00",
+          "published": "2026-02-13T08:06:42+09:00",
+          "url": "https://ncode.syosetu.com/n0370lq/10/"
+        },
+        {
+          "title": "連載作品[筆頭公爵家第二夫人の楽しいオタク生活　２　〜ラスボス劇場爆誕！〜　【電子書籍化】-番外編　ラスボス劇場完成１年前](エピソード9)",
+          "id": "https://ncode.syosetu.com/n0370lq/9/",
+          "updated": "2026-02-08T00:13:22+09:00",
+          "published": "2026-02-08T00:13:22+09:00",
+          "url": "https://ncode.syosetu.com/n0370lq/9/"
+        },
+        {
+          "title": "連載作品[筆頭公爵家第二夫人の楽しいオタク生活　２　〜ラスボス劇場爆誕！〜　【電子書籍化】-８、カイゼクスとカロリーヌ、おまけでアンナ](エピソード8)",
+          "id": "https://ncode.syosetu.com/n0370lq/8/",
+          "updated": "2026-02-05T20:29:51+09:00",
+          "published": "2026-02-05T20:29:51+09:00",
+          "url": "https://ncode.syosetu.com/n0370lq/8/"
+        },
+        {
+          "title": "連載作品[筆頭公爵家第二夫人の楽しいオタク生活　２　〜ラスボス劇場爆誕！〜　【電子書籍化】-７、知る人ぞ知る](エピソード7)",
+          "id": "https://ncode.syosetu.com/n0370lq/7/",
+          "updated": "2026-02-03T21:39:54+09:00",
+          "published": "2026-02-03T21:39:54+09:00",
+          "url": "https://ncode.syosetu.com/n0370lq/7/"
+        },
+        {
+          "title": "連載作品[筆頭公爵家第二夫人の楽しいオタク生活　２　〜ラスボス劇場爆誕！〜　【電子書籍化】-６、小釜ちゃんは無限重量](エピソード6)",
+          "id": "https://ncode.syosetu.com/n0370lq/6/",
+          "updated": "2026-02-01T21:22:43+09:00",
+          "published": "2026-02-01T21:22:43+09:00",
+          "url": "https://ncode.syosetu.com/n0370lq/6/"
+        },
+        {
+          "title": "連載作品[筆頭公爵家第二夫人の楽しいオタク生活　２　〜ラスボス劇場爆誕！〜　【電子書籍化】-５、招かれざる客](エピソード5)",
+          "id": "https://ncode.syosetu.com/n0370lq/5/",
+          "updated": "2026-01-31T12:45:03+09:00",
+          "published": "2026-01-31T12:45:03+09:00",
+          "url": "https://ncode.syosetu.com/n0370lq/5/"
+        },
+        {
+          "title": "連載作品[筆頭公爵家第二夫人の楽しいオタク生活　２　〜ラスボス劇場爆誕！〜　【電子書籍化】-４、巨獣キング・ゴーラ](エピソード4)",
+          "id": "https://ncode.syosetu.com/n0370lq/4/",
+          "updated": "2026-01-30T15:49:13+09:00",
+          "published": "2026-01-30T15:49:13+09:00",
+          "url": "https://ncode.syosetu.com/n0370lq/4/"
+        },
+        {
+          "title": "連載作品[筆頭公爵家第二夫人の楽しいオタク生活　２　〜ラスボス劇場爆誕！〜　【電子書籍化】-３、ローエングリム公爵家の願い](エピソード3)",
+          "id": "https://ncode.syosetu.com/n0370lq/3/",
+          "updated": "2026-01-28T10:50:54+09:00",
+          "published": "2026-01-28T10:50:54+09:00",
+          "url": "https://ncode.syosetu.com/n0370lq/3/"
+        },
+        {
+          "title": "連載作品[筆頭公爵家第二夫人の楽しいオタク生活　２　〜ラスボス劇場爆誕！〜　【電子書籍化】-２、ラスボス劇場オープン](エピソード2)",
+          "id": "https://ncode.syosetu.com/n0370lq/2/",
+          "updated": "2026-01-27T07:00:00+09:00",
+          "published": "2026-01-27T07:00:00+09:00",
+          "url": "https://ncode.syosetu.com/n0370lq/2/"
+        },
+        {
+          "title": "連載作品[筆頭公爵家第二夫人の楽しいオタク生活　２　〜ラスボス劇場爆誕！〜　【電子書籍化】-１、王家とオリヴィア](エピソード1)",
+          "id": "https://ncode.syosetu.com/n0370lq/1/",
+          "updated": "2026-01-26T07:20:00+09:00",
+          "published": "2026-01-26T07:20:00+09:00",
+          "url": "https://ncode.syosetu.com/n0370lq/1/"
+        },
+        {
+          "title": "短編作品[チャンスは生かしてこそ役に立つ](短編)",
+          "id": "https://ncode.syosetu.com/n7850li/",
+          "updated": "2026-01-09T07:20:00+09:00",
+          "published": "2026-01-09T07:20:00+09:00",
+          "url": "https://ncode.syosetu.com/n7850li/"
+        },
+        {
+          "title": "連載作品[実録１１日間、実況中継は白い結婚！-１１日目、判決](エピソード11)",
+          "id": "https://ncode.syosetu.com/n6057lj/11/",
+          "updated": "2025-12-31T18:53:48+09:00",
+          "published": "2025-12-31T18:53:48+09:00",
+          "url": "https://ncode.syosetu.com/n6057lj/11/"
+        },
+        {
+          "title": "連載作品[実録１１日間、実況中継は白い結婚！-１０日目、白い結婚の終わり](エピソード10)",
+          "id": "https://ncode.syosetu.com/n6057lj/10/",
+          "updated": "2025-12-30T08:32:28+09:00",
+          "published": "2025-12-30T08:32:28+09:00",
+          "url": "https://ncode.syosetu.com/n6057lj/10/"
+        },
+        {
+          "title": "連載作品[実録１１日間、実況中継は白い結婚！-９日目、脱走へご招待](エピソード9)",
+          "id": "https://ncode.syosetu.com/n6057lj/9/",
+          "updated": "2025-12-09T22:29:32+09:00",
+          "published": "2025-12-09T22:29:32+09:00",
+          "url": "https://ncode.syosetu.com/n6057lj/9/"
+        },
+        {
+          "title": "連載作品[実録１１日間、実況中継は白い結婚！-８日目、最後の罠にむけてのそれぞれの思惑](エピソード8)",
+          "id": "https://ncode.syosetu.com/n6057lj/8/",
+          "updated": "2025-12-07T23:26:12+09:00",
+          "published": "2025-12-07T23:26:12+09:00",
+          "url": "https://ncode.syosetu.com/n6057lj/8/"
+        },
+        {
+          "title": "連載作品[実録１１日間、実況中継は白い結婚！-７日目、母と娘の策略](エピソード7)",
+          "id": "https://ncode.syosetu.com/n6057lj/7/",
+          "updated": "2025-12-07T01:26:15+09:00",
+          "published": "2025-12-07T01:26:15+09:00",
+          "url": "https://ncode.syosetu.com/n6057lj/7/"
+        },
+        {
+          "title": "連載作品[実録１１日間、実況中継は白い結婚！-６日目、ラヴァン伯爵夫人の微笑み](エピソード6)",
+          "id": "https://ncode.syosetu.com/n6057lj/6/",
+          "updated": "2025-12-05T23:11:57+09:00",
+          "published": "2025-12-05T23:11:57+09:00",
+          "url": "https://ncode.syosetu.com/n6057lj/6/"
+        },
+        {
+          "title": "連載作品[実録１１日間、実況中継は白い結婚！-５日目、ルーナ喧嘩を売る](エピソード5)",
+          "id": "https://ncode.syosetu.com/n6057lj/5/",
+          "updated": "2025-12-04T11:34:07+09:00",
+          "published": "2025-12-04T11:34:07+09:00",
+          "url": "https://ncode.syosetu.com/n6057lj/5/"
+        },
+        {
+          "title": "連載作品[実録１１日間、実況中継は白い結婚！-４日目、母と娘のお茶会](エピソード4)",
+          "id": "https://ncode.syosetu.com/n6057lj/4/",
+          "updated": "2025-12-04T00:02:14+09:00",
+          "published": "2025-12-04T00:02:14+09:00",
+          "url": "https://ncode.syosetu.com/n6057lj/4/"
+        },
+        {
+          "title": "連載作品[実録１１日間、実況中継は白い結婚！-３日目、ラヴァン伯爵夫人の陰謀](エピソード3)",
+          "id": "https://ncode.syosetu.com/n6057lj/3/",
+          "updated": "2025-12-03T01:01:22+09:00",
+          "published": "2025-12-03T01:01:22+09:00",
+          "url": "https://ncode.syosetu.com/n6057lj/3/"
+        },
+        {
+          "title": "連載作品[実録１１日間、実況中継は白い結婚！-２日目、侯爵家にて](エピソード2)",
+          "id": "https://ncode.syosetu.com/n6057lj/2/",
+          "updated": "2025-12-02T11:42:52+09:00",
+          "published": "2025-12-02T11:42:52+09:00",
+          "url": "https://ncode.syosetu.com/n6057lj/2/"
+        },
+        {
+          "title": "連載作品[実録１１日間、実況中継は白い結婚！-１日目、白い結婚](エピソード1)",
+          "id": "https://ncode.syosetu.com/n6057lj/1/",
+          "updated": "2025-12-02T07:20:00+09:00",
+          "published": "2025-12-02T07:20:00+09:00",
+          "url": "https://ncode.syosetu.com/n6057lj/1/"
+        },
+        {
+          "title": "短編作品[ナイショで離婚しましたので、白い結婚が崩壊しました　【コミカライズ】](短編)",
+          "id": "https://ncode.syosetu.com/n2593lj/",
+          "updated": "2025-11-21T07:20:00+09:00",
+          "published": "2025-11-21T07:20:00+09:00",
+          "url": "https://ncode.syosetu.com/n2593lj/"
+        },
+        {
+          "title": "短編作品[君は笑っていて](短編)",
+          "id": "https://ncode.syosetu.com/n3052lf/",
+          "updated": "2025-11-08T07:20:00+09:00",
+          "published": "2025-11-08T07:20:00+09:00",
+          "url": "https://ncode.syosetu.com/n3052lf/"
+        },
+        {
+          "title": "短編作品[婚約者が恋に落ちた瞬間、リリミヤは前世を思い出した　【コミカライズ】](短編)",
+          "id": "https://ncode.syosetu.com/n3380kh/",
+          "updated": "2025-10-28T07:20:00+09:00",
+          "published": "2025-10-28T07:20:00+09:00",
+          "url": "https://ncode.syosetu.com/n3380kh/"
+        },
+        {
+          "title": "短編作品[永遠に生きていてほしい　【Webtoon】](短編)",
+          "id": "https://ncode.syosetu.com/n1927kz/",
+          "updated": "2025-09-04T07:20:00+09:00",
+          "published": "2025-09-04T07:20:00+09:00",
+          "url": "https://ncode.syosetu.com/n1927kz/"
+        },
+        {
+          "title": "短編作品[婚約が破棄されたので家宝の壺を割ってみました](短編)",
+          "id": "https://ncode.syosetu.com/n1096kx/",
+          "updated": "2025-08-20T07:20:00+09:00",
+          "published": "2025-08-20T07:20:00+09:00",
+          "url": "https://ncode.syosetu.com/n1096kx/"
+        },
+        {
+          "title": "短編作品[第九王女のプライベート芋畑ダンジョン　【電子書籍化進行中】](短編)",
+          "id": "https://ncode.syosetu.com/n7546ku/",
+          "updated": "2025-08-07T07:10:00+09:00",
+          "published": "2025-08-07T07:10:00+09:00",
+          "url": "https://ncode.syosetu.com/n7546ku/"
+        },
+        {
+          "title": "連載作品[お気に入り登録をされたみたいです-１８、悪い運ではなく幸運の方でした](エピソード18)",
+          "id": "https://ncode.syosetu.com/n9601jo/18/",
+          "updated": "2025-07-22T07:59:02+09:00",
+          "published": "2025-07-22T07:59:02+09:00",
+          "url": "https://ncode.syosetu.com/n9601jo/18/"
+        },
+        {
+          "title": "連載作品[お気に入り登録をされたみたいです-１７、茉莉花はジークの番](エピソード17)",
+          "id": "https://ncode.syosetu.com/n9601jo/17/",
+          "updated": "2025-07-21T14:51:43+09:00",
+          "published": "2025-07-21T14:51:43+09:00",
+          "url": "https://ncode.syosetu.com/n9601jo/17/"
+        },
+        {
+          "title": "連載作品[お気に入り登録をされたみたいです-１６、この世界の人間が絶滅寸前の理由](エピソード16)",
+          "id": "https://ncode.syosetu.com/n9601jo/16/",
+          "updated": "2025-07-20T06:06:26+09:00",
+          "published": "2025-07-20T06:06:26+09:00",
+          "url": "https://ncode.syosetu.com/n9601jo/16/"
+        },
+        {
+          "title": "連載作品[お気に入り登録をされたみたいです-１５、危機](エピソード15)",
+          "id": "https://ncode.syosetu.com/n9601jo/15/",
+          "updated": "2025-07-19T15:47:33+09:00",
+          "published": "2025-07-19T15:47:33+09:00",
+          "url": "https://ncode.syosetu.com/n9601jo/15/"
+        },
+        {
+          "title": "連載作品[お気に入り登録をされたみたいです-１４、ジークの想い](エピソード14)",
+          "id": "https://ncode.syosetu.com/n9601jo/14/",
+          "updated": "2025-07-16T21:54:01+09:00",
+          "published": "2025-07-16T21:54:01+09:00",
+          "url": "https://ncode.syosetu.com/n9601jo/14/"
+        },
+        {
+          "title": "連載作品[お気に入り登録をされたみたいです-１３、茉莉花は失敗しました](エピソード13)",
+          "id": "https://ncode.syosetu.com/n9601jo/13/",
+          "updated": "2025-07-14T22:16:22+09:00",
+          "published": "2025-07-14T22:16:22+09:00",
+          "url": "https://ncode.syosetu.com/n9601jo/13/"
+        },
+        {
+          "title": "連載作品[お気に入り登録をされたみたいです-１２、もう一つの記録石の残り香](エピソード12)",
+          "id": "https://ncode.syosetu.com/n9601jo/12/",
+          "updated": "2025-07-12T20:11:52+09:00",
+          "published": "2025-07-12T20:11:52+09:00",
+          "url": "https://ncode.syosetu.com/n9601jo/12/"
+        },
+        {
+          "title": "連載作品[お気に入り登録をされたみたいです-１１、記録石](エピソード11)",
+          "id": "https://ncode.syosetu.com/n9601jo/11/",
+          "updated": "2025-07-11T23:07:57+09:00",
+          "published": "2025-07-11T23:07:57+09:00",
+          "url": "https://ncode.syosetu.com/n9601jo/11/"
+        },
+        {
+          "title": "連載作品[お気に入り登録をされたみたいです-１０、茉莉花とフローラの楽しいお買い物](エピソード10)",
+          "id": "https://ncode.syosetu.com/n9601jo/10/",
+          "updated": "2025-07-09T21:15:27+09:00",
+          "published": "2025-07-09T21:15:27+09:00",
+          "url": "https://ncode.syosetu.com/n9601jo/10/"
+        },
+        {
+          "title": "連載作品[お気に入り登録をされたみたいです-９、ダンジョンの石](エピソード9)",
+          "id": "https://ncode.syosetu.com/n9601jo/9/",
+          "updated": "2025-07-08T08:31:17+09:00",
+          "published": "2025-07-08T08:31:17+09:00",
+          "url": "https://ncode.syosetu.com/n9601jo/9/"
+        },
+        {
+          "title": "連載作品[お気に入り登録をされたみたいです-８、嬉し楽しのフローラ](エピソード8)",
+          "id": "https://ncode.syosetu.com/n9601jo/8/",
+          "updated": "2025-07-06T21:26:44+09:00",
+          "published": "2025-07-06T21:26:44+09:00",
+          "url": "https://ncode.syosetu.com/n9601jo/8/"
+        },
+        {
+          "title": "連載作品[お気に入り登録をされたみたいです-７、衝撃のギルド長](エピソード7)",
+          "id": "https://ncode.syosetu.com/n9601jo/7/",
+          "updated": "2025-07-05T12:44:14+09:00",
+          "published": "2025-07-05T12:44:14+09:00",
+          "url": "https://ncode.syosetu.com/n9601jo/7/"
+        },
+        {
+          "title": "連載作品[お気に入り登録をされたみたいです-６、『マリちゃんを見守り隊』の結成](エピソード6)",
+          "id": "https://ncode.syosetu.com/n9601jo/6/",
+          "updated": "2025-07-04T00:18:51+09:00",
+          "published": "2025-07-04T00:18:51+09:00",
+          "url": "https://ncode.syosetu.com/n9601jo/6/"
+        },
+        {
+          "title": "連載作品[お気に入り登録をされたみたいです-５、可愛いしか書けない](エピソード5)",
+          "id": "https://ncode.syosetu.com/n9601jo/5/",
+          "updated": "2025-07-03T01:06:24+09:00",
+          "published": "2025-07-03T01:06:24+09:00",
+          "url": "https://ncode.syosetu.com/n9601jo/5/"
+        },
+        {
+          "title": "連載作品[お気に入り登録をされたみたいです-４、最弱な人間は弱すぎるのでサワルナキケン](エピソード4)",
+          "id": "https://ncode.syosetu.com/n9601jo/4/",
+          "updated": "2025-07-02T00:57:03+09:00",
+          "published": "2025-07-02T00:57:03+09:00",
+          "url": "https://ncode.syosetu.com/n9601jo/4/"
+        },
+        {
+          "title": "連載作品[お気に入り登録をされたみたいです-３、箱入りになりました](エピソード3)",
+          "id": "https://ncode.syosetu.com/n9601jo/3/",
+          "updated": "2025-07-01T00:03:49+09:00",
+          "published": "2025-07-01T00:03:49+09:00",
+          "url": "https://ncode.syosetu.com/n9601jo/3/"
+        },
+        {
+          "title": "連載作品[お気に入り登録をされたみたいです-２、世界の真理は番が可愛い一択である](エピソード2)",
+          "id": "https://ncode.syosetu.com/n9601jo/2/",
+          "updated": "2025-06-29T00:14:23+09:00",
+          "published": "2025-06-29T00:14:23+09:00",
+          "url": "https://ncode.syosetu.com/n9601jo/2/"
+        },
+        {
+          "title": "連載作品[お気に入り登録をされたみたいです-１、運がいいのか、悪いのか……](エピソード1)",
+          "id": "https://ncode.syosetu.com/n9601jo/1/",
+          "updated": "2025-06-28T07:10:00+09:00",
+          "published": "2025-06-28T07:10:00+09:00",
+          "url": "https://ncode.syosetu.com/n9601jo/1/"
+        },
+        {
+          "title": "短編作品[悪役令嬢にならないためのシスコンの正しい使い方　【コミカライズ】](短編)",
+          "id": "https://ncode.syosetu.com/n9819kn/",
+          "updated": "2025-06-25T07:00:00+09:00",
+          "published": "2025-06-25T07:00:00+09:00",
+          "url": "https://ncode.syosetu.com/n9819kn/"
+        },
+        {
+          "title": "連載作品[筆頭公爵家第二夫人の楽しいオタク生活〈連載版〉【電子書籍化】【コミカライズ企画進行中】-６、約束](エピソード6)",
+          "id": "https://ncode.syosetu.com/n1673kh/6/",
+          "updated": "2025-05-02T13:19:31+09:00",
+          "published": "2025-05-02T13:19:31+09:00",
+          "url": "https://ncode.syosetu.com/n1673kh/6/"
+        },
+        {
+          "title": "連載作品[筆頭公爵家第二夫人の楽しいオタク生活〈連載版〉【電子書籍化】【コミカライズ企画進行中】-５、王宮夜会](エピソード5)",
+          "id": "https://ncode.syosetu.com/n1673kh/5/",
+          "updated": "2025-04-30T20:54:42+09:00",
+          "published": "2025-04-30T20:54:42+09:00",
+          "url": "https://ncode.syosetu.com/n1673kh/5/"
+        },
+        {
+          "title": "短編作品[欲深い悪役令嬢が処刑された後](短編)",
+          "id": "https://ncode.syosetu.com/n0329kh/",
+          "updated": "2025-04-30T07:00:00+09:00",
+          "published": "2025-04-30T07:00:00+09:00",
+          "url": "https://ncode.syosetu.com/n0329kh/"
+        },
+        {
+          "title": "連載作品[筆頭公爵家第二夫人の楽しいオタク生活〈連載版〉【電子書籍化】【コミカライズ企画進行中】-４、ラスボス戦とはジャンケンなりよ](エピソード4)",
+          "id": "https://ncode.syosetu.com/n1673kh/4/",
+          "updated": "2025-04-30T00:51:16+09:00",
+          "published": "2025-04-30T00:51:16+09:00",
+          "url": "https://ncode.syosetu.com/n1673kh/4/"
+        },
+        {
+          "title": "連載作品[筆頭公爵家第二夫人の楽しいオタク生活〈連載版〉【電子書籍化】【コミカライズ企画進行中】-３、ラスボス劇場](エピソード3)",
+          "id": "https://ncode.syosetu.com/n1673kh/3/",
+          "updated": "2025-04-29T07:25:32+09:00",
+          "published": "2025-04-29T07:25:32+09:00",
+          "url": "https://ncode.syosetu.com/n1673kh/3/"
+        },
+        {
+          "title": "連載作品[筆頭公爵家第二夫人の楽しいオタク生活〈連載版〉【電子書籍化】【コミカライズ企画進行中】-２、公爵家の第二夫人は白い結婚](エピソード2)",
+          "id": "https://ncode.syosetu.com/n1673kh/2/",
+          "updated": "2025-04-29T07:19:36+09:00",
+          "published": "2025-04-29T07:19:36+09:00",
+          "url": "https://ncode.syosetu.com/n1673kh/2/"
+        },
+        {
+          "title": "連載作品[筆頭公爵家第二夫人の楽しいオタク生活〈連載版〉【電子書籍化】【コミカライズ企画進行中】-１、オリヴィア・ラスボス、誕生](エピソード1)",
+          "id": "https://ncode.syosetu.com/n1673kh/1/",
+          "updated": "2025-04-29T07:00:00+09:00",
+          "published": "2025-04-29T07:00:00+09:00",
+          "url": "https://ncode.syosetu.com/n1673kh/1/"
+        },
+        {
+          "title": "短編作品[男爵令嬢の立つ鳥は跡を濁し、後始末はしない　【コミカライズ】](短編)",
+          "id": "https://ncode.syosetu.com/n5139ja/",
+          "updated": "2025-03-10T07:00:00+09:00",
+          "published": "2025-03-10T07:00:00+09:00",
+          "url": "https://ncode.syosetu.com/n5139ja/"
+        },
+        {
+          "title": "連載作品[悪役令嬢の母（予定）です。２０年後の娘のために将来のヒロインの地位を横取りしましたけど文句あります？　【電子書籍化】-後編](エピソード2)",
+          "id": "https://ncode.syosetu.com/n9536jx/2/",
+          "updated": "2025-02-13T14:27:25+09:00",
+          "published": "2025-02-13T14:27:25+09:00",
+          "url": "https://ncode.syosetu.com/n9536jx/2/"
+        },
+        {
+          "title": "連載作品[悪役令嬢の母（予定）です。２０年後の娘のために将来のヒロインの地位を横取りしましたけど文句あります？　【電子書籍化】-前編](エピソード1)",
+          "id": "https://ncode.syosetu.com/n9536jx/1/",
+          "updated": "2025-02-10T07:00:00+09:00",
+          "published": "2025-02-10T07:00:00+09:00",
+          "url": "https://ncode.syosetu.com/n9536jx/1/"
+        },
+        {
+          "title": "短編作品[麗しい侯爵令息が醜聞つきの私と婚約した４番目の理由](短編)",
+          "id": "https://ncode.syosetu.com/n4951jt/",
+          "updated": "2025-02-07T07:00:00+09:00",
+          "published": "2025-02-07T07:00:00+09:00",
+          "url": "https://ncode.syosetu.com/n4951jt/"
+        },
+        {
+          "title": "短編作品[ジェームズへの手紙](短編)",
+          "id": "https://ncode.syosetu.com/n2037jz/",
+          "updated": "2025-01-16T07:00:00+09:00",
+          "published": "2025-01-16T07:00:00+09:00",
+          "url": "https://ncode.syosetu.com/n2037jz/"
+        },
+        {
+          "title": "短編作品[申し訳ありませんが、愛しておりません　【コミカライズ】](短編)",
+          "id": "https://ncode.syosetu.com/n7081jv/",
+          "updated": "2025-01-16T07:00:00+09:00",
+          "published": "2025-01-16T07:00:00+09:00",
+          "url": "https://ncode.syosetu.com/n7081jv/"
+        },
+        {
+          "title": "短編作品[半分聖女の枯れ葉令嬢は小麦粉をこねこねこねる](短編)",
+          "id": "https://ncode.syosetu.com/n6524jb/",
+          "updated": "2024-12-27T07:00:00+09:00",
+          "published": "2024-12-27T07:00:00+09:00",
+          "url": "https://ncode.syosetu.com/n6524jb/"
+        },
+        {
+          "title": "短編作品[金貨を出せます、鳩も出ます　【コミカライズ】](短編)",
+          "id": "https://ncode.syosetu.com/n4689jv/",
+          "updated": "2024-12-18T07:00:00+09:00",
+          "published": "2024-12-18T07:00:00+09:00",
+          "url": "https://ncode.syosetu.com/n4689jv/"
+        },
+        {
+          "title": "短編作品[ラッコに転生したので人生で一度は言ってみたい台詞を言いました「ふっ、つまらぬものを打ってしまった……」](短編)",
+          "id": "https://ncode.syosetu.com/n6396jh/",
+          "updated": "2024-11-09T07:00:00+09:00",
+          "published": "2024-11-09T07:00:00+09:00",
+          "url": "https://ncode.syosetu.com/n6396jh/"
+        },
+        {
+          "title": "連載作品[カルテット、4/10000。-１００００人レース　ー８２　絶滅危惧種](エピソード82)",
+          "id": "https://ncode.syosetu.com/n7873gu/82/",
+          "updated": "2024-10-31T20:29:56+09:00",
+          "published": "2024-10-31T20:29:56+09:00",
+          "url": "https://ncode.syosetu.com/n7873gu/82/"
+        },
+        {
+          "title": "短編作品[筆頭公爵家第二夫人の楽しいオタク生活　【電子書籍化】【コミカライズ企画進行中】](短編)",
+          "id": "https://ncode.syosetu.com/n9262jh/",
+          "updated": "2024-09-17T07:57:35+09:00",
+          "published": "2024-09-17T07:57:35+09:00",
+          "url": "https://ncode.syosetu.com/n9262jh/"
+        },
+        {
+          "title": "連載作品[カルテット、4/10000。-１００００人レース　ー８１　ギルドマスター](エピソード81)",
+          "id": "https://ncode.syosetu.com/n7873gu/81/",
+          "updated": "2024-09-07T18:42:51+09:00",
+          "published": "2024-09-07T18:42:51+09:00",
+          "url": "https://ncode.syosetu.com/n7873gu/81/"
+        },
+        {
+          "title": "短編作品[転生悪役令嬢はスマイル０円キャンペーンを終了しました　【コミカライズ】](短編)",
+          "id": "https://ncode.syosetu.com/n7579jb/",
+          "updated": "2024-09-03T07:00:00+09:00",
+          "published": "2024-09-03T07:00:00+09:00",
+          "url": "https://ncode.syosetu.com/n7579jb/"
+        },
+        {
+          "title": "短編作品[小指の約束が薬指の約束へと変わった悪役令嬢の物語](短編)",
+          "id": "https://ncode.syosetu.com/n3591it/",
+          "updated": "2024-08-29T07:00:00+09:00",
+          "published": "2024-08-29T07:00:00+09:00",
+          "url": "https://ncode.syosetu.com/n3591it/"
+        },
+        {
+          "title": "連載作品[カルテット、4/10000。-１００００人レース　ー８０　サングラス警報発令](エピソード80)",
+          "id": "https://ncode.syosetu.com/n7873gu/80/",
+          "updated": "2024-08-28T09:23:07+09:00",
+          "published": "2024-08-28T09:23:07+09:00",
+          "url": "https://ncode.syosetu.com/n7873gu/80/"
+        },
+        {
+          "title": "短編作品[今世は完璧な淑女と称えられていたのに、前世の一羽だけ転んで遅れて溝に落ちてしまったドジっ子の雛カルガモのポンコツが降臨してしまいました](短編)",
+          "id": "https://ncode.syosetu.com/n1248je/",
+          "updated": "2024-08-06T07:25:21+09:00",
+          "published": "2024-08-06T07:25:21+09:00",
+          "url": "https://ncode.syosetu.com/n1248je/"
+        },
+        {
+          "title": "短編作品[魔力ではなく呪力がある世界での、私のざまぁ転生生活](短編)",
+          "id": "https://ncode.syosetu.com/n2876jb/",
+          "updated": "2024-08-04T07:00:00+09:00",
+          "published": "2024-08-04T07:00:00+09:00",
+          "url": "https://ncode.syosetu.com/n2876jb/"
+        },
+        {
+          "title": "連載作品[カルテット、4/10000。-１００００人レース　ー７９　Ｓ級冒険者は三食おやつ付き雇用契約を希望する](エピソード79)",
+          "id": "https://ncode.syosetu.com/n7873gu/79/",
+          "updated": "2024-08-04T00:04:00+09:00",
+          "published": "2024-08-04T00:04:00+09:00",
+          "url": "https://ncode.syosetu.com/n7873gu/79/"
+        },
+        {
+          "title": "短編作品[二度と帰りません　【コミカライズ進行中】](短編)",
+          "id": "https://ncode.syosetu.com/n6910ja/",
+          "updated": "2024-06-15T07:07:47+09:00",
+          "published": "2024-06-15T07:07:47+09:00",
+          "url": "https://ncode.syosetu.com/n6910ja/"
+        },
+        {
+          "title": "短編作品[次期伯爵夫人の離婚までの五年間と再婚までの半年](短編)",
+          "id": "https://ncode.syosetu.com/n2641ja/",
+          "updated": "2024-06-13T07:00:00+09:00",
+          "published": "2024-06-13T07:00:00+09:00",
+          "url": "https://ncode.syosetu.com/n2641ja/"
+        },
+        {
+          "title": "短編作品[悪役令嬢からの離脱前２４時間　【電子書籍化】](短編)",
+          "id": "https://ncode.syosetu.com/n1010it/",
+          "updated": "2024-03-31T07:00:00+09:00",
+          "published": "2024-03-31T07:00:00+09:00",
+          "url": "https://ncode.syosetu.com/n1010it/"
+        },
+        {
+          "title": "短編作品[冤罪をかけられる予定なので、先に悪役令嬢になってあげました　【コミカライズ】](短編)",
+          "id": "https://ncode.syosetu.com/n4281ir/",
+          "updated": "2024-03-28T07:00:00+09:00",
+          "published": "2024-03-28T07:00:00+09:00",
+          "url": "https://ncode.syosetu.com/n4281ir/"
+        },
+        {
+          "title": "連載作品[カルテット、4/10000。-１００００人レース　ー７８　フライドポテトは至高の美味さでした](エピソード78)",
+          "id": "https://ncode.syosetu.com/n7873gu/78/",
+          "updated": "2024-03-10T23:23:57+09:00",
+          "published": "2024-03-10T23:23:57+09:00",
+          "url": "https://ncode.syosetu.com/n7873gu/78/"
+        },
+        {
+          "title": "短編作品[猫宿りの瞳](短編)",
+          "id": "https://ncode.syosetu.com/n9638iq/",
+          "updated": "2024-03-03T07:00:00+09:00",
+          "published": "2024-03-03T07:00:00+09:00",
+          "url": "https://ncode.syosetu.com/n9638iq/"
+        },
+        {
+          "title": "連載作品[カルテット、4/10000。-１００００人レース　ー７７　エルフのリシャイル](エピソード77)",
+          "id": "https://ncode.syosetu.com/n7873gu/77/",
+          "updated": "2024-02-17T13:40:01+09:00",
+          "published": "2024-02-17T13:40:01+09:00",
+          "url": "https://ncode.syosetu.com/n7873gu/77/"
+        },
+        {
+          "title": "短編作品[ド辺境の男爵令嬢が公爵家に嫁入りすることになりました。誰か助けて](短編)",
+          "id": "https://ncode.syosetu.com/n3444iq/",
+          "updated": "2024-02-15T07:00:00+09:00",
+          "published": "2024-02-15T07:00:00+09:00",
+          "url": "https://ncode.syosetu.com/n3444iq/"
+        },
+        {
+          "title": "連載作品[カルテット、4/10000。-１００００人レース　ー７６　目覚め](エピソード76)",
+          "id": "https://ncode.syosetu.com/n7873gu/76/",
+          "updated": "2024-02-12T00:46:29+09:00",
+          "published": "2024-02-12T00:46:29+09:00",
+          "url": "https://ncode.syosetu.com/n7873gu/76/"
+        },
+        {
+          "title": "短編作品[棚ぼた式悪役令嬢の幸せな日々。by コアラ。](短編)",
+          "id": "https://ncode.syosetu.com/n7846io/",
+          "updated": "2024-01-05T07:00:00+09:00",
+          "published": "2024-01-05T07:00:00+09:00",
+          "url": "https://ncode.syosetu.com/n7846io/"
+        },
+        {
+          "title": "短編作品[手段は選びません！](短編)",
+          "id": "https://ncode.syosetu.com/n7834io/",
+          "updated": "2024-01-05T07:00:00+09:00",
+          "published": "2024-01-05T07:00:00+09:00",
+          "url": "https://ncode.syosetu.com/n7834io/"
+        },
+        {
+          "title": "連載作品[カルテット、4/10000。-１００００人レース　ー７５　種族変換](エピソード75)",
+          "id": "https://ncode.syosetu.com/n7873gu/75/",
+          "updated": "2023-12-29T15:54:06+09:00",
+          "published": "2023-12-29T15:54:06+09:00",
+          "url": "https://ncode.syosetu.com/n7873gu/75/"
+        },
+        {
+          "title": "連載作品[カルテット、4/10000。-１００００人レース　ー７４　君のいる所が僕の生きる場所](エピソード74)",
+          "id": "https://ncode.syosetu.com/n7873gu/74/",
+          "updated": "2023-12-29T09:36:10+09:00",
+          "published": "2023-12-29T09:36:10+09:00",
+          "url": "https://ncode.syosetu.com/n7873gu/74/"
+        },
+        {
+          "title": "連載作品[カルテット、4/10000。-１００００人レース　ー７３　奪う神と守る神](エピソード73)",
+          "id": "https://ncode.syosetu.com/n7873gu/73/",
+          "updated": "2023-12-24T12:39:45+09:00",
+          "published": "2023-12-24T12:39:45+09:00",
+          "url": "https://ncode.syosetu.com/n7873gu/73/"
+        },
+        {
+          "title": "連載作品[カルテット、4/10000。-１００００人レース　ー７２　ちっちゃい激カワの手乗りパンダは齢数千年のおじいちゃま](エピソード72)",
+          "id": "https://ncode.syosetu.com/n7873gu/72/",
+          "updated": "2023-12-23T14:22:51+09:00",
+          "published": "2023-12-23T14:22:51+09:00",
+          "url": "https://ncode.syosetu.com/n7873gu/72/"
+        },
+        {
+          "title": "連載作品[カルテット、4/10000。-１００００人レース　ー７１　忘れじの光の泡沫、百年のその後](エピソード71)",
+          "id": "https://ncode.syosetu.com/n7873gu/71/",
+          "updated": "2023-12-21T21:46:05+09:00",
+          "published": "2023-12-21T21:46:05+09:00",
+          "url": "https://ncode.syosetu.com/n7873gu/71/"
+        }
+      ],
+      "error": null
+    },
+    {
+      "kind": "activity",
+      "url": "https://api.syosetu.com/writerblog/1826746.Atom",
+      "ok": true,
+      "http_status": 200,
+      "entry_count": 7,
+      "entries": [
+        {
+          "title": "こんにちは",
+          "id": "https://mypage.syosetu.com/mypageblog/view/userid/1826746/blogkey/3676280/",
+          "updated": "2026-07-25T15:12:45+09:00",
+          "published": "2026-07-25T15:12:45+09:00",
+          "url": "https://mypage.syosetu.com/mypageblog/view/userid/1826746/blogkey/3676280/"
+        },
+        {
+          "title": "「ララティーナの婚約」コミカライズの連載がはじまりました",
+          "id": "https://mypage.syosetu.com/mypageblog/view/userid/1826746/blogkey/3572685/",
+          "updated": "2026-01-25T20:15:55+09:00",
+          "published": "2026-01-25T20:15:55+09:00",
+          "url": "https://mypage.syosetu.com/mypageblog/view/userid/1826746/blogkey/3572685/"
+        },
+        {
+          "title": "連載、始めました。",
+          "id": "https://mypage.syosetu.com/mypageblog/view/userid/1826746/blogkey/3543055/",
+          "updated": "2025-12-02T14:30:05+09:00",
+          "published": "2025-12-02T14:30:05+09:00",
+          "url": "https://mypage.syosetu.com/mypageblog/view/userid/1826746/blogkey/3543055/"
+        },
+        {
+          "title": "「ララティーナの婚約」電子書籍化しました",
+          "id": "https://mypage.syosetu.com/mypageblog/view/userid/1826746/blogkey/3381526/",
+          "updated": "2024-12-25T07:16:57+09:00",
+          "published": "2024-12-25T07:16:57+09:00",
+          "url": "https://mypage.syosetu.com/mypageblog/view/userid/1826746/blogkey/3381526/"
+        },
+        {
+          "title": "こんにちは、三香です　２",
+          "id": "https://mypage.syosetu.com/mypageblog/view/userid/1826746/blogkey/3309427/",
+          "updated": "2024-06-25T11:23:03+09:00",
+          "published": "2024-06-25T11:23:03+09:00",
+          "url": "https://mypage.syosetu.com/mypageblog/view/userid/1826746/blogkey/3309427/"
+        },
+        {
+          "title": "こんにちは、三香です",
+          "id": "https://mypage.syosetu.com/mypageblog/view/userid/1826746/blogkey/3207303/",
+          "updated": "2023-10-03T21:53:10+09:00",
+          "published": "2023-10-03T21:53:10+09:00",
+          "url": "https://mypage.syosetu.com/mypageblog/view/userid/1826746/blogkey/3207303/"
+        },
+        {
+          "title": "三香と申します",
+          "id": "https://mypage.syosetu.com/mypageblog/view/userid/1826746/blogkey/3042696/",
+          "updated": "2022-09-07T20:58:24+09:00",
+          "published": "2022-09-07T20:58:24+09:00",
+          "url": "https://mypage.syosetu.com/mypageblog/view/userid/1826746/blogkey/3042696/"
+        }
+      ],
+      "error": null
+    }
+  ]
+}
