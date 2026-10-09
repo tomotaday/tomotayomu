@@ -782,7 +782,7 @@ async function checkAuthorAtomFeeds(){
 }
 document.getElementById("saveAuthorAtomWorker")?.addEventListener("click",()=>{
   const input=document.getElementById("authorAtomWorkerUrl"),value=String(input.value||"").trim().replace(/\/$/,"");
-  try{const u=new URL(value);if(u.protocol!=="https:")throw new Error();localStorage.setItem(ATOM_WORKER_KEY,u.origin+u.pathname.replace(/\/$/,""));document.getElementById("authorAtomStatus").textContent="Worker URLを保存しました。";}catch(e){document.getElementById("authorAtomStatus").textContent="https:// から始まるWorker URLを入力してください。"}
+  try{const u=new URL(value);if(u.protocol!=="https:")throw new Error();if(u.pathname!=="/"||u.search||u.hash)throw new Error();localStorage.setItem(ATOM_WORKER_KEY,u.origin);document.getElementById("authorAtomStatus").textContent="Worker URLを保存しました。";}catch(e){document.getElementById("authorAtomStatus").textContent="https:// から始まるWorker URLを入力してください。"}
 });
 document.getElementById("checkAuthorAtom")?.addEventListener("click",checkAuthorAtomFeeds);
 window.addEventListener("load",async()=>{try{const input=document.getElementById("authorAtomWorkerUrl");if(input)input.value=localStorage.getItem(ATOM_WORKER_KEY)||"";await renderAuthorAtom()}catch(e){console.warn("作者Atom表示準備失敗",e)}});
