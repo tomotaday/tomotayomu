@@ -568,11 +568,16 @@ async function updateInfo(){
     buildUpdateView();
     buildShelfFolders();
     status.textContent=`更新確認完了：取得 ${rows.length}作品｜反映 ${reflected}作品｜更新候補 ${Object.keys(candidates).length}作品｜最新情報を保存｜新基準日 ${formatDate(newBaseline)}`;
-    if(String(localStorage.getItem(ATOM_WORKER_KEY)||"").trim()) await checkAuthorAtomFeeds();
   }catch(e){
     console.error(e);
     status.textContent="更新確認に失敗しました："+e.message;
-  }finally{btn.disabled=false;}
+  }finally{
+    // 作品APIが失敗しても、独立した作者Atom確認は止めない。
+    if(String(localStorage.getItem(ATOM_WORKER_KEY)||"").trim()){
+      try{await checkAuthorAtomFeeds()}catch(atomError){console.warn("作者Atom確認失敗",atomError)}
+    }
+    btn.disabled=false;
+  }
 }
 async function moveWorkToShelf(ncode,newShelfId){
   const db=await new Promise((ok,no)=>{
