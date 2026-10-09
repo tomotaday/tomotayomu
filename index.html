@@ -699,14 +699,17 @@ function atomPut(db,store,row){
   });
 }
 function atomEsc(s){return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
-function atomText(node,selector){return node.getElementsByTagName(selector)[0]?.textContent?.trim()||"";}
+function atomChildren(node,localName){
+  return [...(node?.getElementsByTagNameNS?.("*",localName)||node?.getElementsByTagName?.(localName)||[])];
+}
+function atomText(node,selector){return atomChildren(node,selector)[0]?.textContent?.trim()||"";}
 function atomAuthorKey(a){return (a.authorType==="r18"?"r18":"normal")+":"+String(a.authorId||"").trim();}
 function atomFeedEntries(xml,author,feedType){
   const doc=new DOMParser().parseFromString(xml,"application/xml");
   if(doc.querySelector("parsererror"))throw new Error("Atom XMLの解析に失敗");
-  return [...doc.getElementsByTagName("entry")].map(e=>{
+  return atomChildren(doc,"entry").map(e=>{
     const id=atomText(e,"id"),title=atomText(e,"title"),updated=atomText(e,"updated")||atomText(e,"published");
-    const link=[...e.getElementsByTagName("link")].find(x=>!x.getAttribute("rel")||x.getAttribute("rel")==="alternate");
+    const link=atomChildren(e,"link").find(x=>!x.getAttribute("rel")||x.getAttribute("rel")==="alternate");
     const url=link?.getAttribute("href")||"";
     const summary=atomText(e,"summary")||atomText(e,"content");
     const entryId=[feedType,author.authorId,id||url||title,updated].join("|");
