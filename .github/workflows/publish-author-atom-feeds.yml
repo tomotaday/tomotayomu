@@ -1,0 +1,60 @@
+name: Publish author Atom feeds
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 18 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: author-atom-feed-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Validate source author list
+        run: |
+          test -s data/author-list.json
+          python -c "import json; d=json.load(open('data/author-list.json', encoding='utf-8')); assert isinstance(d.get('authors'), list) and d['authors']"
+
+      - name: Fetch feeds
+        env:
+          AUTHOR_LIST_PATH: data/author-list.json
+          OUTPUT_PATH: data/atom/author-feeds.json
+        run: python scripts/publish_author_atom_feeds.py
+
+      - name: Commit changed feed snapshot
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/atom/author-feeds.json
+          if git diff --cached --quiet; then
+            echo "Feed snapshot unchanged."
+          else
+            git commit -m "chore: refresh author Atom feed snapshot"
+            git push origin HEAD:main
+          fi
+
+      - name: Upload feed snapshot for diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: author-atom-feeds
+          path: data/atom/author-feeds.json
+          if-no-files-found: warn
+          retention-days: 7
