@@ -53,6 +53,9 @@ export default {
     if (request.method !== "GET") {
       return json({ ok: false, error: "GET only" }, 405, origin);
     }
+    if (url.pathname === "/health") {
+      return json({ ok: true, service: "tomotayomu-atom", feedPath: "/feed" }, 200, origin);
+    }
     if (url.pathname !== "/feed") {
       return json({ ok: false, error: "Use /feed?type=novel|activity&id=AUTHOR_ID" }, 404, origin);
     }
