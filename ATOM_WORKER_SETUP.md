@@ -15,7 +15,7 @@ Cloudflareの編集画面でコードを組み立て直す必要はありませ�
 ## 公開確認
 まず、WorkerのベースURLに `/health` を付けて開きます。
 
-- `https://WORKERのベースURL/health`
+- 例：WorkerのURLが `https://tomotayomu-atom-test.アカウント名.workers.dev` なら、確認先は `https://tomotayomu-atom-test.アカウント名.workers.dev/health`
 
 `{"ok":true,"service":"tomotayomu-atom","feedPath":"/feed"}` のJSONが表示されれば、Hello Worldではなく新しいWorkerが公開されています。次に、ブラウザで次のようなURLを開きます。作者IDは動作確認済みの実在IDに置き換えてください。
 
