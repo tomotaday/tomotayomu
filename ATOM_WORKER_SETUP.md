@@ -13,7 +13,11 @@ Cloudflareの編集画面でコードを組み立て直す必要はありませ�
 5. 公開されたWorkerのベースURL（例: `https://名前.アカウント.workers.dev`）を控えます。末尾に `/feed` は付けません。
 
 ## 公開確認
-ブラウザで次のようなURLを開きます。作者IDは動作確認済みの実在IDに置き換えてください。
+まず、WorkerのベースURLに `/health` を付けて開きます。
+
+- `https://WORKERのベースURL/health`
+
+`{"ok":true,"service":"tomotayomu-atom","feedPath":"/feed"}` のJSONが表示されれば、Hello Worldではなく新しいWorkerが公開されています。次に、ブラウザで次のようなURLを開きます。作者IDは動作確認済みの実在IDに置き換えてください。
 
 - 通常作者の作品更新: `https://WORKERのベースURL/feed?type=novel&id=通常作者ID`
 - R18作者の作品更新: `https://WORKERのベースURL/feed?type=novel&id=x8754cq`
