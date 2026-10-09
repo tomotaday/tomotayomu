@@ -1,0 +1,38 @@
+name: Test Narou multi-author Atom JSON
+on:
+  workflow_dispatch:
+    inputs:
+      author_ids:
+        description: "Comma-separated Narou author IDs (example: 1826746,123456)"
+        required: true
+        default: "1826746"
+        type: string
+permissions:
+  contents: read
+jobs:
+  atom-batch-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out test branch
+        uses: actions/checkout@v4
+        with:
+          ref: test/github-actions-atom
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Fetch Atom feeds and generate combined JSON
+        id: fetch
+        env:
+          AUTHOR_IDS: ${{ inputs.author_ids }}
+          OUTPUT_PATH: atom-test-result/authors.json
+        run: python scripts/atom_batch_test.py
+      - name: Upload combined JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atom-test-multi-author-json
+          path: atom-test-result/authors.json
+          if-no-files-found: warn
+          retention-days: 7
