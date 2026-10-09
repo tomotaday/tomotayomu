@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ｜作者一覧エクスポート実験</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;margin:0;padding:16px;line-height:1.5;background:#fafafa;color:#222}
+h1{font-size:20px;margin:0 0 8px}.note{background:#fff8d8;border-radius:10px;padding:12px;margin:12px 0}
+button{padding:10px 14px;border:0;border-radius:8px;background:#222;color:white;font-size:15px;margin:5px 5px 5px 0}
+pre,textarea{box-sizing:border-box;width:100%;white-space:pre-wrap;overflow-wrap:anywhere;background:white;border:1px solid #ddd;border-radius:10px;padding:12px;font-size:12px}
+.status{font-size:13px;color:#555;margin:10px 0}.ok{color:#176b2c}.err{color:#b00020}
+</style>
+</head>
+<body>
+<h1>ともたよむ｜作者一覧エクスポート実験</h1>
+<p>IndexedDBに登録済みの作者IDを読み取り、Actionsへ渡すためのJSONを作ります。</p>
+<div class="note">このページは読み取り専用です。IndexedDB・本棚・作者情報は変更しません。GitHubへ自動送信もしません。</div>
+<div id="status" class="status">IndexedDBを確認しています…</div>
+<div>
+<button id="refresh">作者一覧を再読込</button>
+<button id="download" disabled>JSONを保存</button>
+<button id="copy" disabled>JSONをコピー</button>
+</div>
+<textarea id="output" rows="16" readonly placeholder="作者一覧JSONがここに表示されます"></textarea>
+<script>
+const DB_NAME="tomotaYomuDB",DB_VERSION=1;
+let result=null;
+function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error("IndexedDBを開けません"));r.onupgradeneeded=()=>{r.transaction.abort();reject(new Error("本棚DBがまだ存在しません。先にともたよむ本体を開いてください。"));};});}
+function readAll(db,name){return new Promise((resolve,reject)=>{let st;try{st=db.transaction(name,"readonly").objectStore(name)}catch(e){reject(new Error("ストア「"+name+"」が見つかりません"));return;}const out=[],r=st.openCursor();r.onsuccess=()=>{const c=r.result;if(c){out.push(c.value);c.continue()}else resolve(out)};r.onerror=()=>reject(r.error||new Error(name+"読込失敗"));});}
+async function load(){const status=document.getElementById("status"),out=document.getElementById("output");status.className="status";status.textContent="IndexedDBを読み取り中…";document.getElementById("download").disabled=true;document.getElementById("copy").disabled=true;try{const db=await openDB();const rows=await readAll(db,"authors");const byKey=new Map();for(const a of rows){if(!a||!String(a.authorId||"").trim())continue;const id=String(a.authorId).trim(),type=a.authorType==="r18"?"r18":"normal",key=type+":"+id;if(!byKey.has(key))byKey.set(key,{author_id:id,author_type:type,author_name:String(a.authorManageName||a.authorName||a.writer||""),author_kana:String(a.authorKana||""),author_url:String(a.authorUrl||""),work_count:0});byKey.get(key).work_count++;}const authors=[...byKey.values()].sort((a,b)=>a.author_type.localeCompare(b.author_type)||a.author_id.localeCompare(b.author_id,undefined,{numeric:true}));result={schema_version:1,exported_at:new Date().toISOString(),source:"tomotaYomuDB.authors",author_count:authors.length,authors};out.value=JSON.stringify(result,null,2);status.className="status ok";status.textContent="読込成功："+rows.length+"件の作者レコードから、作者"+authors.length+"人を抽出しました。";document.getElementById("download").disabled=false;document.getElementById("copy").disabled=false;}catch(e){result=null;out.value="";status.className="status err";status.textContent="読込失敗："+e.message+"（本体データは変更していません）";}}
+document.getElementById("refresh").addEventListener("click",load);
+document.getElementById("download").addEventListener("click",()=>{if(!result)return;const blob=new Blob([JSON.stringify(result,null,2)+"\n"],{type:"application/json;charset=utf-8"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="tomotayomu-author-list.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+document.getElementById("copy").addEventListener("click",async()=>{const out=document.getElementById("output");out.focus();out.select();try{await navigator.clipboard.writeText(out.value);document.getElementById("status").textContent="JSONをコピーしました。";}catch(e){document.getElementById("status").textContent="JSON全体を選択しました。コピー操作をしてください。";}});
+load();
+</script>
+</body>
+</html>
