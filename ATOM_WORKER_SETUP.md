@@ -7,8 +7,10 @@ Cloudflareの編集画面でコードを組み立て直す必要はありませ�
 ## 公開手順（iPadで単発作業）
 1. Cloudflareにログインし、Workers & Pagesを開きます。
 2. 既存の `tomotayomu-atom-test` を開き、編集画面へ進みます。
-3. エディタ内のコードをすべて選択し、GitHubの `atom_worker.js` の全内容に置き換えます。
-   - GitHubファイル: https://github.com/tomotaday/tomotayomu/blob/main/atom_worker.js
+3. エディタ内のコードをすべて選択し、下記の `atom_worker.js` 全文に置き換えます。
+   - 読みやすいGitHubページ: https://github.com/tomotaday/tomotayomu/blob/main/atom_worker.js
+   - コピーしやすい生コード（Raw）: https://raw.githubusercontent.com/tomotaday/tomotayomu/main/atom_worker.js
+   - iPadでは生コードのページを開き、本文を長押しして「すべてを選択」→「コピー」。Cloudflareのエディタに戻り、既存コードをすべて選択して貼り付けます。
 4. 保存・デプロイします。
 5. 公開されたWorkerのベースURL（例: `https://名前.アカウント.workers.dev`）を控えます。末尾に `/feed` は付けません。
 
