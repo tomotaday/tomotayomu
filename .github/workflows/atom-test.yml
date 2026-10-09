@@ -10,7 +10,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   atom-test:
@@ -19,12 +19,35 @@ jobs:
     steps:
       - name: Check out test branch
         uses: actions/checkout@v4
+        with:
+          ref: test/github-actions-atom
 
       - name: Fetch Atom feeds and generate JSON
         env:
           AUTHOR_ID: ${{ inputs.author_id }}
           OUTPUT_PATH: atom-test-result/author-${{ inputs.author_id }}.json
         run: python3 scripts/atom_test.py
+
+      - name: Copy JSON to a static test-data path
+        env:
+          AUTHOR_ID: ${{ inputs.author_id }}
+        run: |
+          mkdir -p test-data/atom
+          cp "atom-test-result/author-${AUTHOR_ID}.json" "test-data/atom/author-${AUTHOR_ID}.json"
+
+      - name: Commit generated JSON to the isolated test branch
+        env:
+          AUTHOR_ID: ${{ inputs.author_id }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "test-data/atom/author-${AUTHOR_ID}.json"
+          if git diff --cached --quiet; then
+            echo "JSON is unchanged; no commit needed."
+          else
+            git commit -m "test: publish Atom JSON for author ${AUTHOR_ID}"
+            git push origin HEAD:test/github-actions-atom
+          fi
 
       - name: Upload JSON result even if a feed fails
         if: always()
