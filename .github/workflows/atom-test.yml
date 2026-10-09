@@ -1,0 +1,36 @@
+name: Test Narou Atom via GitHub Actions
+
+on:
+  workflow_dispatch:
+    inputs:
+      author_id:
+        description: "Narou author ID (default: 1826746)"
+        required: false
+        default: "1826746"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  atom-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check out selected branch
+        uses: actions/checkout@v4
+
+      - name: Fetch Atom feeds and generate JSON
+        env:
+          AUTHOR_ID: ${{ inputs.author_id }}
+          OUTPUT_PATH: atom-test-result/author-${{ inputs.author_id }}.json
+        run: python3 scripts/atom_test.py
+
+      - name: Upload JSON result even if a feed fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atom-test-author-${{ inputs.author_id }}
+          path: atom-test-result/author-${{ inputs.author_id }}.json
+          if-no-files-found: warn
+          retention-days: 7
