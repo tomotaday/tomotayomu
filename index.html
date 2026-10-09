@@ -30,6 +30,14 @@ summary{cursor:pointer}
 .actions a{color:inherit;text-decoration:none;border-bottom:1px solid #aaa}
 .hidden{display:none!important}
 .searchDetails{margin:8px 0 10px;background:var(--shelf-card);color:var(--shelf-ink);border:1px solid var(--shelf-line);border-radius:11px;overflow:hidden}.searchDetails>summary{list-style:none;cursor:pointer;font-size:18px;font-weight:700;padding:9px 12px}.searchDetails>summary::-webkit-details-marker{display:none}.searchDetails>summary::before{content:"▸ ";font-size:18px}.searchDetails[open]>summary::before{content:"▾ ";font-size:18px}.searchDetails[open]>summary{border-bottom:1px solid var(--shelf-line)}.searchBody{padding:9px 12px}.searchInput{width:100%;padding:9px 10px;border:1px solid var(--shelf-line);border-radius:8px;background:var(--card);color:var(--ink);font-size:15px}.searchHint{font-size:12px;color:var(--muted);margin-top:6px}.searchResults{margin-top:8px}.searchResults .card{margin:10px 0}.searchCount{font-size:13px;color:var(--muted);margin-top:8px}</style>
+<style id="author-atom-style">
+#authorAtomList .atomDay{font-size:14px;font-weight:700;margin:12px 0 5px;border-bottom:1px solid var(--line);padding-bottom:4px}
+#authorAtomList .atomEntry{padding:8px 4px;border-bottom:1px solid var(--line);font-size:14px}
+#authorAtomList .atomEntry.unread{font-weight:700}
+#authorAtomList .atomEntry a{color:var(--ink);text-decoration:none}
+#authorAtomList .atomMeta{font-size:11px;color:var(--muted);font-weight:400;margin-top:3px}
+#authorAtomList button{font-size:12px;padding:4px 7px;margin:4px 0}
+</style>
 <style id="tomota-theme-style">
 body[data-theme="seiji"]{--bg:#edf4f1;--card:#f9fcfb;--ink:#20302d;--muted:#64736f;--line:#9aada7;--shelf-card:#f8fcfa;--shelf-ink:#20302d;--shelf-line:#b8c9c4}
 body[data-theme="night"]{--bg:#20242a;--card:#2b3038;--ink:#f1f3f4;--muted:#c1c7ce;--line:#59616b;--shelf-card:#303640;--shelf-ink:#f1f3f4;--shelf-line:#555f6b}
@@ -94,6 +102,19 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 <div class="update-empty" id="updateEmpty">作品はありません。</div>
 <section class="update-list" id="updateList"></section>
 </details>
+
+<details class="updateDetails" id="authorFeedDetails">
+  <summary id="authorFeedTitle">✍️ 作者更新 0件</summary>
+  <div style="padding:8px 0">
+    <label for="authorAtomWorkerUrl" style="display:block;font-size:13px;margin-bottom:5px">Atom取得Worker URL（公開後に設定）</label>
+    <input id="authorAtomWorkerUrl" type="url" placeholder="https://あなたのWorker.workers.dev" style="box-sizing:border-box;width:100%;padding:9px;border:1px solid #aaa195;border-radius:8px;background:var(--card);color:var(--ink)">
+    <button id="saveAuthorAtomWorker" type="button" style="margin-top:7px">Worker URLを保存</button>
+    <button id="checkAuthorAtom" type="button" style="margin-top:7px">作者更新を確認（次の10人）</button>
+    <div id="authorAtomStatus" style="font-size:13px;margin:8px 0">Worker未設定。設定前は取得しません。</div>
+    <div id="authorAtomList"></div>
+  </div>
+</details>
+
 <div id="shelfSections"></div>
 <section id="shelf"></section>
 </main>
@@ -647,6 +668,124 @@ document.addEventListener("click",e=>{
   }
 });
 window.addEventListener("load",async()=>{ try{ const s=document.getElementById("apiStatus"); if(s)s.textContent="本棚情報反映中"; await buildV3CardsFromIndexedDB(); seedReadingCache(); restoreReadingFromQuery(); restoreReadingPositions(); renderGlobalBaseline(); restoreLatestWorks(); buildUpdateView(); buildShelfFolders(); }catch(e){ console.warn("v3 IndexedDB本棚再構築失敗",e); const s=document.getElementById("apiStatus"); if(s)s.textContent="v3 IndexedDB接続失敗："+e.message; } });
+
+/* 作者Atomフィード：本棚DBと独立した保存領域 */
+const ATOM_DB_NAME="tomotaYomuAtomDB", ATOM_DB_VERSION=1;
+const ATOM_WORKER_KEY="tomotaYomu_atom_worker_url";
+const ATOM_BATCH_SIZE=10;
+function openAtomDB(){
+  return new Promise((resolve,reject)=>{
+    const r=indexedDB.open(ATOM_DB_NAME,ATOM_DB_VERSION);
+    r.onupgradeneeded=()=>{
+      const db=r.result;
+      if(!db.objectStoreNames.contains("entries"))db.createObjectStore("entries",{keyPath:"entryId"});
+      if(!db.objectStoreNames.contains("meta"))db.createObjectStore("meta",{keyPath:"key"});
+    };
+    r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error("Atom DBを開けません"));
+  });
+}
+function atomAll(db,store){
+  return new Promise((resolve,reject)=>{
+    const out=[],r=db.transaction(store,"readonly").objectStore(store).openCursor();
+    r.onsuccess=()=>{if(r.result){out.push(r.result.value);r.result.continue()}else resolve(out)};
+    r.onerror=()=>reject(r.error||new Error("Atomデータ読込失敗"));
+  });
+}
+function atomPut(db,store,row){
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(store,"readwrite");tx.objectStore(store).put(row);
+    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("Atom保存失敗"));
+  });
+}
+function atomEsc(s){return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
+function atomText(node,selector){return node.getElementsByTagName(selector)[0]?.textContent?.trim()||"";}
+function atomAuthorKey(a){return (a.authorType==="r18"?"r18":"normal")+":"+String(a.authorId||"").trim();}
+function atomFeedEntries(xml,author,feedType){
+  const doc=new DOMParser().parseFromString(xml,"application/xml");
+  if(doc.querySelector("parsererror"))throw new Error("Atom XMLの解析に失敗");
+  return [...doc.getElementsByTagName("entry")].map(e=>{
+    const id=atomText(e,"id"),title=atomText(e,"title"),updated=atomText(e,"updated")||atomText(e,"published");
+    const link=[...e.getElementsByTagName("link")].find(x=>!x.getAttribute("rel")||x.getAttribute("rel")==="alternate");
+    const url=link?.getAttribute("href")||"";
+    const summary=atomText(e,"summary")||atomText(e,"content");
+    const entryId=[feedType,author.authorId,id||url||title,updated].join("|");
+    return {entryId,authorId:String(author.authorId),authorName:String(author.authorName||author.writer||author.authorId),authorType:author.authorType==="r18"?"r18":"normal",feedType,workNcode:(url.match(/(N[0-9A-Z]{4,})/i)||[])[1]?.toUpperCase()||"",title,url,updated,summary,read:false,storedAt:new Date().toISOString()};
+  }).filter(x=>x.title);
+}
+async function readAtomAuthors(){
+  const db=await new Promise((ok,no)=>{const r=indexedDB.open("tomotaYomuDB",1);r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});
+  const rows=await new Promise((ok,no)=>{const out=[],r=db.transaction("authors","readonly").objectStore("authors").openCursor();r.onsuccess=()=>{if(r.result){out.push(r.result.value);r.result.continue()}else ok(out)};r.onerror=()=>no(r.error)});
+  const map=new Map();
+  rows.forEach(a=>{const id=String(a?.authorId||"").trim();if(!id)return;const type=a.authorType==="r18"?"r18":"normal",key=type+":"+id;if(!map.has(key))map.set(key,{authorId:id,authorType:type,authorName:a.authorName||a.writer||id,authorUrl:a.authorUrl||""})});
+  return [...map.values()].sort((a,b)=>atomAuthorKey(a).localeCompare(atomAuthorKey(b)));
+}
+async function renderAuthorAtom(){
+  const db=await openAtomDB(),entries=(await atomAll(db,"entries")).sort((a,b)=>String(b.updated||"").localeCompare(String(a.updated||"")));
+  const list=document.getElementById("authorAtomList");if(!list)return;
+  const unread=entries.filter(e=>!e.read).length;
+  document.getElementById("authorFeedTitle").textContent="✍️ 作者更新 "+unread+"件未読／"+entries.length+"件";
+  list.innerHTML="";
+  if(!entries.length){list.textContent="作者更新はまだありません。";return}
+  let day="";
+  entries.slice(0,500).forEach(e=>{
+    const d=String(e.updated||"").slice(0,10)||"日付不明";
+    if(d!==day){day=d;const h=document.createElement("div");h.className="atomDay";h.textContent=day;list.appendChild(h)}
+    const row=document.createElement("div");row.className="atomEntry"+(e.read?"":" unread");
+    const a=document.createElement("a");a.href=e.url||"#";a.target="_blank";a.rel="noopener noreferrer";a.textContent=(e.feedType==="activity"?"📝 ":"📖 ")+e.title;
+    if(e.url)a.addEventListener("click",()=>markAtomRead(e.entryId));
+    row.appendChild(a);
+    const meta=document.createElement("div");meta.className="atomMeta";meta.textContent=(e.authorType==="r18"?"R18 · ":"")+e.authorName+" · "+(e.feedType==="activity"?"活動報告":"作品更新");
+    row.appendChild(meta);
+    if(e.summary){const s=document.createElement("div");s.className="atomMeta";s.textContent=e.summary;row.appendChild(s)}
+    if(!e.read){const b=document.createElement("button");b.type="button";b.textContent="既読";b.addEventListener("click",()=>markAtomRead(e.entryId));row.appendChild(b)}
+    list.appendChild(row);
+  });
+}
+async function markAtomRead(id){const db=await openAtomDB(),all=await atomAll(db,"entries"),row=all.find(x=>x.entryId===id);if(row){row.read=true;await atomPut(db,"entries",row);await renderAuthorAtom()}}
+async function checkAuthorAtomFeeds(){
+  const status=document.getElementById("authorAtomStatus"),btn=document.getElementById("checkAuthorAtom");
+  const worker=String(localStorage.getItem(ATOM_WORKER_KEY)||"").trim();
+  if(!worker){status.textContent="Worker未設定。URLを保存すると取得できます。";return}
+  btn.disabled=true;
+  try{
+    const authors=await readAtomAuthors();
+    if(!authors.length){status.textContent="作者IDが登録されていません。";return}
+    const db=await openAtomDB(),meta=(await atomAll(db,"meta")).find(x=>x.key==="cursor");
+    let cursor=Number(meta?.value)||0;if(cursor>=authors.length)cursor=0;
+    const batch=authors.slice(cursor,cursor+ATOM_BATCH_SIZE);
+    const old=await atomAll(db,"entries"),known=new Set(old.map(x=>x.entryId));
+    let saved=0,failed=0;
+    status.textContent="作者Atom取得中… 0/"+batch.length;
+    for(let i=0;i<batch.length;i++){
+      const author=batch[i];
+      for(const feedType of ["novel","activity"]){
+        try{
+          const url=new URL(worker);url.pathname=url.pathname.replace(/\/$/,"")+"/feed";url.searchParams.set("type",feedType);url.searchParams.set("id",author.authorId);
+          const res=await fetch(url.toString(),{cache:"no-store"});
+          if(!res.ok)throw new Error("HTTP "+res.status);
+          const parsed=atomFeedEntries(await res.text(),author,feedType);
+          for(const entry of parsed)if(!known.has(entry.entryId)){await atomPut(db,"entries",entry);known.add(entry.entryId);saved++}
+        }catch(e){failed++;console.warn("Atom取得失敗",author.authorId,feedType,e)}
+      }
+      status.textContent="作者Atom取得中… "+(i+1)+"/"+batch.length;
+      if(i<batch.length-1)await new Promise(resolve=>setTimeout(resolve,350));
+    }
+    await atomPut(db,"meta",{key:"cursor",value:(cursor+batch.length)%authors.length});
+    await atomPut(db,"meta",{key:"lastCheck",value:new Date().toISOString()});
+    const all=await atomAll(db,"entries"),cut=Date.now()-31*24*60*60*1000;
+    for(const e of all)if(e.updated&&new Date(e.updated).getTime()<cut){await new Promise((resolve,reject)=>{const tx=db.transaction("entries","readwrite");tx.objectStore("entries").delete(e.entryId);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)})}
+    await renderAuthorAtom();
+    status.textContent="作者更新確認完了：今回 "+batch.length+"人／新着 "+saved+"件／取得失敗 "+failed+"件。次回は続きから確認します。";
+  }catch(e){console.error(e);status.textContent="作者更新の確認に失敗："+e.message}
+  finally{btn.disabled=false}
+}
+document.getElementById("saveAuthorAtomWorker")?.addEventListener("click",()=>{
+  const input=document.getElementById("authorAtomWorkerUrl"),value=String(input.value||"").trim().replace(/\/$/,"");
+  try{const u=new URL(value);if(u.protocol!=="https:")throw new Error();localStorage.setItem(ATOM_WORKER_KEY,u.origin+u.pathname.replace(/\/$/,""));document.getElementById("authorAtomStatus").textContent="Worker URLを保存しました。";}catch(e){document.getElementById("authorAtomStatus").textContent="https:// から始まるWorker URLを入力してください。"}
+});
+document.getElementById("checkAuthorAtom")?.addEventListener("click",checkAuthorAtomFeeds);
+window.addEventListener("load",async()=>{try{const input=document.getElementById("authorAtomWorkerUrl");if(input)input.value=localStorage.getItem(ATOM_WORKER_KEY)||"";await renderAuthorAtom()}catch(e){console.warn("作者Atom表示準備失敗",e)}});
+
 </script>
 
 
