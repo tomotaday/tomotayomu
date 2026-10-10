@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       sample_size:
-        description: "Number of authors to test (1-20)"
+        description: "Number of authors to test (1-50)"
         required: true
         default: "12"
         type: string
