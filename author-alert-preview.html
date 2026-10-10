@@ -117,7 +117,8 @@ function render(){
  for (const e of items.slice(0,10)){
   const div=document.createElement("div");div.className="entry";
   const a=document.createElement("a");a.href=e.url||"#";a.target="_blank";a.rel="noopener noreferrer";a.textContent=e.title||"(タイトルなし)";
-  const meta=document.createElement("div");meta.className="meta";const authorName=state.authorNames.get(e.author_type+":"+e.author_id)||e.author_id;\n  meta.textContent=fmtDate(parseDate(e))+" · "+(e.kind==="novel"?"作品更新":"活動報告")+" · "+(e.author_type==="r18"?"R18":"全年齢")+" · "+authorName;
+  const meta=document.createElement("div");meta.className="meta";const authorName=state.authorNames.get(e.author_type+":"+e.author_id)||e.author_id;
+  meta.textContent=fmtDate(parseDate(e))+" · "+(e.kind==="novel"?"作品更新":"活動報告")+" · "+(e.author_type==="r18"?"R18":"全年齢")+" · "+authorName;
   div.append(a,meta);$("preview").append(div);
  }
  $("status").textContent="読み込み完了｜取得元作者 "+(state.data.source_author_count||"—")+"人｜取得失敗フィード "+(state.data.source_failed_feed_count??"—")+"件";
