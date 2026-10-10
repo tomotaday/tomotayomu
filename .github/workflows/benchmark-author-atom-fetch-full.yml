@@ -1,0 +1,47 @@
+name: Full-size author Atom fetch benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_workers:
+        description: "Concurrent requests (3 or 4)"
+        required: true
+        default: "4"
+        type: choice
+        options:
+          - "3"
+          - "4"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: author-atom-full-benchmark
+  cancel-in-progress: false
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Run full-size isolated benchmark
+        env:
+          MAX_WORKERS: ${{ inputs.max_workers }}
+          REPORT_PATH: author-fetch-full-benchmark.json
+        run: python scripts/benchmark_author_atom_fetch_full.py
+      - name: Upload benchmark report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: author-fetch-full-benchmark
+          path: author-fetch-full-benchmark.json
+          if-no-files-found: warn
+          retention-days: 7
