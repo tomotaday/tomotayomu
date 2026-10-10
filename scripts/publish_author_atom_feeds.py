@@ -54,6 +54,17 @@ def main():
     except Exception as e:
         print(f"Cannot read author list: {e}", file=sys.stderr)
         return 2
+    # Keep the previous successful entries when an individual feed fails.
+    previous = {}
+    if os.path.isfile(OUTPUT_PATH):
+        try:
+            with open(OUTPUT_PATH, encoding="utf-8") as f:
+                old_snapshot = json.load(f)
+            for old_author in old_snapshot.get("authors", []):
+                old_key = (old_author.get("author_type"), str(old_author.get("author_id", "")))
+                previous[old_key] = {feed.get("kind"): feed for feed in old_author.get("feeds", [])}
+        except Exception as e:
+            print(f"Previous snapshot could not be read; starting fresh: {e}", file=sys.stderr)
     authors, seen = [], set()
     for item in raw_authors:
         aid = str(item.get("author_id", "")).strip()
@@ -69,6 +80,15 @@ def main():
             fetch_feed(aid, "novel", f"{base}/writernovel/{aid}.Atom"),
             fetch_feed(aid, "activity", f"{base}/writerblog/{aid}.Atom"),
         ]
+        old_feeds = previous.get((typ, aid), {})
+        for feed in feeds:
+            if not feed["ok"] and old_feeds.get(feed["kind"]):
+                old = old_feeds[feed["kind"]]
+                feed["entries"] = old.get("entries", [])
+                feed["entry_count"] = len(feed["entries"])
+                feed["previous_data_retained"] = True
+            else:
+                feed["previous_data_retained"] = False
         authors.append({"author_id": aid, "author_type": typ,
                         "ok": all(x["ok"] for x in feeds), "feeds": feeds})
         print(f"{aid} ({typ}): " + ", ".join(
