@@ -1,0 +1,46 @@
+name: Benchmark author Atom fetch speed
+
+on:
+  workflow_dispatch:
+    inputs:
+      sample_size:
+        description: "Number of authors to test (1-20)"
+        required: true
+        default: "12"
+        type: string
+      max_workers:
+        description: "Concurrent requests (1-4)"
+        required: true
+        default: "3"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Run isolated benchmark
+        env:
+          SAMPLE_SIZE: ${{ inputs.sample_size }}
+          MAX_WORKERS: ${{ inputs.max_workers }}
+          REPORT_PATH: author-fetch-benchmark.json
+        run: python scripts/benchmark_author_atom_fetch.py
+      - name: Upload benchmark report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: author-fetch-benchmark
+          path: author-fetch-benchmark.json
+          if-no-files-found: warn
+          retention-days: 7
