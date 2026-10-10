@@ -4,6 +4,7 @@
 Input: data/author-list.json, containing authors with author_id and author_type.
 Output: data/atom/author-feeds.json. No app database or reading positions are accessed.
 """
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
@@ -65,7 +66,8 @@ def main():
                 previous[old_key] = {feed.get("kind"): feed for feed in old_author.get("feeds", [])}
         except Exception as e:
             print(f"Previous snapshot could not be read; starting fresh: {e}", file=sys.stderr)
-    authors, seen = [], set()
+    # Keep the input order stable, while limiting network concurrency to three feeds.
+    valid_authors, seen = [], set()
     for item in raw_authors:
         aid = str(item.get("author_id", "")).strip()
         typ = item.get("author_type")
@@ -73,13 +75,28 @@ def main():
             print(f"Skipping invalid author record: {aid!r}/{typ!r}", file=sys.stderr)
             continue
         key = (typ, aid.upper() if aid[:1].upper() == "X" else aid)
-        if key in seen: continue
+        if key in seen:
+            continue
         seen.add(key)
-        base = "https://api.syosetu.com"
-        feeds = [
-            fetch_feed(aid, "novel", f"{base}/writernovel/{aid}.Atom"),
-            fetch_feed(aid, "activity", f"{base}/writerblog/{aid}.Atom"),
-        ]
+        valid_authors.append({"author_id": aid, "author_type": typ})
+
+    base = "https://api.syosetu.com"
+    feed_results = {}
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        future_map = {}
+        for author in valid_authors:
+            aid = author["author_id"]
+            for kind, endpoint in (("novel", "writernovel"), ("activity", "writerblog")):
+                future = pool.submit(fetch_feed, aid, kind, f"{base}/{endpoint}/{aid}.Atom")
+                future_map[future] = (author["author_type"], aid, kind)
+        for future in as_completed(future_map):
+            typ, aid, kind = future_map[future]
+            feed_results[(typ, aid, kind)] = future.result()
+
+    authors = []
+    for author in valid_authors:
+        aid, typ = author["author_id"], author["author_type"]
+        feeds = [feed_results[(typ, aid, kind)] for kind in ("novel", "activity")]
         old_feeds = previous.get((typ, aid), {})
         for feed in feeds:
             if not feed["ok"] and old_feeds.get(feed["kind"]):
@@ -93,7 +110,6 @@ def main():
                         "ok": all(x["ok"] for x in feeds), "feeds": feeds})
         print(f"{aid} ({typ}): " + ", ".join(
             f"{x['kind']}={x['http_status']}/{x['entry_count']}" for x in feeds))
-        time.sleep(0.25)
     result = {"schema_version": 1, "purpose": "tomotayomu-author-atom-feeds",
               "fetched_at": datetime.now(timezone.utc).isoformat(),
               "source_author_count": len(raw_authors), "author_count": len(authors),
