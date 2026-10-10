@@ -119,7 +119,24 @@ def main():
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, separators=(",", ":"))
         f.write("\n")
+    failed_feed_count = result["failed_feed_count"]
+    retained_previous_count = sum(
+        1 for author in authors for feed in author["feeds"]
+        if feed.get("previous_data_retained")
+    )
+    entry_count_total = sum(
+        feed.get("entry_count") or 0
+        for author in authors for feed in author["feeds"]
+    )
     print(f"Wrote {OUTPUT_PATH}: {len(authors)} authors")
+    print(
+        "SUMMARY "
+        f"authors={len(authors)} "
+        f"feeds={len(authors) * 2} "
+        f"failed_feeds={failed_feed_count} "
+        f"previous_data_retained={retained_previous_count} "
+        f"entries={entry_count_total}"
+    )
     return 0
 
 if __name__ == "__main__":
