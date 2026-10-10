@@ -86,7 +86,7 @@ def main():
     }
     with open(REPORT_PATH, "w", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, separators=(",", ":"))
-        f.write("\\n")
+        f.write("\n")
     print(json.dumps({k: report[k] for k in (
         "author_count", "feed_request_count", "max_workers", "elapsed_seconds",
         "ok_count", "failed_count", "entry_count_total", "generated_at", "report_path"
