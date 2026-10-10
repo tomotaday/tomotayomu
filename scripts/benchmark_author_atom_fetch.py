@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ET
 
 INPUT_PATH = os.environ.get("AUTHOR_LIST_PATH", "data/author-list.json")
 REPORT_PATH = os.environ.get("REPORT_PATH", "author-fetch-benchmark.json")
-SAMPLE_SIZE = max(1, min(20, int(os.environ.get("SAMPLE_SIZE", "12"))))
+SAMPLE_SIZE = max(1, min(50, int(os.environ.get("SAMPLE_SIZE", "12"))))
 MAX_WORKERS = max(1, min(4, int(os.environ.get("MAX_WORKERS", "3"))))
 ATOM_NS = "{http://www.w3.org/2005/Atom}"
 
