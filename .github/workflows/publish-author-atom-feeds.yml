@@ -38,15 +38,18 @@ jobs:
           OUTPUT_PATH: data/atom/author-feeds.json
         run: python scripts/publish_author_atom_feeds.py
 
-      - name: Commit changed feed snapshot
+      - name: Build compact alert preview
+        run: python scripts/build_author_alerts_window.py
+
+      - name: Commit changed feed and preview snapshots
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/atom/author-feeds.json
+          git add data/atom/author-feeds.json data/atom/author-alerts-window.json
           if git diff --cached --quiet; then
             echo "Feed snapshot unchanged."
           else
-            git commit -m "chore: refresh author Atom feed snapshot"
+            git commit -m "chore: refresh author Atom feed and alert snapshots"
             git push origin HEAD:main
           fi
 
@@ -56,5 +59,14 @@ jobs:
         with:
           name: author-atom-feeds
           path: data/atom/author-feeds.json
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload alert preview for diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: author-alert-window-preview
+          path: data/atom/author-alerts-window.json
           if-no-files-found: warn
           retention-days: 7
