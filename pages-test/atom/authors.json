@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "purpose": "isolated-github-actions-multi-author-atom-test",
-  "fetched_at": "2026-10-09T22:44:09.050459+00:00",
+  "fetched_at": "2026-10-10T06:01:33.554937+00:00",
   "author_count": 2,
   "authors": [
     {
@@ -794,6 +794,13 @@
           "entry_count": 100,
           "entries": [
             {
+              "title": "連載作品[ヒロインだったと気づきましたが、逃亡します～他の転生者の犠牲になるなんて御免です～-「優しい笑顔に見つめられ、気づいたら全部話していた　③」](エピソード8)",
+              "id": "https://ncode.syosetu.com/n4261mv/8/",
+              "updated": "2026-10-10T14:34:45+09:00",
+              "published": "2026-10-10T14:34:45+09:00",
+              "url": "https://ncode.syosetu.com/n4261mv/8/"
+            },
+            {
               "title": "連載作品[推し見守り日記～見守りたい彼女と捕まえたい彼の攻防記録～-幕間　ルウロメア・パーティグア　①](エピソード45)",
               "id": "https://ncode.syosetu.com/n8679mn/45/",
               "updated": "2026-10-09T17:35:04+09:00",
@@ -1485,13 +1492,6 @@
               "updated": "2026-08-20T16:25:47+09:00",
               "published": "2026-08-20T16:25:47+09:00",
               "url": "https://ncode.syosetu.com/n5545hu/377/"
-            },
-            {
-              "title": "連載作品[推し見守り日記～見守りたい彼女と捕まえたい彼の攻防記録～-「悪役令嬢ちゃんのことと、推しのトラウマについて考える」](エピソード19)",
-              "id": "https://ncode.syosetu.com/n8679mn/19/",
-              "updated": "2026-08-20T13:56:15+09:00",
-              "published": "2026-08-20T13:56:15+09:00",
-              "url": "https://ncode.syosetu.com/n8679mn/19/"
             }
           ],
           "error": null
