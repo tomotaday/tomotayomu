@@ -14,6 +14,7 @@ main{width:min(100%,720px);margin:auto;padding:18px 14px 40px}
 h1{font-size:30px;margin:0 0 4px}
 .note{font-size:13px;color:var(--muted);margin-bottom:15px}
 button{border:1px solid #c8c0b5;border-radius:8px;background:transparent;padding:5px 9px;font-size:14px;color:var(--ink)}
+.top-update-actions{display:flex;gap:8px;width:100%;margin:0 0 8px}.top-update-actions button{flex:1;min-width:0;white-space:nowrap;padding:7px 4px;font-size:13px}
 #apiStatus{font-size:13px;margin:10px 0 15px}
 .section{margin:20px 0 8px;font-weight:700;font-size:18px}
 .update-empty{color:var(--muted);margin-bottom:16px}
@@ -85,7 +86,10 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 <main>
 <h1>ともたよむ</h1>
 <div class="note" style="font-weight:800;font-size:15px">🧪 v3.2.0【基準版】</div>
-<button id="updateBtn" type="button">🔄 更新情報を確認</button>
+<div class="top-update-actions">
+<button id="updateBtn" type="button">🔄 本棚更新</button>
+<button id="launchAuthorAtomBtn" type="button">📡 作者情報更新</button>
+</div>
 <div id="baselineDate">基準日：反映待ち</div>
 <div id="apiStatus">本棚情報未反映</div>
 <details class="searchDetails">
@@ -665,6 +669,7 @@ function showShelfMoveDialog(card){
 }
 function placeR18Badges(){}
 document.getElementById("updateBtn").addEventListener("click",updateInfo);
+document.getElementById("launchAuthorAtomBtn")?.addEventListener("click",()=>{window.location.href="shortcuts://run-shortcut?name=%E3%81%A8%E3%82%82%E3%81%9F%E3%82%88%E3%82%80Atom%E6%9B%B4%E6%96%B0";});
 document.addEventListener("click",e=>{
   const move=e.target.closest(".moveShelfBtn");
   if(move){
