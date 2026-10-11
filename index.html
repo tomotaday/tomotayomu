@@ -38,6 +38,9 @@ summary{cursor:pointer}
 #authorAtomList .atomEntry a{color:var(--ink);text-decoration:none}
 #authorAtomList .atomMeta{font-size:11px;color:var(--muted);font-weight:400;margin-top:3px}
 #authorAtomList button{font-size:12px;padding:4px 7px;margin:4px 0}
+#authorAtomList .atomReadState{display:inline-block;font-size:11px;padding:2px 6px;margin:5px 8px 0 0;border-radius:10px;border:1px solid var(--line);font-weight:600}
+#authorAtomList .atomReadState.is-unread{font-weight:800}
+#authorAtomList .atomReadState.is-read{color:var(--muted)}
 </style>
 <style id="tomota-theme-style">
 body[data-theme="seiji"]{--bg:#edf4f1;--card:#f9fcfb;--ink:#20302d;--muted:#64736f;--line:#9aada7;--shelf-card:#f8fcfa;--shelf-ink:#20302d;--shelf-line:#b8c9c4}
@@ -88,8 +91,8 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 <div class="note" style="font-weight:800;font-size:15px">🧪 v3.2.0【基準版】</div>
 <div class="top-update-actions">
 <button id="updateBtn" type="button">🔄 本棚更新</button>
-<button id="launchAuthorAtomBtn" type="button">📡 作者情報更新</button>
-<button id="importAuthorAtomBtn" type="button">📥 作者情報取込</button>
+<button id="launchAuthorAtomBtn" type="button">📡 Atom更新</button>
+<button id="importAuthorAtomBtn" type="button">📥 Atom取込</button>
 </div>
 <div id="baselineDate">基準日：反映待ち</div>
 <div id="apiStatus">本棚情報未反映</div>
@@ -712,24 +715,38 @@ async function importPublishedAuthorFeeds(){
   if(snapshot?.purpose!=="tomotayomu-author-atom-feeds"||!Array.isArray(snapshot.authors)||!snapshot.fetched_at)throw new Error("作者情報JSONの形式が想定と異なります");
   const db=await openAtomDB(),oldEntries=await atomAll(db,"entries"),oldById=new Map(oldEntries.map(e=>[e.entryId,e]));
   const authorRows=await readAtomAuthors(),authorMap=new Map(authorRows.map(a=>[atomAuthorKey(a),a]));
-  let imported=0;
+  const cutoff=Date.now()-31*24*60*60*1000;
+  let added=0,kept=0,skippedOld=0;
   for(const a of snapshot.authors){
    const author=authorMap.get((a.author_type==="r18"?"r18":"normal")+":"+String(a.author_id||""));
    for(const feed of (Array.isArray(a.feeds)?a.feeds:[]))for(const item of (Array.isArray(feed.entries)?feed.entries:[])){
     const feedType=feed.kind==="activity"?"activity":"novel",updated=String(item.updated||item.published||""),url=String(item.url||""),title=String(item.title||"").trim();
     if(!title)continue;
+    const timestamp=Date.parse(updated);
+    if(!Number.isFinite(timestamp)||timestamp<cutoff){skippedOld++;continue}
     const entryId=[feedType,String(a.author_id),String(item.id||url||title),updated].join("|"),previous=oldById.get(entryId);
     const row={entryId,authorId:String(a.author_id),authorName:String(author?.authorName||a.author_id),authorType:a.author_type==="r18"?"r18":"normal",feedType,workNcode:(url.match(/(N[0-9A-Z]{4,})/i)||[])[1]?.toUpperCase()||"",title,url,updated,summary:"",read:!!previous?.read,storedAt:previous?.storedAt||new Date().toISOString()};
-    await atomPut(db,"entries",row);oldById.set(entryId,row);imported++;
+    await atomPut(db,"entries",row);oldById.set(entryId,row);
+    if(previous)kept++;else added++;
+   }
+  }
+  // 取込前から残っている古い項目も含め、作者Atomの保存領域だけを直近31日分に整理する。
+  const allAfter=await atomAll(db,"entries");
+  let removed=0;
+  for(const e of allAfter){
+   const timestamp=Date.parse(String(e.updated||""));
+   if(!Number.isFinite(timestamp)||timestamp<cutoff){
+    await new Promise((resolve,reject)=>{const tx=db.transaction("entries","readwrite");tx.objectStore("entries").delete(e.entryId);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});
+    removed++;
    }
   }
   await atomPut(db,"meta",{key:"publishedFetchedAt",value:snapshot.fetched_at});
   await atomPut(db,"meta",{key:"lastCheck",value:snapshot.fetched_at});
   await renderAuthorAtom();
   const d=new Date(snapshot.fetched_at),when=Number.isNaN(d.getTime())?snapshot.fetched_at:d.toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"});
-  if(status)status.textContent="作者情報を反映しました｜取得："+when+"｜作者 "+snapshot.author_count+"人｜取得失敗 "+snapshot.failed_feed_count+"件｜今回反映 "+imported+"件";
+  if(status)status.textContent="Atom取込完了｜取得："+when+"｜作者 "+snapshot.author_count+"人｜取得失敗 "+snapshot.failed_feed_count+"件｜新規 "+added+"件／既存更新 "+kept+"件｜古い項目を "+removed+"件整理（直近31日分）";
   return true;
- }catch(e){console.warn("公開済み作者情報の読込失敗",e);if(status)status.textContent="作者情報の読み込みに失敗："+e.message+"（前回の保存データは保持しています）";return false}
+ }catch(e){console.warn("公開済み作者情報の読込失敗",e);if(status)status.textContent="Atom取込失敗："+e.message+"（前回の保存データは保持しています）";return false}
  finally{atomImportBusy=false}
 }
 let atomWorkflowWaitBusy=false;
@@ -842,23 +859,24 @@ async function renderAuthorAtom(){
   const db=await openAtomDB(),entries=(await atomAll(db,"entries")).sort((a,b)=>String(b.updated||"").localeCompare(String(a.updated||"")));
   const list=document.getElementById("authorAtomList");if(!list)return;
   const unread=entries.filter(e=>!e.read).length;
-  document.getElementById("authorFeedTitle").textContent="✍️ 作者更新 "+unread+"件未読／"+entries.length+"件";
+  document.getElementById("authorFeedTitle").textContent="✍️ 作者更新　未読 "+unread+" / 全 "+entries.length+"件";
   list.innerHTML="";
-  if(!entries.length){list.textContent="作者更新はまだありません。";return}
+  if(!entries.length){list.textContent="直近31日間の作者更新はありません。";return}
   let day="";
   entries.slice(0,500).forEach(e=>{
     const d=String(e.updated||"").slice(0,10)||"日付不明";
     if(d!==day){day=d;const h=document.createElement("div");h.className="atomDay";h.textContent=day;list.appendChild(h)}
     const row=document.createElement("div");row.className="atomEntry"+(e.read?"":" unread");
     const a=document.createElement("a");a.href=e.url||"#";a.target="_blank";a.rel="noopener noreferrer";a.textContent=(e.feedType==="activity"?"📝 ":"📖 ")+e.title;
-    if(e.url)a.addEventListener("click",()=>markAtomRead(e.entryId));
+    if(e.url&&!e.read)a.addEventListener("click",()=>markAtomRead(e.entryId));
     row.appendChild(a);
     const meta=document.createElement("div");meta.className="atomMeta";meta.textContent=(e.authorType==="r18"?"R18 · ":"")+e.authorName+" · "+(e.feedType==="activity"?"活動報告":"作品更新");
     row.appendChild(meta);
-    if(e.summary){const s=document.createElement("div");s.className="atomMeta";s.textContent=e.summary;row.appendChild(s)}
-    if(!e.read){const b=document.createElement("button");b.type="button";b.textContent="既読";b.addEventListener("click",()=>markAtomRead(e.entryId));row.appendChild(b)}
+    const state=document.createElement("span");state.className="atomReadState"+(e.read?" is-read":" is-unread");state.textContent=e.read?"✓ 既読":"● 未読";row.appendChild(state);
+    if(!e.read){const b=document.createElement("button");b.type="button";b.textContent="既読にする";b.addEventListener("click",()=>markAtomRead(e.entryId));row.appendChild(b)}
     list.appendChild(row);
   });
+  if(entries.length>500){const more=document.createElement("div");more.className="atomMeta";more.textContent="表示は新しい順に500件までです（集計は全件）。";list.appendChild(more)}
 }
 async function markAtomRead(id){const db=await openAtomDB(),all=await atomAll(db,"entries"),row=all.find(x=>x.entryId===id);if(row){row.read=true;await atomPut(db,"entries",row);await renderAuthorAtom()}}
 async function checkAuthorAtomFeeds(){
