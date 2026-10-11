@@ -32,6 +32,7 @@ summary{cursor:pointer}
 .hidden{display:none!important}
 .searchDetails{margin:8px 0 10px;background:var(--shelf-card);color:var(--shelf-ink);border:1px solid var(--shelf-line);border-radius:11px;overflow:hidden}.searchDetails>summary{list-style:none;cursor:pointer;font-size:18px;font-weight:700;padding:9px 12px}.searchDetails>summary::-webkit-details-marker{display:none}.searchDetails>summary::before{content:"▸ ";font-size:18px}.searchDetails[open]>summary::before{content:"▾ ";font-size:18px}.searchDetails[open]>summary{border-bottom:1px solid var(--shelf-line)}.searchBody{padding:9px 12px}.searchInput{width:100%;padding:9px 10px;border:1px solid var(--shelf-line);border-radius:8px;background:var(--card);color:var(--ink);font-size:15px}.searchHint{font-size:12px;color:var(--muted);margin-top:6px}.searchResults{margin-top:8px}.searchResults .card{margin:10px 0}.searchCount{font-size:13px;color:var(--muted);margin-top:8px}</style>
 <style id="author-atom-style">
+#authorFeedTitle{font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #authorAtomList .atomCategory{border:1px solid var(--line);border-radius:10px;margin:8px 0;overflow:hidden;background:var(--card)}
 #authorAtomList .atomCategory>summary{font-size:15px;font-weight:800;padding:11px 10px;cursor:pointer;list-style-position:inside}
 #authorAtomList .atomDate{border-top:1px solid var(--line);margin:0;padding:0 8px}
@@ -871,7 +872,7 @@ async function renderAuthorAtom(){
   const db=await openAtomDB(),entries=(await atomAll(db,"entries")).sort((a,b)=>String(b.updated||"").localeCompare(String(a.updated||"")));
   const list=document.getElementById("authorAtomList");if(!list)return;
   const unread=entries.filter(e=>!e.read).length;
-  document.getElementById("authorFeedTitle").textContent="✍️ 作者更新　未読 "+unread+" / 全 "+entries.length+"件";
+  document.getElementById("authorFeedTitle").textContent="✍️ 作者更新 🆙 未読"+unread+"件";
   list.innerHTML="";
   if(!entries.length){list.textContent="直近31日間の作者更新はありません。";return}
   const categories=[
