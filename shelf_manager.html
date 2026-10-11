@@ -40,7 +40,7 @@ button{border:1px solid #c8c0b5;border-radius:8px;background:transparent;padding
 <div class="toolbar"><button id="addBtn" type="button">➕ 本棚を追加</button><button id="saveBtn" type="button">表示順を保存</button><button id="resetBtn" type="button">初期順に戻す</button></div>
 <div id="status">IndexedDBから棚情報を読み込み中…</div>
 <div id="shelfList"></div>
-<div class="hint">➕で本棚を追加できます。棚をタップすると中身を確認できます。☰ は並べ替え用です。棚名はその場で変更できます。空棚には削除ボタンが表示されます。作品情報は棚を開いた時だけ読み込みます。</div>
+<div class="hint">➕で本棚を追加できます。棚をタップすると中身を確認できます。☰ は並べ替え用です。棚名はその場で変更できます。📥登録先で作品登録ショートカットの保存先を指定します。登録先は棚名ではなく固定IDに紐づくため、名前変更後も引き継がれます。空棚には削除ボタンが表示されます。</div>
 </main>
 <script>
 const DB_NAME="tomotaYomuDB",DB_VERSION=1;
@@ -96,6 +96,13 @@ function render(){
     const ct=document.createElement("div");ct.className="count";ct.textContent=count+"作品";
     const ord=document.createElement("div");ord.className="order";ord.textContent=String(i+1);
     head.append(h,nm,ct);
+    const targetBtn=document.createElement("button");
+    targetBtn.className="deleteBtn";
+    targetBtn.type="button";
+    targetBtn.textContent=r.shelf.work_add_target===true?"📥登録先✓":"📥登録先";
+    targetBtn.style.borderColor=r.shelf.work_add_target===true?"#4b8b67":"#c8c0b5";
+    targetBtn.addEventListener("click",e=>{e.stopPropagation();setWorkAddTarget(id,name)});
+    head.appendChild(targetBtn);
     if(count===0){
       const del=document.createElement("button");del.className="deleteBtn";del.type="button";del.textContent="🗑削除";
       del.addEventListener("click",e=>{e.stopPropagation();deleteEmptyShelf(id,name)});
@@ -126,6 +133,23 @@ async function addShelf(){
     await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error("追加中止"))});
     shelves.push(row);setOrderInitial();render();document.getElementById("status").textContent=newName+" を追加しました。";
   }catch(e){document.getElementById("status").textContent="追加失敗："+e.message}
+}
+async function setWorkAddTarget(id,name){
+  if(!id)return;
+  try{
+    const tx=db.transaction(STORES.shelves,"readwrite");
+    const st=tx.objectStore(STORES.shelves);
+    const updated=shelves.map(v=>({...v,work_add_target:getId(v)===id}));
+    updated.forEach(v=>st.put(v));
+    await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error("登録先変更中止"))});
+    shelves=updated;
+    const byId=new Map(updated.map(v=>[getId(v),v]));
+    rows=rows.map(r=>({...r,shelf:byId.get(getId(r.shelf))||r.shelf}));
+    render();
+    document.getElementById("status").textContent="作品登録先を「"+name+"」に設定しました。棚名を変更しても、この設定は棚IDについていきます。";
+  }catch(e){
+    document.getElementById("status").textContent="作品登録先の設定失敗："+e.message;
+  }
 }
 async function deleteEmptyShelf(id,name){
   if(!id)return;
