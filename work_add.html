@@ -32,7 +32,7 @@ const VERSION="3.2.0";
 const DB_NAME="tomotaYomuDB",DB_VERSION=1;
 const API_URL="https://api.syosetu.com/novelapi/api/";
 const R18_API_URL="https://api.syosetu.com/novel18api/api/";
-const TARGET_SHELF_NAME="🏝️とりあえず";
+const LEGACY_TARGET_SHELF_NAME="🏝️とりあえず";
 
 function setStatus(t,cls=""){const e=document.getElementById("status");e.textContent=t;e.className="status "+cls}
 function ncodeFromUrl(raw){
@@ -81,8 +81,11 @@ function putRow(tx,store,row,key){
 async function saveWork(work,rawUrl){
   const db=await openDB();
   const shelves=await readAll(db,"shelf_names");
-  const shelf=shelves.find(v=>String(v?.shelf_name??v?.name??v?.title??"").trim()===TARGET_SHELF_NAME);
-  if(!shelf?.shelf_id)throw new Error("本棚「"+TARGET_SHELF_NAME+"」が見つかりません。先に本棚管理で作成してください。");
+  // 登録先は棚名ではなく、棚マスターに保存された固定の指定で判断する。
+  // 初回移行時だけ旧名称を使い、見つかった棚を登録先として記憶する。
+  const shelf=shelves.find(v=>v?.work_add_target===true)
+    || shelves.find(v=>String(v?.shelf_name??v?.name??v?.title??"").trim()===LEGACY_TARGET_SHELF_NAME);
+  if(!shelf?.shelf_id)throw new Error("作品登録先の本棚が指定されていません。本棚管理で「作品登録先にする」を選んでください。");
   const ncode=String(work.ncode||"").toUpperCase();
   const placements=await readAll(db,"shelf_placement");
   const authors=await readAll(db,"authors");
@@ -95,9 +98,14 @@ async function saveWork(work,rawUrl){
     .filter(Boolean))];
   const matchedAuthorId=authorIds.length===1?authorIds[0]:"";
   const matchedAuthor=matchedAuthorId?authors.find(a=>String(a?.authorId||"").trim()===matchedAuthorId&&((a?.authorType==="r18")===isR18))||{}:{};
-  const tx=db.transaction(["works_cache","shelf_placement","authors"],"readwrite");
+  const tx=db.transaction(["works_cache","shelf_placement","authors","shelf_names"],"readwrite");
   const saved={...work,ncode,__r18:isR18};
   putRow(tx,"works_cache",saved,ncode);
+  // 旧名称で初回検出した棚も、固定の登録先として保存しておく。
+  for(const item of shelves){
+    const updatedShelf={...item,work_add_target:String(item?.shelf_id)===String(shelf.shelf_id)};
+    putRow(tx,"shelf_names",updatedShelf,shelf.shelf_id);
+  }
   const placement={...(existing||{}),ncode,shelf_id:String(shelf.shelf_id)};
   putRow(tx,"shelf_placement",placement,ncode);
   if(matchedAuthorId){
@@ -105,7 +113,7 @@ async function saveWork(work,rawUrl){
     putRow(tx,"authors",authorRow,ncode);
   }
   await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存失敗"));tx.onabort=()=>reject(tx.error||new Error("保存中止"));});
-  return {shelfName:TARGET_SHELF_NAME,existing:!!existing,work:saved,authorId:matchedAuthorId};
+  return {shelfName:String(shelf.shelf_name??shelf.name??shelf.title??"本棚"),existing:!!existing,work:saved,authorId:matchedAuthorId};
 }
 async function handle(){
   const params=new URLSearchParams(location.search);
