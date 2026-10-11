@@ -32,6 +32,13 @@ summary{cursor:pointer}
 .hidden{display:none!important}
 .searchDetails{margin:8px 0 10px;background:var(--shelf-card);color:var(--shelf-ink);border:1px solid var(--shelf-line);border-radius:11px;overflow:hidden}.searchDetails>summary{list-style:none;cursor:pointer;font-size:18px;font-weight:700;padding:9px 12px}.searchDetails>summary::-webkit-details-marker{display:none}.searchDetails>summary::before{content:"▸ ";font-size:18px}.searchDetails[open]>summary::before{content:"▾ ";font-size:18px}.searchDetails[open]>summary{border-bottom:1px solid var(--shelf-line)}.searchBody{padding:9px 12px}.searchInput{width:100%;padding:9px 10px;border:1px solid var(--shelf-line);border-radius:8px;background:var(--card);color:var(--ink);font-size:15px}.searchHint{font-size:12px;color:var(--muted);margin-top:6px}.searchResults{margin-top:8px}.searchResults .card{margin:10px 0}.searchCount{font-size:13px;color:var(--muted);margin-top:8px}</style>
 <style id="author-atom-style">
+#authorAtomList .atomCategory{border:1px solid var(--line);border-radius:10px;margin:8px 0;overflow:hidden;background:var(--card)}
+#authorAtomList .atomCategory>summary{font-size:15px;font-weight:800;padding:11px 10px;cursor:pointer;list-style-position:inside}
+#authorAtomList .atomDate{border-top:1px solid var(--line);margin:0;padding:0 8px}
+#authorAtomList .atomDate>summary{font-size:13px;font-weight:700;padding:10px 2px;cursor:pointer;list-style-position:inside}
+#authorAtomList .atomDate .atomEntry{padding:9px 2px;border-top:1px solid var(--line)}
+#authorAtomList .atomDate .atomEntry a{display:block;line-height:1.5;overflow-wrap:anywhere}
+#authorAtomList .atomDate .atomEntry button{margin-left:8px}
 #authorAtomList .atomDay{font-size:14px;font-weight:700;margin:12px 0 5px;border-bottom:1px solid var(--line);padding-bottom:4px}
 #authorAtomList .atomEntry{padding:8px 4px;border-bottom:1px solid var(--line);font-size:14px}
 #authorAtomList .atomEntry.unread{font-weight:700}
@@ -867,21 +874,43 @@ async function renderAuthorAtom(){
   document.getElementById("authorFeedTitle").textContent="✍️ 作者更新　未読 "+unread+" / 全 "+entries.length+"件";
   list.innerHTML="";
   if(!entries.length){list.textContent="直近31日間の作者更新はありません。";return}
-  let day="";
-  entries.slice(0,500).forEach(e=>{
-    const d=String(e.updated||"").slice(0,10)||"日付不明";
-    if(d!==day){day=d;const h=document.createElement("div");h.className="atomDay";h.textContent=day;list.appendChild(h)}
-    const row=document.createElement("div");row.className="atomEntry"+(e.read?"":" unread");
-    const a=document.createElement("a");a.href=e.url||"#";a.target="_blank";a.rel="noopener noreferrer";a.textContent=(e.feedType==="activity"?"📝 ":"📖 ")+e.title;
-    if(e.url&&!e.read)a.addEventListener("click",()=>markAtomRead(e.entryId));
-    row.appendChild(a);
-    const meta=document.createElement("div");meta.className="atomMeta";meta.textContent=(e.authorType==="r18"?"R18 · ":"")+e.authorName+" · "+(e.feedType==="activity"?"活動報告":"作品更新");
-    row.appendChild(meta);
-    const state=document.createElement("span");state.className="atomReadState"+(e.read?" is-read":" is-unread");state.textContent=e.read?"✓ 既読":"● 未読";row.appendChild(state);
-    if(!e.read){const b=document.createElement("button");b.type="button";b.textContent="既読にする";b.addEventListener("click",()=>markAtomRead(e.entryId));row.appendChild(b)}
-    list.appendChild(row);
-  });
-  if(entries.length>500){const more=document.createElement("div");more.className="atomMeta";more.textContent="表示は新しい順に500件までです（集計は全件）。";list.appendChild(more)}
+  const categories=[
+    {key:"novel",label:"📖 作品更新"},
+    {key:"activity",label:"📝 活動報告"}
+  ];
+  for(const category of categories){
+    const categoryEntries=entries.filter(e=>(e.feedType==="activity"?"activity":"novel")===category.key);
+    const categoryUnread=categoryEntries.filter(e=>!e.read).length;
+    const section=document.createElement("details");section.className="atomCategory";
+    const heading=document.createElement("summary");heading.textContent=category.label+"　未読 "+categoryUnread+" / 全 "+categoryEntries.length+"件";
+    section.appendChild(heading);
+    if(!categoryEntries.length){
+      const empty=document.createElement("div");empty.className="atomMeta";empty.textContent="この分類の更新はありません。";section.appendChild(empty);
+    }else{
+      const visible=categoryEntries.slice(0,500),groups=new Map();
+      for(const e of visible){const day=String(e.updated||"").slice(0,10)||"日付不明";if(!groups.has(day))groups.set(day,[]);groups.get(day).push(e)}
+      for(const [day,dayEntries] of groups){
+        const dayUnread=dayEntries.filter(e=>!e.read).length;
+        const daySection=document.createElement("details");daySection.className="atomDate";
+        const dayHeading=document.createElement("summary");dayHeading.textContent=day+"　未読 "+dayUnread+" / 全 "+dayEntries.length+"件";
+        daySection.appendChild(dayHeading);
+        for(const e of dayEntries){
+          const row=document.createElement("div");row.className="atomEntry"+(e.read?"":" unread");
+          const a=document.createElement("a");a.href=e.url||"#";a.target="_blank";a.rel="noopener noreferrer";a.textContent=e.title;
+          if(e.url&&!e.read)a.addEventListener("click",()=>markAtomRead(e.entryId));
+          row.appendChild(a);
+          const meta=document.createElement("div");meta.className="atomMeta";meta.textContent=(e.authorType==="r18"?"R18 · ":"")+e.authorName;
+          row.appendChild(meta);
+          const state=document.createElement("span");state.className="atomReadState"+(e.read?" is-read":" is-unread");state.textContent=e.read?"✓ 既読":"● 未読";row.appendChild(state);
+          if(!e.read){const b=document.createElement("button");b.type="button";b.textContent="既読にする";b.addEventListener("click",()=>markAtomRead(e.entryId));row.appendChild(b)}
+          daySection.appendChild(row);
+        }
+        section.appendChild(daySection);
+      }
+      if(categoryEntries.length>500){const more=document.createElement("div");more.className="atomMeta";more.textContent="この分類は新しい順に500件まで表示しています（件数集計は全件）。";section.appendChild(more)}
+    }
+    list.appendChild(section);
+  }
 }
 async function markAtomRead(id){const db=await openAtomDB(),all=await atomAll(db,"entries"),row=all.find(x=>x.entryId===id);if(row){row.read=true;await atomPut(db,"entries",row);await renderAuthorAtom()}}
 async function checkAuthorAtomFeeds(){
