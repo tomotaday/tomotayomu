@@ -727,7 +727,7 @@ async function importPublishedAuthorFeeds(){
     const entryId=[feedType,String(a.author_id),String(item.id||url||title),updated].join("|"),previous=oldById.get(entryId)||pending.get(entryId);
     const row={entryId,authorId:String(a.author_id),authorName:String(author?.authorName||a.author_id),authorType:a.author_type==="r18"?"r18":"normal",feedType,workNcode:(url.match(/(N[0-9A-Z]{4,})/i)||[])[1]?.toUpperCase()||"",title,url,updated,summary:"",read:!!previous?.read,storedAt:previous?.storedAt||new Date().toISOString()};
     pending.set(entryId,row);oldById.set(entryId,row);
-    if(previous)keptIds.add(entryId);else addedIds.add(entryId);
+    if(previous){if(!addedIds.has(entryId))keptIds.add(entryId)}else addedIds.add(entryId);
    }
   }
   const rows=[...pending.values()];
