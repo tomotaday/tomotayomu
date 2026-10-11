@@ -89,6 +89,7 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 <div class="top-update-actions">
 <button id="updateBtn" type="button">🔄 本棚更新</button>
 <button id="launchAuthorAtomBtn" type="button">📡 作者情報更新</button>
+<button id="importAuthorAtomBtn" type="button">📥 作者情報取込</button>
 </div>
 <div id="baselineDate">基準日：反映待ち</div>
 <div id="apiStatus">本棚情報未反映</div>
@@ -665,6 +666,15 @@ function showShelfMoveDialog(card){
 }
 function placeR18Badges(){}
 document.getElementById("updateBtn").addEventListener("click",updateInfo);
+document.getElementById("importAuthorAtomBtn")?.addEventListener("click",async()=>{
+  const status=document.getElementById("authorAtomStatus");
+  const btn=document.getElementById("importAuthorAtomBtn");
+  if(btn)btn.disabled=true;
+  try{
+    if(status)status.textContent="GitHubに保存済みの作者情報を手動で取り込みます…";
+    await importPublishedAuthorFeeds();
+  }finally{if(btn)btn.disabled=false;}
+});
 document.getElementById("launchAuthorAtomBtn")?.addEventListener("click",()=>{
   const status=document.getElementById("authorAtomStatus");
   openAtomDB().then(async db=>{
@@ -722,21 +732,62 @@ async function importPublishedAuthorFeeds(){
  }catch(e){console.warn("公開済み作者情報の読込失敗",e);if(status)status.textContent="作者情報の読み込みに失敗："+e.message+"（前回の保存データは保持しています）";return false}
  finally{atomImportBusy=false}
 }
+let atomWorkflowWaitBusy=false;
 async function waitForPublishedAuthorFeeds(){
+ if(atomWorkflowWaitBusy)return;atomWorkflowWaitBusy=true;
  const after=sessionStorage.getItem("tomotaYomu_atom_wait_after"),started=Number(sessionStorage.getItem("tomotaYomu_atom_wait_started")||0);
- if(!started)return;const status=document.getElementById("authorAtomStatus"),deadline=started+12*60*1000;
- while(Date.now()<deadline){
-  if(document.visibilityState==="visible"){
-   const ok=await importPublishedAuthorFeeds();
-   if(ok){const db=await openAtomDB(),meta=(await atomAll(db,"meta")).find(x=>x.key==="publishedFetchedAt"),current=String(meta?.value||"");
-    if(!after||current>after){sessionStorage.removeItem("tomotaYomu_atom_wait_after");sessionStorage.removeItem("tomotaYomu_atom_wait_started");return}
+ const status=document.getElementById("authorAtomStatus");
+ if(!started){atomWorkflowWaitBusy=false;return}
+ const workflowUrl="https://api.github.com/repos/tomotaday/tomotayomu/actions/workflows/publish-author-atom-feeds.yml/runs?event=workflow_dispatch&per_page=10";
+ const startedIso=new Date(started).toISOString();
+ const deadline=Date.now()+35*60*1000;
+ let runSeen=false,runId=null,successAt=0,lastApiError="";
+ try{
+  while(Date.now()<deadline){
+   if(document.visibilityState==="visible"){
+    try{
+     const rr=await fetch(workflowUrl+"&t="+Date.now(),{cache:"no-store",headers:{"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"}});
+     if(!rr.ok)throw new Error("GitHub API HTTP "+rr.status);
+     const payload=await rr.json();
+     const runs=Array.isArray(payload.workflow_runs)?payload.workflow_runs:[];
+     const run=runs.find(x=>x.event==="workflow_dispatch"&&x.created_at>=startedIso);
+     if(run){
+      runSeen=true;runId=run.id;
+      if(run.status==="completed"){
+       if(run.conclusion!=="success"){
+        sessionStorage.removeItem("tomotaYomu_atom_wait_after");sessionStorage.removeItem("tomotaYomu_atom_wait_started");
+        if(status)status.textContent="GitHub Actionsが正常終了しませんでした（"+String(run.conclusion||"結果不明")+"）。作者情報は取り込まず、保存済みデータを保持しています。";
+        return;
+       }
+       if(!successAt)successAt=Date.now();
+       const ok=await importPublishedAuthorFeeds();
+       if(ok){
+        const db=await openAtomDB(),meta=(await atomAll(db,"meta")).find(x=>x.key==="publishedFetchedAt"),current=String(meta?.value||"");
+        if(current>after&&Date.parse(current)>=started){
+         sessionStorage.removeItem("tomotaYomu_atom_wait_after");sessionStorage.removeItem("tomotaYomu_atom_wait_started");
+         if(status)status.textContent="作者情報の更新と取込みが完了しました。";
+         return;
+        }
+       }
+       if(Date.now()-successAt>10*60*1000){
+        sessionStorage.removeItem("tomotaYomu_atom_wait_after");sessionStorage.removeItem("tomotaYomu_atom_wait_started");
+        if(status)status.textContent="GitHub Actionsは成功しましたが、新しい公開JSONをまだ確認できません。少し待ってから再度お試しください。既存データは保持しています。";
+        return;
+       }
+       if(status)status.textContent="GitHub Actionsは完了。公開データの反映を待ってから取込みます…";
+      }else if(status)status.textContent="GitHub Actions実行中。完了を確認してから自動で取り込みます…";
+     }else if(status)status.textContent="GitHub Actionsの起動を確認しています…";
+     lastApiError="";
+    }catch(e){
+     lastApiError=e.message||String(e);
+     if(status)status.textContent="GitHub Actionsの状態確認を再試行しています（"+lastApiError+"）。作者情報はまだ取り込みません。";
+    }
    }
-   if(status)status.textContent="作者情報の取得処理を待っています。最新データを確認中…";
+   await new Promise(resolve=>setTimeout(resolve,15000));
   }
-  await new Promise(resolve=>setTimeout(resolve,15000));
- }
- sessionStorage.removeItem("tomotaYomu_atom_wait_after");sessionStorage.removeItem("tomotaYomu_atom_wait_started");
- if(status)status.textContent="起動依頼後の新しいデータはまだ確認できません。少し待ってから「作者情報更新」をもう一度押してください。前回の保存データは保持しています。";
+  sessionStorage.removeItem("tomotaYomu_atom_wait_after");sessionStorage.removeItem("tomotaYomu_atom_wait_started");
+  if(status)status.textContent=runSeen?"処理の完了確認が時間切れになりました。GitHub Actionsの実行結果を確認してください。既存データは保持しています。":"GitHub Actionsの起動を確認できませんでした"+(lastApiError?"（"+lastApiError+"）":"")+"。ショートカットが実行されたか確認して、もう一度お試しください。既存データは保持しています。";
+ }finally{atomWorkflowWaitBusy=false}
 }
 function openAtomDB(){
   return new Promise((resolve,reject)=>{
