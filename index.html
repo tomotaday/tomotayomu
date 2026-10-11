@@ -715,8 +715,8 @@ async function importPublishedAuthorFeeds(){
   if(snapshot?.purpose!=="tomotayomu-author-atom-feeds"||!Array.isArray(snapshot.authors)||!snapshot.fetched_at)throw new Error("作者情報JSONの形式が想定と異なります");
   const db=await openAtomDB(),oldEntries=await atomAll(db,"entries"),oldById=new Map(oldEntries.map(e=>[e.entryId,e]));
   const authorRows=await readAtomAuthors(),authorMap=new Map(authorRows.map(a=>[atomAuthorKey(a),a]));
-  const cutoff=Date.now()-31*24*60*60*1000;
-  let added=0,kept=0,skippedOld=0;
+  const cutoff=Date.now()-31*24*60*60*1000,pending=new Map(),addedIds=new Set(),keptIds=new Set();
+  let skippedOld=0;
   for(const a of snapshot.authors){
    const author=authorMap.get((a.author_type==="r18"?"r18":"normal")+":"+String(a.author_id||""));
    for(const feed of (Array.isArray(a.feeds)?a.feeds:[]))for(const item of (Array.isArray(feed.entries)?feed.entries:[])){
@@ -724,27 +724,32 @@ async function importPublishedAuthorFeeds(){
     if(!title)continue;
     const timestamp=Date.parse(updated);
     if(!Number.isFinite(timestamp)||timestamp<cutoff){skippedOld++;continue}
-    const entryId=[feedType,String(a.author_id),String(item.id||url||title),updated].join("|"),previous=oldById.get(entryId);
+    const entryId=[feedType,String(a.author_id),String(item.id||url||title),updated].join("|"),previous=oldById.get(entryId)||pending.get(entryId);
     const row={entryId,authorId:String(a.author_id),authorName:String(author?.authorName||a.author_id),authorType:a.author_type==="r18"?"r18":"normal",feedType,workNcode:(url.match(/(N[0-9A-Z]{4,})/i)||[])[1]?.toUpperCase()||"",title,url,updated,summary:"",read:!!previous?.read,storedAt:previous?.storedAt||new Date().toISOString()};
-    await atomPut(db,"entries",row);oldById.set(entryId,row);
-    if(previous)kept++;else added++;
+    pending.set(entryId,row);oldById.set(entryId,row);
+    if(previous)keptIds.add(entryId);else addedIds.add(entryId);
    }
   }
+  const rows=[...pending.values()];
+  for(let i=0;i<rows.length;i+=250){
+   const tx=db.transaction("entries","readwrite"),store=tx.objectStore("entries");
+   for(const row of rows.slice(i,i+250))store.put(row);
+   await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("Atom保存失敗"))});
+   if(status)status.textContent="Atom取込中… "+Math.min(i+250,rows.length)+" / "+rows.length+"件";
+  }
   // 取込前から残っている古い項目も含め、作者Atomの保存領域だけを直近31日分に整理する。
-  const allAfter=await atomAll(db,"entries");
-  let removed=0;
-  for(const e of allAfter){
-   const timestamp=Date.parse(String(e.updated||""));
-   if(!Number.isFinite(timestamp)||timestamp<cutoff){
-    await new Promise((resolve,reject)=>{const tx=db.transaction("entries","readwrite");tx.objectStore("entries").delete(e.entryId);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});
-    removed++;
-   }
+  const allAfter=await atomAll(db,"entries"),staleIds=[];
+  for(const e of allAfter){const timestamp=Date.parse(String(e.updated||""));if(!Number.isFinite(timestamp)||timestamp<cutoff)staleIds.push(e.entryId)}
+  for(let i=0;i<staleIds.length;i+=500){
+   const tx=db.transaction("entries","readwrite"),store=tx.objectStore("entries");
+   for(const id of staleIds.slice(i,i+500))store.delete(id);
+   await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("古いAtom整理失敗"))});
   }
   await atomPut(db,"meta",{key:"publishedFetchedAt",value:snapshot.fetched_at});
   await atomPut(db,"meta",{key:"lastCheck",value:snapshot.fetched_at});
   await renderAuthorAtom();
   const d=new Date(snapshot.fetched_at),when=Number.isNaN(d.getTime())?snapshot.fetched_at:d.toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"});
-  if(status)status.textContent="Atom取込完了｜取得："+when+"｜作者 "+snapshot.author_count+"人｜取得失敗 "+snapshot.failed_feed_count+"件｜新規 "+added+"件／既存更新 "+kept+"件｜古い項目を "+removed+"件整理（直近31日分）";
+  if(status)status.textContent="Atom取込完了｜取得："+when+"｜作者 "+snapshot.author_count+"人｜取得失敗 "+snapshot.failed_feed_count+"件｜新規 "+addedIds.size+"件／既存 "+keptIds.size+"件｜古い項目を "+staleIds.length+"件整理（直近31日分）";
   return true;
  }catch(e){console.warn("公開済み作者情報の読込失敗",e);if(status)status.textContent="Atom取込失敗："+e.message+"（前回の保存データは保持しています）";return false}
  finally{atomImportBusy=false}
