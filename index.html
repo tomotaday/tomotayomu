@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#f6f3ed" name="theme-color"/>
-<title>ともたよむ v3.2.0【基準版】</title>
+<title>ともたよむ v3.3.0【基準版】</title>
 <style>
 :root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195;--shelf-card:#fff;--shelf-ink:#252525;--shelf-line:#ddd}
 *{box-sizing:border-box}
@@ -96,11 +96,11 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 
 <main>
 <h1>ともたよむ</h1>
-<div class="note" style="font-weight:800;font-size:15px">🧪 v3.2.0【基準版】</div>
+<div class="note" style="font-weight:800;font-size:15px">🧪 v3.3.0【基準版】</div>
 <div class="top-update-actions">
 <button id="updateBtn" type="button">🔄 本棚更新</button>
 <button id="launchAuthorAtomBtn" type="button">📡 Atom更新</button>
-<button id="importAuthorAtomBtn" type="button">📥 Atom取込</button>
+
 </div>
 <div id="baselineDate">基準日：反映待ち</div>
 <div id="apiStatus">本棚情報未反映</div>
@@ -113,18 +113,18 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 <div id="searchResults" class="searchResults"></div>
 </div>
 </details>
-<details class="updateDetails">
-<summary id="updateTitle">🆙 更新0</summary>
-<div class="update-empty" id="updateEmpty">作品はありません。</div>
-<section class="update-list" id="updateList"></section>
-</details>
-
 <details class="updateDetails" id="authorFeedDetails">
   <summary id="authorFeedTitle">✍️ 作者更新 0件</summary>
   <div style="padding:8px 0">
     <div id="authorAtomStatus" style="font-size:13px;margin:8px 0">作者情報の取得状態を確認しています。</div>
     <div id="authorAtomList"></div>
   </div>
+</details>
+
+<details class="updateDetails">
+<summary id="updateTitle">🆙 更新0</summary>
+<div class="update-empty" id="updateEmpty">作品はありません。</div>
+<section class="update-list" id="updateList"></section>
 </details>
 
 <div id="shelfSections"></div>
@@ -484,7 +484,7 @@ function buildShelfFolders(){
   managementSummary.textContent="⚙️管理設定用";
   const managementBody=document.createElement("div");
   managementBody.className="managementSettingsBody";
-  managementBody.innerHTML='<a href="v3.0.0_shelf_manager_test.html">本棚管理</a><a href="author.html">作者整理（ふりがな）</a><div><strong>🎨 お着替え</strong><div class="dressup"><button type="button" data-theme-choice="default">🌿 生成り</button><button type="button" data-theme-choice="seiji">🌊 青磁</button><button type="button" data-theme-choice="night">🌙 夜の図鑑</button><button type="button" data-theme-choice="autumn">🍂 秋色</button></div></div>';
+  managementBody.innerHTML='<a href="https://github.com/tomotaday/tomotayomu/actions/workflows/publish-author-atom-feeds.yml" target="_blank" rel="noopener noreferrer">📡 GitHub Actions確認</a><button id="importAuthorAtomBtn" type="button">📥 Atom取込（手動）</button><a href="v3.0.0_shelf_manager_test.html">本棚管理</a><a href="author.html">作者整理（ふりがな）</a><div><strong>🎨 お着替え</strong><div class="dressup"><button type="button" data-theme-choice="default">🌿 生成り</button><button type="button" data-theme-choice="seiji">🌊 青磁</button><button type="button" data-theme-choice="night">🌙 夜の図鑑</button><button type="button" data-theme-choice="autumn">🍂 秋色</button></div></div>';
   management.append(managementSummary,managementBody);
   root.appendChild(management);
 }
@@ -677,14 +677,15 @@ function showShelfMoveDialog(card){
 }
 function placeR18Badges(){}
 document.getElementById("updateBtn").addEventListener("click",updateInfo);
-document.getElementById("importAuthorAtomBtn")?.addEventListener("click",async()=>{
+document.addEventListener("click",async e=>{
+  const btn=e.target.closest("#importAuthorAtomBtn");
+  if(!btn)return;
   const status=document.getElementById("authorAtomStatus");
-  const btn=document.getElementById("importAuthorAtomBtn");
-  if(btn)btn.disabled=true;
+  btn.disabled=true;
   try{
     if(status)status.textContent="GitHubに保存済みの作者情報を手動で取り込みます…";
     await importPublishedAuthorFeeds();
-  }finally{if(btn)btn.disabled=false;}
+  }finally{btn.disabled=false;}
 });
 document.getElementById("launchAuthorAtomBtn")?.addEventListener("click",()=>{
   const status=document.getElementById("authorAtomStatus");
