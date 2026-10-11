@@ -2,6 +2,11 @@ name: Publish author Atom feeds
 
 on:
   workflow_dispatch:
+    inputs:
+      author_list_json:
+        description: "Compact JSON exported from author-export.html. Leave empty to use the saved list."
+        required: false
+        type: string
   schedule:
     - cron: "0 1 * * *"
 
@@ -27,6 +32,43 @@ jobs:
         with:
           python-version: "3.x"
 
+      - name: Update source author list when supplied
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.author_list_json != '' }}
+        env:
+          AUTHOR_LIST_JSON: ${{ inputs.author_list_json }}
+        run: |
+          python - <<'PY'
+          import json, os, re
+          raw = os.environ["AUTHOR_LIST_JSON"]
+          data = json.loads(raw)
+          authors = data.get("authors")
+          if not isinstance(authors, list) or not authors:
+              raise SystemExit("Incoming author list is empty or invalid")
+          id_re = re.compile(r"^(?:[0-9]+|X[0-9A-Z]+)$", re.I)
+          clean, seen = [], set()
+          for item in authors:
+              aid = str(item.get("author_id", "")).strip()
+              typ = item.get("author_type")
+              if not id_re.fullmatch(aid) or typ not in ("normal", "r18"):
+                  raise SystemExit(f"Invalid author record: {aid!r}/{typ!r}")
+              key = (typ, aid.upper() if aid[:1].upper() == "X" else aid)
+              if key in seen:
+                  continue
+              seen.add(key)
+              clean.append({"author_id": aid, "author_type": typ})
+          output = {
+              "schema_version": 1,
+              "source": "tomotaYomuDB.authors",
+              "exported_at": str(data.get("exported_at", "")),
+              "author_count": len(clean),
+              "authors": clean,
+          }
+          with open("data/author-list.json", "w", encoding="utf-8") as f:
+              json.dump(output, f, ensure_ascii=False, indent=2)
+              f.write("\\n")
+          print(f"Updated source author list: {len(clean)} unique authors")
+          PY
+
       - name: Validate source author list
         run: |
           test -s data/author-list.json
@@ -42,11 +84,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/atom/author-feeds.json
+          git add data/author-list.json data/atom/author-feeds.json
           if git diff --cached --quiet; then
             echo "Feed snapshot unchanged."
           else
-            git commit -m "chore: refresh author Atom feed snapshot"
+            git commit -m "chore: refresh author list and Atom feed snapshot"
             for attempt in 1 2 3; do
               git fetch origin main
               git rebase origin/main
