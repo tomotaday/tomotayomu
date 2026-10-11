@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "purpose": "isolated-github-actions-multi-author-atom-test",
-  "fetched_at": "2026-10-10T21:51:05.199905+00:00",
+  "fetched_at": "2026-10-11T05:58:22.287904+00:00",
   "author_count": 2,
   "authors": [
     {
@@ -794,6 +794,27 @@
           "entry_count": 100,
           "entries": [
             {
+              "title": "連載作品[ヒロインだったと気づきましたが、逃亡します～他の転生者の犠牲になるなんて御免です～-「食事を終えた後、宿にて」](エピソード10)",
+              "id": "https://ncode.syosetu.com/n4261mv/10/",
+              "updated": "2026-10-11T10:25:57+09:00",
+              "published": "2026-10-11T10:25:57+09:00",
+              "url": "https://ncode.syosetu.com/n4261mv/10/"
+            },
+            {
+              "title": "連載作品[推し見守り日記～見守りたい彼女と捕まえたい彼の攻防記録～-「合同演習の準備」](エピソード46)",
+              "id": "https://ncode.syosetu.com/n8679mn/46/",
+              "updated": "2026-10-11T09:10:23+09:00",
+              "published": "2026-10-11T09:10:23+09:00",
+              "url": "https://ncode.syosetu.com/n8679mn/46/"
+            },
+            {
+              "title": "連載作品[ヒロインだったと気づきましたが、逃亡します～他の転生者の犠牲になるなんて御免です～-「優しい笑顔に見つめられ、気づいたら全部話していた　④」](エピソード9)",
+              "id": "https://ncode.syosetu.com/n4261mv/9/",
+              "updated": "2026-10-11T07:00:00+09:00",
+              "published": "2026-10-11T07:00:00+09:00",
+              "url": "https://ncode.syosetu.com/n4261mv/9/"
+            },
+            {
               "title": "連載作品[ヒロインだったと気づきましたが、逃亡します～他の転生者の犠牲になるなんて御免です～-「優しい笑顔に見つめられ、気づいたら全部話していた　③」](エピソード8)",
               "id": "https://ncode.syosetu.com/n4261mv/8/",
               "updated": "2026-10-10T14:34:45+09:00",
@@ -1471,27 +1492,6 @@
               "updated": "2026-08-21T15:46:48+09:00",
               "published": "2026-08-21T15:46:48+09:00",
               "url": "https://ncode.syosetu.com/n4538jx/75/"
-            },
-            {
-              "title": "連載作品[文通友達が大変そうなので、私、動きます！-79](エピソード80)",
-              "id": "https://ncode.syosetu.com/n4584ly/80/",
-              "updated": "2026-08-21T12:03:24+09:00",
-              "published": "2026-08-21T12:03:24+09:00",
-              "url": "https://ncode.syosetu.com/n4584ly/80/"
-            },
-            {
-              "title": "連載作品[文通友達が大変そうなので、私、動きます！-78](エピソード79)",
-              "id": "https://ncode.syosetu.com/n4584ly/79/",
-              "updated": "2026-08-20T21:53:20+09:00",
-              "published": "2026-08-20T21:53:20+09:00",
-              "url": "https://ncode.syosetu.com/n4584ly/79/"
-            },
-            {
-              "title": "連載作品[捨てられる予定の皇妃ですが、皇帝が前世の推しだと気づいたのでこの状況を楽しみます！　関連話-「す、すごく仲良くって、そんなことはないわ」―第二皇女の婚姻事情⑯―](エピソード377)",
-              "id": "https://ncode.syosetu.com/n5545hu/377/",
-              "updated": "2026-08-20T16:25:47+09:00",
-              "published": "2026-08-20T16:25:47+09:00",
-              "url": "https://ncode.syosetu.com/n5545hu/377/"
             }
           ],
           "error": null
