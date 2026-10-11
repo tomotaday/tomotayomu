@@ -89,6 +89,7 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 <div class="top-update-actions">
 <button id="updateBtn" type="button">🔄 本棚更新</button>
 <button id="launchAuthorAtomBtn" type="button">📡 作者情報更新</button>
+<button id="importAuthorAtomBtn" type="button">📥 作者情報取込</button>
 </div>
 <div id="baselineDate">基準日：反映待ち</div>
 <div id="apiStatus">本棚情報未反映</div>
@@ -665,6 +666,15 @@ function showShelfMoveDialog(card){
 }
 function placeR18Badges(){}
 document.getElementById("updateBtn").addEventListener("click",updateInfo);
+document.getElementById("importAuthorAtomBtn")?.addEventListener("click",async()=>{
+  const status=document.getElementById("authorAtomStatus");
+  const btn=document.getElementById("importAuthorAtomBtn");
+  if(btn)btn.disabled=true;
+  try{
+    if(status)status.textContent="GitHubに保存済みの作者情報を手動で取り込みます…";
+    await importPublishedAuthorFeeds();
+  }finally{if(btn)btn.disabled=false;}
+});
 document.getElementById("launchAuthorAtomBtn")?.addEventListener("click",()=>{
   const status=document.getElementById("authorAtomStatus");
   openAtomDB().then(async db=>{
