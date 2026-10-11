@@ -484,7 +484,7 @@ function buildShelfFolders(){
   managementSummary.textContent="⚙️管理設定用";
   const managementBody=document.createElement("div");
   managementBody.className="managementSettingsBody";
-  managementBody.innerHTML='<a href="https://github.com/tomotaday/tomotayomu/actions/workflows/publish-author-atom-feeds.yml" target="_blank" rel="noopener noreferrer">📡 GitHub Actions確認</a><button id="importAuthorAtomBtn" type="button">📥 Atom取込（手動）</button><a href="shelf_manager.html">本棚管理</a><a href="author.html">作者整理（ふりがな）</a><div><strong>🎨 お着替え</strong><div class="dressup"><button type="button" data-theme-choice="default">🌿 生成り</button><button type="button" data-theme-choice="seiji">🌊 青磁</button><button type="button" data-theme-choice="night">🌙 夜の図鑑</button><button type="button" data-theme-choice="autumn">🍂 秋色</button></div></div>';
+  managementBody.innerHTML='<a href="https://github.com/tomotaday/tomotayomu/actions/workflows/publish-author-atom-feeds.yml" target="_blank" rel="noopener noreferrer">📡 GitHub Actions確認</a><button id="importAuthorAtomBtn" type="button">📥 Atom取込（手動）</button><a href="shelf_manager.html">本棚管理</a><a href="author.html">作者整理（ふりがな）</a><a href="author-export.html">📋 作者一覧エクスポート</a><p class="managementHelp">作者が増えたら、一覧データをコピーして「Atom更新」を実行。</p><div><strong>🎨 お着替え</strong><div class="dressup"><button type="button" data-theme-choice="default">🌿 生成り</button><button type="button" data-theme-choice="seiji">🌊 青磁</button><button type="button" data-theme-choice="night">🌙 夜の図鑑</button><button type="button" data-theme-choice="autumn">🍂 秋色</button></div></div>';
   management.append(managementSummary,managementBody);
   root.appendChild(management);
 }
