@@ -38,7 +38,7 @@ jobs:
           OUTPUT_PATH: data/atom/author-feeds.json
         run: python scripts/publish_author_atom_feeds.py
 
-      - name: Commit changed feed and preview snapshots
+      - name: Commit changed feed snapshot
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -46,7 +46,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "Feed snapshot unchanged."
           else
-            git commit -m "chore: refresh author Atom feed and alert snapshots"
+            git commit -m "chore: refresh author Atom feed snapshot"
             for attempt in 1 2 3; do
               git fetch origin main
               git rebase origin/main
