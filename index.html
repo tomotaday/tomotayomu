@@ -739,7 +739,7 @@ async function waitForPublishedAuthorFeeds(){
  const status=document.getElementById("authorAtomStatus");
  if(!started){atomWorkflowWaitBusy=false;return}
  const workflowUrl="https://api.github.com/repos/tomotaday/tomotayomu/actions/workflows/publish-author-atom-feeds.yml/runs?event=workflow_dispatch&per_page=10";
- const startedIso=new Date(started-60000).toISOString();
+ const startedIso=new Date(started).toISOString();
  const deadline=Date.now()+35*60*1000;
  let runSeen=false,runId=null,successAt=0,lastApiError="";
  try{
@@ -763,7 +763,7 @@ async function waitForPublishedAuthorFeeds(){
        const ok=await importPublishedAuthorFeeds();
        if(ok){
         const db=await openAtomDB(),meta=(await atomAll(db,"meta")).find(x=>x.key==="publishedFetchedAt"),current=String(meta?.value||"");
-        if(!after||current>after){
+        if(current>after&&Date.parse(current)>=started){
          sessionStorage.removeItem("tomotaYomu_atom_wait_after");sessionStorage.removeItem("tomotaYomu_atom_wait_started");
          if(status)status.textContent="作者情報の更新と取込みが完了しました。";
          return;
