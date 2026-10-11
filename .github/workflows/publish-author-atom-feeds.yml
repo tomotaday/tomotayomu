@@ -65,7 +65,7 @@ jobs:
           }
           with open("data/author-list.json", "w", encoding="utf-8") as f:
               json.dump(output, f, ensure_ascii=False, indent=2)
-              f.write("\\n")
+              f.write("\n")
           print(f"Updated source author list: {len(clean)} unique authors")
           PY
 
