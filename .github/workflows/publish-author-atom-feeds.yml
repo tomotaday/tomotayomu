@@ -50,7 +50,17 @@ jobs:
             echo "Feed snapshot unchanged."
           else
             git commit -m "chore: refresh author Atom feed and alert snapshots"
-            git push origin HEAD:main
+            for attempt in 1 2 3; do
+              git fetch origin main
+              git rebase origin/main
+              if git push origin HEAD:main; then
+                echo "Feed snapshots pushed successfully (attempt $attempt)."
+                exit 0
+              fi
+              echo "Push attempt $attempt failed; will fetch and rebase before retrying."
+            done
+            echo "Unable to push feed snapshots after 3 attempts."
+            exit 1
           fi
 
       - name: Upload feed snapshot for diagnostics
