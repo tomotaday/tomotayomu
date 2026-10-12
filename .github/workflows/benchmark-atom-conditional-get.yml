@@ -1,0 +1,35 @@
+name: Benchmark conditional Atom GET (50 authors)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atom-conditional-benchmark
+  cancel-in-progress: false
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Compare initial and conditional requests for 50 authors
+        run: python scripts/benchmark_atom_conditional_get.py
+      - name: Upload benchmark report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atom-conditional-benchmark-report
+          path: atom-conditional-benchmark-report.json
+          if-no-files-found: warn
+          retention-days: 7
