@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#f6f3ed" name="theme-color"/>
-<title>ともたよむ v3.3.0｜GitHub整理反映版 2026.10.11</title>
+<title>ともたよむ v3.4.0｜2026.10.12</title>
 <style>
 :root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195;--shelf-card:#fff;--shelf-ink:#252525;--shelf-line:#ddd}
 *{box-sizing:border-box}
@@ -95,15 +95,15 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 
 
 <main>
-<h1 style="font-size:18px;margin-bottom:6px">ともたよむ v3.3.0</h1>
-<div class="note" style="font-weight:800;font-size:15px">GitHub整理反映版｜2026.10.11</div>
+<h1 style="font-size:18px;margin-bottom:6px">ともたよむ v3.4.0</h1>
+<div class="note" style="font-weight:800;font-size:15px">【2026/10/12】Atom差分取得対応</div>
 <div class="top-update-actions">
 <button id="updateBtn" type="button">🔄 本棚更新</button>
 <button id="copyAuthorJsonBtn" type="button">① JSONコピー</button>
 <button id="launchAuthorAtomBtn" type="button">② Atom更新</button>
 
 </div>
-<div id="baselineDate">基準日：反映待ち</div>
+<div id="baselineDate" style="font-size:13px;margin:8px 0">本棚基準日：反映待ち</div>
 <div id="apiStatus">本棚情報未反映</div>
 <details class="searchDetails">
 <summary>🔎 検索</summary>
@@ -183,7 +183,7 @@ function restoreLatestWorks(){
     if(c) updateCard(c,latest[n]);
   });
 }
-function renderGlobalBaseline(){ const el=document.getElementById("baselineDate"); if(el){ const v=getGlobalBaseline(); el.textContent=v?("基準日："+formatDate(v)):"基準日：反映待ち"; } }
+function renderGlobalBaseline(){ const el=document.getElementById("baselineDate"); if(el){ const v=getGlobalBaseline(); el.textContent=v?("本棚基準日："+formatDate(v)):"本棚基準日：反映待ち"; } }
 async function hydrateCandidateWorks(){
   const candidates=getUpdateCandidates();
   const ncodes=Object.keys(candidates||{});
@@ -848,7 +848,7 @@ async function importPublishedAuthorFeeds(){
   await atomPut(db,"meta",{key:"publishedFetchedAt",value:snapshot.fetched_at});
   await atomPut(db,"meta",{key:"lastCheck",value:snapshot.fetched_at});
   await renderAuthorAtom();
-  const d=new Date(snapshot.fetched_at),when=Number.isNaN(d.getTime())?snapshot.fetched_at:d.toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"});
+  const d=new Date(snapshot.fetched_at),when=Number.isNaN(d.getTime())?snapshot.fetched_at:d.toLocaleString("ja-JP",{year:"numeric",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"});
   if(status)status.textContent="Atom取込完了｜取得："+when+"｜作者 "+snapshot.author_count+"人｜取得失敗 "+snapshot.failed_feed_count+"件｜新規 "+addedIds.size+"件／既存 "+keptIds.size+"件｜古い項目を "+staleIds.length+"件整理（直近31日分）";
   return true;
  }catch(e){console.warn("公開済み作者情報の読込失敗",e);if(status)status.textContent="Atom取込失敗："+e.message+"（前回の保存データは保持しています）";return false}
