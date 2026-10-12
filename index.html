@@ -14,7 +14,7 @@ main{width:min(100%,720px);margin:auto;padding:18px 14px 40px}
 h1{font-size:30px;margin:0 0 4px}
 .note{font-size:13px;color:var(--muted);margin-bottom:15px}
 button{border:1px solid #c8c0b5;border-radius:8px;background:transparent;padding:5px 9px;font-size:14px;color:var(--ink)}
-.top-update-actions{display:flex;flex-wrap:wrap;gap:8px;width:100%;margin:0 0 8px}.top-update-actions button{flex:1 1 calc(50% - 8px);min-width:0;white-space:nowrap;padding:7px 4px;font-size:13px}.top-update-actions #updateBtn{flex-basis:100%}
+.top-update-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;width:100%;margin:0 0 8px}.top-update-actions button{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:clip;padding:7px 2px;font-size:clamp(10px,3.1vw,13px);background:var(--card);border:1px solid #c9c0b4;border-radius:12px;box-shadow:0 2px 0 rgba(0,0,0,.04);color:var(--text)}
 #apiStatus{font-size:13px;margin:10px 0 15px}
 .section{margin:20px 0 8px;font-weight:700;font-size:18px}
 .update-empty{color:var(--muted);margin-bottom:16px}
@@ -95,7 +95,7 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 
 
 <main>
-<h1>ともたよむ v3.3.0</h1>
+<h1 style="font-size:18px;margin-bottom:6px">ともたよむ v3.3.0</h1>
 <div class="note" style="font-weight:800;font-size:15px">GitHub整理反映版｜2026.10.11</div>
 <div class="top-update-actions">
 <button id="updateBtn" type="button">🔄 本棚更新</button>
@@ -531,9 +531,21 @@ function buildShelfFolders(){
   managementSummary.textContent="⚙️管理設定用";
   const managementBody=document.createElement("div");
   managementBody.className="managementSettingsBody";
-  managementBody.innerHTML='<a href="https://github.com/tomotaday/tomotayomu/actions/workflows/publish-author-atom-feeds.yml" target="_blank" rel="noopener noreferrer">📡 GitHub Actions確認</a><button id="importAuthorAtomBtn" type="button">📥 Atom取込（手動）</button><a href="shelf_manager.html">本棚管理</a><a href="author.html">作者整理（ふりがな）</a><a href="author-export.html">📋 作者一覧エクスポート</a><p class="managementHelp">作者が増えたら、一覧データをコピーして「Atom更新」を実行。</p><div><strong>🎨 お着替え</strong><div class="dressup"><button type="button" data-theme-choice="default">🌿 生成り</button><button type="button" data-theme-choice="seiji">🌊 青磁</button><button type="button" data-theme-choice="night">🌙 夜の図鑑</button><button type="button" data-theme-choice="autumn">🍂 秋色</button></div></div>';
+  managementBody.innerHTML='<a href="https://github.com/tomotaday/tomotayomu/actions/workflows/publish-author-atom-feeds.yml" target="_blank" rel="noopener noreferrer">📡 GitHub Actions確認</a><button id="importAuthorAtomBtn" type="button">📥 Atom取込（手動）</button><a href="shelf_manager.html">本棚管理</a><a href="author.html">作者整理（ふりがな）</a><a href="author-export.html">📋 作者一覧エクスポート</a><div class="managementHelp"><strong>📡 作者更新の表示期間</strong><div><input id="atomDisplayDays" type="range" min="1" max="30" step="1" value="7" style="width:100%"><strong id="atomDisplayDaysValue">7日間</strong></div><p>通常は7日間。1〜30日で変更できます。保存済みのAtom情報は削除せず、表示対象だけを切り替えます。</p></div><p class="managementHelp">作者が増えたら、一覧データをコピーして「Atom更新」を実行。</p><div><strong>🎨 お着替え</strong><div class="dressup"><button type="button" data-theme-choice="default">🌿 生成り</button><button type="button" data-theme-choice="seiji">🌊 青磁</button><button type="button" data-theme-choice="night">🌙 夜の図鑑</button><button type="button" data-theme-choice="autumn">🍂 秋色</button></div></div>';
   management.append(managementSummary,managementBody);
   root.appendChild(management);
+}
+function setupAtomDisplayDays(){
+  const slider=document.getElementById("atomDisplayDays"),value=document.getElementById("atomDisplayDaysValue");
+  if(!slider||!value)return;
+  const saved=Number(localStorage.getItem("tomotaYomu_atom_display_days")||7);
+  slider.value=String(Math.min(30,Math.max(1,Number.isFinite(saved)?saved:7)));
+  value.textContent=slider.value+"日間";
+  slider.addEventListener("input",()=>{
+    value.textContent=slider.value+"日間";
+    localStorage.setItem("tomotaYomu_atom_display_days",slider.value);
+    renderAuthorAtom().catch(e=>console.warn("作者更新表示期間の再描画失敗",e));
+  });
 }
 function applyDressup(theme){
   const t=theme==="seiji"||theme==="night"||theme==="autumn"?theme:"default";
@@ -932,12 +944,15 @@ async function readAtomAuthors(){
   return [...map.values()].sort((a,b)=>atomAuthorKey(a).localeCompare(atomAuthorKey(b)));
 }
 async function renderAuthorAtom(){
-  const db=await openAtomDB(),entries=(await atomAll(db,"entries")).sort((a,b)=>String(b.updated||"").localeCompare(String(a.updated||"")));
+  const db=await openAtomDB(),allEntries=(await atomAll(db,"entries")).sort((a,b)=>String(b.updated||"").localeCompare(String(a.updated||"")));
   const list=document.getElementById("authorAtomList");if(!list)return;
+  const savedDays=Number(localStorage.getItem("tomotaYomu_atom_display_days")||7),days=Math.min(30,Math.max(1,Number.isFinite(savedDays)?savedDays:7));
+  const cutoff=Date.now()-days*24*60*60*1000;
+  const entries=allEntries.filter(e=>{const t=Date.parse(e.updated||"");return Number.isFinite(t)&&t>=cutoff;});
   const unread=entries.filter(e=>!e.read).length;
   document.getElementById("authorFeedTitle").textContent="👤 作者 🆙 "+unread.toLocaleString("ja-JP");
   list.innerHTML="";
-  if(!entries.length){list.textContent="直近31日間の作者更新はありません。";return}
+  if(!entries.length){list.textContent="直近"+days+"日間の作者更新はありません。";return}
   const categories=[
     {key:"novel",label:"📖 作品更新"},
     {key:"activity",label:"📝 活動報告"}
@@ -971,13 +986,13 @@ async function renderAuthorAtom(){
         }
         section.appendChild(daySection);
       }
-      if(categoryEntries.length>500){const more=document.createElement("div");more.className="atomMeta";more.textContent="この分類は新しい順に500件まで表示しています（件数集計は全件）。";section.appendChild(more)}
+      if(categoryEntries.length>500){const more=document.createElement("div");more.className="atomMeta";more.textContent="この分類は新しい順に500件まで表示しています（表示期間："+days+"日）。";section.appendChild(more)}
     }
     list.appendChild(section);
   }
 }
 async function markAtomRead(id){const db=await openAtomDB(),all=await atomAll(db,"entries"),row=all.find(x=>x.entryId===id);if(row){row.read=true;await atomPut(db,"entries",row);await renderAuthorAtom()}}
-window.addEventListener("load",async()=>{try{await renderAuthorAtom();if(sessionStorage.getItem("tomotaYomu_atom_wait_started"))waitForPublishedAuthorFeeds();else await importPublishedAuthorFeeds()}catch(e){console.warn("作者Atom表示準備失敗",e)}});
+window.addEventListener("load",async()=>{try{setupAtomDisplayDays();await renderAuthorAtom();if(sessionStorage.getItem("tomotaYomu_atom_wait_started"))waitForPublishedAuthorFeeds();else await importPublishedAuthorFeeds()}catch(e){console.warn("作者Atom表示準備失敗",e)}});
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&sessionStorage.getItem("tomotaYomu_atom_wait_started"))waitForPublishedAuthorFeeds()});
 window.addEventListener("focus",()=>{if(sessionStorage.getItem("tomotaYomu_atom_wait_started"))waitForPublishedAuthorFeeds()});
 
