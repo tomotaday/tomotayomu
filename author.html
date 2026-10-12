@@ -41,8 +41,8 @@ summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;
 <div class="badge">未送信差分：<strong id="authorDiffCount">--</strong></div>
 </div>
 <p id="syncStatus" class="meta">GitHubの保存済み作者一覧と照合しています…</p>
-<button id="sendAuthors" type="button">📤 GitHubへ作者一覧を送信</button>
-<p class="small">ボタンを押すと、IndexedDBの最新作者一覧をクリップボードへコピーし、「ともたよむ Atom更新」ショートカットを起動します。送信完了はGitHub Actionsの結果で確認します。</p>
+<div class="stat"><button id="copyAuthors" type="button">📋 ① JSONコピー</button><button id="launchAtomUpdate" type="button">📡 ② Atom更新</button></div>
+<p class="small">①でIndexedDBの最新作者一覧をコピーし、②で「ともたよむ Atom更新」ショートカットを起動します。送信完了はGitHub Actionsの結果で確認します。</p>
 </div>
 
 <details>
@@ -415,31 +415,31 @@ async function loadGitHubAuthorCount(){
     status.textContent="GitHub一覧の比較に失敗しました："+e.message;
   }
 }
-async function sendAuthorsToGitHub(){
-  const btn=document.getElementById("sendAuthors"),status=document.getElementById("syncStatus");
+async function copyAuthorsJson(){
+  const btn=document.getElementById("copyAuthors"),status=document.getElementById("syncStatus");
   btn.disabled=true;
   try{
-    const db=await openDB();
-    const rows=await readAll(db,"authors");
-    const byKey=new Map();
+    const db=await openDB(),rows=await readAll(db,"authors"),byKey=new Map();
     for(const a of rows){
       if(!a||!String(a.authorId||"").trim())continue;
-      const id=String(a.authorId).trim();
-      const type=a.authorType==="r18"?"r18":"normal";
+      const id=String(a.authorId).trim(),type=a.authorType==="r18"?"r18":"normal";
       byKey.set(type+":"+id,{author_id:id,author_type:type});
     }
     const authors=[...byKey.values()].sort((a,b)=>a.author_type.localeCompare(b.author_type)||a.author_id.localeCompare(b.author_id,undefined,{numeric:true}));
-    if(!authors.length)throw new Error("送信対象の作者が0人です。");
+    if(!authors.length)throw new Error("コピー対象の作者が0人です。");
     const payload={schema_version:1,exported_at:new Date().toISOString(),source:"tomotaYomuDB.authors",author_count:authors.length,authors};
     await navigator.clipboard.writeText(JSON.stringify(payload));
-    status.textContent="作者"+authors.length+"人をコピーしました。Atom更新ショートカットを起動します…";
-    location.href="shortcuts://run-shortcut?name="+encodeURIComponent("ともたよむ Atom更新");
+    status.textContent="作者"+authors.length+"人分のJSONをコピーしました。続けて「② Atom更新」を押してください。";
   }catch(e){
-    status.textContent="送信準備に失敗しました："+e.message+"。クリップボードの許可とショートカット名を確認してください。";
-    btn.disabled=false;
-  }
+    status.textContent="JSONコピー失敗："+e.message+"。クリップボードの許可を確認してください。";
+  }finally{btn.disabled=false;}
 }
-document.getElementById("sendAuthors").addEventListener("click",sendAuthorsToGitHub);
+document.getElementById("copyAuthors").addEventListener("click",copyAuthorsJson);
+document.getElementById("launchAtomUpdate").addEventListener("click",()=>{
+  const status=document.getElementById("syncStatus");
+  status.textContent="Atom更新ショートカットを起動します。GitHub Actionsの実行結果を確認してください。";
+  location.href="shortcuts://run-shortcut?name="+encodeURIComponent("ともたよむ Atom更新");
+});
 
 (async()=>{
   try{
