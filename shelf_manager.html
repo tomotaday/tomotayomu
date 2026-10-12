@@ -94,8 +94,9 @@ async function addShelf(){
   if(name===null)return;
   const newName=String(name).trim();
   if(!newName){document.getElementById("status").textContent="本棚名を空欄にはできません。";return}
-  const key=newName.replace(/[🟠🔵🌀🎈📚⏰]/g,"").replace(/\s+/g,"");
-  if(shelves.some(v=>{const x=shelfText(v).replace(/[🟠🔵🌀🎈📚⏰]/g,"").replace(/\s+/g,"");return x&&x===key})){document.getElementById("status").textContent="同名の本棚があります：「"+newName+"」";return}
+  const nameKey=value=>String(value||"").replace(/[🟠🔵🌀🎈📚⏰🔎✍️🗄️⚙️]/gu,"").replace(/\s+/g,"").trim();
+  const key=nameKey(newName);
+  if(SYSTEM_SHELVES.some(v=>nameKey(v.name)===key)||shelves.some(v=>nameKey(shelfText(v))===key)){document.getElementById("status").textContent="同名の本棚があります：「"+newName+"」";return}
   const id="shelf_"+crypto.randomUUID().replace(/-/g,"").slice(0,12);
   const maxOrder=shelves.reduce((m,v)=>Math.max(m,Number(v.display_order)||0),0);
   const row={shelf_id:id,shelf_name:newName,display_order:maxOrder+1};
@@ -154,12 +155,13 @@ async function loadShelfWorks(id,body){
   }catch(e){loading.textContent="作品情報の読み込み失敗："+e.message}
 }
 async function save(){
- const nameKey=value=>String(value||"").replace(/[🟠🔵🌀🎈📚⏰🔎✍️🗄️⚙️]/g,"").replace(/\\s+/g,"").trim();
- const seen=new Set();
- for(const row of rows){
-  const el=[...document.querySelectorAll(".row")].find(x=>Number(x.dataset.index)===rows.indexOf(row));
-  if(row.kind==="system"){seen.add(nameKey(row.name));continue}
-  const input=el?.querySelector(".nameInput");
+ const nameKey=value=>String(value||"").replace(/[🟠🔵🌀🎈📚⏰🔎✍️🗄️⚙️]/gu,"").replace(/\s+/g,"").trim();
+ const seen=new Set(SYSTEM_SHELVES.map(v=>nameKey(v.name)));
+ const rowEls=[...document.querySelectorAll("#shelfList > .row")];
+ for(let i=0;i<rows.length;i++){
+  const row=rows[i];
+  if(row.kind==="system")continue;
+  const input=rowEls[i]?.querySelector(".nameInput");
   const name=String(input?.value??shelfText(row.shelf)).trim();
   if(!name)throw new Error("棚名を空欄にはできません。");
   const key=nameKey(name);
