@@ -67,7 +67,18 @@ def run_batch(tasks, validator_map=None):
 
 def main():
     source = json.loads(Path("data/author-list.json").read_text(encoding="utf-8"))
-    authors = source.get("authors", [])[:COUNT]
+    all_authors = source.get("authors", [])
+    # Stratify the sample so R18 is included even when normal authors come first.
+    normal = [a for a in all_authors if a.get("author_type") == "normal"]
+    r18 = [a for a in all_authors if a.get("author_type") == "r18"]
+    normal_count = (COUNT + 1) // 2
+    r18_count = COUNT // 2
+    authors = normal[:normal_count] + r18[:r18_count]
+    if len(authors) < COUNT:
+        used = {(a.get("author_type"), a.get("author_id")) for a in authors}
+        authors.extend(a for a in all_authors
+                       if (a.get("author_type"), a.get("author_id")) not in used
+                       and len(authors) < COUNT)
     tasks = [(a, kind, endpoint) for a in authors
              for kind, endpoint in (("novel", "writernovel"), ("activity", "writerblog"))]
     print(f"Read-only conditional GET benchmark: {len(authors)} authors / {len(tasks)} feeds")
