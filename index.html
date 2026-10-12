@@ -504,6 +504,41 @@ function buildShelfFolders(){
  order.forEach(k=>{const node=nodes.get(k);if(node&&!seen.has(k)){root.appendChild(node);seen.add(k)}});nodes.forEach((node,k)=>{if(node&&!seen.has(k)){root.appendChild(node);seen.add(k)}});
  source.hidden=true;
 }
+function setupAtomDisplayDays(){
+  const slider=document.getElementById("atomDisplayDays"),value=document.getElementById("atomDisplayDaysValue");
+  if(!slider||!value)return;
+  const saved=Number(localStorage.getItem("tomotaYomu_atom_display_days")||7);
+  slider.value=String(Math.min(30,Math.max(1,Number.isFinite(saved)?saved:7)));
+  value.textContent=slider.value+"日間";
+  slider.addEventListener("input",()=>{
+    value.textContent=slider.value+"日間";
+    localStorage.setItem("tomotaYomu_atom_display_days",slider.value);
+    renderAuthorAtom().catch(e=>console.warn("作者更新表示期間の再描画失敗",e));
+  });
+}
+function applyDressup(theme){
+  const t=theme==="seiji"||theme==="night"||theme==="autumn"?theme:"default";
+  document.body.dataset.theme=t;
+  localStorage.setItem("tomotaYomu_theme",t);
+  document.querySelectorAll("[data-theme-choice]").forEach(b=>b.classList.toggle("active",(b.dataset.themeChoice||"default")===t));
+  const meta=document.querySelector('meta[name="theme-color"]');
+  if(meta)meta.content=t==="night"?"#20242a":t==="seiji"?"#edf4f1":t==="autumn"?"#f5eee4":"#f6f3ed";
+}
+function initDressup(){
+  applyDressup(localStorage.getItem("tomotaYomu_theme")||"default");
+}
+document.addEventListener("DOMContentLoaded",initDressup);
+document.addEventListener("DOMContentLoaded",initSearch);
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-theme-choice]");
+  if(b){applyDressup(b.dataset.themeChoice);return;}
+  const link=e.target.closest("a.workLink, a.resumeLink");
+  if(link){
+    const card=link.closest(".card");
+    if(card)recordReadingHistory(card.dataset.ncode);
+  }
+});
+
 function buildUpdateView(){
   const candidates=getUpdateCandidates(), cards=[...document.querySelectorAll("#shelf .card")], updates=[];
   cards.forEach(card=>{
