@@ -1,0 +1,52 @@
+name: Test author Atom diff timing
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_authors:
+        description: "Number of authors to test (start with 50; use 750 for full test)"
+        required: true
+        default: "50"
+        type: choice
+        options:
+          - "25"
+          - "50"
+          - "100"
+          - "250"
+          - "750"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: author-atom-diff-timing-test
+  cancel-in-progress: false
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Measure fetch and local diff
+        env:
+          MAX_AUTHORS: ${{ inputs.max_authors }}
+        run: python scripts/test_author_atom_diff_timing.py
+
+      - name: Upload benchmark report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: author-atom-diff-timing-report
+          path: benchmark-report.json
+          if-no-files-found: warn
+          retention-days: 7
