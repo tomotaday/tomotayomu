@@ -1,0 +1,46 @@
+name: Test Atom conditional GET persistence
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_authors:
+        description: "Mixed normal/R18 sample size"
+        required: true
+        default: "25"
+        type: choice
+        options:
+          - "10"
+          - "25"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atom-conditional-get-persistence
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Simulate two runs with saved validators and entries
+        env:
+          MAX_AUTHORS: ${{ inputs.max_authors }}
+        run: python scripts/test_atom_conditional_get_persistence.py
+      - name: Upload persistence report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atom-conditional-get-persistence-report
+          path: conditional-get-persistence-report.json
+          if-no-files-found: warn
+          retention-days: 7
