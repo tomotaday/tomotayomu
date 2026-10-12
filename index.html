@@ -99,7 +99,8 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 <div class="note" style="font-weight:800;font-size:15px">GitHub整理反映版｜2026.10.11</div>
 <div class="top-update-actions">
 <button id="updateBtn" type="button">🔄 本棚更新</button>
-<button id="launchAuthorAtomBtn" type="button">📡 Atom更新</button>
+<button id="copyAuthorJsonBtn" type="button">📋 ① JSONコピー</button>
+<button id="launchAuthorAtomBtn" type="button">📡 ② Atom更新</button>
 
 </div>
 <div id="baselineDate">基準日：反映待ち</div>
@@ -723,6 +724,38 @@ function showShelfMoveDialog(card){
 }
 function placeR18Badges(){}
 document.getElementById("updateBtn").addEventListener("click",updateInfo);
+document.getElementById("copyAuthorJsonBtn")?.addEventListener("click",async()=>{
+  const btn=document.getElementById("copyAuthorJsonBtn");
+  const status=document.getElementById("authorAtomStatus")||document.getElementById("apiStatus");
+  btn.disabled=true;
+  try{
+    const db=await new Promise((resolve,reject)=>{
+      const req=indexedDB.open("tomotaYomuDB",1);
+      req.onsuccess=()=>resolve(req.result);
+      req.onerror=()=>reject(req.error||new Error("本棚DBを開けません"));
+      req.onupgradeneeded=()=>{req.transaction.abort();reject(new Error("先にともたよむ本体の本棚を読み込んでください"));};
+    });
+    const rows=await new Promise((resolve,reject)=>{
+      let store;try{store=db.transaction("authors","readonly").objectStore("authors");}
+      catch(e){reject(new Error("作者データが見つかりません"));return;}
+      const out=[],req=store.openCursor();
+      req.onsuccess=()=>{const c=req.result;if(c){out.push(c.value);c.continue();}else resolve(out);};
+      req.onerror=()=>reject(req.error||new Error("作者一覧を読み込めません"));
+    });
+    const byKey=new Map();
+    for(const a of rows){
+      if(!a||!String(a.authorId||"").trim())continue;
+      const id=String(a.authorId).trim(),type=a.authorType==="r18"?"r18":"normal";
+      byKey.set(type+":"+id,{author_id:id,author_type:type});
+    }
+    const authors=[...byKey.values()].sort((a,b)=>a.author_type.localeCompare(b.author_type)||a.author_id.localeCompare(b.author_id,undefined,{numeric:true}));
+    if(!authors.length)throw new Error("コピー対象の作者が0人です");
+    const payload={schema_version:1,exported_at:new Date().toISOString(),source:"tomotaYomuDB.authors",author_count:authors.length,authors};
+    await navigator.clipboard.writeText(JSON.stringify(payload));
+    if(status)status.textContent="作者"+authors.length+"人分のJSONをコピーしました。続けて「② Atom更新」を押してください。";
+  }catch(e){if(status)status.textContent="JSONコピー失敗："+e.message+"。クリップボードの許可を確認してください。";}
+  finally{btn.disabled=false;}
+});
 document.addEventListener("click",async e=>{
   const btn=e.target.closest("#importAuthorAtomBtn");
   if(!btn)return;
