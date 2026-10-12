@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ともたよむ｜作者ID受け口</title>
+<title>ともたよむ｜作者管理</title>
 <style>
 body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;margin:0;padding:16px;line-height:1.45;background:#fafafa;color:#222}
 h1{font-size:20px;margin:0 0 2px} h2{font-size:17px;margin:18px 0 8px} p{margin:5px 0 10px;color:#666}
@@ -14,15 +14,16 @@ h1{font-size:20px;margin:0 0 2px} h2{font-size:17px;margin:18px 0 8px} p{margin:
 a,button{display:inline-block;padding:9px 12px;border-radius:8px;background:#eee;color:#111;text-decoration:none;border:0;font-size:14px}
 summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
 .badge{background:#fff;border:1px solid #ddd;border-radius:9px;padding:7px 9px;font-size:13px}
+.authorSync{margin-top:12px}.authorSync h2{font-size:17px}.authorSync .stat{margin:8px 0}.authorSync button{background:#176b2c;color:white;font-weight:600;padding:12px 14px}.authorSync button:disabled{opacity:.55}.authorSync .meta{margin:8px 0;color:#555}
 .authorName{font-weight:600}.authorId{font-family:ui-monospace,monospace;font-size:13px;color:#555}
 .workLine{font-size:13px;padding:4px 0;border-top:1px solid #eee}.small{font-size:12px;color:#777}.authorTools{margin-top:10px;padding:10px;background:#fafafa;border-radius:9px}.authorTools label{display:block;font-size:12px;color:#666;margin:6px 0 3px}.authorManageName{font-weight:600;font-size:15px;margin-bottom:4px}.authorTools input{box-sizing:border-box;width:100%;padding:8px;border:1px solid #ccc;border-radius:7px;font-size:14px}.authorWeb{display:inline-block;margin:3px 0 7px}.kanaSave,.kanaNext{margin-top:7px;padding:7px 10px;font-size:13px}.kanaNext{margin-left:6px}.kanaStatus{font-size:12px;color:#176b2c;margin-left:6px}
 </style>
 </head>
 <body>
 <div class="top">
-<h1>ともたよむ｜作者ID受け口</h1>
-<div class="version">v3.2.0【基準版】</div>
-<p>全年齢・R18の作者ページURLを受け取り、作者IDと作品との関係を保存します。</p>
+<h1>ともたよむ｜作者管理</h1>
+<div class="version">作者登録・五十音整理・GitHub送信</div>
+<p>作者登録からAtom更新用の作者一覧送信までを管理します。</p>
 </div>
 
 <div id="notice" class="notice">作者ページURLを受け取ると、全年齢・R18を自動判定して登録します。全年齢作者のふりがなは公式APIから自動取得し、五十音順に整理します。</div>
@@ -31,6 +32,17 @@ summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;
 <div class="badge">未登録・R18：<span id="r18Count">--</span></div>
 <div class="badge">作者ID付き作品：<span id="linkedCount">--</span></div>
 <div class="badge">登録作者：<span id="authorCount">--</span></div>
+</div>
+<div class="authorSync card">
+<h2 style="margin-top:0">GitHub作者一覧</h2>
+<div class="stat">
+<div class="badge">本体の登録作者：<strong id="localAuthorCount">--</strong></div>
+<div class="badge">GitHub登録済み：<strong id="githubAuthorCount">読込中</strong></div>
+<div class="badge">未送信差分：<strong id="authorDiffCount">--</strong></div>
+</div>
+<p id="syncStatus" class="meta">GitHubの保存済み作者一覧と照合しています…</p>
+<button id="sendAuthors" type="button">📤 GitHubへ作者一覧を送信</button>
+<p class="small">ボタンを押すと、IndexedDBの最新作者一覧をクリップボードへコピーし、「ともたよむ Atom更新」ショートカットを起動します。送信完了はGitHub Actionsの結果で確認します。</p>
 </div>
 
 <details>
@@ -159,6 +171,8 @@ async function render(){
     g.ns.push(ncode(a.ncode));
   });
   document.getElementById("authorCount").textContent=groups.size;
+  document.getElementById("localAuthorCount").textContent=groups.size+"人";
+  loadGitHubAuthorCount();
   const box=document.getElementById("authors");
   if(!groups.size)box.innerHTML='<p class="small">まだ作者IDは登録されていません。</p>';
   else{
@@ -381,6 +395,52 @@ async function handleIncoming(){
     history.replaceState({},document.title,location.pathname);await render();
   }catch(e){notice.textContent="⚠️ 作者登録失敗｜"+e.message+"｜データは変更していません。"}
 }
+async function loadGitHubAuthorCount(){
+  const status=document.getElementById("syncStatus");
+  try{
+    const response=await fetch("./data/author-list.json?ts="+Date.now(),{cache:"no-store"});
+    if(!response.ok)throw new Error("GitHub保存済み一覧を読めません（HTTP "+response.status+"）");
+    const data=await response.json();
+    const ids=new Set((Array.isArray(data.authors)?data.authors:[]).map(a=>String(a.author_type||"")+":"+String(a.author_id||"").trim()).filter(k=>!k.endsWith(":")));
+    const remote=ids.size;
+    const local=Number(document.getElementById("authorCount").textContent)||0;
+    document.getElementById("githubAuthorCount").textContent=remote+"人";
+    document.getElementById("localAuthorCount").textContent=local+"人";
+    document.getElementById("authorDiffCount").textContent=(local-remote>=0?"+":"")+(local-remote)+"人";
+    status.textContent="GitHub保存済み一覧："+remote+"人｜最終送付データ："+String(data.exported_at||"不明");
+    status.dataset.remoteCount=String(remote);
+  }catch(e){
+    document.getElementById("githubAuthorCount").textContent="確認不可";
+    document.getElementById("authorDiffCount").textContent="比較不可";
+    status.textContent="GitHub一覧の比較に失敗しました："+e.message;
+  }
+}
+async function sendAuthorsToGitHub(){
+  const btn=document.getElementById("sendAuthors"),status=document.getElementById("syncStatus");
+  btn.disabled=true;
+  try{
+    const db=await openDB();
+    const rows=await readAll(db,"authors");
+    const byKey=new Map();
+    for(const a of rows){
+      if(!a||!String(a.authorId||"").trim())continue;
+      const id=String(a.authorId).trim();
+      const type=a.authorType==="r18"?"r18":"normal";
+      byKey.set(type+":"+id,{author_id:id,author_type:type});
+    }
+    const authors=[...byKey.values()].sort((a,b)=>a.author_type.localeCompare(b.author_type)||a.author_id.localeCompare(b.author_id,undefined,{numeric:true}));
+    if(!authors.length)throw new Error("送信対象の作者が0人です。");
+    const payload={schema_version:1,exported_at:new Date().toISOString(),source:"tomotaYomuDB.authors",author_count:authors.length,authors};
+    await navigator.clipboard.writeText(JSON.stringify(payload));
+    status.textContent="作者"+authors.length+"人をコピーしました。Atom更新ショートカットを起動します…";
+    location.href="shortcuts://run-shortcut?name="+encodeURIComponent("ともたよむ Atom更新");
+  }catch(e){
+    status.textContent="送信準備に失敗しました："+e.message+"。クリップボードの許可とショートカット名を確認してください。";
+    btn.disabled=false;
+  }
+}
+document.getElementById("sendAuthors").addEventListener("click",sendAuthorsToGitHub);
+
 (async()=>{
   try{
     const legacyA=legacyAuthors(),legacyL=legacyLinks(),legacyM=legacyMaster();
