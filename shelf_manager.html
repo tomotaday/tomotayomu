@@ -46,6 +46,8 @@ button{border:1px solid #c8c0b5;border-radius:8px;background:transparent;padding
 const DB_NAME="tomotaYomuDB",DB_VERSION=1;
 const STORES={shelves:"shelf_names",placements:"shelf_placement",works:"works_cache"};
 const DESIRED_ORDER=["読書中","あ〜お","か〜こ","さ〜そ","た〜と","な〜の","は〜ほ","ま〜も","や〜ん","更新待ち"];
+const MIXED_ORDER_KEY="tomotaYomu_mixed_shelf_order_v1";
+const SYSTEM_SHELVES=[{key:"system:search",name:"🔎 検索"},{key:"system:authors",name:"✍️ 作者"},{key:"system:works",name:"📚 作品"},{key:"system:all",name:"📚 全作品"},{key:"system:history",name:"🗄️ 履歴"},{key:"system:unclassified",name:"未分類"},{key:"system:management",name:"⚙️ 管理設定用"}];
 let db=null,shelves=[],placements=[],rows=[],dragRow=null,dragPointerId=null;
 let countMap=new Map();
 
@@ -68,55 +70,24 @@ function buildIndexes(){
   });
 }
 function setOrderInitial(){
-  const hasSavedOrder=shelves.some(v=>Number.isFinite(Number(v.display_order)));
-  rows=[];
-  if(hasSavedOrder){
-    shelves.slice().sort((a,b)=>{
-      const ao=Number(a.display_order),bo=Number(b.display_order);
-      return (Number.isFinite(ao)?ao:999999)-(Number.isFinite(bo)?bo:999999);
-    }).forEach(v=>rows.push({kind:"shelf",shelf:v,core:core(shelfText(v))}));
-  }else{
-    const active=new Map();
-    shelves.forEach(v=>{const id=getId(v),c=core(shelfText(v));if(id&&c&&!active.has(c))active.set(c,v)});
-    const used=new Set();
-    DESIRED_ORDER.forEach(c=>{const v=active.get(c);if(v){rows.push({kind:"shelf",shelf:v,core:c});used.add(getId(v))}});
-    shelves.forEach(v=>{const id=getId(v);if(id&&!used.has(id)){rows.push({kind:"shelf",shelf:v,core:core(shelfText(v))});used.add(id)}});
-  }
+ const customs=[];
+ if(shelves.some(v=>Number.isFinite(Number(v.display_order))))shelves.slice().sort((a,b)=>(Number(a.display_order)||999999)-(Number(b.display_order)||999999)).forEach(v=>customs.push({kind:"shelf",shelf:v,core:core(shelfText(v)),key:"custom:"+getId(v)}));
+ else{const active=new Map();shelves.forEach(v=>{const id=getId(v),c=core(shelfText(v));if(id&&c&&!active.has(c))active.set(c,v)});const used=new Set();DESIRED_ORDER.forEach(c=>{const v=active.get(c);if(v){customs.push({kind:"shelf",shelf:v,core:c,key:"custom:"+getId(v)});used.add(getId(v)}});shelves.forEach(v=>{const id=getId(v);if(id&&!used.has(id)){customs.push({kind:"shelf",shelf:v,core:core(shelfText(v)),key:"custom:"+id});used.add(id)}})}
+ const systems=SYSTEM_SHELVES.map(v=>({kind:"system",key:v.key,name:v.name})),defaults=["system:search","system:authors","system:works","system:all","system:history","system:unclassified","system:management"];
+ let saved=[];try{saved=JSON.parse(localStorage.getItem(MIXED_ORDER_KEY)||"[]");if(!Array.isArray(saved))saved=[]}catch(e){saved=[]}
+ const lookup=new Map([...systems,...customs].map(r=>[r.key,r])),order=[...saved.filter(k=>lookup.has(k)),...defaults.filter(k=>lookup.has(k)&&!saved.includes(k)),...customs.map(r=>r.key).filter(k=>!saved.includes(k))];
+ rows=[];const seen=new Set();order.forEach(k=>{const r=lookup.get(k);if(r&&!seen.has(k)){rows.push(r);seen.add(k)}});[...systems,...customs].forEach(r=>{if(!seen.has(r.key)){rows.push(r);seen.add(r.key)}});
 }
 function render(){
-  const list=document.getElementById("shelfList");list.innerHTML="";
-  rows.forEach((r,i)=>{
-    const el=document.createElement("div");el.className="row";el.dataset.index=String(i);
-    const id=getId(r.shelf),name=shelfText(r.shelf)||label(r.core||core(shelfText(r.shelf))),count=countMap.get(id)||0;
-    const head=document.createElement("div");head.className="head";
-    const h=document.createElement("div");h.className="handle";h.textContent="☰";h.setAttribute("aria-label","棚を並べ替える");
-    const nm=document.createElement("div");nm.className="name";
-    const inp=document.createElement("input");inp.className="nameInput";inp.type="text";inp.value=name;inp.setAttribute("aria-label","本棚名");inp.addEventListener("click",e=>e.stopPropagation());inp.addEventListener("pointerdown",e=>e.stopPropagation());
-    nm.appendChild(inp);
-    const ct=document.createElement("div");ct.className="count";ct.textContent=count+"作品";
-    const ord=document.createElement("div");ord.className="order";ord.textContent=String(i+1);
-    head.append(h,nm,ct);
-    const targetBtn=document.createElement("button");
-    targetBtn.className="deleteBtn";
-    targetBtn.type="button";
-    targetBtn.textContent=r.shelf.work_add_target===true?"📥登録先✓":"📥登録先";
-    targetBtn.style.borderColor=r.shelf.work_add_target===true?"#4b8b67":"#c8c0b5";
-    targetBtn.addEventListener("click",e=>{e.stopPropagation();setWorkAddTarget(id,name)});
-    head.appendChild(targetBtn);
-    if(count===0){
-      const del=document.createElement("button");del.className="deleteBtn";del.type="button";del.textContent="🗑削除";
-      del.addEventListener("click",e=>{e.stopPropagation();deleteEmptyShelf(id,name)});
-      head.appendChild(del);
-    }
-    head.appendChild(ord);
-    const body=document.createElement("div");body.className="body";
-    const sid=document.createElement("div");sid.className="shelfId";sid.textContent="shelf_id："+(id||"（なし）");body.appendChild(sid);
-    const e=document.createElement("div");e.className="empty";e.textContent=count?"作品情報を表示するには棚をタップしてください。":"この棚に所属する作品はありません";body.appendChild(e);
-    el.append(head,body);
-    h.addEventListener("pointerdown",startDrag);
-    head.addEventListener("click",async e=>{if(e.target===h||e.target.closest("button")||e.target.closest("input"))return;const opening=!el.classList.contains("open");el.classList.toggle("open");if(opening&&count)await loadShelfWorks(id,body)});
-    list.appendChild(el);
-  });
+ const list=document.getElementById("shelfList");list.innerHTML="";
+ rows.forEach((r,i)=>{const el=document.createElement("div");el.className="row"+(r.kind==="system"?" systemRow":"");el.dataset.index=String(i);
+ const id=r.kind==="shelf"?getId(r.shelf):"",name=r.kind==="system"?r.name:(shelfText(r.shelf)||label(r.core||core(shelfText(r.shelf)))),count=r.kind==="shelf"?(countMap.get(id)||0):0;
+ const head=document.createElement("div");head.className="head";const h=document.createElement("div");h.className="handle";h.textContent="☰";h.setAttribute("aria-label","棚を並べ替える");const nm=document.createElement("div");nm.className="name";
+ if(r.kind==="system"){const fixed=document.createElement("div");fixed.className="nameInput fixedName";fixed.textContent=name;nm.appendChild(fixed)}else{const inp=document.createElement("input");inp.className="nameInput";inp.type="text";inp.value=name;inp.setAttribute("aria-label","本棚名");inp.addEventListener("click",e=>e.stopPropagation());inp.addEventListener("pointerdown",e=>e.stopPropagation());nm.appendChild(inp)}
+ const ct=document.createElement("div");ct.className="count";ct.textContent=r.kind==="system"?"システム棚":count+"作品";const ord=document.createElement("div");ord.className="order";ord.textContent=String(i+1);head.append(h,nm,ct);
+ if(r.kind==="shelf"){const targetBtn=document.createElement("button");targetBtn.className="deleteBtn";targetBtn.type="button";targetBtn.textContent=r.shelf.work_add_target===true?"📥登録先✓":"📥登録先";targetBtn.style.borderColor=r.shelf.work_add_target===true?"#4b8b67":"#c8c0b5";targetBtn.addEventListener("click",e=>{e.stopPropagation();setWorkAddTarget(id,name)});head.appendChild(targetBtn);if(count===0){const del=document.createElement("button");del.className="deleteBtn";del.type="button";del.textContent="🗑削除";del.addEventListener("click",e=>{e.stopPropagation();deleteEmptyShelf(id,name)});head.appendChild(del)}}
+ head.appendChild(ord);const body=document.createElement("div");body.className="body";const sid=document.createElement("div");sid.className="shelfId";sid.textContent=r.kind==="system"?"固定システム棚。名称変更・削除はできません。":"shelf_id："+id;body.appendChild(sid);const note=document.createElement("div");note.className="empty";note.textContent=r.kind==="system"?"棚の位置だけを変更します。機能や作品の所属判定は変更しません。":(count?"作品情報を表示するには棚をタップしてください。":"この棚に所属する作品はありません");body.appendChild(note);el.append(head,body);h.addEventListener("pointerdown",startDrag);if(r.kind==="shelf")head.addEventListener("click",async e=>{if(e.target===h||e.target.closest("button")||e.target.closest("input"))return;const opening=!el.classList.contains("open");el.classList.toggle("open");if(opening&&count)await loadShelfWorks(id,body)});list.appendChild(el);
+ });
 }
 async function addShelf(){
   const name=prompt("新しい本棚名を入力してください。","仮保存");
@@ -182,8 +153,12 @@ async function loadShelfWorks(id,body){
     if(items.length>30){const m=document.createElement("div");m.className="more";m.textContent="ほか "+(items.length-30)+"作品";body.appendChild(m)}
   }catch(e){loading.textContent="作品情報の読み込み失敗："+e.message}
 }
-async function save(){const order=rows.map((r,i)=>({row:r,order:i+1})).filter(x=>x.row.kind==="shelf");const tx=db.transaction(STORES.shelves,"readwrite"),st=tx.objectStore(STORES.shelves);const seen=new Set();for(const x of order){const rowEl=[...document.querySelectorAll(".row")].find(r=>Number(r.dataset.index)===rows.indexOf(x.row));const input=rowEl?.querySelector(".nameInput");const newName=String(input?.value??shelfText(x.row.shelf)).trim();if(!newName)throw new Error("棚名を空欄にはできません。");const key=newName.replace(/[🟠🔵🌀🎈📚⏰]/g,"").replace(/\s+/g,"");if(key&&seen.has(key))throw new Error("同名の棚があります：「"+newName+"」");seen.add(key);x.row.shelf={...x.row.shelf,shelf_name:newName,display_order:x.order};st.put(x.row.shelf)}await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error("保存中止"))});shelves=order.map(x=>x.row.shelf);document.getElementById("status").textContent="保存しました。棚名と表示順をIndexedDBへ記録しました。"}
-function resetOrder(){setOrderInitial();render();document.getElementById("status").textContent="初期順に戻しました。まだ保存はしていません。"}
+async function save(){
+ const customRows=rows.filter(r=>r.kind==="shelf"),tx=db.transaction(STORES.shelves,"readwrite"),st=tx.objectStore(STORES.shelves),seen=new Set();
+ customRows.forEach((row,j)=>{const el=[...document.querySelectorAll(".row")].find(x=>Number(x.dataset.index)===rows.indexOf(row)),input=el?.querySelector(".nameInput"),name=String(input?.value??shelfText(row.shelf)).trim();if(!name)throw new Error("棚名を空欄にはできません。");const key=name.replace(/[🟠🔵🌀🎈📚⏰]/g,"").replace(/\s+/g,"");if(key&&seen.has(key))throw new Error("同名の棚があります：「"+name+"」");seen.add(key);row.shelf={...row.shelf,shelf_name:name,display_order:j+1};st.put(row.shelf)});
+ await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error("保存中止"))});shelves=customRows.map(r=>r.shelf);localStorage.setItem(MIXED_ORDER_KEY,JSON.stringify(rows.map(r=>r.key)));document.getElementById("status").textContent="保存しました。自由棚とシステム棚を含む全体順を記録しました。";
+}
+function resetOrder(){localStorage.removeItem(MIXED_ORDER_KEY);setOrderInitial();render();document.getElementById("status").textContent="初期順に戻しました。まだ保存はしていません。"}
 async function init(){
   const status=document.getElementById("status");
   try{
