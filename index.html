@@ -14,7 +14,7 @@ main{width:min(100%,720px);margin:auto;padding:18px 14px 40px}
 h1{font-size:30px;margin:0 0 4px}
 .note{font-size:13px;color:var(--muted);margin-bottom:15px}
 button{border:1px solid #c8c0b5;border-radius:8px;background:transparent;padding:5px 9px;font-size:14px;color:var(--ink)}
-.top-update-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;width:100%;margin:0 0 8px}.top-update-actions button{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:clip;padding:7px 2px;font-size:clamp(10px,3.1vw,13px);background:var(--card);border:1px solid #c9c0b4;border-radius:12px;box-shadow:0 2px 0 rgba(0,0,0,.04);color:var(--text)}
+.top-update-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%;margin:0 0 8px}.top-update-actions button{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:clip;padding:7px 2px;font-size:clamp(10px,3.1vw,13px);background:var(--card);border:1px solid #c9c0b4;border-radius:12px;box-shadow:0 2px 0 rgba(0,0,0,.04);color:var(--text)}
 #apiStatus{font-size:13px;margin:10px 0 15px}
 .section{margin:20px 0 8px;font-weight:700;font-size:18px}
 .update-empty{color:var(--muted);margin-bottom:16px}
@@ -101,6 +101,7 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 <button id="updateBtn" type="button">🔄 本棚更新</button>
 <button id="copyAuthorJsonBtn" type="button">① JSONコピー</button>
 <button id="launchAuthorAtomBtn" type="button">② Atom更新</button>
+<button id="reverseOrderBtn" type="button">🔃 順序反転</button>
 
 </div>
 <div id="baselineDate" style="font-size:13px;margin:8px 0">本棚基準日：反映待ち</div>
@@ -148,6 +149,8 @@ const LATEST_WORKS_KEY = "tomotaYomu_v214_latest_works";
 const READING_HISTORY_KEY = "tomotaYomu_v330_reading_history";
 const INITIAL_GLOBAL_BASELINE = "2026-09-25T00:00:00+09:00";
 const MAX_ST = 2000;
+let workOrderReversed = false;
+function compareWorkDate(a,b){const d=String(b.dataset.lastUpdated||"").localeCompare(String(a.dataset.lastUpdated||""));return workOrderReversed?-d:d;}
 const INIT_START = 0;
 
 function loadJSON(key, fallback) { try { return JSON.parse(localStorage.getItem(key) || "null") ?? fallback; } catch(e) { return fallback; } }
@@ -483,17 +486,18 @@ function recordReadingHistory(ncode){
 }
 function buildShelfFolders(){
  const root=document.getElementById("shelfSections"),source=document.getElementById("shelf");if(!root||!source)return;
+ const openKeys=new Set([...root.querySelectorAll("details[open]")].map(x=>x.dataset.shelfKey).filter(Boolean));
  const search=document.querySelector(".searchDetails"),author=document.getElementById("authorFeedDetails"),works=[...document.querySelectorAll(".updateDetails")].find(x=>x.id!=="authorFeedDetails");
  root.innerHTML="";
  const cards=[...source.querySelectorAll(":scope > .card")],historyCards=new Map(cards.map(card=>[String(card.dataset.ncode||"").toUpperCase(),card]));
  const shelves=v3Shelves.map(v=>({id:String(v.shelf_id||"").trim(),name:String(v3ShelfText(v)||"").trim(),sort:Number.isFinite(Number(v.display_order))?Number(v.display_order):999999})).filter(v=>v.id&&v.name).sort((a,b)=>a.sort-b.sort),known=new Set(shelves.map(x=>x.id));
  const getFolder=card=>{const sid=String(card.dataset.shelfId||"").trim();return known.has(sid)?sid:""},customNodes=[];
- for(const x of shelves){const members=cards.filter(card=>getFolder(card)===x.id).sort((a,b)=>(b.dataset.lastUpdated||"").localeCompare(a.dataset.lastUpdated||""));
+ for(const x of shelves){const members=cards.filter(card=>getFolder(card)===x.id).sort(compareWorkDate);
   const d=document.createElement("details");d.className="folderDetails";d.dataset.shelfKey="custom:"+x.id;const sm=document.createElement("summary");sm.textContent=x.name+" "+members.length;const wrap=document.createElement("div");wrap.className="folderCards";d.addEventListener("toggle",()=>{if(!d.open||wrap.dataset.loaded==="1")return;wrap.dataset.loaded="1";if(!members.length){const empty=document.createElement("div");empty.className="searchHint";empty.textContent="0";wrap.appendChild(empty);return}members.forEach(card=>wrap.appendChild(card.cloneNode(true)))});d.append(sm,wrap);customNodes.push(d);
  }
  const unclassified=cards.filter(card=>!getFolder(card)).sort((a,b)=>(b.dataset.lastUpdated||"").localeCompare(a.dataset.lastUpdated||""));
  const ud=document.createElement("details");ud.className="folderDetails";ud.dataset.shelfKey="system:unclassified";const us=document.createElement("summary");us.textContent="未分類 "+unclassified.length;const uw=document.createElement("div");uw.className="folderCards";ud.addEventListener("toggle",()=>{if(!ud.open||uw.dataset.loaded==="1")return;uw.dataset.loaded="1";if(!unclassified.length){const empty=document.createElement("div");empty.className="searchHint";empty.textContent="0";uw.appendChild(empty);return}unclassified.forEach(card=>uw.appendChild(card.cloneNode(true)))});ud.append(us,uw);
- const all=document.createElement("details");all.className="folderDetails";all.dataset.shelfKey="system:all";const als=document.createElement("summary");als.textContent="📚 全作品 "+cards.length;const aw=document.createElement("div");aw.className="folderCards";all.addEventListener("toggle",()=>{if(!all.open||aw.dataset.loaded==="1")return;aw.dataset.loaded="1";cards.slice().sort((a,b)=>(b.dataset.lastUpdated||"").localeCompare(a.dataset.lastUpdated||"")).forEach(card=>aw.appendChild(card.cloneNode(true)))});all.append(als,aw);
+ const all=document.createElement("details");all.className="folderDetails";all.dataset.shelfKey="system:all";const als=document.createElement("summary");als.textContent="📚 全作品 "+cards.length;const aw=document.createElement("div");aw.className="folderCards";all.addEventListener("toggle",()=>{if(!all.open||aw.dataset.loaded==="1")return;aw.dataset.loaded="1";cards.slice().sort(compareWorkDate).forEach(card=>aw.appendChild(card.cloneNode(true)))});all.append(als,aw);
  const history=renderReadingHistoryShelf(root,historyCards);
  const management=document.createElement("details");management.className="managementSettingsDetails";management.dataset.shelfKey="system:management";const ms=document.createElement("summary");ms.textContent="⚙️管理設定用";const mb=document.createElement("div");mb.className="managementSettingsBody";
  mb.innerHTML='<a href="https://github.com/tomotaday/tomotayomu/actions/workflows/publish-author-atom-feeds.yml" target="_blank" rel="noopener noreferrer">📡 GitHub Actions確認</a><button id="importAuthorAtomBtn" type="button">📥 Atom取込（手動）</button><a href="shelf_manager.html">本棚管理</a><a href="author.html">作者整理（ふりがな）</a><a href="author-export.html">📋 作者一覧エクスポート</a><div class="managementHelp"><strong>📡 作者更新の表示期間</strong><div><input id="atomDisplayDays" type="range" min="1" max="30" step="1" value="7" style="width:100%"><strong id="atomDisplayDaysValue">7日間</strong></div><p>通常は7日間。1〜30日で変更できます。保存済みのAtom情報は削除せず、表示対象だけを切り替えます。</p></div><p class="managementHelp">作者が増えたら、一覧データをコピーして「Atom更新」を実行。</p><div><strong>🎨 お着替え</strong><div class="dressup"><button type="button" data-theme-choice="default">🌿 生成り</button><button type="button" data-theme-choice="seiji">🌊 青磁</button><button type="button" data-theme-choice="night">🌙 夜の図鑑</button><button type="button" data-theme-choice="autumn">🍂 秋色</button></div></div>';management.append(ms,mb);
@@ -502,6 +506,7 @@ function buildShelfFolders(){
  let saved=[];try{saved=JSON.parse(localStorage.getItem("tomotaYomu_mixed_shelf_order_v1")||"[]");if(!Array.isArray(saved))saved=[]}catch(e){saved=[]}
  const order=[...saved.filter(k=>nodes.has(k)),...defaults.filter(k=>nodes.has(k)&&!saved.includes(k))],seen=new Set();
  order.forEach(k=>{const node=nodes.get(k);if(node&&!seen.has(k)){root.appendChild(node);seen.add(k)}});nodes.forEach((node,k)=>{if(node&&!seen.has(k)){root.appendChild(node);seen.add(k)}});
+ root.querySelectorAll("details[data-shelf-key]").forEach(node=>{if(openKeys.has(node.dataset.shelfKey))node.open=true;});
  source.hidden=true;
 }
 function setupAtomDisplayDays(){
@@ -705,6 +710,7 @@ function showShelfMoveDialog(card){
 }
 function placeR18Badges(){}
 document.getElementById("updateBtn").addEventListener("click",updateInfo);
+document.getElementById("reverseOrderBtn")?.addEventListener("click",()=>{workOrderReversed=!workOrderReversed;buildShelfFolders();});
 document.getElementById("copyAuthorJsonBtn")?.addEventListener("click",async()=>{
   const btn=document.getElementById("copyAuthorJsonBtn");
   const status=document.getElementById("authorAtomStatus")||document.getElementById("apiStatus");
