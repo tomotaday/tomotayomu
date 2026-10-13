@@ -949,7 +949,7 @@ async function renderAuthorAtom(){
         const dayHeading=document.createElement("summary");dayHeading.textContent=day+"　未読 "+dayUnread+" / 全 "+dayEntries.length+"件";
         daySection.appendChild(dayHeading);
         for(const e of dayEntries){
-          const row=document.createElement("div");row.className="atomEntry"+(e.read?"":" unread");
+          const row=document.createElement("div");row.className="atomEntry"+(e.read?"":" unread");row.dataset.entryId=e.entryId;
           const a=document.createElement("a");a.href=e.url||"#";a.target="_blank";a.rel="noopener noreferrer";a.textContent=e.title;
           if(e.url&&!e.read)a.addEventListener("click",()=>markAtomRead(e.entryId));
           row.appendChild(a);
@@ -966,7 +966,34 @@ async function renderAuthorAtom(){
     list.appendChild(section);
   }
 }
-async function markAtomRead(id){const db=await openAtomDB(),all=await atomAll(db,"entries"),row=all.find(x=>x.entryId===id);if(row){row.read=true;await atomPut(db,"entries",row);await renderAuthorAtom()}}
+async function markAtomRead(id){
+  const db=await openAtomDB(),all=await atomAll(db,"entries"),entry=all.find(x=>x.entryId===id);
+  if(!entry||entry.read)return;
+  entry.read=true;
+  await atomPut(db,"entries",entry);
+  const row=[...document.querySelectorAll("#authorAtomList .atomEntry")].find(el=>el.dataset.entryId===id);
+  if(!row)return;
+  row.classList.remove("unread");
+  const state=row.querySelector(".atomReadState");
+  if(state){state.classList.remove("is-unread");state.classList.add("is-read");state.textContent="✓ 既読";}
+  row.querySelector("button")?.remove();
+  const countUnread=container=>container.querySelectorAll(".atomEntry.unread").length;
+  const countAll=container=>container.querySelectorAll(".atomEntry").length;
+  const daySection=row.closest(".atomDate");
+  if(daySection){
+    const heading=daySection.querySelector(":scope > summary");
+    if(heading){const label=heading.textContent.split("　未読 ")[0];heading.textContent=label+"　未読 "+countUnread(daySection)+" / 全 "+countAll(daySection)+"件";}
+  }
+  const category=row.closest(".atomCategory");
+  if(category){
+    const heading=category.querySelector(":scope > summary");
+    if(heading){const label=heading.textContent.split("　未読 ")[0];heading.textContent=label+"　未読 "+countUnread(category)+" / 全 "+countAll(category)+"件";}
+  }
+  const list=document.getElementById("authorAtomList");
+  const totalUnread=countUnread(list);
+  const title=document.getElementById("authorFeedTitle");
+  if(title)title.textContent="👤 作者 🆙 "+totalUnread.toLocaleString("ja-JP");
+}
 window.addEventListener("load",async()=>{try{setupAtomDisplayDays();await renderAuthorAtom();if(sessionStorage.getItem("tomotaYomu_atom_wait_started"))waitForPublishedAuthorFeeds();else await importPublishedAuthorFeeds()}catch(e){console.warn("作者Atom表示準備失敗",e)}});
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&sessionStorage.getItem("tomotaYomu_atom_wait_started"))waitForPublishedAuthorFeeds()});
 window.addEventListener("focus",()=>{if(sessionStorage.getItem("tomotaYomu_atom_wait_started"))waitForPublishedAuthorFeeds()});
