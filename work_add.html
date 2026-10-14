@@ -62,7 +62,7 @@ async function fetchWork(api,ncode){
   const apis=[api,api===API_URL?R18_API_URL:API_URL];
   let last=null;
   for(const base of apis){
-    const u=base+"?out=jsonp&of=n-t-w-gl-ga-nt-e-u&ncode="+encodeURIComponent(ncode)+"&lim=1";
+    const u=base+"?out=jsonp&of=n-t-s-w-gl-ga-nt-e-u&ncode="+encodeURIComponent(ncode)+"&lim=1";
     try{
       const j=await jsonp(u);
       const hit=Array.isArray(j)?j.find(x=>x&&x.ncode):null;
