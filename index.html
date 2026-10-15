@@ -152,6 +152,9 @@ const MAX_ST = 2000;
 let workOrderReversed = false;
 function compareWorkDate(a,b){const d=String(b.dataset.lastUpdated||"").localeCompare(String(a.dataset.lastUpdated||""));return workOrderReversed?-d:d;}
 const INIT_START = 0;
+const WORK_EDIT_OVERRIDES_KEY="tomotaYomu_work_edit_overrides_v1";
+function getWorkEditOverrides(){return loadJSON(WORK_EDIT_OVERRIDES_KEY,{});}
+function getWorkEditOverride(ncode){const all=getWorkEditOverrides();return all[String(ncode||"").toUpperCase()]||{};}
 
 function loadJSON(key, fallback) { try { return JSON.parse(localStorage.getItem(key) || "null") ?? fallback; } catch(e) { return fallback; } }
 function saveJSON(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
@@ -421,6 +424,7 @@ function renderResumeLink(card,current,total,workUrl,isShortStory){
 }
 function updateCard(card,w){
   const n=String(w.ncode||card.dataset.ncode).toUpperCase();
+  const edit=getWorkEditOverride(n);w={...w,title:edit.title??w.title,writer:edit.writer??w.writer,story:edit.story??w.story};
   const isR18=isR18Work(w);
   card.dataset.r18=isR18?"1":"";
   const titleEl=card.querySelector("h2"); if(titleEl&&w.title)titleEl.textContent=w.title;
@@ -518,7 +522,7 @@ function buildShelfFolders(){
  const all=document.createElement("details");all.className="folderDetails";all.dataset.shelfKey="system:all";const als=document.createElement("summary");als.textContent="📚 全作品 "+cards.length;const aw=document.createElement("div");aw.className="folderCards";all.addEventListener("toggle",()=>{if(!all.open||aw.dataset.loaded==="1")return;aw.dataset.loaded="1";cards.slice().sort(compareWorkDate).forEach(card=>aw.appendChild(card.cloneNode(true)))});all.append(als,aw);
  const excludedSet=getSearchExcludedNcodes(),excludedCards=cards.filter(card=>excludedSet.has(String(card.dataset.ncode||"").toUpperCase())).sort(compareWorkDate);
  const excluded=document.createElement("details");excluded.className="folderDetails";excluded.dataset.shelfKey="system:search-excluded";const exs=document.createElement("summary");exs.textContent="🚫 検索除外 "+excludedCards.length;const exw=document.createElement("div");exw.className="folderCards";
- excluded.addEventListener("toggle",()=>{if(!excluded.open||exw.dataset.loaded==="1")return;exw.dataset.loaded="1";if(!excludedCards.length){const empty=document.createElement("div");empty.className="searchHint";empty.textContent="検索除外に設定された作品はありません。";exw.appendChild(empty);return}excludedCards.forEach(card=>exw.appendChild(card.cloneNode(true)));syncSearchExcludedButtons()});excluded.append(exs,exw);
+ excluded.addEventListener("toggle",()=>{if(!excluded.open||exw.dataset.loaded==="1")return;exw.dataset.loaded="1";if(!excludedCards.length){const empty=document.createElement("div");empty.className="searchHint";empty.textContent="検索除外に設定された作品はありません。";exw.appendChild(empty);return}excludedCards.forEach(card=>{const clone=card.cloneNode(true);const editLink=document.createElement("a");editLink.className="searchExcludedEditLink";editLink.href="search_excluded_edit.html?ncode="+encodeURIComponent(String(card.dataset.ncode||"").toUpperCase());editLink.textContent="✏️ 内容を編集";editLink.style.display="inline-block";editLink.style.marginTop="8px";editLink.style.color="inherit";editLink.style.borderBottom="1px solid #aaa";const synopsis=clone.querySelector(".synopsis");if(synopsis)synopsis.insertAdjacentElement("afterend",editLink);else clone.appendChild(editLink);exw.appendChild(clone)});syncSearchExcludedButtons()});excluded.append(exs,exw);
  const history=renderReadingHistoryShelf(root,historyCards);
  const management=document.createElement("details");management.className="managementSettingsDetails";management.dataset.shelfKey="system:management";const ms=document.createElement("summary");ms.textContent="⚙️管理設定用";const mb=document.createElement("div");mb.className="managementSettingsBody";
  mb.innerHTML='<a href="https://github.com/tomotaday/tomotayomu/actions/workflows/publish-author-atom-feeds.yml" target="_blank" rel="noopener noreferrer">📡 GitHub Actions確認</a><button id="importAuthorAtomBtn" type="button">📥 Atom取込（手動）</button><a href="shelf_manager.html">本棚管理</a><a href="author.html">作者整理（ふりがな）</a><a href="author-export.html">📋 作者一覧エクスポート</a><a href="synopsis_repair.html">📖 あらすじ補完（メンテナンス用）</a><div class="managementHelp"><strong>📡 作者更新の表示期間</strong><div><input id="atomDisplayDays" type="range" min="1" max="30" step="1" value="7" style="width:100%"><strong id="atomDisplayDaysValue">7日間</strong></div><p>通常は7日間。1〜30日で変更できます。保存済みのAtom情報は削除せず、表示対象だけを切り替えます。</p></div><p class="managementHelp">作者が増えたら、一覧データをコピーして「Atom更新」を実行。</p><div><strong>🎨 お着替え</strong><div class="dressup"><button type="button" data-theme-choice="default">🌿 生成り</button><button type="button" data-theme-choice="seiji">🌊 青磁</button><button type="button" data-theme-choice="night">🌙 夜の図鑑</button><button type="button" data-theme-choice="autumn">🍂 秋色</button></div></div>';management.append(ms,mb);
