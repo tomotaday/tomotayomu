@@ -47,7 +47,8 @@ const DB_NAME="tomotaYomuDB",DB_VERSION=1;
 const STORES={shelves:"shelf_names",placements:"shelf_placement",works:"works_cache"};
 const DESIRED_ORDER=["読書中","あ〜お","か〜こ","さ〜そ","た〜と","な〜の","は〜ほ","ま〜も","や〜ん","更新待ち"];
 const MIXED_ORDER_KEY="tomotaYomu_mixed_shelf_order_v1";
-const SYSTEM_SHELVES=[{key:"system:search",name:"🔎 検索"},{key:"system:authors",name:"👤作者"},{key:"system:works",name:"✨新着作品"},{key:"system:all",name:"📚 全作品"},{key:"system:history",name:"🗄️ 履歴"},{key:"system:unclassified",name:"未分類"},{key:"system:management",name:"⚙️ 管理設定用"}];
+const SYSTEM_SHELVES=[{key:"system:search",name:"🔎 検索"},{key:"system:authors",name:"👤作者"},{key:"system:works",name:"✨新着作品"},
+{key:"system:search-excluded",name:"🚫 検索除外"},{key:"system:all",name:"📚 全作品"},{key:"system:history",name:"🗄️ 履歴"},{key:"system:unclassified",name:"未分類"},{key:"system:management",name:"⚙️ 管理設定用"}];
 let db=null,shelves=[],placements=[],rows=[],dragRow=null,dragPointerId=null;
 let countMap=new Map();
 
