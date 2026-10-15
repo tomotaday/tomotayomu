@@ -338,7 +338,7 @@ async function buildV3CardsFromIndexedDB(){
     card.dataset.current=pm.has(n)?String(pm.get(n).episode||""):"";
     const writer=am.get(n)?.writer||w.writer||"";
 
-    card.innerHTML='<div class="meta"><span class="newMark" hidden>🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ '+shelf+'</div><h2></h2><div class="author"></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから　📖 未読 / —話</a></div><details class="managementDetails"><summary>詳細を開く</summary><div class="managementBody"><div class="ncode">Nコード：'+n+'</div><button type="button" class="moveShelfBtn">本棚を移動</button><button type="button" class="deleteWorkBtn">削除</button></div></details></article>';
+    card.innerHTML='<div class="meta"><span class="newMark" hidden>🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ '+shelf+'</div><h2></h2><div class="author"></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから　📖 未読 / —話</a></div><details class="managementDetails"><summary>詳細を開く</summary><div class="managementBody"><div class="ncode">Nコード：'+n+'</div><button type="button" class="moveShelfBtn">本棚を移動</button><button type="button" class="searchExcludedToggle">🔎 検索除外にする</button><button type="button" class="deleteWorkBtn">削除</button></div></details></article>';
     card.querySelector("h2").textContent=w.title||"";
     card.querySelector(".author").textContent="作者："+writer;
     updateCard(card,{...w,writer});
@@ -484,6 +484,24 @@ function recordReadingHistory(ncode){
  const n=String(ncode||"").toUpperCase();if(!/^N[0-9A-Z]+$/.test(n))return;
  const history=loadJSON(READING_HISTORY_KEY,[]).filter(v=>v&&String(v.ncode||"").toUpperCase()!==n);history.unshift({ncode:n,viewedAt:Date.now()});saveJSON(READING_HISTORY_KEY,history.slice(0,30));buildShelfFolders();
 }
+const SEARCH_EXCLUDED_KEY="tomotaYomu_search_excluded_ncodes_v1";
+function getSearchExcludedNcodes(){
+ try{const v=JSON.parse(localStorage.getItem(SEARCH_EXCLUDED_KEY)||"[]");return new Set(Array.isArray(v)?v.map(x=>String(x).toUpperCase()):[])}catch(e){return new Set()}
+}
+function setSearchExcluded(ncode,excluded){
+ const n=String(ncode||"").trim().toUpperCase();if(!/^N[0-9A-Z]+$/.test(n))return;
+ const set=getSearchExcludedNcodes();if(excluded)set.add(n);else set.delete(n);
+ localStorage.setItem(SEARCH_EXCLUDED_KEY,JSON.stringify([...set]));
+}
+function syncSearchExcludedButtons(){
+ const set=getSearchExcludedNcodes();
+ document.querySelectorAll("#shelf .card, #shelfSections .card, #searchResults .card").forEach(card=>{
+  const btn=card.querySelector(".searchExcludedToggle");if(!btn)return;
+  const excluded=set.has(String(card.dataset.ncode||"").toUpperCase());
+  btn.textContent=excluded?"🔎 検索除外を解除":"🔎 検索除外にする";
+  btn.setAttribute("aria-pressed",excluded?"true":"false");
+ });
+}
 function buildShelfFolders(){
  const root=document.getElementById("shelfSections"),source=document.getElementById("shelf");if(!root||!source)return;
  const openKeys=new Set([...root.querySelectorAll("details[open]")].map(x=>x.dataset.shelfKey).filter(Boolean));
@@ -498,11 +516,14 @@ function buildShelfFolders(){
  const unclassified=cards.filter(card=>!getFolder(card)).sort((a,b)=>(b.dataset.lastUpdated||"").localeCompare(a.dataset.lastUpdated||""));
  const ud=document.createElement("details");ud.className="folderDetails";ud.dataset.shelfKey="system:unclassified";const us=document.createElement("summary");us.textContent="未分類 "+unclassified.length;const uw=document.createElement("div");uw.className="folderCards";ud.addEventListener("toggle",()=>{if(!ud.open||uw.dataset.loaded==="1")return;uw.dataset.loaded="1";if(!unclassified.length){const empty=document.createElement("div");empty.className="searchHint";empty.textContent="0";uw.appendChild(empty);return}unclassified.forEach(card=>uw.appendChild(card.cloneNode(true)))});ud.append(us,uw);
  const all=document.createElement("details");all.className="folderDetails";all.dataset.shelfKey="system:all";const als=document.createElement("summary");als.textContent="📚 全作品 "+cards.length;const aw=document.createElement("div");aw.className="folderCards";all.addEventListener("toggle",()=>{if(!all.open||aw.dataset.loaded==="1")return;aw.dataset.loaded="1";cards.slice().sort(compareWorkDate).forEach(card=>aw.appendChild(card.cloneNode(true)))});all.append(als,aw);
+ const excludedSet=getSearchExcludedNcodes(),excludedCards=cards.filter(card=>excludedSet.has(String(card.dataset.ncode||"").toUpperCase())).sort(compareWorkDate);
+ const excluded=document.createElement("details");excluded.className="folderDetails";excluded.dataset.shelfKey="system:search-excluded";const exs=document.createElement("summary");exs.textContent="🚫 検索除外 "+excludedCards.length;const exw=document.createElement("div");exw.className="folderCards";
+ excluded.addEventListener("toggle",()=>{if(!excluded.open||exw.dataset.loaded==="1")return;exw.dataset.loaded="1";if(!excludedCards.length){const empty=document.createElement("div");empty.className="searchHint";empty.textContent="検索除外に設定された作品はありません。";exw.appendChild(empty);return}excludedCards.forEach(card=>exw.appendChild(card.cloneNode(true)));syncSearchExcludedButtons()});excluded.append(exs,exw);
  const history=renderReadingHistoryShelf(root,historyCards);
  const management=document.createElement("details");management.className="managementSettingsDetails";management.dataset.shelfKey="system:management";const ms=document.createElement("summary");ms.textContent="⚙️管理設定用";const mb=document.createElement("div");mb.className="managementSettingsBody";
  mb.innerHTML='<a href="https://github.com/tomotaday/tomotayomu/actions/workflows/publish-author-atom-feeds.yml" target="_blank" rel="noopener noreferrer">📡 GitHub Actions確認</a><button id="importAuthorAtomBtn" type="button">📥 Atom取込（手動）</button><a href="shelf_manager.html">本棚管理</a><a href="author.html">作者整理（ふりがな）</a><a href="author-export.html">📋 作者一覧エクスポート</a><a href="synopsis_repair.html">📖 あらすじ補完（メンテナンス用）</a><div class="managementHelp"><strong>📡 作者更新の表示期間</strong><div><input id="atomDisplayDays" type="range" min="1" max="30" step="1" value="7" style="width:100%"><strong id="atomDisplayDaysValue">7日間</strong></div><p>通常は7日間。1〜30日で変更できます。保存済みのAtom情報は削除せず、表示対象だけを切り替えます。</p></div><p class="managementHelp">作者が増えたら、一覧データをコピーして「Atom更新」を実行。</p><div><strong>🎨 お着替え</strong><div class="dressup"><button type="button" data-theme-choice="default">🌿 生成り</button><button type="button" data-theme-choice="seiji">🌊 青磁</button><button type="button" data-theme-choice="night">🌙 夜の図鑑</button><button type="button" data-theme-choice="autumn">🍂 秋色</button></div></div>';management.append(ms,mb);
- const nodes=new Map([["system:search",search],["system:authors",author],["system:works",works],["system:all",all],["system:history",history],["system:unclassified",ud],["system:management",management]]);customNodes.forEach(n=>nodes.set(n.dataset.shelfKey,n));
- const defaults=["system:search","system:authors","system:works",...shelves.map(x=>"custom:"+x.id),"system:all","system:history","system:unclassified","system:management"];
+ const nodes=new Map([["system:search",search],["system:authors",author],["system:works",works],["system:search-excluded",excluded],["system:all",all],["system:history",history],["system:unclassified",ud],["system:management",management]]);customNodes.forEach(n=>nodes.set(n.dataset.shelfKey,n));
+ const defaults=["system:search","system:authors","system:works","system:search-excluded",...shelves.map(x=>"custom:"+x.id),"system:all","system:history","system:unclassified","system:management"];
  let saved=[];try{saved=JSON.parse(localStorage.getItem("tomotaYomu_mixed_shelf_order_v1")||"[]");if(!Array.isArray(saved))saved=[]}catch(e){saved=[]}
  const order=[...saved.filter(k=>nodes.has(k)),...defaults.filter(k=>nodes.has(k)&&!saved.includes(k))],seen=new Set();
  order.forEach(k=>{const node=nodes.get(k);if(node&&!seen.has(k)){root.appendChild(node);seen.add(k)}});nodes.forEach((node,k)=>{if(node&&!seen.has(k)){root.appendChild(node);seen.add(k)}});
@@ -535,6 +556,8 @@ function initDressup(){
 document.addEventListener("DOMContentLoaded",initDressup);
 document.addEventListener("DOMContentLoaded",initSearch);
 document.addEventListener("click",e=>{
+  const excludedBtn=e.target.closest(".searchExcludedToggle");
+  if(excludedBtn){const card=excludedBtn.closest(".card");if(!card)return;const n=String(card.dataset.ncode||"").toUpperCase();const excluded=getSearchExcludedNcodes().has(n);setSearchExcluded(n,!excluded);buildShelfFolders();syncSearchExcludedButtons();return;}
   const b=e.target.closest("[data-theme-choice]");
   if(b){applyDressup(b.dataset.themeChoice);return;}
   const link=e.target.closest("a.workLink, a.resumeLink");
@@ -771,7 +794,7 @@ document.addEventListener("click",e=>{
     return;
   }
 });
-window.addEventListener("load",async()=>{ try{ const s=document.getElementById("apiStatus"); if(s)s.textContent="本棚情報反映中"; await buildV3CardsFromIndexedDB(); seedReadingCache(); restoreReadingFromQuery(); restoreReadingPositions(); renderGlobalBaseline(); restoreLatestWorks(); buildUpdateView(); buildShelfFolders(); }catch(e){ console.warn("v3 IndexedDB本棚再構築失敗",e); const s=document.getElementById("apiStatus"); if(s)s.textContent="v3 IndexedDB接続失敗："+e.message; } });
+window.addEventListener("load",async()=>{ try{ const s=document.getElementById("apiStatus"); if(s)s.textContent="本棚情報反映中"; await buildV3CardsFromIndexedDB(); seedReadingCache(); restoreReadingFromQuery(); restoreReadingPositions(); renderGlobalBaseline(); restoreLatestWorks(); buildUpdateView(); buildShelfFolders(); syncSearchExcludedButtons(); }catch(e){ console.warn("v3 IndexedDB本棚再構築失敗",e); const s=document.getElementById("apiStatus"); if(s)s.textContent="v3 IndexedDB接続失敗："+e.message; } });
 
 /* 作者Atomフィード：本棚DBと独立した保存領域 */
 const ATOM_DB_NAME="tomotaYomuAtomDB", ATOM_DB_VERSION=1;
