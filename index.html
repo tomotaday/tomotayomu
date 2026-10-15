@@ -925,7 +925,7 @@ async function renderAuthorAtom(){
   const cutoff=Date.now()-days*24*60*60*1000;
   const entries=allEntries.filter(e=>{const t=Date.parse(e.updated||"");return Number.isFinite(t)&&t>=cutoff;});
   const unread=entries.filter(e=>!e.read).length;
-  document.getElementById("authorFeedTitle").textContent="👤 作者 🆙 "+unread.toLocaleString("ja-JP");
+  document.getElementById("authorFeedTitle").textContent="👤作者 🆙 "+unread.toLocaleString("ja-JP");
   list.innerHTML="";
   if(!entries.length){list.textContent="直近"+days+"日間の作者更新はありません。";return}
   const categories=[
@@ -992,7 +992,7 @@ async function markAtomRead(id){
   const list=document.getElementById("authorAtomList");
   const totalUnread=countUnread(list);
   const title=document.getElementById("authorFeedTitle");
-  if(title)title.textContent="👤 作者 🆙 "+totalUnread.toLocaleString("ja-JP");
+  if(title)title.textContent="👤作者 🆙 "+totalUnread.toLocaleString("ja-JP");
 }
 window.addEventListener("load",async()=>{try{setupAtomDisplayDays();await renderAuthorAtom();if(sessionStorage.getItem("tomotaYomu_atom_wait_started"))waitForPublishedAuthorFeeds();else await importPublishedAuthorFeeds()}catch(e){console.warn("作者Atom表示準備失敗",e)}});
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&sessionStorage.getItem("tomotaYomu_atom_wait_started"))waitForPublishedAuthorFeeds()});
