@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f3ed">
+<title>検索除外作品の内容編集｜ともたよむ</title>
+<style>
+:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.55}
+main{width:min(100%,680px);margin:auto;padding:18px 14px 40px}h1{font-size:23px;margin:0 0 8px}p{font-size:14px}.note{color:var(--muted);font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:14px 0}
+label{display:block;font-size:14px;font-weight:700;margin:14px 0 5px}input,textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px}textarea{min-height:180px;resize:vertical}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}button,a.button{font:inherit;font-size:14px;padding:9px 12px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--ink);text-decoration:none}button.primary{font-weight:700;background:#e9e2d6}
+#status{white-space:pre-wrap;font-size:13px;margin-top:12px}.ncode{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body><main>
+<a href="index.html">← ともたよむへ戻る</a>
+<h1>✏️ 検索除外作品の内容編集</h1>
+<p class="note">ここでの編集は、ともたよむ内で表示するタイトル・作者名・あらすじの補正です。Narou側の作品情報やIndexedDBの原本は書き換えず、表示用の補正として別に保存します。</p>
+<section class="card">
+<div id="ncode" class="ncode">Nコードを確認中…</div>
+<label for="title">作品タイトル</label><input id="title" maxlength="500" autocomplete="off">
+<label for="writer">作者名</label><input id="writer" maxlength="300" autocomplete="off">
+<label for="story">あらすじ</label><textarea id="story"></textarea>
+<div class="actions"><button class="primary" id="save">変更を保存</button><button id="reset">原本の表示に戻す</button><a class="button" href="index.html">本棚へ戻る</a></div>
+<div id="status" role="status"></div>
+</section>
+<p class="note">保存先はこのブラウザのローカル保存領域です。別の端末や別ブラウザとは同期されません。棚の所属・読書位置・作者管理情報・検索除外の設定は変更しません。</p>
+</main>
+<script>
+"use strict";
+const DB_NAME="tomotaYomuDB",DB_VERSION=1,OVERRIDES_KEY="tomotaYomu_work_edit_overrides_v1";
+const ncode=(new URLSearchParams(location.search).get("ncode")||"").trim().toUpperCase();
+const el=id=>document.getElementById(id);
+let original=null;
+function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error("本棚データベースを開けません"));});}
+function readWork(db,n){return new Promise((resolve,reject)=>{if(!db.objectStoreNames.contains("works_cache")){resolve(null);return}const tx=db.transaction("works_cache","readonly"),st=tx.objectStore("works_cache");let req;try{req=st.get(n)}catch(e){reject(e);return}req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error||new Error("作品情報を読み込めません"));});}
+function readOverrides(){try{const v=JSON.parse(localStorage.getItem(OVERRIDES_KEY)||"{}");return v&&typeof v==="object"&&!Array.isArray(v)?v:{}}catch(e){return {}}}
+function setStatus(msg){el("status").textContent=msg}
+function fillForm(w,override){el("title").value=override.title??w.title??"";el("writer").value=override.writer??w.writer??"";el("story").value=override.story??w.story??""}
+async function init(){if(!/^N[0-9A-Z]+$/.test(ncode)){setStatus("Nコードが指定されていません。検索除外棚から作品カードの「内容を編集」を開いてください。");el("ncode").textContent="Nコード未指定";el("save").disabled=true;el("reset").disabled=true;return}
+el("ncode").textContent="Nコード："+ncode;
+try{const db=await openDB();original=await readWork(db,ncode);db.close();if(!original){setStatus("本棚の作品情報が見つかりませんでした。作品が本棚にあるか確認してください。");el("save").disabled=true;el("reset").disabled=true;return}
+fillForm(original,readOverrides()[ncode]||{});setStatus("読み込みました。編集内容は表示用の補正として保存されます。");
+}catch(e){setStatus("読み込みに失敗しました："+(e?.message||e));}}
+el("save").addEventListener("click",()=>{if(!original)return;const all=readOverrides();all[ncode]={title:el("title").value,writer:el("writer").value,story:el("story").value,updatedAt:new Date().toISOString()};try{localStorage.setItem(OVERRIDES_KEY,JSON.stringify(all));setStatus("保存しました。ともたよむへ戻ると、作品カードの表示に反映されます。");}catch(e){setStatus("保存できませんでした："+(e?.message||e));}});
+el("reset").addEventListener("click",()=>{if(!original)return;const all=readOverrides();delete all[ncode];try{localStorage.setItem(OVERRIDES_KEY,JSON.stringify(all));fillForm(original,{});setStatus("表示用の補正を解除しました。原本の表示に戻します。");}catch(e){setStatus("解除できませんでした："+(e?.message||e));}});
+init();
+</script></body></html>
