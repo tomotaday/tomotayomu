@@ -338,9 +338,9 @@ async function buildV3CardsFromIndexedDB(){
     card.dataset.current=pm.has(n)?String(pm.get(n).episode||""):"";
     const writer=am.get(n)?.writer||w.writer||"";
 
-    card.innerHTML='<div class="meta"><span class="newMark" hidden>🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ '+shelf+'</div><h2></h2><div class="author"></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから　📖 未読 / —話</a></div><details class="managementDetails"><summary>詳細を開く</summary><div class="managementBody"><div class="ncode">Nコード：'+n+'</div><button type="button" class="moveShelfBtn">本棚を移動</button><button type="button" class="searchExcludedToggle">🔎 検索除外にする</button><button type="button" class="deleteWorkBtn">削除</button></div></details></article>';
+    card.innerHTML='<div class="meta"><span class="newMark" hidden>🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ '+shelf+'</div><h2></h2><div class="author">作者：<span class="authorName"></span> <span class="searchExcludedMark" hidden title="検索除外に設定中">🚫</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから　📖 未読 / —話</a></div><details class="managementDetails"><summary>詳細を開く</summary><div class="managementBody"><div class="ncode">Nコード：'+n+'</div><button type="button" class="moveShelfBtn">本棚を移動</button><button type="button" class="searchExcludedToggle">🔎 検索除外にする</button><button type="button" class="deleteWorkBtn">削除</button></div></details></article>';
     card.querySelector("h2").textContent=w.title||"";
-    card.querySelector(".author").textContent="作者："+writer;
+    card.querySelector(".authorName").textContent=writer;
     updateCard(card,{...w,writer});
     source.appendChild(card);
     made++;
@@ -424,7 +424,7 @@ function updateCard(card,w){
   const isR18=isR18Work(w);
   card.dataset.r18=isR18?"1":"";
   const titleEl=card.querySelector("h2"); if(titleEl&&w.title)titleEl.textContent=w.title;
-  const authorEl=card.querySelector(".author"); if(authorEl&&w.writer)authorEl.textContent="作者："+w.writer;
+  const authorEl=card.querySelector(".authorName"); if(authorEl&&w.writer)authorEl.textContent=w.writer;
   card.dataset.lastUpdated = w.general_lastup || card.dataset.lastUpdated || "";
   card.dataset.totalEpisodes = w.general_all_no || card.dataset.totalEpisodes || "";
   card.querySelector(".lastUpdated").textContent = formatDate(card.dataset.lastUpdated);
@@ -496,10 +496,10 @@ function setSearchExcluded(ncode,excluded){
 function syncSearchExcludedButtons(){
  const set=getSearchExcludedNcodes();
  document.querySelectorAll("#shelf .card, #shelfSections .card, #searchResults .card").forEach(card=>{
-  const btn=card.querySelector(".searchExcludedToggle");if(!btn)return;
   const excluded=set.has(String(card.dataset.ncode||"").toUpperCase());
-  btn.textContent=excluded?"🔎 検索除外を解除":"🔎 検索除外にする";
-  btn.setAttribute("aria-pressed",excluded?"true":"false");
+  const btn=card.querySelector(".searchExcludedToggle");
+  if(btn){btn.textContent=excluded?"🔎 検索除外を解除":"🔎 検索除外にする";btn.setAttribute("aria-pressed",excluded?"true":"false");}
+  const mark=card.querySelector(".searchExcludedMark");if(mark)mark.hidden=!excluded;
  });
 }
 function buildShelfFolders(){
