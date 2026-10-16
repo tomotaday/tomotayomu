@@ -740,7 +740,7 @@ document.getElementById("updateBtn").addEventListener("click",updateInfo);
 document.getElementById("reverseOrderBtn")?.addEventListener("click",()=>{workOrderReversed=!workOrderReversed;buildShelfFolders();});
 document.getElementById("copyAuthorJsonBtn")?.addEventListener("click",async()=>{
   const btn=document.getElementById("copyAuthorJsonBtn");
-  const status=document.getElementById("authorAtomStatus")||document.getElementById("apiStatus");
+  const status=document.getElementById("apiStatus")||document.getElementById("authorAtomStatus");
   btn.disabled=true;
   try{
     const db=await new Promise((resolve,reject)=>{
