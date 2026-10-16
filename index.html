@@ -643,7 +643,7 @@ async function updateInfo(){
     renderGlobalBaseline();
     buildUpdateView();
     buildShelfFolders();
-    status.textContent=`更新確認完了：取得 ${rows.length}作品｜反映 ${reflected}作品｜更新候補 ${Object.keys(candidates).length}作品｜最新情報を保存｜新基準日 ${formatDate(newBaseline)}`;
+    status.textContent=`更新確認完了：反映 ${reflected}作品｜更新候補 ${Object.keys(candidates).length}作品｜最新情報を保存｜新基準日 ${formatDate(newBaseline)}`;
   }catch(e){
     console.error(e);
     status.textContent="更新確認に失敗しました："+e.message;
