@@ -16,6 +16,7 @@ h1{font-size:27px;margin:0 0 6px}.note{font-size:13px;color:var(--muted);margin-
 .work{margin-top:16px;padding-top:16px;border-top:1px solid #ddd5ca}
 .title{font-size:20px;font-weight:700}.meta{font-size:13px;color:var(--muted);margin-top:4px}
 .ok{font-size:18px;font-weight:700}.error{color:#9b3d32}
+label{display:block;font-weight:700;margin:12px 0 4px}input,textarea{display:block;width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}textarea{resize:vertical}#manualSave{margin-top:14px;padding:10px 14px;background:#fffdf9;border:1px solid var(--line);border-radius:8px;font:inherit;font-weight:700}
 </style>
 </head>
 <body>
@@ -25,6 +26,22 @@ h1{font-size:27px;margin:0 0 6px}.note{font-size:13px;color:var(--muted);margin-
 <div class="card">
 <div id="status" class="status">作品URLを受信しています…</div>
 <div id="work" class="work" hidden></div>
+<details id="manualBox" class="work" open>
+<summary class="title">✍️ 手動で作品を登録</summary>
+<p class="meta">検索除外作品など、Narou APIから情報を取得できない作品はこちらから登録できます。Nコードと作品タイトルは必須です。</p>
+<label for="manualNcode">Nコード</label>
+<input id="manualNcode" autocomplete="off" placeholder="例：N1234AB">
+<label for="manualTitle">作品タイトル</label>
+<input id="manualTitle" autocomplete="off" placeholder="作品タイトル">
+<label for="manualWriter">作者名（任意）</label>
+<input id="manualWriter" autocomplete="off" placeholder="作者名">
+<label for="manualUrl">作品URL（任意）</label>
+<input id="manualUrl" autocomplete="url" placeholder="https://ncode.syosetu.com/...">
+<label for="manualSynopsis">あらすじ（任意）</label>
+<textarea id="manualSynopsis" rows="4" placeholder="あとから編集・補足できます"></textarea>
+<button id="manualSave" type="button">検索除外作品として登録</button>
+<div id="manualStatus" class="status" aria-live="polite"></div>
+</details>
 </div>
 </main>
 <script>
@@ -33,6 +50,7 @@ const DB_NAME="tomotaYomuDB",DB_VERSION=1;
 const API_URL="https://api.syosetu.com/novelapi/api/";
 const R18_API_URL="https://api.syosetu.com/novel18api/api/";
 const LEGACY_TARGET_SHELF_NAME="🏝️とりあえず";
+const SEARCH_EXCLUDED_KEY="tomotaYomu_search_excluded_ncodes_v1";
 
 function setStatus(t,cls=""){const e=document.getElementById("status");e.textContent=t;e.className="status "+cls}
 function ncodeFromUrl(raw){
@@ -106,7 +124,7 @@ async function saveWork(work,rawUrl){
     const updatedShelf={...item,work_add_target:String(item?.shelf_id)===String(shelf.shelf_id)};
     putRow(tx,"shelf_names",updatedShelf,shelf.shelf_id);
   }
-  const placement={...(existing||{}),ncode,shelf_id:String(shelf.shelf_id)};
+  const placement={...(existing||{}),ncode,shelf_id:String(existing?.shelf_id||shelf.shelf_id)};
   putRow(tx,"shelf_placement",placement,ncode);
   if(matchedAuthorId){
     const authorRow={ncode,writer,authorId:matchedAuthorId,authorType:isR18?"r18":"normal",authorName:String(matchedAuthor.authorName||writer),authorUrl:String(matchedAuthor.authorUrl||"")};
@@ -115,6 +133,29 @@ async function saveWork(work,rawUrl){
   await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存失敗"));tx.onabort=()=>reject(tx.error||new Error("保存中止"));});
   return {shelfName:String(shelf.shelf_name??shelf.name??shelf.title??"本棚"),existing:!!existing,work:saved,authorId:matchedAuthorId};
 }
+function setManualStatus(text,cls=""){const e=document.getElementById("manualStatus");e.textContent=text;e.className="status "+cls}
+function normalizeNcode(raw){const m=String(raw||"").toUpperCase().match(/N[0-9]{1,}[A-Z]{1,5}/);return m?m[0]:""}
+async function saveManualWork(){
+ const btn=document.getElementById("manualSave");btn.disabled=true;
+ try{
+  const ncode=normalizeNcode(document.getElementById("manualNcode").value);
+  const title=String(document.getElementById("manualTitle").value||"").trim();
+  const writer=String(document.getElementById("manualWriter").value||"").trim();
+  const rawUrl=String(document.getElementById("manualUrl").value||"").trim();
+  const story=String(document.getElementById("manualSynopsis").value||"").trim();
+  if(!ncode)throw new Error("Nコードを入力してください（例：N1234AB）。");
+  if(!title)throw new Error("作品タイトルを入力してください。");
+  if(rawUrl && !/^(https?:\/\/)?(ncode|novel18)\.syosetu\.com\//i.test(rawUrl))throw new Error("作品URLは「ncode.syosetu.com」または「novel18.syosetu.com」のURLを入力してください。");
+  const work={ncode,title,writer,story,keyword:"",general_all_no:0,general_lastup:"",general_firstup:"",end:0,noveltype:0,isstop:0,userid:0,genre:0,novelupdated_at:"",__r18:rawUrl.toLowerCase().includes("novel18.syosetu.com")};
+  setManualStatus("作品情報を保存中…");
+  const r=await saveWork(work,rawUrl||"");
+  const excluded=new Set(JSON.parse(localStorage.getItem(SEARCH_EXCLUDED_KEY)||"[]"));
+  excluded.add(ncode);localStorage.setItem(SEARCH_EXCLUDED_KEY,JSON.stringify([...excluded]));
+  setManualStatus("✅ 手動登録しました。検索除外一覧にも登録済みです。\n保存先："+r.shelfName+"\nNコード："+ncode+"\n"+(r.existing?"既存の棚配置と読書位置は維持しました。":"作品情報が未取得のため、タイトルなど入力内容を保存しました。"),"ok");
+ }catch(e){console.error(e);setManualStatus("⚠️ 登録できませんでした："+e.message,"error")}
+ finally{btn.disabled=false}
+}
+document.getElementById("manualSave").addEventListener("click",saveManualWork);
 async function handle(){
   const params=new URLSearchParams(location.search);
   const raw=params.get("workurl")||params.get("url")||params.get("input")||params.get("text")||"";
