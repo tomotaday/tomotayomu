@@ -149,8 +149,8 @@ function applyMetadata(data){
  const fields=[
   ["ncode","manualNcode","Nコード"],["title","manualTitle","作品タイトル"],["author","manualWriter","作者名"],
   ["source_url","manualUrl","取得元URL"],["synopsis","manualSynopsis","あらすじ"],["status","manualStatusValue","作品状態"],
-  ["episode_count","manualEpisodeCount","エピソード数"],["genre","manualGenre","ジャンル"],
-  ["published_at","manualPublishedAt","掲載日時"],["latest_episode_at","manualLatestAt","最新掲載日時"],
+  ["general_all_no","manualEpisodeCount","エピソード数"],["genre","manualGenre","ジャンル"],
+  ["general_firstup","manualPublishedAt","掲載日時"],["general_lastup","manualLatestAt","最新掲載日時"],
   ["character_count","manualCharacterCount","文字数"],["disclosure","manualDisclosure","開示設定"]
  ];
  for(const [key,id] of fields){
@@ -193,7 +193,10 @@ async function saveManualWork(){
   const published=String(document.getElementById("manualPublishedAt").value||"").trim();
   const latest=String(document.getElementById("manualLatestAt").value||"").trim();
   const genreText=String(document.getElementById("manualGenre").value||"").trim();
-  const work={ncode,title,writer,story,keyword:"",general_all_no:0,general_lastup:latest,general_firstup:published,end:status.includes("完結")?1:0,noveltype:status.includes("短編")?2:1,isstop:0,userid:0,genre:0,genre_text:genreText,novelupdated_at:latest,episode_count:num("manualEpisodeCount"),character_count:num("manualCharacterCount"),published_at:published,latest_episode_at:latest,disclosure,__r18:rawUrl.toLowerCase().includes("novel18.syosetu.com")};
+  const episodeCount=num("manualEpisodeCount");
+  // index.html の setStatus() に合わせ、end=0 は完結、end=1 は連載中。
+  const end= status.includes("完結") ? 0 : 1;
+  const work={ncode,title,writer,story,keyword:"",general_all_no:episodeCount,general_lastup:latest,general_firstup:published,end,noveltype:status.includes("短編")?2:1,isstop:0,userid:0,genre:0,genre_text:genreText,novelupdated_at:latest,episode_count:episodeCount,character_count:num("manualCharacterCount"),published_at:published,latest_episode_at:latest,disclosure,__r18:rawUrl.toLowerCase().includes("novel18.syosetu.com")};
   setManualStatus("作品情報を保存中…");
   const r=await saveWork(work,rawUrl);
   const excluded=new Set(JSON.parse(localStorage.getItem(SEARCH_EXCLUDED_KEY)||"[]"));excluded.add(ncode);localStorage.setItem(SEARCH_EXCLUDED_KEY,JSON.stringify([...excluded]));
