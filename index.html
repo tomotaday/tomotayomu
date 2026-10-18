@@ -794,7 +794,7 @@ document.addEventListener("click",e=>{
     return;
   }
 });
-window.addEventListener("load",async()=>{ try{ const s=document.getElementById("apiStatus"); if(s)s.textContent="本棚情報反映中"; await buildV3CardsFromIndexedDB(); seedReadingCache(); restoreReadingFromQuery(); restoreReadingPositions(); renderGlobalBaseline(); restoreLatestWorks(); buildUpdateView(); buildShelfFolders(); syncSearchExcludedButtons(); }catch(e){ console.warn("v3 IndexedDB本棚再構築失敗",e); const s=document.getElementById("apiStatus"); if(s)s.textContent="v3 IndexedDB接続失敗："+e.message; } });
+window.addEventListener("load",async()=>{ try{ const s=document.getElementById("apiStatus"); if(s)s.textContent="本棚情報反映中"; await buildV3CardsFromIndexedDB(); try{localStorage.removeItem("tomotaYomu_work_edit_overrides_v1");}catch(e){console.warn("旧作品編集表示データの削除をスキップ",e);} seedReadingCache(); restoreReadingFromQuery(); restoreReadingPositions(); renderGlobalBaseline(); restoreLatestWorks(); buildUpdateView(); buildShelfFolders(); syncSearchExcludedButtons(); }catch(e){ console.warn("v3 IndexedDB本棚再構築失敗",e); const s=document.getElementById("apiStatus"); if(s)s.textContent="v3 IndexedDB接続失敗："+e.message; } });
 
 /* 作者Atomフィード：本棚DBと独立した保存領域 */
 const ATOM_DB_NAME="tomotaYomuAtomDB", ATOM_DB_VERSION=1;
