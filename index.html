@@ -542,16 +542,20 @@ function setupAtomDisplayDays(){
     renderAuthorAtom().catch(e=>console.warn("作者更新表示期間の再描画失敗",e));
   });
 }
+function applyCustomColors(){try{const colors=JSON.parse(localStorage.getItem("tomotaYomu_custom_colors_v1")||"null");if(!colors||typeof colors!=="object")return;const allowed=["--bg","--card","--ink","--muted","--line","--shelf-card","--shelf-ink","--shelf-line","--accent"];for(const key of allowed){const value=colors[key];if(typeof value==="string"&&/^#[0-9a-fA-F]{6}$/.test(value))document.body.style.setProperty(key,value);}}catch(e){console.warn("カスタムカラー読込失敗",e)}}
 function applyDressup(theme){
   const t=theme==="seiji"||theme==="night"||theme==="autumn"?theme:"default";
   document.body.dataset.theme=t;
-  localStorage.setItem("tomotaYomu_theme",t);
+  if(theme!=="custom"){try{localStorage.removeItem("tomotaYomu_custom_colors_v1");document.body.removeAttribute("style");}catch(e){}}
+  localStorage.setItem("tomotaYomu_theme",theme==="custom"?"custom":t);
+  applyCustomColors();
   document.querySelectorAll("[data-theme-choice]").forEach(b=>b.classList.toggle("active",(b.dataset.themeChoice||"default")===t));
   const meta=document.querySelector('meta[name="theme-color"]');
   if(meta)meta.content=t==="night"?"#20242a":t==="seiji"?"#edf4f1":t==="autumn"?"#f5eee4":"#f6f3ed";
 }
 function initDressup(){
   applyDressup(localStorage.getItem("tomotaYomu_theme")||"default");
+  applyCustomColors();
 }
 document.addEventListener("DOMContentLoaded",initDressup);
 document.addEventListener("DOMContentLoaded",initSearch);
@@ -767,8 +771,9 @@ document.getElementById("copyAuthorJsonBtn")?.addEventListener("click",async()=>
   finally{btn.disabled=false;}
 });
 document.addEventListener("click",async e=>{
-  const btn=e.target.closest("#importAuthorAtomBtn");
+  const btn=e.target.closest("#importAuthorAtomLink");
   if(!btn)return;
+  e.preventDefault();
   const status=document.getElementById("authorAtomStatus");
   btn.disabled=true;
   try{
