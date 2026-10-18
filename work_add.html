@@ -38,6 +38,8 @@ label{display:block;font-weight:700;margin:12px 0 4px}input,textarea{display:blo
 <label for="manualNcode">Nコード</label><input id="manualNcode" autocomplete="off" placeholder="例：N1234AB">
 <label for="manualTitle">作品タイトル</label><input id="manualTitle" autocomplete="off" placeholder="作品タイトル">
 <label for="manualWriter">作者名</label><input id="manualWriter" autocomplete="off" placeholder="作者名">
+<label for="manualAuthorId">作者ID（数値ユーザID）</label><input id="manualAuthorId" inputmode="numeric" autocomplete="off" placeholder="作者ページのユーザID">
+<button id="loadExisting" type="button">Nコードから登録済み作品を読み込む</button>
 <label for="manualUrl">取得元URL</label><input id="manualUrl" autocomplete="url" placeholder="作品情報ページのURL">
 <label for="manualSynopsis">あらすじ</label><textarea id="manualSynopsis" rows="4" placeholder="あらすじ"></textarea>
 <label for="manualStatusValue">作品状態</label><input id="manualStatusValue" placeholder="連載中・完結済・短編など">
@@ -104,7 +106,7 @@ function putRow(tx,store,row,key){
   const st=tx.objectStore(store);
   return st.keyPath==null?st.put(row,key):st.put(row);
 }
-async function saveWork(work,rawUrl){
+async function saveWork(work,rawUrl,manualAuthorId=""){
   const db=await openDB();
   const shelves=await readAll(db,"shelf_names");
   // 登録先は棚名ではなく、棚マスターに保存された固定の指定で判断する。
@@ -125,7 +127,8 @@ async function saveWork(work,rawUrl){
   const matchedAuthorId=authorIds.length===1?authorIds[0]:"";
   const matchedAuthor=matchedAuthorId?authors.find(a=>String(a?.authorId||"").trim()===matchedAuthorId&&((a?.authorType==="r18")===isR18))||{}:{};
   const tx=db.transaction(["works_cache","shelf_placement","authors","shelf_names"],"readwrite");
-  const saved={...work,ncode,__r18:isR18};
+  const oldWork=await new Promise((resolve,reject)=>{const req=db.transaction("works_cache","readonly").objectStore("works_cache").get(ncode);req.onsuccess=()=>resolve(req.result||{});req.onerror=()=>reject(req.error)});
+  const saved={...oldWork,...work,ncode,userid:manualAuthorId?Number(manualAuthorId):(oldWork.userid??work.userid??0),__r18:isR18};
   putRow(tx,"works_cache",saved,ncode);
   // 旧名称で初回検出した棚も、固定の登録先として保存しておく。
   for(const item of shelves){
@@ -134,15 +137,29 @@ async function saveWork(work,rawUrl){
   }
   const placement={...(existing||{}),ncode,shelf_id:String(existing?.shelf_id||shelf.shelf_id)};
   putRow(tx,"shelf_placement",placement,ncode);
-  if(matchedAuthorId){
-    const authorRow={ncode,writer,authorId:matchedAuthorId,authorType:isR18?"r18":"normal",authorName:String(matchedAuthor.authorName||writer),authorUrl:String(matchedAuthor.authorUrl||"")};
+  const chosenAuthorId=String(manualAuthorId||matchedAuthorId||"").trim();
+  if(chosenAuthorId){
+    const prior=authors.find(a=>String(a?.ncode||"").toUpperCase()===ncode)||{};
+    const authorRow={...prior,ncode,writer,authorId:chosenAuthorId,authorType:isR18?"r18":"normal",authorName:String(prior.authorName||matchedAuthor.authorName||writer),authorUrl:String(prior.authorUrl||matchedAuthor.authorUrl||"")};
     putRow(tx,"authors",authorRow,ncode);
   }
   await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存失敗"));tx.onabort=()=>reject(tx.error||new Error("保存中止"));});
   return {shelfName:String(shelf.shelf_name??shelf.name??shelf.title??"本棚"),existing:!!existing,work:saved,authorId:matchedAuthorId};
 }
+let editingExisting=false;
 function setManualStatus(text,cls=""){const e=document.getElementById("manualStatus");e.textContent=text;e.className="status "+cls}
 function setMetadataCheck(text,cls=""){const e=document.getElementById("metadataCheck");e.textContent=text;e.className="status "+cls}
+async function loadExistingWork(){
+ const ncode=normalizeNcode(document.getElementById("manualNcode").value);
+ if(!ncode)throw new Error("先にNコードを入力してください。");
+ const db=await openDB();
+ const work=await new Promise((resolve,reject)=>{const req=db.transaction("works_cache","readonly").objectStore("works_cache").get(ncode);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error)});
+ if(!work)throw new Error("本棚に登録済みの作品が見つかりません："+ncode);
+ const fields={manualNcode:work.ncode,manualTitle:work.title,manualWriter:work.writer,manualUrl:work.source_url||"",manualSynopsis:work.story,manualStatusValue:work.end===0?"完結":(work.noveltype===2?"短編":"連載中"),manualEpisodeCount:work.general_all_no??work.episode_count,manualGenre:work.genre_text,manualPublishedAt:work.general_firstup||work.published_at,manualLatestAt:work.general_lastup||work.latest_episode_at,manualCharacterCount:work.character_count,manualDisclosure:work.disclosure};
+ for(const [id,value] of Object.entries(fields))if(value!=null)document.getElementById(id).value=String(value);
+ document.getElementById("manualAuthorId").value=work.userid&&Number(work.userid)>0?String(work.userid):"";
+ editingExisting=true;setManualStatus("登録済み作品を読み込みました。作者IDを追加・修正して保存できます。","ok");
+}
 function normalizeNcode(raw){const m=String(raw||"").toUpperCase().match(/N[0-9]{1,}[A-Z]{1,5}/);return m?m[0]:""}
 function applyMetadata(data){
  if(!data||typeof data!=="object"||Array.isArray(data))throw new Error("JSONオブジェクトを指定してください。");
@@ -174,16 +191,34 @@ function loadMetadata(){
  const data=JSON.parse(raw);applyMetadata(data);return data;
 }
 document.getElementById("loadMetadata").addEventListener("click",()=>{try{loadMetadata()}catch(e){setMetadataCheck("⚠️ JSONを読み込めません："+e.message,"error")}});
+document.getElementById("loadExisting").addEventListener("click",()=>{loadExistingWork().catch(e=>setManualStatus("⚠️ 読み込めませんでした："+e.message,"error"))});
 async function saveManualWork(){
  const btn=document.getElementById("manualSave");btn.disabled=true;
  try{
   const ncode=normalizeNcode(document.getElementById("manualNcode").value);
   const title=String(document.getElementById("manualTitle").value||"").trim();
   const writer=String(document.getElementById("manualWriter").value||"").trim();
+  const authorIdRaw=String(document.getElementById("manualAuthorId").value||"").trim();
+  if(authorIdRaw&&!/^\d+$/.test(authorIdRaw))throw new Error("作者IDは数字のみで入力してください。");
   const rawUrl=String(document.getElementById("manualUrl").value||"").trim();
   const story=String(document.getElementById("manualSynopsis").value||"").trim();
   const disclosure=String(document.getElementById("manualDisclosure").value||"").trim();
   if(!ncode)throw new Error("Nコードを入力してください。");
+  if(editingExisting){
+   if(!authorIdRaw)throw new Error("作者IDを入力してください。");
+   if(!/^\d+$/.test(authorIdRaw))throw new Error("作者IDは数字のみで入力してください。");
+   setManualStatus("作者IDを保存中…");
+   const db=await openDB();
+   const current=await new Promise((resolve,reject)=>{const req=db.transaction("works_cache","readonly").objectStore("works_cache").get(ncode);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error)});
+   const prior=await new Promise((resolve,reject)=>{const req=db.transaction("authors","readonly").objectStore("authors").get(ncode);req.onsuccess=()=>resolve(req.result||{});req.onerror=()=>reject(req.error)});
+   if(!current)throw new Error("登録済み作品が見つかりません："+ncode);
+   const tx=db.transaction(["works_cache","authors"],"readwrite");
+   current.userid=Number(authorIdRaw);tx.objectStore("works_cache").put(current);
+   const authorRow={...prior,ncode,writer:String(current.writer||""),authorId:authorIdRaw,authorType:current.__r18?"r18":"normal",authorName:String(prior.authorName||current.writer||""),authorUrl:String(prior.authorUrl||"")};
+   const authorStore=tx.objectStore("authors");if(authorStore.keyPath==null)authorStore.put(authorRow,ncode);else authorStore.put(authorRow);
+   await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存失敗"));tx.onabort=()=>reject(tx.error||new Error("保存中止"));});
+   setManualStatus("✅ 作者IDを更新しました。\nNコード："+ncode+"\n作者ID："+authorIdRaw+"\n作品情報・本棚配置・読書位置は維持しました。","ok");editingExisting=false;return;
+  }
   if(!title)throw new Error("作品タイトルを入力してください。");
   if(!disclosure)throw new Error("開示設定が未確認です。作品情報ページで確認してください。");
   if(!disclosure.includes("検索除外中"))throw new Error("「検索除外中」と確認できないため登録できません。作品情報ページを確認してください。");
@@ -196,11 +231,11 @@ async function saveManualWork(){
   const episodeCount=num("manualEpisodeCount");
   // index.html の setStatus() に合わせ、end=0 は完結、end=1 は連載中。
   const end= status.includes("完結") ? 0 : 1;
-  const work={ncode,title,writer,story,keyword:"",general_all_no:episodeCount,general_lastup:latest,general_firstup:published,end,noveltype:status.includes("短編")?2:1,isstop:0,userid:0,genre:0,genre_text:genreText,novelupdated_at:latest,episode_count:episodeCount,character_count:num("manualCharacterCount"),published_at:published,latest_episode_at:latest,disclosure,__r18:rawUrl.toLowerCase().includes("novel18.syosetu.com")};
+  const work={ncode,title,writer,story,keyword:"",general_all_no:episodeCount,general_lastup:latest,general_firstup:published,end,noveltype:status.includes("短編")?2:1,isstop:0,userid:authorIdRaw?Number(authorIdRaw):0,genre:0,genre_text:genreText,novelupdated_at:latest,episode_count:episodeCount,character_count:num("manualCharacterCount"),published_at:published,latest_episode_at:latest,disclosure,__r18:rawUrl.toLowerCase().includes("novel18.syosetu.com")};
   setManualStatus("作品情報を保存中…");
-  const r=await saveWork(work,rawUrl);
+  const r=await saveWork(work,rawUrl,authorIdRaw);
   const excluded=new Set(JSON.parse(localStorage.getItem(SEARCH_EXCLUDED_KEY)||"[]"));excluded.add(ncode);localStorage.setItem(SEARCH_EXCLUDED_KEY,JSON.stringify([...excluded]));
-  setManualStatus("✅ メタデータを使って検索除外作品を登録しました。\n保存先："+r.shelfName+"\nNコード："+ncode+"\n"+(r.existing?"既存の棚配置を維持しました。":"作品情報を保存しました。"),"ok");
+  setManualStatus("✅ メタデータを保存しました。\n保存先："+r.shelfName+"\nNコード："+ncode+"\n"+(authorIdRaw?"作者ID："+authorIdRaw+" を保存しました。\n":"")+(r.existing?"既存の棚配置を維持しました。":"作品情報を保存しました。"),"ok");
  }catch(e){console.error(e);setManualStatus("⚠️ 登録できませんでした："+e.message,"error")}finally{btn.disabled=false}
 }
 document.getElementById("manualSave").addEventListener("click",saveManualWork);
