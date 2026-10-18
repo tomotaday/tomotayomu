@@ -161,11 +161,11 @@ function applyMetadata(data){
  const empty=fields.filter(([key])=>Object.prototype.hasOwnProperty.call(data,key)&&(data[key]==null||String(data[key]).trim()==="")).map(([, ,label])=>label);
  const d=String(data.disclosure||"").trim();
  let message="JSONを読み込みました。";
- if(missing.length)message+="\\nJSONに項目がありません："+missing.join("、")+"。";
- if(empty.length)message+="\\n値が空の項目："+empty.join("、")+"。";
- if(!d)message+="\\n⚠️ 開示設定が未確認です。作品情報ページで確認し、開示設定欄を補ってください。";
- else if(d.includes("検索除外中"))message+="\\n✅ 検索除外中を確認しました。内容を確認し、不足項目を補ってください。";
- else message+="\\n⚠️ 開示設定は「"+d+"」です。検索除外中か確認できないため、登録は保留します。";
+ if(missing.length)message+="\nJSONに項目がありません："+missing.join("、")+"。";
+ if(empty.length)message+="\n値が空の項目："+empty.join("、")+"。";
+ if(!d)message+="\n⚠️ 開示設定が未確認です。作品情報ページで確認し、開示設定欄を補ってください。";
+ else if(d.includes("検索除外中"))message+="\n✅ 検索除外中を確認しました。内容を確認し、不足項目を補ってください。";
+ else message+="\n⚠️ 開示設定は「"+d+"」です。検索除外中か確認できないため、登録は保留します。";
  setMetadataCheck(message,(!d||!d.includes("検索除外中")||missing.length||empty.length)?"error":"ok");
 }
 function loadMetadata(){
