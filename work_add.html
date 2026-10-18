@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f6f3ed">
-<title>ともたよむ｜作品追加</title>
+<title>ともたよむ｜メタデータ取込</title>
 <style>
 :root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195}
 *{box-sizing:border-box}
@@ -23,27 +23,33 @@ label{display:block;font-weight:700;margin:12px 0 4px}input,textarea{display:blo
 <p style="margin:0 0 14px"><a href="index.html" style="display:inline-block;padding:9px 12px;border-radius:8px;background:#eee;color:#111;text-decoration:none">← ともたよむ本棚へ戻る</a></p>
 
 <main>
-<h1>📚 作品追加</h1>
-<div class="note">作品ページから受け取った作品を、ともたよむの本棚へ追加します。</div>
+<h1>📚 メタデータ取込</h1>
+<div class="note">ショートカットで取得した作品メタデータを確認・補完し、検索除外作品として本棚に登録します。</div>
 <div class="card">
 <div id="status" class="status">作品URLを受信しています…</div>
 <div id="work" class="work" hidden></div>
-<details id="manualBox" class="work" open>
-<summary class="title">✍️ 手動で作品を登録</summary>
-<p class="meta">検索除外作品など、Narou APIから情報を取得できない作品はこちらから登録できます。Nコードと作品タイトルは必須です。</p>
-<label for="manualNcode">Nコード</label>
-<input id="manualNcode" autocomplete="off" placeholder="例：N1234AB">
-<label for="manualTitle">作品タイトル</label>
-<input id="manualTitle" autocomplete="off" placeholder="作品タイトル">
-<label for="manualWriter">作者名（任意）</label>
-<input id="manualWriter" autocomplete="off" placeholder="作者名">
-<label for="manualUrl">作品URL（任意）</label>
-<input id="manualUrl" autocomplete="url" placeholder="https://ncode.syosetu.com/...">
-<label for="manualSynopsis">あらすじ（任意）</label>
-<textarea id="manualSynopsis" rows="4" placeholder="あとから編集・補足できます"></textarea>
-<button id="manualSave" type="button">検索除外作品として登録</button>
+<section class="work">
+<h2 class="title">作品メタデータ</h2>
+<p class="meta">JSONを読み込み、取得できなかった項目を補ってから登録します。</p>
+<div id="metadataCheck" class="status" aria-live="polite">メタデータを待っています。</div>
+<label for="metaJson">メタデータJSON</label>
+<textarea id="metaJson" rows="5" placeholder="ショートカットのJSONを貼り付け"></textarea>
+<button id="loadMetadata" type="button">JSONを読み込む</button>
+<label for="manualNcode">Nコード</label><input id="manualNcode" autocomplete="off" placeholder="例：N1234AB">
+<label for="manualTitle">作品タイトル</label><input id="manualTitle" autocomplete="off" placeholder="作品タイトル">
+<label for="manualWriter">作者名</label><input id="manualWriter" autocomplete="off" placeholder="作者名">
+<label for="manualUrl">取得元URL</label><input id="manualUrl" autocomplete="url" placeholder="作品情報ページのURL">
+<label for="manualSynopsis">あらすじ</label><textarea id="manualSynopsis" rows="4" placeholder="あらすじ"></textarea>
+<label for="manualStatusValue">作品状態</label><input id="manualStatusValue" placeholder="連載中・完結済・短編など">
+<label for="manualEpisodeCount">エピソード数</label><input id="manualEpisodeCount" inputmode="numeric" placeholder="エピソード数">
+<label for="manualGenre">ジャンル（将来用）</label><input id="manualGenre" placeholder="ジャンル">
+<label for="manualPublishedAt">掲載日時</label><input id="manualPublishedAt" placeholder="掲載日時">
+<label for="manualLatestAt">最新掲載日時</label><input id="manualLatestAt" placeholder="最新掲載日時">
+<label for="manualCharacterCount">文字数</label><input id="manualCharacterCount" inputmode="numeric" placeholder="文字数">
+<label for="manualDisclosure">開示設定</label><input id="manualDisclosure" placeholder="検索除外中 など">
+<button id="manualSave" type="button">確認して検索除外作品として登録</button>
 <div id="manualStatus" class="status" aria-live="polite"></div>
-</details>
+</section>
 </div>
 </main>
 <script>
@@ -136,7 +142,26 @@ async function saveWork(work,rawUrl){
   return {shelfName:String(shelf.shelf_name??shelf.name??shelf.title??"本棚"),existing:!!existing,work:saved,authorId:matchedAuthorId};
 }
 function setManualStatus(text,cls=""){const e=document.getElementById("manualStatus");e.textContent=text;e.className="status "+cls}
+function setMetadataCheck(text,cls=""){const e=document.getElementById("metadataCheck");e.textContent=text;e.className="status "+cls}
 function normalizeNcode(raw){const m=String(raw||"").toUpperCase().match(/N[0-9]{1,}[A-Z]{1,5}/);return m?m[0]:""}
+function applyMetadata(data){
+ if(!data||typeof data!=="object"||Array.isArray(data))throw new Error("JSONオブジェクトを指定してください。");
+ const set=(id,v)=>{document.getElementById(id).value=v==null?"":String(v)};
+ set("manualNcode",data.ncode);set("manualTitle",data.title);set("manualWriter",data.author);
+ set("manualUrl",data.source_url);set("manualSynopsis",data.synopsis);set("manualStatusValue",data.status);
+ set("manualEpisodeCount",data.episode_count);set("manualGenre",data.genre);set("manualPublishedAt",data.published_at);
+ set("manualLatestAt",data.latest_episode_at);set("manualCharacterCount",data.character_count);set("manualDisclosure",data.disclosure);
+ const d=String(data.disclosure||"").trim();
+ if(!d)setMetadataCheck("⚠️ 開示設定が取得できません。作品情報ページで確認し、開示設定欄を補ってください。","error");
+ else if(d.includes("検索除外中"))setMetadataCheck("✅ 検索除外中を確認しました。内容を確認し、不足項目を補ってください。","ok");
+ else setMetadataCheck("⚠️ 開示設定は「"+d+"」です。検索除外中か確認できないため、登録は保留します。","error");
+}
+function loadMetadata(){
+ const raw=String(document.getElementById("metaJson").value||"").trim();
+ if(!raw)throw new Error("メタデータJSONを入力してください。");
+ const data=JSON.parse(raw);applyMetadata(data);return data;
+}
+document.getElementById("loadMetadata").addEventListener("click",()=>{try{loadMetadata()}catch(e){setMetadataCheck("⚠️ JSONを読み込めません："+e.message,"error")}});
 async function saveManualWork(){
  const btn=document.getElementById("manualSave");btn.disabled=true;
  try{
@@ -145,42 +170,34 @@ async function saveManualWork(){
   const writer=String(document.getElementById("manualWriter").value||"").trim();
   const rawUrl=String(document.getElementById("manualUrl").value||"").trim();
   const story=String(document.getElementById("manualSynopsis").value||"").trim();
-  if(!ncode)throw new Error("Nコードを入力してください（例：N1234AB）。");
+  const disclosure=String(document.getElementById("manualDisclosure").value||"").trim();
+  if(!ncode)throw new Error("Nコードを入力してください。");
   if(!title)throw new Error("作品タイトルを入力してください。");
-  if(rawUrl && !/^(https?:\/\/)?(ncode|novel18)\.syosetu\.com\//i.test(rawUrl))throw new Error("作品URLは「ncode.syosetu.com」または「novel18.syosetu.com」のURLを入力してください。");
-  const work={ncode,title,writer,story,keyword:"",general_all_no:0,general_lastup:"",general_firstup:"",end:0,noveltype:0,isstop:0,userid:0,genre:0,novelupdated_at:"",__r18:rawUrl.toLowerCase().includes("novel18.syosetu.com")};
+  if(!disclosure)throw new Error("開示設定が未確認です。作品情報ページで確認してください。");
+  if(!disclosure.includes("検索除外中"))throw new Error("「検索除外中」と確認できないため登録できません。作品情報ページを確認してください。");
+  if(!/^https?:\/\/(ncode|novel18)\.syosetu\.com\/novelview\/infotop\/ncode\//i.test(rawUrl))throw new Error("取得元の作品情報ページURLを確認してください。");
+  const num=id=>{const v=String(document.getElementById(id).value||"").trim();return v!==""&&Number.isFinite(Number(v))?Number(v):0};
+  const status=String(document.getElementById("manualStatusValue").value||"").trim();
+  const published=String(document.getElementById("manualPublishedAt").value||"").trim();
+  const latest=String(document.getElementById("manualLatestAt").value||"").trim();
+  const genreText=String(document.getElementById("manualGenre").value||"").trim();
+  const work={ncode,title,writer,story,keyword:"",general_all_no:0,general_lastup:latest,general_firstup:published,end:status.includes("完結")?1:0,noveltype:status.includes("短編")?2:1,isstop:0,userid:0,genre:0,genre_text:genreText,novelupdated_at:latest,episode_count:num("manualEpisodeCount"),character_count:num("manualCharacterCount"),published_at:published,latest_episode_at:latest,disclosure,__r18:rawUrl.toLowerCase().includes("novel18.syosetu.com")};
   setManualStatus("作品情報を保存中…");
-  const r=await saveWork(work,rawUrl||"");
-  const excluded=new Set(JSON.parse(localStorage.getItem(SEARCH_EXCLUDED_KEY)||"[]"));
-  excluded.add(ncode);localStorage.setItem(SEARCH_EXCLUDED_KEY,JSON.stringify([...excluded]));
-  setManualStatus("✅ 手動登録しました。検索除外一覧にも登録済みです。\n保存先："+r.shelfName+"\nNコード："+ncode+"\n"+(r.existing?"既存の棚配置と読書位置は維持しました。":"作品情報が未取得のため、タイトルなど入力内容を保存しました。"),"ok");
- }catch(e){console.error(e);setManualStatus("⚠️ 登録できませんでした："+e.message,"error")}
- finally{btn.disabled=false}
+  const r=await saveWork(work,rawUrl);
+  const excluded=new Set(JSON.parse(localStorage.getItem(SEARCH_EXCLUDED_KEY)||"[]"));excluded.add(ncode);localStorage.setItem(SEARCH_EXCLUDED_KEY,JSON.stringify([...excluded]));
+  setManualStatus("✅ メタデータを使って検索除外作品を登録しました。\n保存先："+r.shelfName+"\nNコード："+ncode+"\n"+(r.existing?"既存の棚配置を維持しました。":"作品情報を保存しました。"),"ok");
+ }catch(e){console.error(e);setManualStatus("⚠️ 登録できませんでした："+e.message,"error")}finally{btn.disabled=false}
 }
 document.getElementById("manualSave").addEventListener("click",saveManualWork);
 async function handle(){
-  const params=new URLSearchParams(location.search);
-  const raw=params.get("workurl")||params.get("url")||params.get("input")||params.get("text")||"";
-  if(!raw){
-    const qs=location.search||"（クエリなし）";
-    setStatus("作品URLを受信できませんでした。\n\n受信URL：\n"+location.href+"\n\nクエリ：\n"+qs+"\n\nworkurl / url / input のいずれにも値がありません。","error");
-    return
-  }
-  const ncode=ncodeFromUrl(raw);
-  if(!ncode){setStatus("Nコードを作品URLから取得できませんでした。\n"+raw,"error");return}
-  try{
-    setStatus("作品 "+ncode+" を確認中…（Narou API）");
-    const work=await fetchWork(apiUrlFor(raw,ncode),ncode);
-    const r=await saveWork(work,raw);
-    const box=document.getElementById("work");box.hidden=false;
-    box.innerHTML="";
-    const t=document.createElement("div");t.className="title";t.textContent=work.title||ncode;
-    const m=document.createElement("div");m.className="meta";m.textContent="Nコード："+ncode+"｜作者："+(work.writer||"不明")+"｜保存先："+r.shelfName;
-    box.append(t,m);
-    const authorMsg=r.authorId?"｜登録作者へ自動紐付け済み":"｜作者は未登録";
-    setStatus((r.existing?"✅ 作品情報を更新し、":"✅ 作品を")+"「"+r.shelfName+"」へ登録しました。"+authorMsg,"ok");
-    history.replaceState({},document.title,location.pathname);
-  }catch(e){console.error(e);setStatus("⚠️ 作品追加失敗｜"+e.message,"error")}
+ const params=new URLSearchParams(location.search);
+ const raw=params.get("metadata")||params.get("json")||"";
+ if(raw){
+  try{const data=JSON.parse(raw);document.getElementById("metaJson").value=JSON.stringify(data,null,2);applyMetadata(data);setStatus("メタデータを受信しました。内容を確認し、不足項目を補ってください。","ok");history.replaceState({},document.title,location.pathname)}
+  catch(e){setStatus("メタデータを読み込めませんでした："+e.message,"error")}
+  return;
+ }
+ setStatus("メタデータを待っています。JSONを読み込むとフォームに反映されます。");
 }
 handle();
 </script>
