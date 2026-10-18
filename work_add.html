@@ -31,7 +31,7 @@ label{display:block;font-weight:700;margin:12px 0 4px}input,textarea{display:blo
 <section class="work">
 <h2 class="title">作品メタデータ</h2>
 <p class="meta">JSONを読み込み、取得できなかった項目を補ってから登録します。</p>
-<div id="metadataCheck" class="status" aria-live="polite">メタデータを待っています。</div>
+<div id="metadataCheck" class="status" aria-live="polite"></div>
 <label for="metaJson">メタデータJSON</label>
 <textarea id="metaJson" rows="5" placeholder="ショートカットのJSONを貼り付け"></textarea>
 <button id="loadMetadata" type="button">JSONを読み込む</button>
@@ -146,15 +146,27 @@ function setMetadataCheck(text,cls=""){const e=document.getElementById("metadata
 function normalizeNcode(raw){const m=String(raw||"").toUpperCase().match(/N[0-9]{1,}[A-Z]{1,5}/);return m?m[0]:""}
 function applyMetadata(data){
  if(!data||typeof data!=="object"||Array.isArray(data))throw new Error("JSONオブジェクトを指定してください。");
- const set=(id,v)=>{document.getElementById(id).value=v==null?"":String(v)};
- set("manualNcode",data.ncode);set("manualTitle",data.title);set("manualWriter",data.author);
- set("manualUrl",data.source_url);set("manualSynopsis",data.synopsis);set("manualStatusValue",data.status);
- set("manualEpisodeCount",data.episode_count);set("manualGenre",data.genre);set("manualPublishedAt",data.published_at);
- set("manualLatestAt",data.latest_episode_at);set("manualCharacterCount",data.character_count);set("manualDisclosure",data.disclosure);
+ const fields=[
+  ["ncode","manualNcode","Nコード"],["title","manualTitle","作品タイトル"],["author","manualWriter","作者名"],
+  ["source_url","manualUrl","取得元URL"],["synopsis","manualSynopsis","あらすじ"],["status","manualStatusValue","作品状態"],
+  ["episode_count","manualEpisodeCount","エピソード数"],["genre","manualGenre","ジャンル"],
+  ["published_at","manualPublishedAt","掲載日時"],["latest_episode_at","manualLatestAt","最新掲載日時"],
+  ["character_count","manualCharacterCount","文字数"],["disclosure","manualDisclosure","開示設定"]
+ ];
+ for(const [key,id] of fields){
+  const value=data[key];
+  document.getElementById(id).value=value==null?"":String(value);
+ }
+ const missing=fields.filter(([key])=>!Object.prototype.hasOwnProperty.call(data,key)).map(([, ,label])=>label);
+ const empty=fields.filter(([key])=>Object.prototype.hasOwnProperty.call(data,key)&&(data[key]==null||String(data[key]).trim()==="")).map(([, ,label])=>label);
  const d=String(data.disclosure||"").trim();
- if(!d)setMetadataCheck("⚠️ 開示設定が取得できません。作品情報ページで確認し、開示設定欄を補ってください。","error");
- else if(d.includes("検索除外中"))setMetadataCheck("✅ 検索除外中を確認しました。内容を確認し、不足項目を補ってください。","ok");
- else setMetadataCheck("⚠️ 開示設定は「"+d+"」です。検索除外中か確認できないため、登録は保留します。","error");
+ let message="JSONを読み込みました。";
+ if(missing.length)message+="\\nJSONに項目がありません："+missing.join("、")+"。";
+ if(empty.length)message+="\\n値が空の項目："+empty.join("、")+"。";
+ if(!d)message+="\\n⚠️ 開示設定が未確認です。作品情報ページで確認し、開示設定欄を補ってください。";
+ else if(d.includes("検索除外中"))message+="\\n✅ 検索除外中を確認しました。内容を確認し、不足項目を補ってください。";
+ else message+="\\n⚠️ 開示設定は「"+d+"」です。検索除外中か確認できないため、登録は保留します。";
+ setMetadataCheck(message,(!d||!d.includes("検索除外中")||missing.length||empty.length)?"error":"ok");
 }
 function loadMetadata(){
  const raw=String(document.getElementById("metaJson").value||"").trim();
