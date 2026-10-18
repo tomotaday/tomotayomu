@@ -7,14 +7,14 @@
 <meta content="#f6f3ed" name="theme-color"/>
 <title>ともたよむ v3.5.0｜2026.10.18</title>
 <style>
-:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195;--shelf-card:#fff;--shelf-ink:#252525;--shelf-line:#ddd}
+:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195;--shelf-card:#fff;--shelf-ink:#252525;--shelf-line:#ddd;--topbtn-bg:#fffdf9;--topbtn-ink:#252525;--topbtn-line:#c9c0b4}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.55}
 main{width:min(100%,720px);margin:auto;padding:18px 14px 40px}
 h1{font-size:30px;margin:0 0 4px}
 .note{font-size:13px;color:var(--muted);margin-bottom:15px}
 button{border:1px solid #c8c0b5;border-radius:8px;background:transparent;padding:5px 9px;font-size:14px;color:var(--ink)}
-.top-update-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%;margin:0 0 8px}.top-update-actions button{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:clip;padding:7px 2px;font-size:clamp(10px,3.1vw,13px);background:var(--card);border:1px solid #c9c0b4;border-radius:12px;box-shadow:0 2px 0 rgba(0,0,0,.04);color:var(--text)}
+.top-update-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%;margin:0 0 8px}.top-update-actions button{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:clip;padding:7px 2px;font-size:clamp(10px,3.1vw,13px);background:var(--topbtn-bg);border:1px solid var(--topbtn-line);border-radius:12px;box-shadow:0 2px 0 rgba(0,0,0,.04);color:var(--topbtn-ink)}
 #apiStatus{font-size:13px;margin:10px 0 15px}
 .section{margin:20px 0 8px;font-weight:700;font-size:18px}
 .update-empty{color:var(--muted);margin-bottom:16px}
@@ -542,7 +542,7 @@ function setupAtomDisplayDays(){
     renderAuthorAtom().catch(e=>console.warn("作者更新表示期間の再描画失敗",e));
   });
 }
-function applyCustomColors(){try{const colors=JSON.parse(localStorage.getItem("tomotaYomu_custom_colors_v1")||"null");if(!colors||typeof colors!=="object")return;const allowed=["--bg","--card","--ink","--muted","--line","--shelf-card","--shelf-ink","--shelf-line","--accent"];for(const key of allowed){const value=colors[key];if(typeof value==="string"&&/^#[0-9a-fA-F]{6}$/.test(value))document.body.style.setProperty(key,value);}}catch(e){console.warn("カスタムカラー読込失敗",e)}}
+function applyCustomColors(){try{const colors=JSON.parse(localStorage.getItem("tomotaYomu_custom_colors_v1")||"null");if(!colors||typeof colors!=="object")return;const allowed=["--bg","--card","--ink","--muted","--line","--shelf-card","--shelf-ink","--shelf-line","--accent","--topbtn-bg","--topbtn-ink","--topbtn-line"];for(const key of allowed){const value=colors[key];if(typeof value==="string"&&/^#[0-9a-fA-F]{6}$/.test(value))document.body.style.setProperty(key,value);}}catch(e){console.warn("カスタムカラー読込失敗",e)}}
 function applyDressup(theme){
   const t=theme==="seiji"||theme==="night"||theme==="autumn"?theme:"default";
   document.body.dataset.theme=t;
