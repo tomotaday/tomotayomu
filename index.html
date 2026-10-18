@@ -7,7 +7,7 @@
 <meta content="#f6f3ed" name="theme-color"/>
 <title>ともたよむ v3.5.0｜2026.10.18</title>
 <style>
-:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195;--shelf-card:#fff;--shelf-ink:#252525;--shelf-line:#ddd;--topbtn-bg:#fffdf9;--topbtn-ink:#252525;--topbtn-line:#c9c0b4}
+:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195;--shelf-card:#fff;--shelf-ink:#252525;--shelf-line:#ddd;--topbtn-bg:#fffdf9;--topbtn-ink:#252525;--topbtn-line:#c9c0b4;--work-card-line:#aaa195}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.55}
 main{width:min(100%,720px);margin:auto;padding:18px 14px 40px}
@@ -19,7 +19,7 @@ button{border:1px solid #c8c0b5;border-radius:8px;background:transparent;padding
 .section{margin:20px 0 8px;font-weight:700;font-size:18px}
 .update-empty{color:var(--muted);margin-bottom:16px}
 .update-list .card{margin-bottom:10px}
-.card{background:var(--card);border:1px solid #aaa195;border-radius:12px;padding:13px;margin:10px 0}
+.card{background:var(--card);border:1px solid var(--work-card-line);border-radius:12px;padding:13px;margin:10px 0}
 .meta{font-size:12px;color:#555;margin-bottom:8px}
 .newMark{font-size:12px}
 h2{font-size:15px;line-height:1.45;font-weight:700;margin:0 0 4px}
@@ -542,7 +542,7 @@ function setupAtomDisplayDays(){
     renderAuthorAtom().catch(e=>console.warn("作者更新表示期間の再描画失敗",e));
   });
 }
-function applyCustomColors(){try{const colors=JSON.parse(localStorage.getItem("tomotaYomu_custom_colors_v1")||"null");if(!colors||typeof colors!=="object")return;const allowed=["--bg","--card","--ink","--muted","--line","--shelf-card","--shelf-ink" ,"--shelf-line","--topbtn-bg","--topbtn-ink","--topbtn-line"];for(const key of allowed){const value=colors[key];if(typeof value==="string"&&/^#[0-9a-fA-F]{6}$/.test(value))document.body.style.setProperty(key,value);}}catch(e){console.warn("カスタムカラー読込失敗",e)}}
+function applyCustomColors(){try{const colors=JSON.parse(localStorage.getItem("tomotaYomu_custom_colors_v1")||"null");if(!colors||typeof colors!=="object")return;const allowed=["--bg","--card","--ink","--muted","--line","--shelf-card","--shelf-ink" ,"--shelf-line","--work-card-line","--topbtn-bg","--topbtn-ink","--topbtn-line"];for(const key of allowed){const value=colors[key];if(typeof value==="string"&&/^#[0-9a-fA-F]{6}$/.test(value))document.body.style.setProperty(key,value);}}catch(e){console.warn("カスタムカラー読込失敗",e)}}
 function applyDressup(theme){
   const t=theme==="seiji"||theme==="night"||theme==="autumn"?theme:"default";
   document.body.dataset.theme=t;
