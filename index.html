@@ -356,7 +356,7 @@ async function buildV3CardsFromIndexedDB(){
   if(status)status.textContent="本棚情報反映済み";
   return {shelves:v3Shelves,placements,made,deleted,works,authors,positions,unmapped};
 }
-function formatDate(v) { if (!v) return "—"; const d = new Date(String(v).replace(" ", "T")); if (isNaN(d)) return String(v).slice(0,10).replaceAll("-","/"); return d.toLocaleString("ja-JP", {year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}); }
+function formatDate(v) { if (!v) return "—"; const raw=String(v).trim(); const m=raw.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/); if(m){const date=m[1]+"/"+m[2].padStart(2,"0")+"/"+m[3].padStart(2,"0");return m[4]?date+" "+m[4].padStart(2,"0")+":"+m[5]:date;} const d=new Date(raw.replace(" ","T")); if(isNaN(d))return raw.slice(0,10).replaceAll("-","/"); return d.toLocaleString("ja-JP",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}); }
 function nowUnix(){ return Math.floor(Date.now()/1000); }
 function setStatus(w) {
   if (String(w.noveltype ?? "").trim() === "2") return "🟣 短編";
