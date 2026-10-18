@@ -213,9 +213,9 @@ async function hydrateCandidateWorks(){
 
 function loadShelfRestoreMap(){
   return new Promise((ok,no)=>{
-    if(window.ORIGINAL_READING_NCODES){ok();return;}
+    if(window.ORIGINAL_SHELF_BY_NCODE){ok();return;}
     const s=document.createElement("script");
-    s.src="v3_shelf_restore_map.js";
+    s.src="shelf_restore_map.js";
     s.onload=()=>ok();
     s.onerror=()=>no(new Error("shelf restore map load failed"));
     document.head.appendChild(s);
