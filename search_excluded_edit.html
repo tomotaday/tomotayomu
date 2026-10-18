@@ -1,51 +1,20 @@
-<!doctype html>
-<html lang="ja">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#f6f3ed">
-<title>検索除外作品の内容編集｜ともたよむ</title>
-<style>
-:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.55}
-main{width:min(100%,680px);margin:auto;padding:18px 14px 40px}h1{font-size:23px;margin:0 0 8px}p{font-size:14px}.note{color:var(--muted);font-size:13px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:14px 0}
-label{display:block;font-size:14px;font-weight:700;margin:14px 0 5px}input,textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px}textarea{min-height:180px;resize:vertical}
-.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}button,a.button{font:inherit;font-size:14px;padding:9px 12px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--ink);text-decoration:none}button.primary{font-weight:700;background:#e9e2d6}
-#status{white-space:pre-wrap;font-size:13px;margin-top:12px}.ncode{font-size:13px;color:var(--muted)}
-</style>
-</head>
-<body><main>
-<a href="index.html">← ともたよむへ戻る</a>
-<h1>✏️ 検索除外作品の内容編集</h1>
-<p class="note">ここでの編集は、ともたよむ内で表示するタイトル・作者名・あらすじの補正です。Narou側の作品情報やIndexedDBの原本は書き換えず、表示用の補正として別に保存します。</p>
-<section class="card">
-<div id="ncode" class="ncode">Nコードを確認中…</div>
-<label for="title">作品タイトル</label><input id="title" maxlength="500" autocomplete="off">
-<label for="writer">作者名</label><input id="writer" maxlength="300" autocomplete="off">
-<label for="story">あらすじ</label><textarea id="story"></textarea>
-<div class="actions"><button class="primary" id="save">変更を保存</button><button id="reset">原本の表示に戻す</button><a class="button" href="index.html">本棚へ戻る</a></div>
-<div id="status" role="status"></div>
-</section>
-<p class="note">保存先はこのブラウザのローカル保存領域です。別の端末や別ブラウザとは同期されません。棚の所属・読書位置・作者管理情報・検索除外の設定は変更しません。</p>
-</main>
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f6f3ed"><title>ともたよむ｜変更登録</title>
+<style>:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.6}main{width:min(100%,720px);margin:auto;padding:24px 16px 48px}h1{font-size:26px;margin:12px 0 6px}.note{font-size:13px;color:var(--muted);margin-bottom:18px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}label{display:block;font-weight:700;margin:12px 0 4px}input,textarea{display:block;width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}textarea{resize:vertical}button,a.button{display:inline-block;margin:14px 8px 0 0;padding:10px 14px;background:#fffdf9;border:1px solid var(--line);border-radius:8px;color:var(--ink);font:inherit;text-decoration:none}button.primary{font-weight:700;background:#e9e2d6}#status{white-space:pre-wrap;margin-top:14px;font-size:14px}.ncode{font-size:14px;color:var(--muted)}</style></head>
+<body><main><a href="index.html">← ともたよむ本棚へ戻る</a><h1>✏️ 変更登録</h1><p class="note">作品カードから引き継いだNコードの登録済みデータを読み込み、修正内容を本棚の作品情報に保存します。棚の配置と読書位置は維持します。</p>
+<section class="card"><div id="ncode" class="ncode">Nコードを読み込み中…</div>
+<label for="title">作品タイトル</label><input id="title" autocomplete="off"><label for="writer">作者名</label><input id="writer" autocomplete="off"><label for="authorId">作者ID（数値ユーザID）</label><input id="authorId" inputmode="numeric" autocomplete="off"><label for="sourceUrl">取得元URL</label><input id="sourceUrl" autocomplete="url"><label for="story">あらすじ</label><textarea id="story" rows="5"></textarea><label for="statusValue">作品状態（連載中・完結・短編）</label><input id="statusValue"><label for="episodeCount">エピソード数</label><input id="episodeCount" inputmode="numeric"><label for="genreText">ジャンル</label><input id="genreText"><label for="publishedAt">掲載日時（YYYY/MM/DD HH:mm）</label><input id="publishedAt" placeholder="2023/09/01 14:05"><label for="latestAt">最新掲載日時（YYYY/MM/DD HH:mm）</label><input id="latestAt" placeholder="2023/09/01 14:14"><label for="characterCount">文字数</label><input id="characterCount" inputmode="numeric"><label for="disclosure">開示設定</label><input id="disclosure"><button id="save" class="primary" type="button">変更を保存</button><a class="button" href="index.html">本棚へ戻る</a><div id="status" role="status">登録済みデータを読み込んでいます…</div></section></main>
 <script>
 "use strict";
-const DB_NAME="tomotaYomuDB",DB_VERSION=1,OVERRIDES_KEY="tomotaYomu_work_edit_overrides_v1";
-const ncode=(new URLSearchParams(location.search).get("ncode")||"").trim().toUpperCase();
-const el=id=>document.getElementById(id);
-let original=null;
-function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error("本棚データベースを開けません"));});}
-function readWork(db,n){return new Promise((resolve,reject)=>{if(!db.objectStoreNames.contains("works_cache")){resolve(null);return}const tx=db.transaction("works_cache","readonly"),st=tx.objectStore("works_cache");let req;try{req=st.get(n)}catch(e){reject(e);return}req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error||new Error("作品情報を読み込めません"));});}
-function readOverrides(){try{const v=JSON.parse(localStorage.getItem(OVERRIDES_KEY)||"{}");return v&&typeof v==="object"&&!Array.isArray(v)?v:{}}catch(e){return {}}}
-function setStatus(msg){el("status").textContent=msg}
-function fillForm(w,override){el("title").value=override.title??w.title??"";el("writer").value=override.writer??w.writer??"";el("story").value=override.story??w.story??""}
-async function init(){if(!/^N[0-9A-Z]+$/.test(ncode)){setStatus("Nコードが指定されていません。検索除外棚から作品カードの「内容を編集」を開いてください。");el("ncode").textContent="Nコード未指定";el("save").disabled=true;el("reset").disabled=true;return}
-el("ncode").textContent="Nコード："+ncode;
-try{const db=await openDB();original=await readWork(db,ncode);db.close();if(!original){setStatus("本棚の作品情報が見つかりませんでした。作品が本棚にあるか確認してください。");el("save").disabled=true;el("reset").disabled=true;return}
-fillForm(original,readOverrides()[ncode]||{});setStatus("読み込みました。編集内容は表示用の補正として保存されます。");
-}catch(e){setStatus("読み込みに失敗しました："+(e?.message||e));}}
-el("save").addEventListener("click",()=>{if(!original)return;const all=readOverrides();all[ncode]={title:el("title").value,writer:el("writer").value,story:el("story").value,updatedAt:new Date().toISOString()};try{localStorage.setItem(OVERRIDES_KEY,JSON.stringify(all));setStatus("保存しました。ともたよむへ戻ると、作品カードの表示に反映されます。");}catch(e){setStatus("保存できませんでした："+(e?.message||e));}});
-el("reset").addEventListener("click",()=>{if(!original)return;const all=readOverrides();delete all[ncode];try{localStorage.setItem(OVERRIDES_KEY,JSON.stringify(all));fillForm(original,{});setStatus("表示用の補正を解除しました。原本の表示に戻します。");}catch(e){setStatus("解除できませんでした："+(e?.message||e));}});
+const DB_NAME="tomotaYomuDB",DB_VERSION=1,ncode=(new URLSearchParams(location.search).get("ncode")||"").trim().toUpperCase(),el=id=>document.getElementById(id);let original=null;
+function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error("IndexedDBを開けません"));});}
+function getRow(db,store,key){return new Promise((resolve,reject)=>{const r=db.transaction(store,"readonly").objectStore(store).get(key);r.onsuccess=()=>resolve(r.result||null);r.onerror=()=>reject(r.error||new Error(store+"読込失敗"));});}
+function putRow(tx,store,row,key){const st=tx.objectStore(store);return st.keyPath==null?st.put(row,key):st.put(row);}
+function statusText(w){if(Number(w.noveltype)===2)return "短編";if(Number(w.end)===0)return "完結";return "連載中";}
+function dateValue(v){if(!v)return "";const s=String(v).trim(),m=s.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})(?:\s+(\d{1,2}):(\d{2}))?/);return m?m[1]+"/"+m[2].padStart(2,"0")+"/"+m[3].padStart(2,"0")+(m[4]?" "+m[4].padStart(2,"0")+":"+m[5]:""):s;}
+function setStatus(s){el("status").textContent=s;}
+function fill(w,a){el("title").value=w.title??"";el("writer").value=w.writer??"";el("authorId").value=w.userid&&Number(w.userid)>0?String(w.userid):(a?.authorId||"");el("sourceUrl").value=w.source_url??"";el("story").value=w.story??"";el("statusValue").value=statusText(w);el("episodeCount").value=w.general_all_no??w.episode_count??"";el("genreText").value=w.genre_text??"";el("publishedAt").value=dateValue(w.general_firstup??w.published_at);el("latestAt").value=dateValue(w.general_lastup??w.latest_episode_at);el("characterCount").value=w.character_count??"";el("disclosure").value=w.disclosure??"";}
+async function init(){if(!/^N\d+[A-Z]+$/.test(ncode)){el("ncode").textContent="Nコード未指定";el("save").disabled=true;setStatus("作品カードから「内容を編集」を開いてください。");return;}el("ncode").textContent="Nコード："+ncode;try{const db=await openDB();original=await getRow(db,"works_cache",ncode);const a=await getRow(db,"authors",ncode);db.close();if(!original){el("save").disabled=true;setStatus("登録済み作品が見つかりません。Nコードを確認してください。");return;}fill(original,a);setStatus("登録済みデータを読み込みました。修正して保存できます。");}catch(e){el("save").disabled=true;setStatus("読み込み失敗："+e.message);}}
+el("save").addEventListener("click",async()=>{const btn=el("save");btn.disabled=true;let db;try{if(!original)throw new Error("登録済みデータがありません。");const authorId=el("authorId").value.trim();if(authorId&&!/^\d+$/.test(authorId))throw new Error("作者IDは数字のみで入力してください。");const count=id=>{const s=el(id).value.trim();if(!s)return 0;if(!/^\d+$/.test(s))throw new Error("話数・文字数は数字で入力してください。");return Number(s);};const title=el("title").value.trim();if(!title)throw new Error("作品タイトルを入力してください。");const status=el("statusValue").value.trim(),published=el("publishedAt").value.trim(),latest=el("latestAt").value.trim(),episodeCount=count("episodeCount"),characterCount=count("characterCount");const updated={...original,title,writer:el("writer").value.trim(),userid:authorId?Number(authorId):0,source_url:el("sourceUrl").value.trim(),story:el("story").value,general_all_no:episodeCount,episode_count:episodeCount,character_count:characterCount,general_firstup:published,published_at:published,general_lastup:latest,latest_episode_at:latest,novelupdated_at:latest,genre_text:el("genreText").value.trim(),disclosure:el("disclosure").value.trim(),end:status.includes("完結")?0:1,noveltype:status.includes("短編")?2:1};db=await openDB();const prior=db.objectStoreNames.contains("authors")?await getRow(db,"authors",ncode):null;const stores=["works_cache"];if(db.objectStoreNames.contains("authors")&&authorId)stores.push("authors");const tx=db.transaction(stores,"readwrite");putRow(tx,"works_cache",updated,ncode);if(stores.includes("authors"))putRow(tx,"authors",{...(prior||{}),ncode,writer:updated.writer,authorId,authorType:updated.__r18?"r18":"normal",authorName:prior?.authorName||updated.writer,authorUrl:prior?.authorUrl||""},ncode);await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存失敗"));tx.onabort=()=>reject(tx.error||new Error("保存中止"));});db.close();original=updated;setStatus("保存しました。作品情報を更新しました。本棚へ戻ると作品カードに反映されます。");}catch(e){if(db)db.close();setStatus("保存できませんでした："+e.message);}finally{btn.disabled=false;}});
 init();
 </script></body></html>
