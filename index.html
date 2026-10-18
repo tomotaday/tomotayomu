@@ -152,10 +152,6 @@ const MAX_ST = 2000;
 let workOrderReversed = false;
 function compareWorkDate(a,b){const d=String(b.dataset.lastUpdated||"").localeCompare(String(a.dataset.lastUpdated||""));return workOrderReversed?-d:d;}
 const INIT_START = 0;
-const WORK_EDIT_OVERRIDES_KEY="tomotaYomu_work_edit_overrides_v1";
-function getWorkEditOverrides(){return loadJSON(WORK_EDIT_OVERRIDES_KEY,{});}
-function getWorkEditOverride(ncode){const all=getWorkEditOverrides();return all[String(ncode||"").toUpperCase()]||{};}
-
 function loadJSON(key, fallback) { try { return JSON.parse(localStorage.getItem(key) || "null") ?? fallback; } catch(e) { return fallback; } }
 function saveJSON(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
 function getGlobalBaseline(){ return localStorage.getItem(GLOBAL_BASELINE_KEY) || INITIAL_GLOBAL_BASELINE; }
@@ -336,10 +332,11 @@ async function buildV3CardsFromIndexedDB(){
     card.dataset.shelfId=sid;
     card.dataset.shelf=shelf;
     card.dataset.r18=isR18Work(w) ? "1" : "";
-    card.dataset.authorName=am.get(n)?.writer||w.writer||"";
+    const isSearchExcluded=getSearchExcludedNcodes().has(n);
+    const writer=isSearchExcluded?(w.writer||am.get(n)?.writer||""):(am.get(n)?.writer||w.writer||"");
+    card.dataset.authorName=writer;
     card.dataset.authorManageName=am.get(n)?.authorManageName||"";
     card.dataset.current=pm.has(n)?String(pm.get(n).episode||""):"";
-    const writer=am.get(n)?.writer||w.writer||"";
 
     card.innerHTML='<div class="meta"><span class="newMark" hidden>🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ '+shelf+'</div><h2></h2><div class="author">作者：<span class="authorName"></span> <span class="searchExcludedMark" hidden title="検索除外に設定中">🚫</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから　📖 未読 / —話</a></div><details class="managementDetails"><summary>詳細を開く</summary><div class="managementBody"><div class="ncode">Nコード：'+n+'</div><button type="button" class="moveShelfBtn">本棚を移動</button><button type="button" class="searchExcludedToggle">🔎 検索除外にする</button><button type="button" class="deleteWorkBtn">削除</button></div></details></article>';
     card.querySelector("h2").textContent=w.title||"";
@@ -424,7 +421,6 @@ function renderResumeLink(card,current,total,workUrl,isShortStory){
 }
 function updateCard(card,w){
   const n=String(w.ncode||card.dataset.ncode).toUpperCase();
-  const edit=getWorkEditOverride(n);w={...w,title:edit.title??w.title,writer:edit.writer??w.writer,story:edit.story??w.story};
   const isR18=isR18Work(w);
   card.dataset.r18=isR18?"1":"";
   const titleEl=card.querySelector("h2"); if(titleEl&&w.title)titleEl.textContent=w.title;
