@@ -126,9 +126,16 @@ async function saveWork(work,rawUrl,manualAuthorId=""){
     .filter(Boolean))];
   const matchedAuthorId=authorIds.length===1?authorIds[0]:"";
   const matchedAuthor=matchedAuthorId?authors.find(a=>String(a?.authorId||"").trim()===matchedAuthorId&&((a?.authorType==="r18")===isR18))||{}:{};
-  const tx=db.transaction(["works_cache","shelf_placement","authors","shelf_names"],"readwrite");
-  const oldWork=await new Promise((resolve,reject)=>{const req=db.transaction("works_cache","readonly").objectStore("works_cache").get(ncode);req.onsuccess=()=>resolve(req.result||{});req.onerror=()=>reject(req.error)});
+  // 既存作品情報の読込を先に完了させる。readwriteトランザクション開始後に await すると、
+  // 待機中にトランザクションが終了し、objectStore() が失敗するため。
+  const oldWork=await new Promise((resolve,reject)=>{
+    const readTx=db.transaction("works_cache","readonly");
+    const req=readTx.objectStore("works_cache").get(ncode);
+    req.onsuccess=()=>resolve(req.result||{});
+    req.onerror=()=>reject(req.error||new Error("既存作品情報の読込失敗"));
+  });
   const saved={...oldWork,...work,ncode,userid:manualAuthorId?Number(manualAuthorId):(oldWork.userid??work.userid??0),__r18:isR18};
+  const tx=db.transaction(["works_cache","shelf_placement","authors","shelf_names"],"readwrite");
   putRow(tx,"works_cache",saved,ncode);
   // 旧名称で初回検出した棚も、固定の登録先として保存しておく。
   for(const item of shelves){
