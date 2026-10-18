@@ -542,7 +542,7 @@ function setupAtomDisplayDays(){
     renderAuthorAtom().catch(e=>console.warn("作者更新表示期間の再描画失敗",e));
   });
 }
-function applyCustomColors(){try{const colors=JSON.parse(localStorage.getItem("tomotaYomu_custom_colors_v1")||"null");if(!colors||typeof colors!=="object")return;const allowed=["--bg","--card","--ink","--muted","--line","--shelf-card","--shelf-ink","--shelf-line","--accent","--topbtn-bg","--topbtn-ink","--topbtn-line"];for(const key of allowed){const value=colors[key];if(typeof value==="string"&&/^#[0-9a-fA-F]{6}$/.test(value))document.body.style.setProperty(key,value);}}catch(e){console.warn("カスタムカラー読込失敗",e)}}
+function applyCustomColors(){try{const colors=JSON.parse(localStorage.getItem("tomotaYomu_custom_colors_v1")||"null");if(!colors||typeof colors!=="object")return;const allowed=["--bg","--card","--ink","--muted","--line","--shelf-card","--shelf-ink" ,"--shelf-line","--topbtn-bg","--topbtn-ink","--topbtn-line"];for(const key of allowed){const value=colors[key];if(typeof value==="string"&&/^#[0-9a-fA-F]{6}$/.test(value))document.body.style.setProperty(key,value);}}catch(e){console.warn("カスタムカラー読込失敗",e)}}
 function applyDressup(theme){
   const t=theme==="seiji"||theme==="night"||theme==="autumn"?theme:"default";
   document.body.dataset.theme=t;
