@@ -431,7 +431,8 @@ function seedReadingCache(){
   const m=readingMap(); let changed=false;
   document.querySelectorAll("#shelf .card").forEach(card=>{
     if(card.dataset.noteId)return;
-    const n=card.dataset.ncode.toUpperCase();
+    const n=String(card.dataset.ncode||"").toUpperCase();
+    if(!n)return;
     if(!(n in m)){
       const v=card.dataset.current;
       if(v!=="" && /^\d+$/.test(v)) m[n]=Number(v); else m[n]=null;
@@ -473,7 +474,8 @@ function updateCard(card,w){
   applyCardState(card);
 }
 function applyCardState(card){
-  const n=card.dataset.ncode.toUpperCase(), candidates=getUpdateCandidates(), candidate=candidates[n], current=readingFor(n), total=Number(card.dataset.totalEpisodes||0);
+  if(card.dataset.noteId)return;
+  const n=String(card.dataset.ncode||"").toUpperCase(), candidates=getUpdateCandidates(), candidate=candidates[n], current=readingFor(n), total=Number(card.dataset.totalEpisodes||0);
   const isShelfRegistered=String(card.dataset.shelfId||"").trim()!=="";
   const unread=current!=null && total>0 && current<total;
   const mark=card.querySelector(".newMark");
@@ -617,8 +619,9 @@ document.addEventListener("click",e=>{
 function buildUpdateView(){
   const candidates=getUpdateCandidates(), cards=[...document.querySelectorAll("#shelf .card")], updates=[];
   cards.forEach(card=>{
+    if(card.dataset.noteId)return;
     applyCardState(card);
-    const n=card.dataset.ncode.toUpperCase(), candidate=candidates[n], current=readingFor(n), total=Number(card.dataset.totalEpisodes||0);
+    const n=String(card.dataset.ncode||"").toUpperCase(), candidate=candidates[n], current=readingFor(n), total=Number(card.dataset.totalEpisodes||0);
     const unread=current!=null && total>0 && current<total;
     const isShelfRegistered=String(card.dataset.shelfId||"").trim()!=="";
     if(candidate&&unread&&isShelfRegistered)updates.push(card);
@@ -640,7 +643,7 @@ async function fetchByNcodes(apiUrl,ncodes,label){
   for(let i=0;i<chunks.length;i++){ const chunk=chunks[i]; const d=await jsonp(apiUrl+"?ncode="+encodeURIComponent(chunk.join("-"))+"&of=n-t-s-gl-ga-e-e-nt&lim=500"); results.push(...(Array.isArray(d)?d.slice(1):[])); }
   return results;
 }
-function getCardsByNcode(){ const m={}; document.querySelectorAll("#shelf .card").forEach(c=>m[c.dataset.ncode.toUpperCase()]=c); return m; }
+function getCardsByNcode(){ const m={}; document.querySelectorAll("#shelf .card").forEach(c=>{const n=String(c.dataset.ncode||"").toUpperCase();if(n)m[n]=c}); return m; }
 async function initializeBaseline(){
   const status=document.getElementById("apiStatus"); status.textContent="初回同期：作品情報を取得中…";
   const [works,r18]=await Promise.all([fetchByNcodes(API_URL,NCODES,"normal"),fetchByNcodes(R18_API_URL,R18_NCODES,"r18")]); r18.forEach(w=>w.__r18=true);
