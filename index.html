@@ -185,7 +185,8 @@ function restoreLatestWorks(){
     if(c) updateCard(c,latest[n]);
   });
 }
-function renderGlobalBaseline(){ const el=document.getElementById("baselineDate"); if(el){ const v=getGlobalBaseline(); el.textContent=v?("本棚基準日："+formatDate(v)):"本棚基準日：反映待ち"; } }
+let bookshelfRendered=false;
+function renderGlobalBaseline(){ const el=document.getElementById("baselineDate"); if(el){ const v=getGlobalBaseline(); el.textContent=(v?("本棚基準日："+formatDate(v)):"本棚基準日：反映待ち")+(bookshelfRendered?"　反映済":""); } }
 async function hydrateCandidateWorks(){
   const candidates=getUpdateCandidates();
   const ncodes=Object.keys(candidates||{});
@@ -350,7 +351,9 @@ async function buildV3CardsFromIndexedDB(){
   if(s){ s.textContent=""; }
   const sum=document.getElementById("bookshelfSummary");
   if(sum)sum.textContent="📚 本棚 "+made;
-  if(status)status.textContent="本棚情報反映済み";
+  bookshelfRendered=true;
+  renderGlobalBaseline();
+  if(status)status.textContent="";
   return {shelves:v3Shelves,placements,made,deleted,works,authors,positions,unmapped};
 }
 function formatDate(v) { if (!v) return "—"; const raw=String(v).trim(); if (/(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw)) { const d=new Date(raw); if (!Number.isNaN(d.getTime())) { const parts=new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(d); const p=Object.fromEntries(parts.map(x=>[x.type,x.value])); return `${p.year}/${p.month}/${p.day} ${p.hour}:${p.minute}`; } } const m=raw.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/); if(m){const date=m[1]+"/"+m[2].padStart(2,"0")+"/"+m[3].padStart(2,"0");return m[4]?date+" "+m[4].padStart(2,"0")+":"+m[5]:date;} const d=new Date(raw.replace(" ","T")); if(isNaN(d))return raw.slice(0,10).replaceAll("-","/"); return new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(d); }
@@ -643,7 +646,9 @@ async function updateInfo(){
     renderGlobalBaseline();
     buildUpdateView();
     buildShelfFolders();
-    status.textContent=`更新確認完了：反映 ${reflected}作品｜更新候補 ${Object.keys(candidates).length}作品｜最新情報を保存｜新基準日 ${formatDate(newBaseline)}`;
+    bookshelfRendered=true;
+    renderGlobalBaseline();
+    status.textContent="";
   }catch(e){
     console.error(e);
     status.textContent="更新確認に失敗しました："+e.message;
