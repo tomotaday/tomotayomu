@@ -107,6 +107,7 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 </div>
 <div id="baselineDate" style="font-size:13px;margin:8px 0">本棚基準日：反映待ち</div>
 <div id="apiStatus">本棚情報未反映</div>
+<div id="noteReceiveStatus" hidden style="border:1px solid #8caa9b;border-radius:10px;background:#f1f8f4;padding:10px;margin:10px 0;overflow-wrap:anywhere"></div>
 <details class="searchDetails">
 <summary>🔎 検索</summary>
 <div class="searchBody">
@@ -393,6 +394,38 @@ function setStatus(w) {
   return String(w.end) === "0" ? "🔵 完結" : "🟢 連載中";
 }
 function siteUrl(w) { return isR18Work(w) ? "https://novel18.syosetu.com/" + String(w.ncode).toLowerCase() + "/" : "https://ncode.syosetu.com/" + String(w.ncode).toLowerCase() + "/"; }
+function receiveNoteUrlFromQuery(){
+  const params=new URLSearchParams(location.search);
+  const raw=(params.get("noteUrl")||"").trim();
+  if(!raw)return false;
+  const box=document.getElementById("noteReceiveStatus");
+  let url;
+  try{url=new URL(raw)}catch(e){
+    if(box){box.hidden=false;box.textContent="note受信テスト：URLの形式を確認できませんでした。"}
+    return false;
+  }
+  if(url.protocol!=="https:" || !(url.hostname==="note.com" || url.hostname.endsWith(".note.com"))){
+    if(box){box.hidden=false;box.textContent="note受信テスト：note.comのHTTPS URLではありません。"}
+    return false;
+  }
+  if(box){
+    box.hidden=false;
+    box.textContent="";
+    const title=document.createElement("strong");
+    title.textContent="📩 note記事URLを受信しました（まだ保存していません）";
+    const line=document.createElement("div");
+    line.style.marginTop="6px";
+    const link=document.createElement("a");
+    link.href=url.href;
+    link.target="_blank";
+    link.rel="noopener noreferrer";
+    link.textContent=url.href;
+    line.appendChild(link);
+    box.append(title,line);
+  }
+  return true;
+}
+
 function restoreReadingFromQuery(){
   const params = new URLSearchParams(location.search);
   const n = (params.get("ncode") || "").trim().toUpperCase();
@@ -602,6 +635,7 @@ function initDressup(){
   applyFontSize();
   applyFontFamily();
 }
+document.addEventListener("DOMContentLoaded",receiveNoteUrlFromQuery);
 document.addEventListener("DOMContentLoaded",initDressup);
 document.addEventListener("DOMContentLoaded",initSearch);
 document.addEventListener("click",e=>{
