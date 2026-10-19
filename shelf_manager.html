@@ -49,7 +49,7 @@ const DB_NAME="tomotaYomuDB",DB_VERSION=1;
 const STORES={shelves:"shelf_names",placements:"shelf_placement",works:"works_cache"};
 const DESIRED_ORDER=["読書中","あ〜お","か〜こ","さ〜そ","た〜と","な〜の","は〜ほ","ま〜も","や〜ん","更新待ち"];
 const MIXED_ORDER_KEY="tomotaYomu_mixed_shelf_order_v1";
-const SYSTEM_SHELVES=[{key:"system:search",name:"🔎 検索"},{key:"system:authors",name:"👤作者"},{key:"system:works",name:"✨新着作品"},
+const SYSTEM_SHELVES=[{key:"system:search",name:"🔎 検索"},{key:"system:authors",name:"👤作者"},{key:"system:works",name:"✨新着作品"},{key:"system:note",name:"📝 note"},
 {key:"system:search-excluded",name:"🚫 検索除外"},{key:"system:all",name:"📚 全作品"},{key:"system:history",name:"🗄️ 履歴"},{key:"system:unclassified",name:"未分類"},{key:"system:management",name:"⚙️ 管理設定用"}];
 let db=null,shelves=[],placements=[],rows=[],dragRow=null,dragPointerId=null;
 let countMap=new Map();
@@ -76,7 +76,7 @@ function setOrderInitial(){
  const customs=[];
  if(shelves.some(v=>Number.isFinite(Number(v.display_order))))shelves.slice().sort((a,b)=>(Number(a.display_order)||999999)-(Number(b.display_order)||999999)).forEach(v=>customs.push({kind:"shelf",shelf:v,core:core(shelfText(v)),key:"custom:"+getId(v)}));
  else{const active=new Map();shelves.forEach(v=>{const id=getId(v),c=core(shelfText(v));if(id&&c&&!active.has(c))active.set(c,v)});const used=new Set();DESIRED_ORDER.forEach(c=>{const v=active.get(c);if(v){customs.push({kind:"shelf",shelf:v,core:c,key:"custom:"+getId(v)});used.add(getId(v))}});shelves.forEach(v=>{const id=getId(v);if(id&&!used.has(id)){customs.push({kind:"shelf",shelf:v,core:core(shelfText(v)),key:"custom:"+id});used.add(id)}})}
- const systems=SYSTEM_SHELVES.map(v=>({kind:"system",key:v.key,name:v.name})),defaults=["system:search","system:authors","system:works",...customs.map(r=>r.key),"system:all","system:history","system:unclassified","system:management"];
+ const systems=SYSTEM_SHELVES.map(v=>({kind:"system",key:v.key,name:v.name})),defaults=["system:search","system:authors","system:works","system:note",...customs.map(r=>r.key),"system:all","system:history","system:unclassified","system:management"];
  let saved=[];try{saved=JSON.parse(localStorage.getItem(MIXED_ORDER_KEY)||"[]");if(!Array.isArray(saved))saved=[]}catch(e){saved=[]}
  const lookup=new Map([...systems,...customs].map(r=>[r.key,r])),order=[...saved.filter(k=>lookup.has(k)),...defaults.filter(k=>lookup.has(k)&&!saved.includes(k)),...customs.map(r=>r.key).filter(k=>!saved.includes(k))];
  rows=[];const seen=new Set();order.forEach(k=>{const r=lookup.get(k);if(r&&!seen.has(k)){rows.push(r);seen.add(k)}});[...systems,...customs].forEach(r=>{if(!seen.has(r.key)){rows.push(r);seen.add(r.key)}});
