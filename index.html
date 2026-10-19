@@ -30,7 +30,8 @@ summary{cursor:pointer}
 .actions{display:flex;gap:10px;margin-top:12px;font-size:13px;flex-wrap:wrap}
 .actions a{color:inherit;text-decoration:none;border-bottom:1px solid #aaa}
 .hidden{display:none!important}
-.searchDetails{margin:8px 0 10px;background:var(--shelf-card);color:var(--shelf-ink);border:1px solid var(--shelf-line);border-radius:11px;overflow:hidden}.searchDetails>summary{list-style:none;cursor:pointer;font-size:18px;font-weight:700;padding:9px 12px}.searchDetails>summary::-webkit-details-marker{display:none}.searchDetails>summary::before{content:"▸ ";font-size:18px}.searchDetails[open]>summary::before{content:"▾ ";font-size:18px}.searchDetails[open]>summary{border-bottom:1px solid var(--shelf-line)}.searchBody{padding:9px 12px}.searchInput{width:100%;padding:9px 10px;border:1px solid var(--shelf-line);border-radius:8px;background:var(--card);color:var(--ink);font-size:15px}.searchHint{font-size:12px;color:var(--muted);margin-top:6px}.searchResults{margin-top:8px}.searchResults .card{margin:10px 0}.searchCount{font-size:13px;color:var(--muted);margin-top:8px}</style>
+.searchDetails{margin:8px 0 10px;background:var(--shelf-card);color:var(--shelf-ink);border:1px solid var(--shelf-line);border-radius:11px;overflow:hidden}.searchDetails>summary{list-style:none;cursor:pointer;font-size:18px;font-weight:700;padding:9px 12px}.searchDetails>summary::-webkit-details-marker{display:none}.searchDetails>summary::before{content:"▸ ";font-size:18px}.searchDetails[open]>summary::before{content:"▾ ";font-size:18px}.searchDetails[open]>summary{border-bottom:1px solid var(--shelf-line)}.searchBody{padding:9px 12px}.searchInput{width:100%;padding:9px 10px;border:1px solid var(--shelf-line);border-radius:8px;background:var(--card);color:var(--ink);font-size:15px}.searchHint{font-size:12px;color:var(--muted);margin-top:6px}.searchResults{margin-top:8px}.searchResults .card{margin:10px 0}.searchCount{font-size:13px;color:var(--muted);margin-top:8px}body[data-font-size="small"] .bookshelfDetails>summary,body[data-font-size="small"] .updateDetails>summary,body[data-font-size="small"] .folderDetails>summary,body[data-font-size="small"] .managementSettingsDetails>summary{font-size:16px}body[data-font-size="small"] .folderTitle{font-size:15px}body[data-font-size="small"] h2{font-size:13px}body[data-font-size="small"] .meta,body[data-font-size="small"] .author,body[data-font-size="small"] .ncode,body[data-font-size="small"] details,body[data-font-size="small"] .actions{font-size:11px}body[data-font-size="large"] .bookshelfDetails>summary,body[data-font-size="large"] .updateDetails>summary,body[data-font-size="large"] .folderDetails>summary,body[data-font-size="large"] .managementSettingsDetails>summary{font-size:24px}body[data-font-size="large"] .folderTitle{font-size:19px}body[data-font-size="large"] h2{font-size:17px}body[data-font-size="large"] .meta,body[data-font-size="large"] .author,body[data-font-size="large"] .ncode,body[data-font-size="large"] details,body[data-font-size="large"] .actions{font-size:14px}
+</style>
 <style id="author-atom-style">
 #authorFeedTitle{font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #authorAtomList .atomCategory{border:1px solid var(--line);border-radius:10px;margin:8px 0;overflow:hidden;background:var(--card)}
@@ -545,6 +546,7 @@ function setupAtomDisplayDays(){
     renderAuthorAtom().catch(e=>console.warn("作者更新表示期間の再描画失敗",e));
   });
 }
+function applyFontSize(){const size=localStorage.getItem("tomotaYomu_font_size");document.body.dataset.fontSize=["small","standard","large"].includes(size)?size:"standard";}
 function applyCustomColors(){try{const colors=JSON.parse(localStorage.getItem("tomotaYomu_custom_colors_v1")||"null");if(!colors||typeof colors!=="object")return;const allowed=["--bg","--card","--ink","--muted","--line","--shelf-card","--shelf-ink" ,"--shelf-line","--work-card-line","--topbtn-bg","--topbtn-ink","--topbtn-line"];for(const key of allowed){const value=colors[key];if(typeof value==="string"&&/^#[0-9a-fA-F]{6}$/.test(value))document.body.style.setProperty(key,value);}}catch(e){console.warn("カスタムカラー読込失敗",e)}}
 function applyDressup(theme){
   const t=theme==="seiji"||theme==="night"||theme==="autumn"?theme:"default";
@@ -559,6 +561,7 @@ function applyDressup(theme){
 function initDressup(){
   applyDressup(localStorage.getItem("tomotaYomu_theme")||"default");
   applyCustomColors();
+  applyFontSize();
 }
 document.addEventListener("DOMContentLoaded",initDressup);
 document.addEventListener("DOMContentLoaded",initSearch);
