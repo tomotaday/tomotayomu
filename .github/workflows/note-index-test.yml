@@ -1,4 +1,4 @@
-name: note目次API自動取得テスト
+name: note掲載日時更新（目次・JSON更新）
 
 on:
   workflow_dispatch:
