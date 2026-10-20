@@ -14,9 +14,9 @@ h1{font-size:1.45rem;margin:.2rem 0}.muted{color:var(--muted);font-size:.9rem}
 label{display:block;font-weight:650;margin-bottom:6px}input{width:100%;font:inherit;padding:11px 12px;border:1px solid #aaa;border-radius:10px;background:white;color:#222}
 button{font:inherit;padding:10px 14px;border:1px solid #9b8b79;border-radius:10px;background:#fffaf2;color:#3b2c1d}
 #status{white-space:pre-wrap;overflow-wrap:anywhere}.tools{display:grid;gap:10px}
-#list{display:grid;gap:8px;margin-top:14px}.item{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:11px 12px}
-.num{color:var(--muted);font-size:.8rem;min-width:30px}.item a{color:var(--ink);text-decoration:none;flex:1;min-width:0;overflow-wrap:anywhere}.item a:active{text-decoration:underline}
-.name{font-weight:600}.meta{font-size:.75rem;color:var(--muted);margin-top:3px}.mark{white-space:nowrap;color:var(--accent);font-weight:700;font-size:.85rem}
+#list{display:grid;gap:8px;margin-top:14px}.item{display:flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:5px 9px;min-height:34px}
+.item a{color:var(--ink);text-decoration:none;flex:1;min-width:0}.item a:active{text-decoration:underline}
+.name{font-weight:600;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.meta{display:none}.item.bookmarked{background:#e5f2e7;border-color:#79a985}.item.bookmarked .name{color:#245b35}.mark{white-space:nowrap;color:#245b35;font-weight:700;font-size:.78rem;flex-shrink:0}
 summary{cursor:pointer;font-weight:700;color:var(--accent)}.hidden{display:none}
 </style>
 </head>
@@ -71,9 +71,6 @@ function render(){
   for (const item of filtered) {
     const row = document.createElement('div');
     row.className = 'item';
-    const number = document.createElement('div');
-    number.className = 'num';
-    number.textContent = String(item.page) + '頁';
     const link = document.createElement('a');
     link.href = item.url;
     link.target = '_blank';
@@ -85,8 +82,9 @@ function render(){
     meta.className = 'meta';
     meta.textContent = item.key;
     link.append(name, meta);
-    row.append(number, link);
+    row.append(link);
     if (key && item.key === key) {
+      row.classList.add('bookmarked');
       const mark = document.createElement('div');
       mark.className = 'mark';
       mark.textContent = '🔖 しおり';
