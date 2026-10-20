@@ -1,0 +1,763 @@
+{
+  "magazine": "ツガイのセカイ",
+  "magazineKey": "m8a34f89ccce0",
+  "fetchedAt": "2026-10-20T14:02:12.450Z",
+  "lastPage": 8,
+  "pageCounts": [
+    14,
+    14,
+    14,
+    14,
+    14,
+    14,
+    14,
+    8
+  ],
+  "totalItems": 106,
+  "uniqueKeys": 106,
+  "duplicateKeys": [],
+  "items": [
+    {
+      "page": 1,
+      "positionOnPage": 1,
+      "key": "n55129b3a4e8a",
+      "name": "第一章　１",
+      "url": "https://note.com/campana/n/n55129b3a4e8a"
+    },
+    {
+      "page": 1,
+      "positionOnPage": 2,
+      "key": "n76adc348a5ec",
+      "name": "２",
+      "url": "https://note.com/campana/n/n76adc348a5ec"
+    },
+    {
+      "page": 1,
+      "positionOnPage": 3,
+      "key": "n40027ceedaf6",
+      "name": "３",
+      "url": "https://note.com/campana/n/n40027ceedaf6"
+    },
+    {
+      "page": 1,
+      "positionOnPage": 4,
+      "key": "n63204c4acdec",
+      "name": "４",
+      "url": "https://note.com/campana/n/n63204c4acdec"
+    },
+    {
+      "page": 1,
+      "positionOnPage": 5,
+      "key": "n6f70add9a513",
+      "name": "５",
+      "url": "https://note.com/campana/n/n6f70add9a513"
+    },
+    {
+      "page": 1,
+      "positionOnPage": 6,
+      "key": "n5e22d25bd9d8",
+      "name": "６",
+      "url": "https://note.com/campana/n/n5e22d25bd9d8"
+    },
+    {
+      "page": 1,
+      "positionOnPage": 7,
+      "key": "n9ed4420e457c",
+      "name": "７",
+      "url": "https://note.com/campana/n/n9ed4420e457c"
+    },
+    {
+      "page": 1,
+      "positionOnPage": 8,
+      "key": "na0a83cc716ea",
+      "name": "８",
+      "url": "https://note.com/campana/n/na0a83cc716ea"
+    },
+    {
+      "page": 1,
+      "positionOnPage": 9,
+      "key": "n4cc53b34e9c1",
+      "name": "９",
+      "url": "https://note.com/campana/n/n4cc53b34e9c1"
+    },
+    {
+      "page": 1,
+      "positionOnPage": 10,
+      "key": "ne4c915d4ac6f",
+      "name": "１０",
+      "url": "https://note.com/campana/n/ne4c915d4ac6f"
+    },
+    {
+      "page": 1,
+      "positionOnPage": 11,
+      "key": "nb42a2c629115",
+      "name": "１１",
+      "url": "https://note.com/campana/n/nb42a2c629115"
+    },
+    {
+      "page": 1,
+      "positionOnPage": 12,
+      "key": "n0e1a7a7bd667",
+      "name": "１２",
+      "url": "https://note.com/campana/n/n0e1a7a7bd667"
+    },
+    {
+      "page": 1,
+      "positionOnPage": 13,
+      "key": "n56d11f9b30f1",
+      "name": "１３",
+      "url": "https://note.com/campana/n/n56d11f9b30f1"
+    },
+    {
+      "page": 1,
+      "positionOnPage": 14,
+      "key": "nba5d249dd8f8",
+      "name": "１４",
+      "url": "https://note.com/campana/n/nba5d249dd8f8"
+    },
+    {
+      "page": 2,
+      "positionOnPage": 1,
+      "key": "n913b28df2040",
+      "name": "１５",
+      "url": "https://note.com/campana/n/n913b28df2040"
+    },
+    {
+      "page": 2,
+      "positionOnPage": 2,
+      "key": "nf324d3854b21",
+      "name": "１６",
+      "url": "https://note.com/campana/n/nf324d3854b21"
+    },
+    {
+      "page": 2,
+      "positionOnPage": 3,
+      "key": "n628d4e1f8afa",
+      "name": "１７",
+      "url": "https://note.com/campana/n/n628d4e1f8afa"
+    },
+    {
+      "page": 2,
+      "positionOnPage": 4,
+      "key": "nb82cb598480c",
+      "name": "１８",
+      "url": "https://note.com/campana/n/nb82cb598480c"
+    },
+    {
+      "page": 2,
+      "positionOnPage": 5,
+      "key": "n5358fbd5f899",
+      "name": "１９",
+      "url": "https://note.com/campana/n/n5358fbd5f899"
+    },
+    {
+      "page": 2,
+      "positionOnPage": 6,
+      "key": "n06775ac43988",
+      "name": "２０",
+      "url": "https://note.com/campana/n/n06775ac43988"
+    },
+    {
+      "page": 2,
+      "positionOnPage": 7,
+      "key": "n30052b2963d9",
+      "name": "２１",
+      "url": "https://note.com/campana/n/n30052b2963d9"
+    },
+    {
+      "page": 2,
+      "positionOnPage": 8,
+      "key": "n2100338d1991",
+      "name": "２２",
+      "url": "https://note.com/campana/n/n2100338d1991"
+    },
+    {
+      "page": 2,
+      "positionOnPage": 9,
+      "key": "n5f6190c7775f",
+      "name": "２３",
+      "url": "https://note.com/campana/n/n5f6190c7775f"
+    },
+    {
+      "page": 2,
+      "positionOnPage": 10,
+      "key": "n57bbfbfbec03",
+      "name": "２４",
+      "url": "https://note.com/campana/n/n57bbfbfbec03"
+    },
+    {
+      "page": 2,
+      "positionOnPage": 11,
+      "key": "n0a95f1e3bce1",
+      "name": "２５",
+      "url": "https://note.com/campana/n/n0a95f1e3bce1"
+    },
+    {
+      "page": 2,
+      "positionOnPage": 12,
+      "key": "n60f44eedb4df",
+      "name": "第二章　１",
+      "url": "https://note.com/campana/n/n60f44eedb4df"
+    },
+    {
+      "page": 2,
+      "positionOnPage": 13,
+      "key": "na192cd1eb1ad",
+      "name": "２",
+      "url": "https://note.com/campana/n/na192cd1eb1ad"
+    },
+    {
+      "page": 2,
+      "positionOnPage": 14,
+      "key": "n737f8474b8c1",
+      "name": "３",
+      "url": "https://note.com/campana/n/n737f8474b8c1"
+    },
+    {
+      "page": 3,
+      "positionOnPage": 1,
+      "key": "nacebf0d2cd43",
+      "name": "４",
+      "url": "https://note.com/campana/n/nacebf0d2cd43"
+    },
+    {
+      "page": 3,
+      "positionOnPage": 2,
+      "key": "na40fe8516d28",
+      "name": "５",
+      "url": "https://note.com/campana/n/na40fe8516d28"
+    },
+    {
+      "page": 3,
+      "positionOnPage": 3,
+      "key": "ndb8f8622ea43",
+      "name": "６",
+      "url": "https://note.com/campana/n/ndb8f8622ea43"
+    },
+    {
+      "page": 3,
+      "positionOnPage": 4,
+      "key": "naed5d8871539",
+      "name": "７",
+      "url": "https://note.com/campana/n/naed5d8871539"
+    },
+    {
+      "page": 3,
+      "positionOnPage": 5,
+      "key": "na8999474b178",
+      "name": "８",
+      "url": "https://note.com/campana/n/na8999474b178"
+    },
+    {
+      "page": 3,
+      "positionOnPage": 6,
+      "key": "na4b0b90912f7",
+      "name": "９",
+      "url": "https://note.com/campana/n/na4b0b90912f7"
+    },
+    {
+      "page": 3,
+      "positionOnPage": 7,
+      "key": "n951192389d53",
+      "name": "１０",
+      "url": "https://note.com/campana/n/n951192389d53"
+    },
+    {
+      "page": 3,
+      "positionOnPage": 8,
+      "key": "n56999235c4a0",
+      "name": "１１",
+      "url": "https://note.com/campana/n/n56999235c4a0"
+    },
+    {
+      "page": 3,
+      "positionOnPage": 9,
+      "key": "naeae76b008cc",
+      "name": "１２",
+      "url": "https://note.com/campana/n/naeae76b008cc"
+    },
+    {
+      "page": 3,
+      "positionOnPage": 10,
+      "key": "n40ddda0dfdab",
+      "name": "１３",
+      "url": "https://note.com/campana/n/n40ddda0dfdab"
+    },
+    {
+      "page": 3,
+      "positionOnPage": 11,
+      "key": "n82f9d6078929",
+      "name": "１４",
+      "url": "https://note.com/campana/n/n82f9d6078929"
+    },
+    {
+      "page": 3,
+      "positionOnPage": 12,
+      "key": "n8fda8e26e215",
+      "name": "１５",
+      "url": "https://note.com/campana/n/n8fda8e26e215"
+    },
+    {
+      "page": 3,
+      "positionOnPage": 13,
+      "key": "nb21c0e64bc26",
+      "name": "１６",
+      "url": "https://note.com/campana/n/nb21c0e64bc26"
+    },
+    {
+      "page": 3,
+      "positionOnPage": 14,
+      "key": "n910913fcab59",
+      "name": "１７",
+      "url": "https://note.com/campana/n/n910913fcab59"
+    },
+    {
+      "page": 4,
+      "positionOnPage": 1,
+      "key": "n6140c1eaf61e",
+      "name": "１８",
+      "url": "https://note.com/campana/n/n6140c1eaf61e"
+    },
+    {
+      "page": 4,
+      "positionOnPage": 2,
+      "key": "n5e1e94924684",
+      "name": "１９",
+      "url": "https://note.com/campana/n/n5e1e94924684"
+    },
+    {
+      "page": 4,
+      "positionOnPage": 3,
+      "key": "n6f98ca6d41da",
+      "name": "２０",
+      "url": "https://note.com/campana/n/n6f98ca6d41da"
+    },
+    {
+      "page": 4,
+      "positionOnPage": 4,
+      "key": "n3f89faf8ab2d",
+      "name": "２１",
+      "url": "https://note.com/campana/n/n3f89faf8ab2d"
+    },
+    {
+      "page": 4,
+      "positionOnPage": 5,
+      "key": "n12713b6aaa9e",
+      "name": "２２",
+      "url": "https://note.com/campana/n/n12713b6aaa9e"
+    },
+    {
+      "page": 4,
+      "positionOnPage": 6,
+      "key": "n16584bde51fb",
+      "name": "２３",
+      "url": "https://note.com/campana/n/n16584bde51fb"
+    },
+    {
+      "page": 4,
+      "positionOnPage": 7,
+      "key": "n973735e29e9a",
+      "name": "２４",
+      "url": "https://note.com/campana/n/n973735e29e9a"
+    },
+    {
+      "page": 4,
+      "positionOnPage": 8,
+      "key": "n376a040f288b",
+      "name": "２５",
+      "url": "https://note.com/campana/n/n376a040f288b"
+    },
+    {
+      "page": 4,
+      "positionOnPage": 9,
+      "key": "n211121046105",
+      "name": "第三章　１",
+      "url": "https://note.com/campana/n/n211121046105"
+    },
+    {
+      "page": 4,
+      "positionOnPage": 10,
+      "key": "n26d5c26ddb86",
+      "name": "２",
+      "url": "https://note.com/campana/n/n26d5c26ddb86"
+    },
+    {
+      "page": 4,
+      "positionOnPage": 11,
+      "key": "nf30d3855e0cf",
+      "name": "３",
+      "url": "https://note.com/campana/n/nf30d3855e0cf"
+    },
+    {
+      "page": 4,
+      "positionOnPage": 12,
+      "key": "n8881a0b34a41",
+      "name": "４",
+      "url": "https://note.com/campana/n/n8881a0b34a41"
+    },
+    {
+      "page": 4,
+      "positionOnPage": 13,
+      "key": "n27a3a8b1f1df",
+      "name": "５",
+      "url": "https://note.com/campana/n/n27a3a8b1f1df"
+    },
+    {
+      "page": 4,
+      "positionOnPage": 14,
+      "key": "nb36e2c0321b7",
+      "name": "６",
+      "url": "https://note.com/campana/n/nb36e2c0321b7"
+    },
+    {
+      "page": 5,
+      "positionOnPage": 1,
+      "key": "n6f3830844e34",
+      "name": "７",
+      "url": "https://note.com/campana/n/n6f3830844e34"
+    },
+    {
+      "page": 5,
+      "positionOnPage": 2,
+      "key": "n64b08f0112f5",
+      "name": "８",
+      "url": "https://note.com/campana/n/n64b08f0112f5"
+    },
+    {
+      "page": 5,
+      "positionOnPage": 3,
+      "key": "n6a8c2a7ffd7f",
+      "name": "９",
+      "url": "https://note.com/campana/n/n6a8c2a7ffd7f"
+    },
+    {
+      "page": 5,
+      "positionOnPage": 4,
+      "key": "n41a07ef42ac5",
+      "name": "１０",
+      "url": "https://note.com/campana/n/n41a07ef42ac5"
+    },
+    {
+      "page": 5,
+      "positionOnPage": 5,
+      "key": "nd32e8804fa2a",
+      "name": "１１",
+      "url": "https://note.com/campana/n/nd32e8804fa2a"
+    },
+    {
+      "page": 5,
+      "positionOnPage": 6,
+      "key": "n3828240fed08",
+      "name": "１２",
+      "url": "https://note.com/campana/n/n3828240fed08"
+    },
+    {
+      "page": 5,
+      "positionOnPage": 7,
+      "key": "n2cf7f77dd195",
+      "name": "１３",
+      "url": "https://note.com/campana/n/n2cf7f77dd195"
+    },
+    {
+      "page": 5,
+      "positionOnPage": 8,
+      "key": "na0078e758dec",
+      "name": "１４",
+      "url": "https://note.com/campana/n/na0078e758dec"
+    },
+    {
+      "page": 5,
+      "positionOnPage": 9,
+      "key": "nc586de9f8cae",
+      "name": "１５",
+      "url": "https://note.com/campana/n/nc586de9f8cae"
+    },
+    {
+      "page": 5,
+      "positionOnPage": 10,
+      "key": "n68a9464a445e",
+      "name": "１６",
+      "url": "https://note.com/campana/n/n68a9464a445e"
+    },
+    {
+      "page": 5,
+      "positionOnPage": 11,
+      "key": "n1f50da087376",
+      "name": "１７",
+      "url": "https://note.com/campana/n/n1f50da087376"
+    },
+    {
+      "page": 5,
+      "positionOnPage": 12,
+      "key": "n69dd089e8d64",
+      "name": "１８",
+      "url": "https://note.com/campana/n/n69dd089e8d64"
+    },
+    {
+      "page": 5,
+      "positionOnPage": 13,
+      "key": "n40c98fcedbfa",
+      "name": "１９",
+      "url": "https://note.com/campana/n/n40c98fcedbfa"
+    },
+    {
+      "page": 5,
+      "positionOnPage": 14,
+      "key": "n679493bcf05c",
+      "name": "２０",
+      "url": "https://note.com/campana/n/n679493bcf05c"
+    },
+    {
+      "page": 6,
+      "positionOnPage": 1,
+      "key": "na31083322c7d",
+      "name": "２１",
+      "url": "https://note.com/campana/n/na31083322c7d"
+    },
+    {
+      "page": 6,
+      "positionOnPage": 2,
+      "key": "nbf673deada55",
+      "name": "２２",
+      "url": "https://note.com/campana/n/nbf673deada55"
+    },
+    {
+      "page": 6,
+      "positionOnPage": 3,
+      "key": "nbbab29df2e81",
+      "name": "２３",
+      "url": "https://note.com/campana/n/nbbab29df2e81"
+    },
+    {
+      "page": 6,
+      "positionOnPage": 4,
+      "key": "n6a6afd359084",
+      "name": "２４",
+      "url": "https://note.com/campana/n/n6a6afd359084"
+    },
+    {
+      "page": 6,
+      "positionOnPage": 5,
+      "key": "n8864686948e4",
+      "name": "２５",
+      "url": "https://note.com/campana/n/n8864686948e4"
+    },
+    {
+      "page": 6,
+      "positionOnPage": 6,
+      "key": "n2bc8e1c8f7b6",
+      "name": "２６",
+      "url": "https://note.com/campana/n/n2bc8e1c8f7b6"
+    },
+    {
+      "page": 6,
+      "positionOnPage": 7,
+      "key": "ne965e73ad107",
+      "name": "第四章　１",
+      "url": "https://note.com/campana/n/ne965e73ad107"
+    },
+    {
+      "page": 6,
+      "positionOnPage": 8,
+      "key": "nc68bad4bd41f",
+      "name": "２",
+      "url": "https://note.com/campana/n/nc68bad4bd41f"
+    },
+    {
+      "page": 6,
+      "positionOnPage": 9,
+      "key": "n66af2d9d538b",
+      "name": "３",
+      "url": "https://note.com/campana/n/n66af2d9d538b"
+    },
+    {
+      "page": 6,
+      "positionOnPage": 10,
+      "key": "n112841d8e270",
+      "name": "４",
+      "url": "https://note.com/campana/n/n112841d8e270"
+    },
+    {
+      "page": 6,
+      "positionOnPage": 11,
+      "key": "n382aa46df70e",
+      "name": "５",
+      "url": "https://note.com/campana/n/n382aa46df70e"
+    },
+    {
+      "page": 6,
+      "positionOnPage": 12,
+      "key": "n09f4f988f149",
+      "name": "６",
+      "url": "https://note.com/campana/n/n09f4f988f149"
+    },
+    {
+      "page": 6,
+      "positionOnPage": 13,
+      "key": "n0ee27fddc319",
+      "name": "７",
+      "url": "https://note.com/campana/n/n0ee27fddc319"
+    },
+    {
+      "page": 6,
+      "positionOnPage": 14,
+      "key": "nf59917ad579e",
+      "name": "８",
+      "url": "https://note.com/campana/n/nf59917ad579e"
+    },
+    {
+      "page": 7,
+      "positionOnPage": 1,
+      "key": "ne801dd19ebaa",
+      "name": "９",
+      "url": "https://note.com/campana/n/ne801dd19ebaa"
+    },
+    {
+      "page": 7,
+      "positionOnPage": 2,
+      "key": "n45298f07f682",
+      "name": "１０",
+      "url": "https://note.com/campana/n/n45298f07f682"
+    },
+    {
+      "page": 7,
+      "positionOnPage": 3,
+      "key": "n82f5a728a15d",
+      "name": "１１",
+      "url": "https://note.com/campana/n/n82f5a728a15d"
+    },
+    {
+      "page": 7,
+      "positionOnPage": 4,
+      "key": "n086fd09ba712",
+      "name": "１２",
+      "url": "https://note.com/campana/n/n086fd09ba712"
+    },
+    {
+      "page": 7,
+      "positionOnPage": 5,
+      "key": "n5461554b0f99",
+      "name": "１３",
+      "url": "https://note.com/campana/n/n5461554b0f99"
+    },
+    {
+      "page": 7,
+      "positionOnPage": 6,
+      "key": "n66b5f2a73e52",
+      "name": "１４",
+      "url": "https://note.com/campana/n/n66b5f2a73e52"
+    },
+    {
+      "page": 7,
+      "positionOnPage": 7,
+      "key": "nef468e16565f",
+      "name": "１５",
+      "url": "https://note.com/campana/n/nef468e16565f"
+    },
+    {
+      "page": 7,
+      "positionOnPage": 8,
+      "key": "n3540bc9ac777",
+      "name": "１６",
+      "url": "https://note.com/campana/n/n3540bc9ac777"
+    },
+    {
+      "page": 7,
+      "positionOnPage": 9,
+      "key": "ncb58c682968f",
+      "name": "１７",
+      "url": "https://note.com/campana/n/ncb58c682968f"
+    },
+    {
+      "page": 7,
+      "positionOnPage": 10,
+      "key": "nbad2105ff428",
+      "name": "１８",
+      "url": "https://note.com/campana/n/nbad2105ff428"
+    },
+    {
+      "page": 7,
+      "positionOnPage": 11,
+      "key": "n2c364446e073",
+      "name": "１９",
+      "url": "https://note.com/campana/n/n2c364446e073"
+    },
+    {
+      "page": 7,
+      "positionOnPage": 12,
+      "key": "n2bf0bb236903",
+      "name": "２０",
+      "url": "https://note.com/campana/n/n2bf0bb236903"
+    },
+    {
+      "page": 7,
+      "positionOnPage": 13,
+      "key": "nc7b8da5a51f9",
+      "name": "２１",
+      "url": "https://note.com/campana/n/nc7b8da5a51f9"
+    },
+    {
+      "page": 7,
+      "positionOnPage": 14,
+      "key": "n2d7404694d98",
+      "name": "２２",
+      "url": "https://note.com/campana/n/n2d7404694d98"
+    },
+    {
+      "page": 8,
+      "positionOnPage": 1,
+      "key": "n924b657a12b7",
+      "name": "２３",
+      "url": "https://note.com/campana/n/n924b657a12b7"
+    },
+    {
+      "page": 8,
+      "positionOnPage": 2,
+      "key": "nb8a579501638",
+      "name": "２４",
+      "url": "https://note.com/campana/n/nb8a579501638"
+    },
+    {
+      "page": 8,
+      "positionOnPage": 3,
+      "key": "n3c3b2bd81615",
+      "name": "あとがき",
+      "url": "https://note.com/campana/n/n3c3b2bd81615"
+    },
+    {
+      "page": 8,
+      "positionOnPage": 4,
+      "key": "ne5ed93aae825",
+      "name": "クララちゃんの〜★ ドキドキ！　性癖発見☆",
+      "url": "https://note.com/campana/n/ne5ed93aae825"
+    },
+    {
+      "page": 8,
+      "positionOnPage": 5,
+      "key": "nb2407365043e",
+      "name": "クララちゃんの〜★ ドキドキ！　触手発見☆　１",
+      "url": "https://note.com/campana/n/nb2407365043e"
+    },
+    {
+      "page": 8,
+      "positionOnPage": 6,
+      "key": "n39f55b1ddacf",
+      "name": "クララちゃんの〜★ ドキドキ！　触手発見☆　２",
+      "url": "https://note.com/campana/n/n39f55b1ddacf"
+    },
+    {
+      "page": 8,
+      "positionOnPage": 7,
+      "key": "n38adc2ed9f54",
+      "name": "クララちゃんの〜★ ドキドキ！　触手発見☆　３",
+      "url": "https://note.com/campana/n/n38adc2ed9f54"
+    },
+    {
+      "page": 8,
+      "positionOnPage": 8,
+      "key": "n71b001396c21",
+      "name": "クララちゃんの〜★ ドキドキ！　触手発見☆　４",
+      "url": "https://note.com/campana/n/n71b001396c21"
+    }
+  ]
+}
