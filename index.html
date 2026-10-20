@@ -436,6 +436,12 @@ document.addEventListener("toggle",async event=>{
   try{
     const items=await loadNoteIndex(magazineKey);
     const bookmark=noteArticleKey(item?.bookmarkUrl);
+    const lastPublishedAt=String(items.length?items[items.length-1].publish_at||"": "");
+    if(item&&lastPublishedAt&&item.lastPublishedAt!==lastPublishedAt){
+      saveNoteItem({...item,lastPublishedAt});
+      const dateLabel=card.querySelector(".noteLastUpdated");
+      if(dateLabel)dateLabel.textContent=formatNotePublishedAt(lastPublishedAt);
+    }
     list.replaceChildren();
     for(const entry of items){
       const row=document.createElement("a");
