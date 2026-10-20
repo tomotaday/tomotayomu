@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#f6f3ed" name="theme-color"/>
-<title>ともたよむ v3.5.2｜2026.10.20</title>
+<title>ともたよむ v3.5.3｜2026.10.20</title>
 <style>
 :root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195;--shelf-card:#fff;--shelf-ink:#252525;--shelf-line:#ddd;--topbtn-bg:#fffdf9;--topbtn-ink:#252525;--topbtn-line:#c9c0b4;--work-card-line:#aaa195}
 *{box-sizing:border-box}
@@ -105,7 +105,7 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 
 
 <main>
-<h1 style="font-size:18px;margin-bottom:6px">ともたよむ v3.5.2</h1>
+<h1 style="font-size:18px;margin-bottom:6px">ともたよむ v3.5.3</h1>
 <div class="note" style="font-weight:800;font-size:15px">【2026/10/19】noteマガジン対応（初期版）</div>
 <div class="top-update-actions">
 <button id="updateBtn" type="button">🔄 本棚更新</button>
@@ -376,10 +376,15 @@ async function buildV3CardsFromIndexedDB(){
     card.dataset.shelf=String(sm.get(String(item.shelfId||""))?.shelf_name||"");
     card.dataset.authorName=String(item.author||"");
     card.dataset.current="";
-    card.innerHTML='<div class="meta"><span class="noteKind">📝 noteマガジン</span> ｜ <span class="noteStatus">作品集</span></div><h2></h2><div class="author">作者：<span class="authorName"></span></div><details class="noteIndexDetails"><summary>目次（読み込み前）</summary><div class="noteIndexList" aria-live="polite"></div></details><details><summary>メモ</summary><p class="synopsis">noteのマガジン単位で登録しています。記事の自動追跡・更新通知は対象外です。</p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">マガジンを開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから 📖 保存したしおり</a></div><details class="managementDetails"><summary>詳細を開く</summary><div class="managementBody"><div class="ncode noteIdLabel"></div><button type="button" class="moveShelfBtn">本棚を移動</button><label class="noteBookmarkLabel" style="width:100%">しおりURL<input class="noteBookmarkInput" type="url" inputmode="url" placeholder="https://note.com/..." style="display:block;width:100%;margin-top:5px;padding:8px;border:1px solid #aaa195;border-radius:8px;background:var(--card);color:var(--ink)"></label><button type="button" class="saveNoteBookmark">しおりを保存</button></div></details>';
+    card.innerHTML='<div class="meta"><span class="noteKind">📝</span> ｜ <span class="noteLastUpdated">—</span> ｜ <span class="noteStatus"></span></div><h2></h2><div class="author">作者：<span class="authorName"></span></div><details class="noteSynopsisDetails"><summary>あらすじを読む</summary><p class="synopsis"></p></details><details class="noteIndexDetails"><summary>目次（読み込み前）</summary><div class="noteIndexList" aria-live="polite"></div></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">マガジンを開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから 📖 保存したしおり</a></div><details class="managementDetails"><summary>詳細を開く</summary><div class="managementBody"><div class="ncode noteIdLabel"></div><button type="button" class="moveShelfBtn">本棚を移動</button><label style="display:block;width:100%">作品状態<input class="noteStatusInput" type="text" placeholder="完結 / 連載中 / 短編" style="display:block;width:100%;margin-top:5px;padding:8px;border:1px solid #aaa195;border-radius:8px;background:var(--card);color:var(--ink)"></label><label style="display:block;width:100%;margin-top:8px">あらすじ<textarea class="noteSynopsisInput" rows="5" placeholder="あらすじを入力・貼り付け" style="display:block;width:100%;box-sizing:border-box;margin-top:5px;padding:8px;border:1px solid #aaa195;border-radius:8px;background:var(--card);color:var(--ink)"></textarea></label><button type="button" class="saveNoteInfo">作品情報を保存</button><label class="noteBookmarkLabel" style="width:100%;margin-top:8px">しおりURL<input class="noteBookmarkInput" type="url" inputmode="url" placeholder="https://note.com/..." style="display:block;width:100%;margin-top:5px;padding:8px;border:1px solid #aaa195;border-radius:8px;background:var(--card);color:var(--ink)"></label><button type="button" class="saveNoteBookmark">しおりを保存</button></div></details>';
     card.querySelector("h2").textContent=String(item.title||"");
     card.querySelector(".authorName").textContent=String(item.author||"");
     card.querySelector(".noteIdLabel").textContent="マガジンID："+String(item.id||"");
+    card.querySelector(".noteStatus").textContent=String(item.status||"未設定");
+    card.querySelector(".noteStatusInput").value=String(item.status||"");
+    card.querySelector(".synopsis").textContent=String(item.synopsis||"あらすじ未登録");
+    card.querySelector(".noteSynopsisInput").value=String(item.synopsis||"");
+    card.querySelector(".noteLastUpdated").textContent=formatNotePublishedAt(item.lastPublishedAt||"");
     card.querySelector(".workLink").href=String(item.url||"https://note.com/");
     card.querySelector(".resumeLink").href=String(item.bookmarkUrl||item.url||"https://note.com/");
     card.querySelector(".noteBookmarkInput").value=String(item.bookmarkUrl||item.url||"");
@@ -409,6 +414,12 @@ async function loadNoteIndex(magazineKey){
 }
 function noteArticleKey(value){
   try{const u=new URL(String(value||""));if(u.hostname!=="note.com"&&!u.hostname.endsWith(".note.com"))return "";const m=u.pathname.match(/\/n\/([a-z0-9]+)/i);return m?m[1]:""}catch(e){return ""}
+}
+function formatNotePublishedAt(value){
+  if(!value)return "—";
+  const d=new Date(value);
+  if(Number.isNaN(d.getTime()))return "—";
+  return new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(d).replace(/\//g,"/");
 }
 document.addEventListener("toggle",async event=>{
   const details=event.target;
@@ -938,6 +949,17 @@ document.getElementById("launchAuthorAtomBtn")?.addEventListener("click",()=>{
   }).catch(e=>{if(status)status.textContent="更新準備に失敗しました："+e.message;});
 });
 document.addEventListener("click",e=>{
+  const saveInfo=e.target.closest(".saveNoteInfo");
+  if(saveInfo){
+    const card=e.target.closest(".noteWorkCard"),noteId=String(card?.dataset?.noteId||"");
+    if(!card||!noteId)return;
+    const item=readNoteItems().find(x=>x.id===noteId);
+    if(!item){alert("note作品データが見つかりません");return}
+    saveNoteItem({...item,status:String(card.querySelector(".noteStatusInput")?.value||"").trim(),synopsis:String(card.querySelector(".noteSynopsisInput")?.value||"").trim()});
+    buildV3CardsFromIndexedDB().then(()=>{seedReadingCache();restoreReadingPositions();restoreLatestWorks();buildUpdateView();buildShelfFolders();});
+    const status=document.getElementById("apiStatus");if(status)status.textContent="note作品情報を保存しました。";
+    return;
+  }
   const saveBookmark=e.target.closest(".saveNoteBookmark");
   if(saveBookmark){
     const card=e.target.closest(".card"),noteId=String(card?.dataset?.noteId||"");
