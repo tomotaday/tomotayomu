@@ -1,0 +1,114 @@
+name: note目次API自動取得テスト
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fetch-note-index:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: note APIから目次を最終ページまで取得
+        id: fetch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const base = 'https://note.com/api/v1/layout/magazine/m8a34f89ccce0/section?page=';
+            const all = [];
+            const pageCounts = [];
+            const seen = new Set();
+            const duplicates = [];
+            let lastPage = null;
+
+            for (let page = 1; page <= 30; page++) {
+              core.info(`Fetching note magazine page ${page}`);
+              const response = await fetch(base + page, {
+                headers: {
+                  'Accept': 'application/json',
+                  'User-Agent': 'tomotayomu-note-index-test/1.0'
+                }
+              });
+              if (!response.ok) {
+                throw new Error(`Page ${page}: HTTP ${response.status}`);
+              }
+              const json = await response.json();
+              const section = json?.data?.section ?? json?.data?.page_layout?.section;
+              if (!section || !Array.isArray(section.contents)) {
+                throw new Error(`Page ${page}: unexpected response structure`);
+              }
+
+              pageCounts.push(section.contents.length);
+              for (const item of section.contents) {
+                const key = item.key || item.note?.key || '';
+                const name = item.name || item.note?.name || '(タイトルなし)';
+                if (key && seen.has(key)) duplicates.push(key);
+                if (key) seen.add(key);
+                all.push({
+                  page,
+                  positionOnPage: all.filter(x => x.page === page).length + 1,
+                  key,
+                  name,
+                  url: key ? `https://note.com/campana/${key}` : ''
+                });
+              }
+
+              core.info(`Page ${page}: ${section.contents.length} items; is_last_page=${section.is_last_page}`);
+              if (section.is_last_page === true) {
+                lastPage = page;
+                break;
+              }
+            }
+
+            if (lastPage === null) {
+              throw new Error('Did not reach is_last_page=true within 30 pages');
+            }
+
+            const result = {
+              magazine: 'ツガイのセカイ',
+              magazineKey: 'm8a34f89ccce0',
+              fetchedAt: new Date().toISOString(),
+              lastPage,
+              pageCounts,
+              totalItems: all.length,
+              uniqueKeys: seen.size,
+              duplicateKeys: [...new Set(duplicates)],
+              items: all
+            };
+            fs.mkdirSync('note-index-test-output', { recursive: true });
+            fs.writeFileSync('note-index-test-output/note-index.json', JSON.stringify(result, null, 2), 'utf8');
+            fs.writeFileSync('note-index-test-output/note-index.csv',
+              ['page,positionOnPage,key,name,url', ...all.map(x =>
+                [x.page, x.positionOnPage, x.key, '"' + x.name.replace(/"/g, '""') + '"', x.url].join(',')
+              )].join('\n'), 'utf8');
+
+            await core.summary
+              .addHeading('note目次API 自動取得テスト')
+              .addTable([
+                [{data:'項目',header:true},{data:'結果',header:true}],
+                ['作品','ツガイのセカイ'],
+                ['最終ページ',String(lastPage)],
+                ['ページごとの件数',pageCounts.join(', ')],
+                ['取得記事数',String(all.length)],
+                ['ユニーク記事キー数',String(seen.size)],
+                ['重複キー数',String(new Set(duplicates).size)]
+              ])
+              .addRaw(all.length === 106 && seen.size === 106 && duplicates.length === 0
+                ? '\n\n**判定：106件・キー重複なし。期待値と一致しました。**'
+                : '\n\n**判定：期待値との差異あり。取得データを確認してください。**')
+              .write();
+
+            core.setOutput('last_page', String(lastPage));
+            core.setOutput('total_items', String(all.length));
+            core.setOutput('unique_keys', String(seen.size));
+
+      - name: 取得結果JSONとCSVを保存
+        uses: actions/upload-artifact@v4
+        with:
+          name: note-index-test-output
+          path: note-index-test-output/
+          if-no-files-found: error
+          retention-days: 14
