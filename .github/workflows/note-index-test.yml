@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   fetch-note-index:
@@ -104,6 +104,32 @@ jobs:
             core.setOutput('last_page', String(lastPage));
             core.setOutput('total_items', String(all.length));
             core.setOutput('unique_keys', String(seen.size));
+
+            // GitHub Pagesから読み込める場所にも、取得済み目次JSONを保存する。
+            const outputPath = 'data/note-index-m8a34f89ccce0.json';
+            const encoded = Buffer.from(JSON.stringify(result, null, 2), 'utf8').toString('base64');
+            let existingSha;
+            try {
+              const existing = await github.rest.repos.getContent({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                path: outputPath,
+                ref: context.ref.replace('refs/heads/', '')
+              });
+              if (existing.data && !Array.isArray(existing.data)) existingSha = existing.data.sha;
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
+            await github.rest.repos.createOrUpdateFileContents({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              path: outputPath,
+              message: 'Update note magazine index data',
+              content: encoded,
+              ...(existingSha ? { sha: existingSha } : {}),
+              branch: context.ref.replace('refs/heads/', '')
+            });
+            core.info(`Saved refreshed index to ${outputPath}`);
 
       - name: 取得結果JSONとCSVを保存
         uses: actions/upload-artifact@v4
