@@ -52,7 +52,8 @@ jobs:
                   positionOnPage: all.filter(x => x.page === page).length + 1,
                   key,
                   name,
-                  url: key ? `https://note.com/campana/n/${key}` : ''
+                  url: key ? `https://note.com/campana/n/${key}` : '',
+                  publish_at: item.publish_at || item.note?.publish_at || item.note?.published_at || ''
                 });
               }
 
