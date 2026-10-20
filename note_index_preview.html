@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f3ed">
+<title>ともたよむ｜note巻物目次テスト</title>
+<style>
+:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#d8d1c5;--accent:#8a5a2b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,sans-serif;line-height:1.5}
+main{max-width:760px;margin:auto;padding:16px 14px 48px}
+h1{font-size:1.45rem;margin:.2rem 0}.muted{color:var(--muted);font-size:.9rem}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:14px 0}
+label{display:block;font-weight:650;margin-bottom:6px}input{width:100%;font:inherit;padding:11px 12px;border:1px solid #aaa;border-radius:10px;background:white;color:#222}
+button{font:inherit;padding:10px 14px;border:1px solid #9b8b79;border-radius:10px;background:#fffaf2;color:#3b2c1d}
+#status{white-space:pre-wrap;overflow-wrap:anywhere}.tools{display:grid;gap:10px}
+#list{display:grid;gap:8px;margin-top:14px}.item{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:11px 12px}
+.num{color:var(--muted);font-size:.8rem;min-width:30px}.item a{color:var(--ink);text-decoration:none;flex:1;min-width:0;overflow-wrap:anywhere}.item a:active{text-decoration:underline}
+.name{font-weight:600}.meta{font-size:.75rem;color:var(--muted);margin-top:3px}.mark{white-space:nowrap;color:var(--accent);font-weight:700;font-size:.85rem}
+summary{cursor:pointer;font-weight:700;color:var(--accent)}.hidden{display:none}
+</style>
+</head>
+<body>
+<main>
+<h1>📜 note作品の巻物目次</h1>
+<div class="muted">独立テストページ｜本棚本体には変更を加えません</div>
+<section class="panel">
+<div id="status">GitHubに保存された目次データを読み込み中…</div>
+</section>
+<section class="panel tools">
+<div>
+<label for="bookmark">しおりURL（テスト用）</label>
+<input id="bookmark" type="url" placeholder="https://note.com/campana/n/n76adc348a5ec" autocomplete="url">
+</div>
+<div>
+<label for="search">目次を検索</label>
+<input id="search" type="search" placeholder="章名・記事名・記事キー">
+</div>
+<button id="clear">しおりURLを消す</button>
+<div class="muted">しおりURLの末尾の記事キーと一致する項目に 🔖 を付けます。URLは保存しません。</div>
+</section>
+<details open>
+<summary id="summary">目次を表示</summary>
+<div id="list"></div>
+</details>
+</main>
+<script>
+const DATA_URL = './data/note-index-m8a34f89ccce0.json';
+const statusEl = document.getElementById('status');
+const listEl = document.getElementById('list');
+const bookmarkEl = document.getElementById('bookmark');
+const searchEl = document.getElementById('search');
+const summaryEl = document.getElementById('summary');
+let items = [];
+
+function bookmarkKey(value){
+  const text = (value || '').trim();
+  if (!text) return '';
+  try {
+    const u = new URL(text);
+    if (!/(^|\.)note\.com$/i.test(u.hostname)) return '';
+    const match = u.pathname.match(/\/n\/([a-z0-9]+)/i);
+    return match ? match[1] : '';
+  } catch { return ''; }
+}
+function render(){
+  const key = bookmarkKey(bookmarkEl.value);
+  const q = searchEl.value.trim().toLocaleLowerCase();
+  const filtered = items.filter(item => !q || (item.name + ' ' + item.key + ' ' + item.page).toLocaleLowerCase().includes(q));
+  listEl.replaceChildren();
+  for (const item of filtered) {
+    const row = document.createElement('div');
+    row.className = 'item';
+    const number = document.createElement('div');
+    number.className = 'num';
+    number.textContent = String(item.page) + '頁';
+    const link = document.createElement('a');
+    link.href = item.url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    const name = document.createElement('div');
+    name.className = 'name';
+    name.textContent = item.name;
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = item.key;
+    link.append(name, meta);
+    row.append(number, link);
+    if (key && item.key === key) {
+      const mark = document.createElement('div');
+      mark.className = 'mark';
+      mark.textContent = '🔖 しおり';
+      row.append(mark);
+    }
+    listEl.append(row);
+  }
+  summaryEl.textContent = '目次を表示（' + filtered.length + '件' + (q ? '／絞り込み中' : '') + '）';
+  if (key) {
+    const found = items.find(item => item.key === key);
+    statusEl.textContent = found
+      ? '✅ しおりの記事を特定しました：' + found.name + '（目次 ' + found.page + 'ページ目）'
+      : '⚠️ URLから記事キーを読み取れましたが、今回の目次106件には一致しません。';
+  } else if (bookmarkEl.value.trim()) {
+    statusEl.textContent = '⚠️ noteの記事URLを認識できません。記事ページのURLを入力してください。';
+  } else {
+    statusEl.textContent = '✅ ' + items.length + '件の目次を読み込みました。しおりURLを入れると該当記事に🔖が付きます。';
+  }
+}
+bookmarkEl.addEventListener('input', render);
+searchEl.addEventListener('input', render);
+document.getElementById('clear').addEventListener('click', () => { bookmarkEl.value = ''; render(); });
+fetch(DATA_URL, {cache:'no-store'})
+  .then(response => { if (!response.ok) throw new Error('HTTP ' + response.status); return response.json(); })
+  .then(data => {
+    items = Array.isArray(data.items) ? data.items : [];
+    if (!items.length) throw new Error('目次データが空です');
+    statusEl.textContent = '読み込み完了。目次データを確認中…';
+    render();
+  })
+  .catch(error => { statusEl.textContent = '❌ 目次データを読み込めませんでした：' + error.message + '\n先にGitHub Actionsの「note目次API自動取得テスト」を再実行してください。'; });
+</script>
+</body>
+</html>
