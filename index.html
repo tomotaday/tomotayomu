@@ -262,7 +262,32 @@ async function buildV3CardsFromIndexedDB(){
     const unclassified=shelfRows.find(v=>String(v.shelf_name??v.name??v.title??"").replace(/\s/g,"").includes("未分類"));
     writeNoteItems([{...NOTE_INITIAL_ITEM,shelfId:String(unclassified?.shelf_id||"")}]);
   }
-  const noteItems=readNoteItems();
+  let noteItems=readNoteItems();
+  const pendingBookmark=String(localStorage.getItem("tomotaYomu_pending_note_bookmark_v1")||"").trim();
+  if(pendingBookmark){
+    try{
+      const received=new URL(pendingBookmark);
+      const articleKey=noteArticleKey(received.href);
+      const authorMatch=received.pathname.match(/^\/([^/]+)\/n\/[a-z0-9]+/i);
+      const target=noteItems.find(x=>{
+        try{
+          const magazine=new URL(String(x.url||""));
+          const m=magazine.pathname.match(/^\/([^/]+)\/m\/[a-z0-9]+/i);
+          return articleKey&&authorMatch&&m&&m[1]===authorMatch[1];
+        }catch(e){return false}
+      });
+      if(target){
+        saveNoteItem({...target,bookmarkUrl:received.href});
+        localStorage.removeItem("tomotaYomu_pending_note_bookmark_v1");
+        noteItems=readNoteItems();
+        const receiveBox=document.getElementById("noteReceiveStatus");
+        if(receiveBox){receiveBox.hidden=false;receiveBox.textContent="🔖 しおりを本棚に取り込みました。作品カードの「続きから」から開けます。"}
+      }else{
+        const receiveBox=document.getElementById("noteReceiveStatus");
+        if(receiveBox){receiveBox.hidden=false;receiveBox.textContent="📩 URLは受信しましたが、同じ作者のnote作品が本棚に見つかりません。しおりは未保存です。"}
+      }
+    }catch(e){}
+  }
   const shelves=v3Shelves;
   const wm=new Map(works.map(v=>[String(v.ncode||"").toUpperCase(),v]));
   const am=new Map(authors.map(v=>[String(v.ncode||"").toUpperCase(),v]));
@@ -489,11 +514,12 @@ function receiveNoteUrlFromQuery(){
     if(box){box.hidden=false;box.textContent="note受信テスト：note.comのHTTPS URLではありません。"}
     return false;
   }
+  try{localStorage.setItem("tomotaYomu_pending_note_bookmark_v1",url.href)}catch(e){}
   if(box){
     box.hidden=false;
     box.textContent="";
     const title=document.createElement("strong");
-    title.textContent="📩 note記事URLを受信しました（まだ保存していません）";
+    title.textContent="📩 note記事URLを受信しました。該当する作品のしおりに取り込みます。";
     const line=document.createElement("div");
     line.style.marginTop="6px";
     const link=document.createElement("a");
