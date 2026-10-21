@@ -161,7 +161,21 @@ const READING_HISTORY_KEY = "tomotaYomu_v330_reading_history";
 const INITIAL_GLOBAL_BASELINE = "2026-09-25T00:00:00+09:00";
 const MAX_ST = 2000;
 let workOrderReversed = false;
-function compareWorkDate(a,b){const d=String(b.dataset.lastUpdated||"").localeCompare(String(a.dataset.lastUpdated||""));return workOrderReversed?-d:d;}
+function compareWorkDate(a,b){
+  const stamp=card=>{
+    const raw=String(card?.dataset?.lastUpdated||"").trim();
+    if(!raw)return 0;
+    const normalized=raw.replace(/[/.]/g,"-").replace(/\s+/,"T");
+    const value=Date.parse(normalized);
+    return Number.isFinite(value)?value:0;
+  };
+  const av=stamp(a),bv=stamp(b);
+  if(!av&&!bv)return 0;
+  if(!av)return 1;
+  if(!bv)return -1;
+  const d=bv-av;
+  return workOrderReversed?-d:d;
+}
 const INIT_START = 0;
 function loadJSON(key, fallback) { try { return JSON.parse(localStorage.getItem(key) || "null") ?? fallback; } catch(e) { return fallback; } }
 function saveJSON(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
