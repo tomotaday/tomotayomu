@@ -453,6 +453,29 @@ function formatNotePublishedAt(value){
   if(Number.isNaN(d.getTime()))return "—";
   return new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(d).replace(/\//g,"/");
 }
+async function refreshNotePublishedDates(){
+  const items=readNoteItems();
+  for(const item of items){
+    const match=String(item.url||"").match(/\/m\/([a-z0-9]+)/i);
+    const magazineKey=match?match[1]:"";
+    if(!magazineKey)continue;
+    try{
+      const indexItems=await loadNoteIndex(magazineKey);
+      const publishedAt=String(indexItems.length?indexItems[indexItems.length-1].publish_at||"":"");
+      if(!publishedAt)continue;
+      const current=readNoteItems().find(x=>x.id===item.id);
+      if(!current)continue;
+      if(current.lastPublishedAt!==publishedAt)saveNoteItem({...current,lastPublishedAt:publishedAt});
+      const card=document.querySelector('.noteWorkCard[data-note-id="'+CSS.escape(String(item.id))+'"]');
+      if(card){
+        const dateLabel=card.querySelector(".noteLastUpdated");
+        if(dateLabel)dateLabel.textContent=formatNotePublishedAt(publishedAt);
+        const d=new Date(publishedAt);
+        card.dataset.lastUpdated=Number.isNaN(d.getTime())?"":new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"}).format(d).replace("T"," ");
+      }
+    }catch(error){console.warn("note掲載日更新失敗",item.id,error)}
+  }
+}
 document.addEventListener("toggle",async event=>{
   const details=event.target;
   if(!(details instanceof HTMLDetailsElement)||!details.open||!details.classList.contains("noteIndexDetails")||details.dataset.loaded==="1"||details.dataset.loading==="1")return;
@@ -1022,7 +1045,7 @@ document.addEventListener("click",e=>{
     return;
   }
 });
-window.addEventListener("load",async()=>{ try{ const s=document.getElementById("apiStatus"); if(s)s.textContent="本棚情報反映中"; await buildV3CardsFromIndexedDB(); try{localStorage.removeItem("tomotaYomu_work_edit_overrides_v1");}catch(e){console.warn("旧作品編集表示データの削除をスキップ",e);} seedReadingCache(); restoreReadingFromQuery(); restoreReadingPositions(); renderGlobalBaseline(); restoreLatestWorks(); buildUpdateView(); buildShelfFolders(); syncSearchExcludedButtons(); }catch(e){ console.warn("v3 IndexedDB本棚再構築失敗",e); const s=document.getElementById("apiStatus"); if(s)s.textContent="v3 IndexedDB接続失敗："+e.message; } });
+window.addEventListener("load",async()=>{ try{ const s=document.getElementById("apiStatus"); if(s)s.textContent="本棚情報反映中"; await buildV3CardsFromIndexedDB(); await refreshNotePublishedDates(); try{localStorage.removeItem("tomotaYomu_work_edit_overrides_v1");}catch(e){console.warn("旧作品編集表示データの削除をスキップ",e);} seedReadingCache(); restoreReadingFromQuery(); restoreReadingPositions(); renderGlobalBaseline(); restoreLatestWorks(); buildUpdateView(); buildShelfFolders(); syncSearchExcludedButtons(); }catch(e){ console.warn("v3 IndexedDB本棚再構築失敗",e); const s=document.getElementById("apiStatus"); if(s)s.textContent="v3 IndexedDB接続失敗："+e.message; } });
 
 /* 作者Atomフィード：本棚DBと独立した保存領域 */
 const ATOM_DB_NAME="tomotaYomuAtomDB", ATOM_DB_VERSION=1;
