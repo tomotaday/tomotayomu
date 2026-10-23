@@ -115,6 +115,28 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 
 </div>
 <div id="baselineDate" style="font-size:13px;margin:8px 0">本棚基準日：反映待ち</div>
+<div id="registrationResult" hidden style="border:1px solid #8caa9b;border-radius:10px;background:#f1f8f4;padding:10px;margin:10px 0;overflow-wrap:anywhere"></div>
+<script>
+(() => {
+  const params = new URLSearchParams(location.search);
+  const result = params.get("registration");
+  if (!result) return;
+  const messages = {
+    ok: "✅ 作品を本棚に登録したよ。",
+    exists: "📚 この作品はすでに登録されているよ。既存データは変更していないよ。",
+    api_error: "⚠️ 作品情報を取得できなかったよ。登録は完了していないよ。",
+    target_error: "⚠️ 登録先の棚を確認してね。",
+    save_error: "⚠️ 登録に失敗したよ。作品が登録されているか確認してね。"
+  };
+  const box = document.getElementById("registrationResult");
+  if (!box) return;
+  box.textContent = messages[result] || "登録処理が終了したよ。";
+  box.hidden = false;
+  params.delete("registration");
+  const query = params.toString();
+  history.replaceState(null, "", location.pathname + (query ? "?" + query : "") + location.hash);
+})();
+</script>
 <div id="apiStatus">本棚情報未反映</div>
 <div id="noteReceiveStatus" hidden style="border:1px solid #8caa9b;border-radius:10px;background:#f1f8f4;padding:10px;margin:10px 0;overflow-wrap:anywhere"></div>
 <details class="searchDetails">
