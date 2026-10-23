@@ -43,7 +43,7 @@ function jsonp(url){return new Promise((resolve,reject)=>{
  script.src=url+"&callback="+cb;document.body.appendChild(script);
 });}
 function showWork(w){
- const fields=[["Nコード",w.ncode],["作品タイトル",w.title],["作者名",w.writer],["あらすじ",w.story],["作品状態",w.end===1?"完結済":w.end===0?"連載中":"不明"],["エピソード数",w.general_all_no],["初回掲載日時",w.general_firstup],["最新掲載日時",w.general_lastup],["文字数",w.length==null?null:Number(w.length).toLocaleString("ja-JP")+" 字"],["ジャンルコード",w.genre],["大ジャンルコード",w.biggenre]];
+ const fields=[["Nコード",w.ncode],["作品タイトル",w.title],["作者名",w.writer],["あらすじ",w.story],["作品状態（判定）",w.end===1?"連載中":w.end===0?"短編・完結済":w.end===2?"完結済":"不明"] ,["API生値：end",w.end],["エピソード数",w.general_all_no],["初回掲載日時",w.general_firstup],["最新掲載日時",w.general_lastup],["文字数",w.length==null?null:Number(w.length).toLocaleString("ja-JP")+" 字"],["ジャンルコード",w.genre],["大ジャンルコード",w.biggenre]];
  const box=$("result");box.replaceChildren();box.hidden=false;
  for(const [label,value] of fields){const row=document.createElement("div");row.className="row";const k=document.createElement("div");k.className="key";k.textContent=label;const v=document.createElement("div");v.className="value";v.textContent=value==null||value===""?"（取得データなし）":String(value);row.append(k,v);box.append(row);}
 }
