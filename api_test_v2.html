@@ -54,7 +54,7 @@ async function run(){
  $("ncode").value=ncode;$("fetchBtn").disabled=true;setStatus(ncode+" の作品情報を取得しています…");
  try{
   // l=文字数、g=ジャンル、bg=大ジャンル。従来項目も維持する。
-  const fields="n-t-s-w-gl-ga-nt-e-u-l-g-bg";
+  const fields="n-t-s-w-gf-gl-ga-nt-e-u-l-g-bg";
   const url=API_URL+"?out=jsonp&of="+fields+"&ncode="+encodeURIComponent(ncode)+"&lim=1";
   const data=await jsonp(url);
   const work=Array.isArray(data)?data.find(x=>x&&x.ncode):null;
