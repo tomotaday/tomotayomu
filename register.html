@@ -4,41 +4,54 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f6f3ed">
-<title>ともたよむ｜作品登録 v3</title>
+<title>ともたよむ｜作品登録</title>
 <style>
 :root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.6}
-main{width:min(100%,720px);margin:auto;padding:24px 16px 48px}h1{font-size:25px;margin:10px 0 6px}.note{font-size:13px;color:var(--muted);margin-bottom:18px}
+main{width:min(100%,720px);margin:auto;padding:22px 16px 48px}h1{font-size:25px;margin:10px 0 6px}.note{font-size:13px;color:var(--muted);margin-bottom:18px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
-label{display:block;font-weight:700;margin:8px 0 4px}input,button{font:inherit;border:1px solid var(--line);border-radius:9px;padding:11px;background:white;color:var(--ink)}input{width:100%}button{font-weight:700;margin-top:10px;width:100%;background:#eee8dd}
-.status{white-space:pre-wrap;overflow-wrap:anywhere}.muted{color:var(--muted);font-size:13px}.result{border-top:1px solid #ddd5ca;margin-top:14px;padding-top:12px}.row{margin:9px 0}.key{font-size:12px;color:var(--muted)}.value{overflow-wrap:anywhere}.error{color:#9b3d32;font-weight:700}.ok{color:#276749;font-weight:700}
+label{display:block;font-weight:700;margin:12px 0 4px}input,select,button{font:inherit;border:1px solid var(--line);border-radius:9px;padding:11px;background:white;color:var(--ink)}input,select{width:100%}button{font-weight:700;margin-top:10px;width:100%;background:#eee8dd}button:disabled{opacity:.55}
+.status{white-space:pre-wrap;overflow-wrap:anywhere}.muted{color:var(--muted);font-size:13px}.result{border-top:1px solid #ddd5ca;margin-top:14px;padding-top:12px}.row{margin:9px 0}.key{font-size:12px;color:var(--muted)}.value{overflow-wrap:anywhere;white-space:pre-wrap}.error{color:#9b3d32;font-weight:700}.ok{color:#276749;font-weight:700}
 </style>
 </head>
 <body><main>
 <p><a href="index.html">← ともたよむ本棚へ戻る</a></p>
-<h1>📚 作品登録 v3</h1>
-<p class="note">ショートカットからNコードを受け取り、なろうAPIで作品情報を確認するページです。ジャンルはAPIコードから日本語名に変換して表示します。v2は取得確認段階で、本棚への保存はまだ行いません。</p>
+<h1>📚 作品登録</h1>
+<p class="note">ショートカットからNコードを受け取り、APIで取得できた作品を、選んだ本棚に登録します。登録はボタンを押したときだけ行います。</p>
 <section class="card">
 <label for="ncode">Nコード</label><input id="ncode" autocomplete="off" placeholder="例：N9622MV">
 <button id="fetchBtn" type="button">作品情報を取得</button>
 <div id="status" class="status" aria-live="polite" style="margin-top:12px">ショートカットから開くとNコードが自動入力されます。</div>
 <div id="result" class="result" hidden></div>
+<div id="saveArea" hidden>
+<label for="shelfSelect">登録する本棚</label>
+<select id="shelfSelect"><option value="">本棚を読み込み中…</option></select>
+<button id="saveBtn" type="button">この本棚に登録</button>
+</div>
+<div id="saveStatus" class="status" aria-live="polite" style="margin-top:12px"></div>
 </section>
-<p class="muted">通常作品APIの取得確認用です。ジャンル名だけを表示します。APIコードは画面に表示しません。R18のCookie付き取得と、本棚への登録保存はまだ接続していません。</p>
+<p class="muted">APIで作品情報を取得できなかった場合は、原因を推測せず取得失敗だけを表示します。</p>
 </main>
 <script>
 "use strict";
+const DB_NAME="tomotaYomuDB",DB_VERSION=1;
 const API_URL="https://api.syosetu.com/novelapi/api/";
+const R18_API_URL="https://api.syosetu.com/novel18api/api/";
 const $=id=>document.getElementById(id);
+let fetchedWork=null, fetchedR18=false, shelfRows=[];
 function normalizeNcode(raw){const m=String(raw||"").trim().match(/N[0-9]{1,}[A-Z]{1,5}/i);return m?m[0].toUpperCase():"";}
 function setStatus(text,cls=""){$("status").className="status "+cls;$("status").textContent=text;}
-function jsonp(url){return new Promise((resolve,reject)=>{const cb="tomotaRegisterV1_"+Date.now()+"_"+Math.random().toString(36).slice(2),script=document.createElement("script");let done=false;const cleanup=()=>{if(done)return;done=true;clearTimeout(timer);try{delete window[cb]}catch(e){}script.remove()};const timer=setTimeout(()=>{cleanup();reject(new Error("APIの応答がタイムアウトしました。"))},20000);window[cb]=data=>{cleanup();resolve(data)};script.onerror=()=>{cleanup();reject(new Error("APIへの接続に失敗しました。通信状態を確認してください。"))};script.src=url+"&callback="+cb;document.body.appendChild(script)})}
-function statusText(w){if(Number(w.noveltype)===2)return "短編";if(Number(w.end)===0)return "完結";if(Number(w.end)===1)return "連載中";return "不明"}
-const BIG_GENRES={"0":"未選択","1":"恋愛","2":"ファンタジー","3":"文芸","4":"SF","98":"ノンジャンル","99":"その他"};
+function setSaveStatus(text,cls=""){$("saveStatus").className="status "+cls;$("saveStatus").textContent=text;}
+function jsonp(url){return new Promise((resolve,reject)=>{const cb="tomotaRegisterV2_"+Date.now()+"_"+Math.random().toString(36).slice(2),script=document.createElement("script");let done=false;const cleanup=()=>{if(done)return;done=true;clearTimeout(timer);try{delete window[cb]}catch(e){}script.remove()};const timer=setTimeout(()=>{cleanup();reject(new Error("timeout"))},20000);window[cb]=data=>{cleanup();resolve(data)};script.onerror=()=>{cleanup();reject(new Error("load error"))};script.src=url+"&callback="+cb;document.body.appendChild(script)});}
+function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error("IndexedDBを開けません"));});}
+function readAll(db,name){return new Promise((resolve,reject)=>{const tx=db.transaction(name,"readonly"),out=[],r=tx.objectStore(name).openCursor();r.onsuccess=()=>{const c=r.result;if(c){out.push(c.value);c.continue()}else resolve(out)};r.onerror=()=>reject(r.error||new Error(name+"の読込失敗"));});}
+function putRow(tx,store,row,key){const st=tx.objectStore(store);return st.keyPath==null?st.put(row,key):st.put(row);}
+function statusText(w){if(Number(w.noveltype)===2)return "短編";if(Number(w.end)===0)return "完結";if(Number(w.end)===1)return "連載中";return "不明";}
 const GENRES={"0":"未選択","101":"異世界〔恋愛〕","102":"現実世界〔恋愛〕","201":"ハイファンタジー〔ファンタジー〕","202":"ローファンタジー〔ファンタジー〕","301":"純文学〔文芸〕","302":"ヒューマンドラマ〔文芸〕","303":"歴史〔文芸〕","304":"推理〔文芸〕","305":"ホラー〔文芸〕","306":"アクション〔文芸〕","307":"コメディー〔文芸〕","401":"VRゲーム〔SF〕","402":"宇宙〔SF〕","403":"空想科学〔SF〕","404":"パニック〔SF〕","9901":"童話〔その他〕","9902":"詩〔その他〕","9903":"エッセイ〔その他〕","9904":"リプレイ〔その他〕","9999":"その他〔その他〕","9801":"ノンジャンル〔ノンジャンル〕"};
-function genreLabel(code,map){const key=String(code??"");return map[key]||"未対応・未設定"}
-function showWork(w){const fields=[["Nコード",w.ncode],["作品タイトル",w.title],["作者名",w.writer],["あらすじ",w.story],["作品状態",statusText(w)],["エピソード数",w.general_all_no],["初回掲載日時",w.general_firstup],["最新掲載日時",w.general_lastup],["文字数",w.length==null?null:Number(w.length).toLocaleString("ja-JP")+" 字"],["ジャンル",genreLabel(w.genre,GENRES)],["大ジャンル",genreLabel(w.biggenre,BIG_GENRES)]];const box=$("result");box.replaceChildren();box.hidden=false;for(const [label,value] of fields){const row=document.createElement("div");row.className="row";const k=document.createElement("div");k.className="key";k.textContent=label;const v=document.createElement("div");v.className="value";v.textContent=value==null||value===""?"（取得データなし）":String(value);row.append(k,v);box.append(row)}}
-async function run(){const ncode=normalizeNcode($("ncode").value);$("result").hidden=true;if(!ncode){setStatus("Nコードを確認してください。例：N9622MV","error");return} $("ncode").value=ncode;$("fetchBtn").disabled=true;setStatus(ncode+" の作品情報を取得しています…");try{const fields="n-t-s-w-gf-gl-ga-nt-e-l-g-bg";const url=API_URL+"?out=jsonp&of="+fields+"&ncode="+encodeURIComponent(ncode)+"&lim=1";const data=await jsonp(url);const work=Array.isArray(data)?data.find(x=>x&&x.ncode):null;if(!work){setStatus("API検索結果が0件でした。Nコード、または検索除外作品かどうかを確認してください。","error");return}setStatus("作品情報を取得しました。現在は表示確認のみで、本棚には保存していません。","ok");showWork(work)}catch(e){setStatus("取得失敗："+e.message,"error")}finally{$("fetchBtn").disabled=false}}
-$("fetchBtn").addEventListener("click",run);
-const params=new URLSearchParams(location.search);const incoming=normalizeNcode(params.get("ncode")||params.get("code")||"");if(incoming){$("ncode").value=incoming;run()}
+function showWork(w){const fields=[["Nコード",w.ncode],["作品タイトル",w.title],["作者名",w.writer],["あらすじ",w.story],["作品状態",statusText(w)],["エピソード数",w.general_all_no],["初回掲載日時",w.general_firstup],["最新掲載日時",w.general_lastup],["文字数",w.length==null?null:Number(w.length).toLocaleString("ja-JP")+" 字"],["ジャンル",GENRES[String(w.genre)]||"未対応・未設定"]];const box=$("result");box.replaceChildren();box.hidden=false;for(const [label,value] of fields){const row=document.createElement("div");row.className="row";const k=document.createElement("div");k.className="key";k.textContent=label;const v=document.createElement("div");v.className="value";v.textContent=value==null||value===""?"（取得データなし）":String(value);row.append(k,v);box.append(row);}}
+async function loadShelves(){const db=await openDB();try{shelfRows=await readAll(db,"shelf_names");}finally{db.close()}const sel=$("shelfSelect");sel.replaceChildren();const rows=shelfRows.filter(s=>s&&s.shelf_id!=null).sort((a,b)=>Number(a.display_order??a.sort_order??a.order??9999)-Number(b.display_order??b.sort_order??b.order??9999));for(const s of rows){const opt=document.createElement("option");opt.value=String(s.shelf_id);opt.textContent=String(s.shelf_name??s.name??s.title??("本棚 "+s.shelf_id));sel.append(opt);}if(!rows.length){const opt=document.createElement("option");opt.value="";opt.textContent="本棚が見つかりません";sel.append(opt);$("saveBtn").disabled=true;}}
+async function run(){const ncode=normalizeNcode($("ncode").value);$("result").hidden=true;$("saveArea").hidden=true;$("saveStatus").textContent="";fetchedWork=null;if(!ncode){setStatus("Nコードを確認してください。","error");return;}$("ncode").value=ncode;$("fetchBtn").disabled=true;setStatus(ncode+" の作品情報を取得しています…");try{const fields="n-t-s-w-gf-gl-ga-nt-e-l-g";let found=null;for(const [base,isR18] of [[API_URL,false],[R18_API_URL,true]]){try{const data=await jsonp(base+"?out=jsonp&of="+fields+"&ncode="+encodeURIComponent(ncode)+"&lim=1");const hit=Array.isArray(data)?data.find(x=>x&&x.ncode):null;if(hit){found=hit;fetchedR18=isR18;break;}}catch(e){/* 次のAPIも確認する */}}if(!found){setStatus("⚠️ APIから作品情報を取得できませんでした。","error");return;}fetchedWork={...found,ncode:String(found.ncode||ncode).toUpperCase(),writer:String(found.writer||""),story:String(found.story||""),general_all_no:Number(found.general_all_no||0),general_firstup:found.general_firstup||"",general_lastup:found.general_lastup||"",noveltype:Number(found.noveltype||1),end:Number(found.end??1),length:Number(found.length||0),genre:Number(found.genre||0),userid:Number(found.userid||0),__r18:fetchedR18};showWork(fetchedWork);setStatus("作品情報を取得しました。登録先の本棚を選んでください。","ok");await loadShelves();$("saveArea").hidden=false;}catch(e){setStatus("⚠️ APIから作品情報を取得できませんでした。","error");}finally{$("fetchBtn").disabled=false;}}
+async function save(){const btn=$("saveBtn");btn.disabled=true;setSaveStatus("");try{if(!fetchedWork)throw new Error("先に作品情報を取得してください。");const shelfId=String($("shelfSelect").value||"");const shelf=shelfRows.find(s=>String(s?.shelf_id)===shelfId);if(!shelf)throw new Error("登録する本棚を選んでください。");const db=await openDB();try{const oldWork=await new Promise((resolve,reject)=>{const r=db.transaction("works_cache","readonly").objectStore("works_cache").get(fetchedWork.ncode);r.onsuccess=()=>resolve(r.result||null);r.onerror=()=>reject(r.error||new Error("既存作品の確認に失敗しました"));});if(oldWork)throw new Error("このNコードは既に作品情報に登録されています。");const placements=await readAll(db,"shelf_placement");if(placements.some(p=>String(p?.ncode||"").toUpperCase()===fetchedWork.ncode))throw new Error("このNコードは既に本棚に登録されています。");const novelHost=fetchedR18?"novel18.syosetu.com":"ncode.syosetu.com";const work={...fetchedWork,source_url:"https://"+novelHost+"/"+fetchedWork.ncode+"/"};const tx=db.transaction(["works_cache","shelf_placement","authors"],"readwrite");putRow(tx,"works_cache",work,fetchedWork.ncode);putRow(tx,"shelf_placement",{ncode:fetchedWork.ncode,shelf_id:shelfId},fetchedWork.ncode);if(work.userid){putRow(tx,"authors",{ncode:fetchedWork.ncode,writer:work.writer,authorName:work.writer,authorId:String(work.userid),authorType:fetchedR18?"r18":"normal",authorUrl:"https://"+novelHost+"/"+String(work.userid)+"/"},fetchedWork.ncode);}await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存に失敗しました"));tx.onabort=()=>reject(tx.error||new Error("保存が中止されました"));});setSaveStatus("登録しました："+String(shelf.shelf_name??shelf.name??shelf.title??"選択した本棚")+"。本棚へ戻って確認してください。","ok");btn.disabled=true;}finally{db.close();}}catch(e){setSaveStatus("登録できませんでした："+e.message,"error");btn.disabled=false;}}
+$("fetchBtn").addEventListener("click",run);$("saveBtn").addEventListener("click",save);
+const params=new URLSearchParams(location.search);const incoming=normalizeNcode(params.get("ncode")||params.get("code")||"");if(incoming){$("ncode").value=incoming;run();}
 </script></body></html>
