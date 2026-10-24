@@ -8,14 +8,16 @@
 <style>
 :root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#6d6a64;--line:#c9c0b4;--accent:#28634b}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.7}
-main{max-width:760px;margin:auto;padding:22px 16px 48px}a{color:#245e8c}h1{font-size:25px;line-height:1.35}h2{font-size:19px;margin-top:30px;border-bottom:1px solid var(--line);padding-bottom:6px}.lead{color:var(--muted)}section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px;margin:14px 0}.tag{display:inline-block;background:#e5efe8;color:var(--accent);border-radius:7px;padding:2px 8px;font-weight:700;font-size:13px}.flow{padding-left:22px}.flow li{margin:9px 0}code{overflow-wrap:anywhere;background:#eee9e1;padding:2px 4px;border-radius:4px}.small{font-size:13px;color:var(--muted)}.back{display:inline-block;margin-bottom:10px}
+main{max-width:760px;margin:auto;padding:22px 16px 48px}a{color:#245e8c}h1{font-size:25px;line-height:1.35}h2{font-size:19px;margin-top:30px;border-bottom:1px solid var(--line);padding-bottom:6px}.lead{color:var(--muted)}section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px;margin:14px 0}.tag{display:inline-block;background:#e5efe8;color:var(--accent);border-radius:7px;padding:2px 8px;font-weight:700;font-size:13px}.flow{padding-left:22px}.flow li{margin:9px 0}code{overflow-wrap:anywhere;background:#eee9e1;padding:2px 4px;border-radius:4px}.small{font-size:13px;color:var(--muted)}.back{display:inline-block;margin-bottom:10px}details.guide{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:18px 0}details.guide>summary{cursor:pointer;font-weight:800;line-height:1.5;list-style:none}details.guide>summary::-webkit-details-marker{display:none}details.guide>summary:before{content:"▸";display:inline-block;margin-right:9px;transition:transform .15s}details.guide[open]>summary:before{transform:rotate(90deg)}details.guide .inside{padding-top:8px}details.guide h2:first-child{margin-top:18px}
 </style>
 </head>
 <body><main>
 <a class="back" href="index.html">← ともたよむ本棚へ戻る</a>
 <h1>📚 資料室：なろう作品登録ギミック</h1>
 <p class="lead">Braveの共有シートからショートカットを実行し、作品を「ともたよむ」の本棚へ登録する仕組みの記録。</p>
-<p><span class="tag">実機確認済み</span> 通常作品・R18作品の取り込みと、登録後に本棚へ自動で戻る流れを確認（2026年10月24日）。</p>
+<details class="guide">
+<summary><span class="tag">実機確認済み</span> 通常作品・R18作品の取り込みと、登録後に本棚へ自動で戻る流れを確認（2026年10月24日）</summary>
+<div class="inside">
 
 <h2>1. 何ができる？</h2>
 <section>
@@ -78,10 +80,14 @@ main{max-width:760px;margin:auto;padding:22px 16px 48px}a{color:#245e8c}h1{font-
 <ul>
 <li><strong>通常作品：</strong>登録画面を経由し、本棚へ自動復帰。成功メッセージと本棚への実追加を確認。</li>
 <li><strong>R18作品：</strong>取り込み成功を確認。</li>
+<li><strong>なろう公式アプリ：</strong>公式アプリから共有シートでショートカットを実行。URLに余分な情報が付いていても、Nコードを抽出して登録できることを確認。</li>
 <li><strong>登録済み作品：</strong>重複登録防止の判定が働くことを確認。</li>
 </ul>
 <p class="small">注：R18作品の取り込み成功は実機で確認済み。ただし、特定のテストについて、どちらのAPIが採用されたかや、保存された全フィールドを個別に検査したことまでは意味しない。</p>
 </section>
+
+</div>
+</details>
 
 <p class="small">関連ページ：<a href="register.html">作品登録ページ</a> ／ <a href="index.html">本棚</a></p>
 </main></body></html>
