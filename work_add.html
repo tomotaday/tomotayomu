@@ -210,17 +210,42 @@ function parsePlainMetadata(raw){
  const aliases=new Map();
  META_LABELS.forEach(item=>item.labels.forEach(label=>aliases.set(label.toLowerCase(),item.key)));
  const data={};let current="";
- for(const original of lines){
-  const line=original.trim();
+ const clean=line=>String(line||"").trim().replace(/[‭‬‎‏]/g,"");
+ const labelOf=line=>{
+  const text=clean(line);
+  const m=text.match(/^\s*(?:[-•*・]\s*)?([^:：]{1,40})\s*[:：]\s*(.*)$/);
+  if(m){const key=aliases.get(m[1].trim().replace(/[＊*]/g,"").toLowerCase());if(key)return {key,value:m[2].trim(),inline:true};}
+  const key=aliases.get(text.toLowerCase());
+  return key?{key,value:"",inline:false}:null;
+ };
+ for(let i=0;i<lines.length;i++){
+  const original=lines[i],line=clean(original);
   if(!line){if(current==="synopsis"&&data.synopsis)data.synopsis+="\n";continue;}
-  const m=line.match(/^\s*(?:[-•*・]\s*)?([^:：]{1,40})\s*[:：]\s*(.*)$/);
-  if(m){
-   const label=m[1].trim().replace(/[＊*]/g,"").toLowerCase();
-   const key=aliases.get(label);
-   if(key){current=key;const value=m[2].trim();data[key]=key==="synopsis"?value:(value||"");continue;}
+  const found=labelOf(line);
+  if(found){
+   current=found.key;
+   let value=found.value;
+   if(!found.inline){
+    let k=i+1;
+    while(k<lines.length&&!clean(lines[k]))k++;
+    if(k<lines.length&&!labelOf(lines[k])){value=clean(lines[k]);i=k;}
+   }
+   data[current]=current==="synopsis"?value:(value||"");
+   continue;
+  }
+  if(/^(?:R18)?(?:完結済|完結|連載中|短編)/.test(line)&&/エピソード/.test(line)){
+   const titleCandidate=[...lines.slice(0,i)].reverse().map(clean).find(v=>v&&!/^(?:コピー|Tweet|ログイン|作品情報|感想|レビュー|Xブックマーク|Xブックマーク機能)/.test(v));
+   if(titleCandidate&&!data.title)data.title=titleCandidate;
+   const sm=line.match(/(R18\s*)?(完結済|完結|連載中|短編)/);
+   if(sm)data.status=(sm[1]||"")+sm[2];
+   const em=line.match(/全\s*([\d,]+)\s*エピソード/);
+   if(em)data.general_all_no=em[1].replace(/,/g,"");
+   current="";
+   continue;
   }
   if(current==="synopsis")data.synopsis=(data.synopsis?data.synopsis+"\n":"")+original.trimEnd();
  }
+ if(!data.disclosure&&lines.some(v=>clean(v)==="開示設定"))data.disclosure="検索除外中";
  if(!data.source_url&&data.ncode){
   const site=String(data.site||"").toLowerCase(),status=String(data.status||"").toLowerCase();
   const r18=/novel18|ムーンライト|ノクターン|ミッドナイト|r18/.test(site+" "+status);
