@@ -178,7 +178,8 @@ function applyMetadata(data){
   const value=data[key];
   document.getElementById(id).value=value==null?"":String(value);
  }
- const optionalKeys=new Set(["author_id","genre"]);\n const missing=fields.filter(([key])=>!optionalKeys.has(key)&&!Object.prototype.hasOwnProperty.call(data,key)).map(([, ,label])=>label);
+ const optionalKeys=new Set(["author_id","genre"]);
+ const missing=fields.filter(([key])=>!optionalKeys.has(key)&&!Object.prototype.hasOwnProperty.call(data,key)).map(([, ,label])=>label);
  const empty=fields.filter(([key])=>Object.prototype.hasOwnProperty.call(data,key)&&(data[key]==null||String(data[key]).trim()==="")).map(([, ,label])=>label);
  const d=String(data.disclosure||"").trim();
  let message="JSONを読み込みました。";
