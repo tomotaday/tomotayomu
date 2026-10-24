@@ -26,14 +26,14 @@ label{display:block;font-weight:700;margin:12px 0 4px}input,textarea{display:blo
 <h1>📚 新規登録</h1>
 <div class="note">ショートカットで取得したメタデータを確認・補完し、新しい検索除外作品として本棚に登録します。既存作品の変更には使いません。</div>
 <div class="card">
-<div id="status" class="status">メタデータを待っています。</div>
+<div id="status" class="status"></div>
 <div id="work" class="work" hidden></div>
 <section class="work">
 <h2 class="title">作品メタデータ</h2>
-<p class="meta">ショートカットから受け取ったメタデータを読み込みます。JSONと、項目名付きテキストのどちらも使えます。</p>
+
 <div id="metadataCheck" class="status" aria-live="polite"></div>
 <label for="metaJson">受信メタデータ</label>
-<textarea id="metaJson" rows="7" placeholder="JSON、または「タイトル：」「Nコード：」「作者：」「あらすじ：」など項目名付きテキストを貼り付け"></textarea>
+<textarea id="metaJson" rows="7" placeholder="ここにメタデータを貼り付け"></textarea>
 <button id="loadMetadata" type="button">メタデータを読み込む</button>
 <label for="manualNcode">Nコード</label><input id="manualNcode" autocomplete="off" placeholder="例：N1234AB">
 <label for="manualTitle">作品タイトル</label><input id="manualTitle" autocomplete="off" placeholder="作品タイトル">
@@ -307,7 +307,7 @@ async function handle(){
   catch(e){setStatus("メタデータを読み込めませんでした："+e.message,"error")}
   return;
  }
- setStatus("メタデータを待っています。JSONを読み込むとフォームに反映されます。");
+ setStatus("メタデータを貼り付けてください。");
 }
 handle();
 </script>
