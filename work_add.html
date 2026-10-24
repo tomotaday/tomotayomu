@@ -16,7 +16,7 @@ h1{font-size:27px;margin:0 0 6px}.note{font-size:13px;color:var(--muted);margin-
 .work{margin-top:16px;padding-top:16px;border-top:1px solid #ddd5ca}
 .title{font-size:20px;font-weight:700}.meta{font-size:13px;color:var(--muted);margin-top:4px}
 .ok{font-size:18px;font-weight:700}.error{color:#9b3d32}
-label{display:block;font-weight:700;margin:12px 0 4px}input,textarea{display:block;width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}textarea{resize:vertical}#manualSave{margin-top:14px;padding:10px 14px;background:#fffdf9;border:1px solid var(--line);border-radius:8px;font:inherit;font-weight:700}
+label{display:block;font-weight:700;margin:12px 0 4px}input,textarea{display:block;width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}textarea{resize:vertical}#loadMetadata{display:block;width:100%;min-height:54px;margin:12px 0 18px;padding:14px 18px;background:#e8edf8;border:2px solid #526b91;border-radius:12px;color:#18365f;font:inherit;font-size:18px;font-weight:800;box-shadow:0 2px 0 rgba(0,0,0,.08);touch-action:manipulation}#loadMetadata:active{background:#d7e2f4;transform:translateY(1px)}#manualSave{display:block;width:100%;min-height:50px;margin-top:14px;padding:12px 14px;background:#fffdf9;border:1px solid var(--line);border-radius:10px;font:inherit;font-weight:700}
 </style>
 </head>
 <body>
@@ -26,7 +26,7 @@ label{display:block;font-weight:700;margin:12px 0 4px}input,textarea{display:blo
 <h1>📚 新規登録</h1>
 <div class="note">ショートカットで取得したメタデータを確認・補完し、新しい検索除外作品として本棚に登録します。既存作品の変更には使いません。</div>
 <div class="card">
-<div id="status" class="status">作品URLを受信しています…</div>
+<div id="status" class="status">メタデータを待っています。</div>
 <div id="work" class="work" hidden></div>
 <section class="work">
 <h2 class="title">作品メタデータ</h2>
