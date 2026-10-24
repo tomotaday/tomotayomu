@@ -38,7 +38,7 @@ label{display:block;font-weight:700;margin:12px 0 4px}input,textarea{display:blo
 <label for="manualNcode">Nコード</label><input id="manualNcode" autocomplete="off" placeholder="例：N1234AB">
 <label for="manualTitle">作品タイトル</label><input id="manualTitle" autocomplete="off" placeholder="作品タイトル">
 <label for="manualWriter">作者名</label><input id="manualWriter" autocomplete="off" placeholder="作者名">
-<label for="manualAuthorId">作者ID（数値ユーザID）</label><input id="manualAuthorId" inputmode="numeric" autocomplete="off" placeholder="作者ページのユーザID">
+<label for="manualAuthorId">作者ID</label><input id="manualAuthorId" autocomplete="off" autocapitalize="characters" placeholder="例：数値ID / X8359W">
 
 <label for="manualUrl">取得元URL</label><input id="manualUrl" autocomplete="url" placeholder="作品情報ページのURL">
 <label for="manualSynopsis">あらすじ</label><textarea id="manualSynopsis" rows="4" placeholder="あらすじ"></textarea>
@@ -134,7 +134,7 @@ async function saveWork(work,rawUrl,manualAuthorId=""){
     req.onsuccess=()=>resolve(req.result||{});
     req.onerror=()=>reject(req.error||new Error("既存作品情報の読込失敗"));
   });
-  const saved={...oldWork,...work,ncode,userid:manualAuthorId?Number(manualAuthorId):(oldWork.userid??work.userid??0),__r18:isR18};
+  const saved={...oldWork,...work,ncode,userid:manualAuthorId?String(manualAuthorId).trim():(oldWork.userid??work.userid??0),__r18:isR18};
   const tx=db.transaction(["works_cache","shelf_placement","authors","shelf_names"],"readwrite");
   putRow(tx,"works_cache",saved,ncode);
   // 旧名称で初回検出した棚も、固定の登録先として保存しておく。
@@ -270,7 +270,7 @@ async function saveManualWork(){
   const title=String(document.getElementById("manualTitle").value||"").trim();
   const writer=String(document.getElementById("manualWriter").value||"").trim();
   const authorIdRaw=String(document.getElementById("manualAuthorId").value||"").trim();
-  if(authorIdRaw&&!/^\d+$/.test(authorIdRaw))throw new Error("作者IDは数字のみで入力してください。");
+  if(authorIdRaw&&!/^[A-Za-z0-9_-]+$/.test(authorIdRaw))throw new Error("作者IDは英数字で入力してください。");
   const rawUrl=String(document.getElementById("manualUrl").value||"").trim();
   const story=String(document.getElementById("manualSynopsis").value||"").trim();
   const disclosure=String(document.getElementById("manualDisclosure").value||"").trim();
@@ -291,7 +291,7 @@ async function saveManualWork(){
   const episodeCount=num("manualEpisodeCount");
   // index.html の setStatus() に合わせ、end=0 は完結、end=1 は連載中。
   const end= status.includes("完結") ? 0 : 1;
-  const work={ncode,title,writer,story,keyword:"",general_all_no:episodeCount,general_lastup:latest,general_firstup:published,end,noveltype:status.includes("短編")?2:1,isstop:0,userid:authorIdRaw?Number(authorIdRaw):0,genre:0,genre_text:genreText,novelupdated_at:latest,episode_count:episodeCount,character_count:num("manualCharacterCount"),published_at:published,latest_episode_at:latest,disclosure,__r18:rawUrl.toLowerCase().includes("novel18.syosetu.com")};
+  const work={ncode,title,writer,story,keyword:"",general_all_no:episodeCount,general_lastup:latest,general_firstup:published,end,noveltype:status.includes("短編")?2:1,isstop:0,userid:authorIdRaw?authorIdRaw:0,genre:0,genre_text:genreText,novelupdated_at:latest,episode_count:episodeCount,character_count:num("manualCharacterCount"),published_at:published,latest_episode_at:latest,disclosure,__r18:rawUrl.toLowerCase().includes("novel18.syosetu.com")};
   setManualStatus("作品情報を保存中…");
   const r=await saveWork(work,rawUrl,authorIdRaw);
   const excluded=new Set(JSON.parse(localStorage.getItem(SEARCH_EXCLUDED_KEY)||"[]"));excluded.add(ncode);localStorage.setItem(SEARCH_EXCLUDED_KEY,JSON.stringify([...excluded]));
