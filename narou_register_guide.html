@@ -147,5 +147,78 @@ main{max-width:760px;margin:auto;padding:22px 16px 48px}a{color:#245e8c}h1{font-
 </div>
 </details>
 
+
+<details class="guide">
+<summary><span class="tag">構造記録</span> 共有ショートカット「しおり」の役割と保全（2026年10月25日記録）</summary>
+<div class="inside">
+<h2>1. 基本情報</h2>
+<section>
+<ul>
+<li>iPhoneのショートカットアプリにある、共有シートから入力を受け取るショートカット。</li>
+<li>画面上の名前は「とよむ＋なろう not…」と途中まで表示されている。</li>
+<li>入力テキストの内容に応じて処理を分岐し、note.com のURLと、なろう作品ページの情報を扱う構造が確認できる。</li>
+<li>ともたは、通常作品・検索除外作品・noteにも使う働き者のショートカットとして「しおり」と呼んでいる。</li>
+</ul>
+</section>
+
+<h2>2. スクリーンショットで確認できた処理</h2>
+<section>
+<h3>共通の入口</h3>
+<ol class="flow">
+<li>共有シートから「アプリ、その他18個」を受け取る。入力がない場合は「続ける」。</li>
+<li>「ショートカットの入力」からテキストを取得する。</li>
+<li>取得したテキストに <code>note.com/</code> が含まれるか判定する。</li>
+</ol>
+<h3>note.com/ が含まれる場合</h3>
+<ol class="flow">
+<li>テキストからURLを取得する。</li>
+<li>URLが「任意の値」の場合の分岐がある。</li>
+<li>URLをURLエンコードする。</li>
+<li><code>brave://open-url?url=https://tomotaday.github.io/tomotayomu/index.html?noteUrl=...</code> の形で、ともたよむの本棚URLに noteUrl を付ける。</li>
+<li>組み立てたURLをクリップボードにコピーし、URLを開く。</li>
+<li>noteのURLが見つからない場合は「note の URL が見つかりませんでした。」というエラー通知を表示する。</li>
+</ol>
+<h3>note.com/ が含まれない場合</h3>
+<ol class="flow">
+<li>テキストから <code>syosetu\.com/([^/]+)/ (\d+)</code> に相当する正規表現で一致を検索する。スクリーンショット上では空白なしのパターン <code>syosetu\.com/([^/]+)/(\d+)</code> と読める。</li>
+<li>一致結果のグループ1とグループ2を、それぞれ取得する。</li>
+<li><code>https://tomotaday.github.io/tomotayomu/index.html?ncode=...&amp;episode=...</code> の形のURLを組み立て、URLエンコードする。</li>
+<li><code>brave://open-url?url=...</code> を組み立て、URLを開く。</li>
+</ol>
+<p class="small">注：スクリーンショットに表示されたアクションから書き起こした記録。各変数の実際の値や、すべての入力パターンでの動作結果を検証した記録ではない。</p>
+</section>
+
+<h2>3. 分かっていること・未確認のこと</h2>
+<section>
+<ul>
+<li><strong>確認できたこと：</strong>共有シートからテキストを受け取り、note用とそれ以外で分岐する。note用は <code>noteUrl</code>、なろう用は <code>ncode</code> と <code>episode</code> を付けたともたよむのURLを開く。</li>
+<li><strong>ともたの運用上の位置づけ：</strong>通常作品、検索除外作品、noteを扱う重要なショートカット。</li>
+<li><strong>今回の画像だけでは未確認：</strong>検索除外作品の情報取得の具体的な分岐・全処理、正規表現が対応するすべてのURL形式、各ルートの例外処理や動作テストの結果。</li>
+</ul>
+<p>未確認の部分は推測で補わず、必要になったときに実機の動作と照合して追記する。</p>
+</section>
+
+<h2>4. 保全状況</h2>
+<section>
+<ul>
+<li>ともたは元のショートカットを複製し、複製側の名前に「保全用」を付けた。</li>
+<li>通常使用する版と保全用の複製を分けている。</li>
+<li>保全用は、必要がない限り編集・テストに使わず、複製時点の構成を残す方針。</li>
+<li>同じiPhone内での複製は誤編集への備えになるが、端末の故障・紛失に備えた別の場所への書き出しや保存とは別。外部へのバックアップは、可能な方法を別途確認する。</li>
+</ul>
+</section>
+
+<h2>5. 復旧・変更時の注意</h2>
+<section>
+<ul>
+<li>まず「しおり（保全用）」を残し、変更や実験は通常使用版で行う。</li>
+<li>変更前後で、note用・なろう用・検索除外作品用の各経路を分けて動作確認する。</li>
+<li>この資料はスクリーンショットから確認できた構造の記録であり、ショートカット本体のバックアップの代わりではない。</li>
+<li>構造や動作が変わったら、実機で確認した内容だけをこの資料に追記する。</li>
+</ul>
+</section>
+</div>
+</details>
+
 <p class="small">関連ページ：<a href="register.html">作品登録ページ</a> ／ <a href="index.html">本棚</a></p>
 </main></body></html>
