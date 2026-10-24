@@ -227,7 +227,7 @@ function loadMetadata(){
  try{data=JSON.parse(raw);}catch(e){data=parsePlainMetadata(raw);}
  applyMetadata(data);return data;
 }
-document.getElementById("loadMetadata").addEventListener("click",()=>{try{loadMetadata()}catch(e){setMetadataCheck("⚠️ JSONを読み込めません："+e.message,"error")}});
+document.getElementById("loadMetadata").addEventListener("click",()=>{try{loadMetadata()}catch(e){setMetadataCheck("⚠️ メタデータを読み込めません："+e.message,"error")}});
 
 async function saveManualWork(){
  const btn=document.getElementById("manualSave");btn.disabled=true;
