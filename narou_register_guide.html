@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f3ed">
+<title>ともたよむ資料室｜なろう作品登録ギミック</title>
+<style>
+:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#6d6a64;--line:#c9c0b4;--accent:#28634b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.7}
+main{max-width:760px;margin:auto;padding:22px 16px 48px}a{color:#245e8c}h1{font-size:25px;line-height:1.35}h2{font-size:19px;margin-top:30px;border-bottom:1px solid var(--line);padding-bottom:6px}.lead{color:var(--muted)}section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px;margin:14px 0}.tag{display:inline-block;background:#e5efe8;color:var(--accent);border-radius:7px;padding:2px 8px;font-weight:700;font-size:13px}.flow{padding-left:22px}.flow li{margin:9px 0}code{overflow-wrap:anywhere;background:#eee9e1;padding:2px 4px;border-radius:4px}.small{font-size:13px;color:var(--muted)}.back{display:inline-block;margin-bottom:10px}
+</style>
+</head>
+<body><main>
+<a class="back" href="index.html">← ともたよむ本棚へ戻る</a>
+<h1>📚 資料室：なろう作品登録ギミック</h1>
+<p class="lead">Braveの共有シートからショートカットを実行し、作品を「ともたよむ」の本棚へ登録する仕組みの記録。</p>
+<p><span class="tag">実機確認済み</span> 通常作品・R18作品の取り込みと、登録後に本棚へ自動で戻る流れを確認（2026年10月24日）。</p>
+
+<h2>1. 何ができる？</h2>
+<section>
+<ul>
+<li>なろう作品ページからNコードを取り出す。</li>
+<li>登録ページでAPIから作品情報を取得する。</li>
+<li>本棚管理で指定した「📥登録先」へ作品情報を保存する。</li>
+<li>登録処理が終わると本棚へ自動で戻り、結果メッセージを表示する。</li>
+</ul>
+</section>
+
+<h2>2. ショートカットの流れ</h2>
+<section>
+<ol class="flow">
+<li><strong>共有シートから入力を受け取る</strong><br>Braveの共有シートから、登録用ショートカットを起動する。</li>
+<li><strong>URLからNコードを検索</strong><br>正規表現 <code>n[0-9]{4,}[a-z]+</code> でNコードのパターンを検索する。</li>
+<li><strong>一致したテキストのグループ0を取得</strong><br>一致したNコード全体を取り出す。</li>
+<li><strong>登録URLを組み立てる</strong><br><code>https://tomotaday.github.io/tomotayomu/register.html?ncode=取得したNコード</code></li>
+<li><strong>URLを開く</strong><br>Brave内で登録ページが開き、Nコードを使って自動取得・登録を開始する。</li>
+</ol>
+<p class="small">添付スクリーンショットは、ショートカットの概要画面と、上記のアクション列（共有シート入力 → パターン検索 → グループ0取得 → URL作成 → URLを開く）を記録したもの。</p>
+</section>
+
+<h2>3. 登録ページ側の処理</h2>
+<section>
+<ol class="flow">
+<li><strong>Nコードを受け取る</strong>：URLの <code>ncode</code> パラメータから取得する。</li>
+<li><strong>作品情報を取得する</strong>：まず全年齢向けAPIを確認し、見つからない場合はR18向けAPIも確認する。</li>
+<li><strong>登録先を調べる</strong>：IndexedDBの <code>shelf_names</code> から <code>work_add_target === true</code> の棚を探す。</li>
+<li><strong>重複を確認する</strong>：<code>works_cache</code> や <code>shelf_placement</code> に既存データがある場合は、既存データを上書きしない。</li>
+<li><strong>新規作品を保存する</strong>：作品情報・棚への配置・取得できる作者情報をIndexedDBへ保存する。</li>
+<li><strong>結果を伝えて本棚へ戻る</strong>：結果コード付きで <code>index.html</code> に移動する。</li>
+</ol>
+</section>
+
+<h2>4. 本棚に表示される結果</h2>
+<section>
+<ul>
+<li><code>ok</code>：作品を本棚に登録した。</li>
+<li><code>exists</code>：すでに登録済み。既存データは変更しない。</li>
+<li><code>api_error</code>：APIから作品情報を取得できなかった。</li>
+<li><code>target_error</code>：登録先の棚を確認する必要がある。</li>
+<li><code>save_error</code>：保存処理に失敗した。</li>
+</ul>
+<p>本棚側は結果コードを日本語のメッセージに変換し、表示後にURLから結果コードを取り除く。表示処理は本棚の通常の再描画処理とは分けている。</p>
+</section>
+
+<h2>5. 保存先と安全策</h2>
+<section>
+<ul>
+<li>本棚データの正本はブラウザー内のIndexedDB（DB名 <code>tomotaYomuDB</code>）。</li>
+<li>登録先は本棚管理で指定した「📥登録先」に従う。</li>
+<li>同じNコードが既に作品情報または本棚配置にある場合、新規登録せず既存データを保持する。</li>
+<li>ショートカットはNコードを登録ページへ渡す役割。作品情報の取得・保存は <code>register.html</code> が担当する。</li>
+</ul>
+</section>
+
+<h2>6. 動作確認の記録</h2>
+<section>
+<ul>
+<li><strong>通常作品：</strong>登録画面を経由し、本棚へ自動復帰。成功メッセージと本棚への実追加を確認。</li>
+<li><strong>R18作品：</strong>取り込み成功を確認。</li>
+<li><strong>登録済み作品：</strong>重複登録防止の判定が働くことを確認。</li>
+</ul>
+<p class="small">注：R18作品の取り込み成功は実機で確認済み。ただし、特定のテストについて、どちらのAPIが採用されたかや、保存された全フィールドを個別に検査したことまでは意味しない。</p>
+</section>
+
+<p class="small">関連ページ：<a href="register.html">作品登録ページ</a> ／ <a href="index.html">本棚</a></p>
+</main></body></html>
