@@ -267,7 +267,7 @@ async function saveManualWork(){
 document.getElementById("manualSave").addEventListener("click",saveManualWork);
 async function handle(){
  const params=new URLSearchParams(location.search);
- const raw=params.get("metadata")||params.get("json")||"";
+ const raw=params.get("text")||params.get("metadata")||params.get("json")||"";
  if(raw){
   try{let data;try{data=JSON.parse(raw)}catch(e){data=parsePlainMetadata(raw)}document.getElementById("metaJson").value=typeof data==="object"?JSON.stringify(data,null,2):raw;applyMetadata(data);setStatus("メタデータを受信しました。内容を確認し、不足項目を補ってください。","ok");history.replaceState({},document.title,location.pathname)}
   catch(e){setStatus("メタデータを読み込めませんでした："+e.message,"error")}
