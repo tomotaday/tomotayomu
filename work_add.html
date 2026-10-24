@@ -30,11 +30,11 @@ label{display:block;font-weight:700;margin:12px 0 4px}input,textarea{display:blo
 <div id="work" class="work" hidden></div>
 <section class="work">
 <h2 class="title">作品メタデータ</h2>
-<p class="meta">JSONを読み込み、取得できなかった項目を補ってから登録します。</p>
+<p class="meta">ショートカットから受け取ったメタデータを読み込みます。JSONと、項目名付きテキストのどちらも使えます。</p>
 <div id="metadataCheck" class="status" aria-live="polite"></div>
-<label for="metaJson">メタデータJSON</label>
-<textarea id="metaJson" rows="5" placeholder="ショートカットのJSONを貼り付け"></textarea>
-<button id="loadMetadata" type="button">JSONを読み込む</button>
+<label for="metaJson">受信メタデータ</label>
+<textarea id="metaJson" rows="7" placeholder="JSON、または「タイトル：」「Nコード：」「作者：」「あらすじ：」など項目名付きテキストを貼り付け"></textarea>
+<button id="loadMetadata" type="button">メタデータを読み込む</button>
 <label for="manualNcode">Nコード</label><input id="manualNcode" autocomplete="off" placeholder="例：N1234AB">
 <label for="manualTitle">作品タイトル</label><input id="manualTitle" autocomplete="off" placeholder="作品タイトル">
 <label for="manualWriter">作者名</label><input id="manualWriter" autocomplete="off" placeholder="作者名">
@@ -160,7 +160,7 @@ function normalizeNcode(raw){const m=String(raw||"").toUpperCase().match(/N[0-9]
 function applyMetadata(data){
  if(!data||typeof data!=="object"||Array.isArray(data))throw new Error("JSONオブジェクトを指定してください。");
  const fields=[
-  ["ncode","manualNcode","Nコード"],["title","manualTitle","作品タイトル"],["author","manualWriter","作者名"],
+  ["ncode","manualNcode","Nコード"],["title","manualTitle","作品タイトル"],["author","manualWriter","作者名"],["author_id","manualAuthorId","作者ID"],
   ["source_url","manualUrl","取得元URL"],["synopsis","manualSynopsis","あらすじ"],["status","manualStatusValue","作品状態"],
   ["general_all_no","manualEpisodeCount","エピソード数"],["genre","manualGenre","ジャンル"],
   ["general_firstup","manualPublishedAt","掲載日時"],["general_lastup","manualLatestAt","最新掲載日時"],
@@ -181,10 +181,51 @@ function applyMetadata(data){
  else message+="\n⚠️ 開示設定は「"+d+"」です。検索除外中か確認できないため、登録は保留します。";
  setMetadataCheck(message,(!d||!d.includes("検索除外中")||missing.length||empty.length)?"error":"ok");
 }
+const META_LABELS=[
+ {key:"ncode",labels:["Nコード","Nコード番号","ncode"]},
+ {key:"title",labels:["作品タイトル","タイトル","title"]},
+ {key:"author",labels:["作者名","作者","author","writer"]},
+ {key:"author_id",labels:["作者ID","ユーザID","ユーザーID","author_id","userid"]},
+ {key:"source_url",labels:["取得元URL","作品情報ページURL","作品URL","URL","source_url"]},
+ {key:"synopsis",labels:["あらすじ","作品あらすじ","synopsis","story"]},
+ {key:"status",labels:["作品状態","連載状態","状態","status"]},
+ {key:"general_all_no",labels:["エピソード数","全話数","話数","general_all_no","episode_count"]},
+ {key:"genre",labels:["ジャンル","genre"]},
+ {key:"site",labels:["掲載サイト","サイト","site"]},
+ {key:"general_firstup",labels:["初回掲載日時","初回掲載日","初回投稿日","掲載日時","general_firstup","published_at"]},
+ {key:"general_lastup",labels:["最新掲載日時","最新話掲載日時","最終話掲載日時","最終掲載日時","最新掲載日","general_lastup","latest_episode_at"]},
+ {key:"character_count",labels:["文字数","総文字数","character_count"]},
+ {key:"disclosure",labels:["開示設定","公開設定","公開状態","検索設定","disclosure"]}
+];
+function parsePlainMetadata(raw){
+ const lines=String(raw||"").replace(/\r/g,"").split("\n");
+ const aliases=new Map();
+ META_LABELS.forEach(item=>item.labels.forEach(label=>aliases.set(label.toLowerCase(),item.key)));
+ const data={};let current="";
+ for(const original of lines){
+  const line=original.trim();
+  if(!line){if(current==="synopsis"&&data.synopsis)data.synopsis+="\n";continue;}
+  const m=line.match(/^\s*(?:[-•*・]\s*)?([^:：]{1,40})\s*[:：]\s*(.*)$/);
+  if(m){
+   const label=m[1].trim().replace(/[＊*]/g,"").toLowerCase();
+   const key=aliases.get(label);
+   if(key){current=key;const value=m[2].trim();data[key]=key==="synopsis"?value:(value||"");continue;}
+  }
+  if(current==="synopsis")data.synopsis=(data.synopsis?data.synopsis+"\n":"")+original.trimEnd();
+ }
+ if(!data.source_url&&data.ncode){
+  const site=String(data.site||"").toLowerCase(),status=String(data.status||"").toLowerCase();
+  const r18=/novel18|ムーンライト|ノクターン|ミッドナイト|r18/.test(site+" "+status);
+  data.source_url=(r18?"https://novel18.syosetu.com/":"https://ncode.syosetu.com/")+"novelview/infotop/ncode/"+String(data.ncode).toUpperCase()+"/";
+ }
+ return data;
+}
 function loadMetadata(){
  const raw=String(document.getElementById("metaJson").value||"").trim();
- if(!raw)throw new Error("メタデータJSONを入力してください。");
- const data=JSON.parse(raw);applyMetadata(data);return data;
+ if(!raw)throw new Error("メタデータを入力してください。");
+ let data;
+ try{data=JSON.parse(raw);}catch(e){data=parsePlainMetadata(raw);}
+ applyMetadata(data);return data;
 }
 document.getElementById("loadMetadata").addEventListener("click",()=>{try{loadMetadata()}catch(e){setMetadataCheck("⚠️ JSONを読み込めません："+e.message,"error")}});
 
@@ -228,7 +269,7 @@ async function handle(){
  const params=new URLSearchParams(location.search);
  const raw=params.get("metadata")||params.get("json")||"";
  if(raw){
-  try{const data=JSON.parse(raw);document.getElementById("metaJson").value=JSON.stringify(data,null,2);applyMetadata(data);setStatus("メタデータを受信しました。内容を確認し、不足項目を補ってください。","ok");history.replaceState({},document.title,location.pathname)}
+  try{let data;try{data=JSON.parse(raw)}catch(e){data=parsePlainMetadata(raw)}document.getElementById("metaJson").value=typeof data==="object"?JSON.stringify(data,null,2):raw;applyMetadata(data);setStatus("メタデータを受信しました。内容を確認し、不足項目を補ってください。","ok");history.replaceState({},document.title,location.pathname)}
   catch(e){setStatus("メタデータを読み込めませんでした："+e.message,"error")}
   return;
  }
