@@ -178,7 +178,7 @@ function applyMetadata(data){
   const value=data[key];
   document.getElementById(id).value=value==null?"":String(value);
  }
- const missing=fields.filter(([key])=>!Object.prototype.hasOwnProperty.call(data,key)).map(([, ,label])=>label);
+ const optionalKeys=new Set(["author_id","genre"]);\n const missing=fields.filter(([key])=>!optionalKeys.has(key)&&!Object.prototype.hasOwnProperty.call(data,key)).map(([, ,label])=>label);
  const empty=fields.filter(([key])=>Object.prototype.hasOwnProperty.call(data,key)&&(data[key]==null||String(data[key]).trim()==="")).map(([, ,label])=>label);
  const d=String(data.disclosure||"").trim();
  let message="JSONを読み込みました。";
@@ -200,8 +200,8 @@ const META_LABELS=[
  {key:"general_all_no",labels:["エピソード数","全話数","話数","general_all_no","episode_count"]},
  {key:"genre",labels:["ジャンル","genre"]},
  {key:"site",labels:["掲載サイト","サイト","site"]},
- {key:"general_firstup",labels:["初回掲載日時","初回掲載日","初回投稿日","掲載日時","general_firstup","published_at"]},
- {key:"general_lastup",labels:["最新掲載日時","最新話掲載日時","最終話掲載日時","最終掲載日時","最新掲載日","general_lastup","latest_episode_at"]},
+ {key:"general_firstup",labels:["初回掲載日時","初回掲載日","初回投稿日","掲載日時","掲載日","general_firstup","published_at"]},
+ {key:"general_lastup",labels:["最新掲載日時","最新話掲載日時","最終話掲載日時","最終掲載日時","最終掲載日","最新掲載日","general_lastup","latest_episode_at"]},
  {key:"character_count",labels:["文字数","総文字数","character_count"]},
  {key:"disclosure",labels:["開示設定","公開設定","公開状態","検索設定","disclosure"]}
 ];
