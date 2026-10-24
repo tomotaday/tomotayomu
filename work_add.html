@@ -155,6 +155,14 @@ async function saveWork(work,rawUrl,manualAuthorId=""){
 }
 
 function setManualStatus(text,cls=""){const e=document.getElementById("manualStatus");e.textContent=text;e.className="status "+cls}
+function normalizeNarouDate(raw){
+ const s=String(raw||"").trim();
+ let m=s.match(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日(?:\s*(\d{1,2})\s*時\s*(\d{1,2})\s*分(?:\s*(\d{1,2})\s*秒)?)?/);
+ if(m)return m[1]+"-"+String(Number(m[2])).padStart(2,"0")+"-"+String(Number(m[3])).padStart(2,"0")+" "+String(Number(m[4]||0)).padStart(2,"0")+":"+String(Number(m[5]||0)).padStart(2,"0")+":"+String(Number(m[6]||0)).padStart(2,"0");
+ m=s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+ if(m)return m[1]+"-"+String(Number(m[2])).padStart(2,"0")+"-"+String(Number(m[3])).padStart(2,"0")+" "+String(Number(m[4]||0)).padStart(2,"0")+":"+String(Number(m[5]||0)).padStart(2,"0")+":"+String(Number(m[6]||0)).padStart(2,"0");
+ return s;
+}
 function setMetadataCheck(text,cls=""){const e=document.getElementById("metadataCheck");e.textContent=text;e.className="status "+cls}
 function normalizeNcode(raw){const m=String(raw||"").toUpperCase().match(/N[0-9]{1,}[A-Z]{1,5}/);return m?m[0]:""}
 function applyMetadata(data){
@@ -249,10 +257,10 @@ async function saveManualWork(){
   if(!disclosure)throw new Error("開示設定が未確認です。作品情報ページで確認してください。");
   if(!disclosure.includes("検索除外中"))throw new Error("「検索除外中」と確認できないため登録できません。作品情報ページを確認してください。");
   if(!/^https?:\/\/(ncode|novel18)\.syosetu\.com\/novelview\/infotop\/ncode\//i.test(rawUrl))throw new Error("取得元の作品情報ページURLを確認してください。");
-  const num=id=>{const v=String(document.getElementById(id).value||"").trim();return v!==""&&Number.isFinite(Number(v))?Number(v):0};
+  const num=id=>{const v=String(document.getElementById(id).value||"").trim().replace(/,/g,"");const m=v.match(/\d+/);return m?Number(m[0]):0};
   const status=String(document.getElementById("manualStatusValue").value||"").trim();
-  const published=String(document.getElementById("manualPublishedAt").value||"").trim();
-  const latest=String(document.getElementById("manualLatestAt").value||"").trim();
+  const published=normalizeNarouDate(document.getElementById("manualPublishedAt").value);
+  const latest=normalizeNarouDate(document.getElementById("manualLatestAt").value);
   const genreText=String(document.getElementById("manualGenre").value||"").trim();
   const episodeCount=num("manualEpisodeCount");
   // index.html の setStatus() に合わせ、end=0 は完結、end=1 は連載中。
