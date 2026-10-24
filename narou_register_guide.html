@@ -220,5 +220,70 @@ main{max-width:760px;margin:auto;padding:22px 16px 48px}a{color:#245e8c}h1{font-
 </div>
 </details>
 
+
+<details class="guide">
+<summary><span class="tag">運用記録</span> 本棚の更新ボタンからAtom更新が反映されるまで（2026年10月25日）</summary>
+<div class="inside">
+<h2>1. ともたが普段行う操作</h2>
+<section>
+<p>現在、ともたが手動で行う操作は、基本的に <code>index.html</code> の本棚画面で更新ボタンを押すこと。</p>
+<p>ボタンを押した後の細かな連携は、iPhoneのショートカットとGitHub Actionsが担うため、普段の操作だけでは内部の流れを意識する必要がない。ここでは、忘れても思い出せるように仕組みを記録する。</p>
+</section>
+
+<h2>2. 更新処理の全体像</h2>
+<section>
+<ol class="flow">
+<li><strong>本棚画面で更新ボタンを押す</strong><br>ともたよむの <code>index.html</code> から、更新処理を起動する。</li>
+<li><strong>iPhoneのショートカットが起動リクエストを送る</strong><br>ショートカットがGitHub APIを通じて、Atomフィード取得用のGitHub Actionsワークフローを起動する。記録上、リクエストはPOSTで、本文に <code>ref: main</code> を指定する構成。</li>
+<li><strong>GitHub Actionsが作者のAtomフィードを取得する</strong><br>ワークフローが登録済み作者の更新情報を取得し、公開用JSONを生成・更新する。</li>
+<li><strong>生成されたJSONがGitHub上に公開される</strong><br>取得した作者更新情報が、本棚側から読み込めるデータとして反映される。</li>
+<li><strong>ともたよむが更新情報を取り込む</strong><br>本棚側が公開されたJSONを読み込み、作品の更新表示に利用する。</li>
+<li><strong>ショートカットが処理後にともたよむを開く</strong><br>ショートカットには、Actionsの実行履歴取得、「起動リクエスト送信しました」の表示、ともたよむを開く処理がある。</li>
+</ol>
+<p class="small">全体像は、過去の実機検証と設定記録をもとにした運用説明。各段階の成功は同じ意味ではないため、問題が起きたときはGitHub Actionsの実行履歴で確認する。</p>
+</section>
+
+<h2>3. 成功したかどうかの見分け方</h2>
+<section>
+<ul>
+<li>ショートカットに「起動リクエスト送信しました」と表示されても、それだけでAtom取得・JSON公開まで成功した証拠にはならない。</li>
+<li>GitHubの <strong>Actions</strong> で、Atom取得用ワークフローの最新実行が開始され、最後まで成功しているか確認する。</li>
+<li>新着作品がない回でも、フィード取得処理そのものは実行される。取得時刻などの値が変われば、公開JSONに差分が生じる場合がある。</li>
+<li>GitHub Actionsの実行が成功していても、本棚画面への取り込みや表示が正しいかは別に確認する。</li>
+</ul>
+</section>
+
+<h2>4. これまでに確認したこと</h2>
+<section>
+<ul>
+<li>iPhoneのショートカットからGitHub Actionsを起動する経路を実機で試し、Actions側で実行が追加されることを確認した。</li>
+<li>過去の記録では、ワークフロー名に <code>Publish author Atom feeds</code> を含む実行があり、番号付きの実行が成功したことを確認している。</li>
+<li>GitHub APIの認証エラー <code>Bad credentials</code>（401）が出たことがある。再読み込み後に実行が反映されたケースもあったため、表示だけで判断せずActionsの履歴を確認する。</li>
+</ul>
+<p class="small">現在のワークフロー名やJSONファイル名、すべての実行条件は、この節では固定値として断定しない。GitHub上の現行設定が正本。</p>
+</section>
+
+<h2>5. 困ったときの確認順</h2>
+<section>
+<ol class="flow">
+<li>本棚の更新ボタンを押したあと、ショートカットが最後まで実行されたか確認する。</li>
+<li>GitHubのActionsを開き、Atom取得用ワークフローの新しい実行が追加されたか確認する。</li>
+<li>実行が失敗していたら、失敗した実行のログを確認する。認証エラーが出ている場合は、ショートカット内の認証設定が関係している可能性がある。</li>
+<li>Actionsが成功しているのに本棚へ反映されない場合は、公開JSONの更新と、本棚側の読み込み・表示を分けて調べる。</li>
+</ol>
+</section>
+
+<h2>6. 運用上の大事な点</h2>
+<section>
+<ul>
+<li>ともたが普段操作するのは本棚の更新ボタン。内部の処理を毎回手動で順番に実行する必要はない。</li>
+<li>ショートカットの「起動リクエスト送信」表示と、GitHub Actionsの成功、実際の本棚反映は、それぞれ別の確認ポイント。</li>
+<li>認証トークンはショートカットに保存されているため、資料室やスクリーンショットに値そのものを記録しない。</li>
+<li>ワークフローやショートカットを変更したときは、Actionsの実行成功と、本棚への反映の両方を確認してから運用に戻す。</li>
+</ul>
+</section>
+</div>
+</details>
+
 <p class="small">関連ページ：<a href="register.html">作品登録ページ</a> ／ <a href="index.html">本棚</a></p>
 </main></body></html>
