@@ -14,7 +14,7 @@ main{max-width:760px;margin:auto;padding:22px 16px 48px}a{color:#245e8c}h1{font-
 <body><main>
 <a class="back" href="index.html">← ともたよむ本棚へ戻る</a>
 <h1>📚 資料室：なろう作品登録ギミック</h1>
-<p class="lead">Braveの共有シートからショートカットを実行し、作品を「ともたよむ」の本棚へ登録する仕組みの記録。</p>
+<p class="lead">ともたよむの作品登録・本棚更新・作者Atom更新など、運用手順と復旧に必要な仕組みをまとめた資料室。</p>
 <details class="guide">
 <summary><span class="tag">実機確認済み</span> 通常作品・R18作品の取り込みと、登録後に本棚へ自動で戻る流れを確認（2026年10月24日）</summary>
 <div class="inside">
@@ -337,11 +337,44 @@ main{max-width:760px;margin:auto;padding:22px 16px 48px}a{color:#245e8c}h1{font-
 <li><strong>Repository permissions：</strong>Metadata は Read、Actions は Read and Write。</li>
 <li><strong>有効期限：</strong>期限なし（GitHub画面に “This token has no expiration date” と表示）。</li>
 <li><strong>ショートカット内の保管キー：</strong><code>GitHub_PAT</code>。</li>
+<li><strong>トークンの保存場所：</strong>ともたが管理・保管している。ショートカットはそこに保存した値を <code>GitHub_PAT</code> というキーで読み出す。</li>
 <li><strong>保存時のメモ：</strong>「tomotayomu のAction」。</li>
 </ul>
 <p>トークンの実際の値は資料室・チャット・スクリーンショットに記録しない。期限なしのため保管場所を限定し、不要になった場合や漏えいが疑われる場合はGitHubで失効させる。</p>
 </section>
-<h2>5. 運用・復旧時の確認点</h2>
+<h2>5. 作者更新の表示期間</h2>
+<section>
+<ul>
+<li>本棚の作者更新欄に表示する期間は、管理設定の「作者更新の表示期間（最大30日）」で変更できる。</li>
+<li>設定範囲は1〜30日。初期値は7日間。</li>
+<li>設定値はブラウザーの <code>localStorage</code>（キー <code>tomotaYomu_atom_display_days</code>）に保存され、値を変更すると作者更新欄を再描画する。</li>
+<li>これは本棚画面で作者更新を表示する期間の設定。Atomフィードを取得・生成する処理そのものの実行頻度を変更する設定ではない。</li>
+</ul>
+</section>
+<h2>6. Atom更新時の操作手順</h2>
+<section>
+<p><strong>現在の運用手順は、① JSONコピー → ② Atom更新 の順番。</strong>2つのボタンは別々の処理なので、順番に押す。</p>
+<h3>① JSONコピー</h3>
+<ul>
+<li>本棚のIndexedDBに保存されている作者情報を読み取る。</li>
+<li>作者IDと作者種別（通常作品の作者 <code>normal</code>／R18作品の作者 <code>r18</code>）をまとめたJSONを作成し、クリップボードへコピーする。</li>
+<li>作者名などの表示用情報は含めず、作者IDと種別をGitHub Actionsへ渡すための軽量データを作る。</li>
+<li>成功すると、コピーした作者人数と「続けて『② Atom更新』を押してください」という案内が表示される。</li>
+</ul>
+<h3>② Atom更新</h3>
+<ul>
+<li>ショートカット「ともたよむAtom更新」を起動する。</li>
+<li>ショートカットはクリップボードのJSONをGitHub APIへ送り、<code>publish-author-atom-feeds.yml</code> のワークフローを <code>main</code> ブランチで起動する。</li>
+<li>GitHub Actions側で作者リストを検証・保存し、作者のAtomフィード情報を取得してスナップショットを更新する。</li>
+<li>ショートカットの最後に、ともたよむ本棚ページを開く。</li>
+</ul>
+<h3>将来の検討要望</h3>
+<ul>
+<li>① JSONコピーと② Atom更新を、将来的には1つのボタンで連続実行できるようにしたい。</li>
+<li>現時点では、クリップボードへのコピーとショートカット起動が別処理のため、手動で①→②と押す運用。統合方法は検討要望として記録し、未実装であることを明記する。</li>
+</ul>
+</section>
+<h2>7. 運用・復旧時の確認点</h2>
 <section>
 <ul>
 <li>Atom更新が動かない場合は、ショートカットの実行結果とGitHub Actionsの実行履歴を確認する。</li>
