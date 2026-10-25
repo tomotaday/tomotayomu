@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f3ed">
+<title>ともためも｜ともたよむ</title>
+<style>
+:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.5}
+main{width:min(100%,720px);margin:auto;padding:16px 14px 42px}a{color:inherit}h1{font-size:22px;margin:10px 0 4px}.hint{font-size:13px;color:var(--muted);margin:0 0 14px}
+button,input,textarea{font:inherit;color:inherit}button{border:1px solid var(--line);border-radius:8px;background:var(--card);padding:7px 10px}input,textarea{width:100%;border:1px solid var(--line);border-radius:8px;background:var(--card);padding:9px;font-size:16px}textarea{min-height:45vh;resize:vertical;white-space:pre-wrap}
+.toolbar{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.panel{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px;margin:10px 0}.row{display:flex;gap:8px;align-items:center}.row input{min-width:0}.tree{display:flex;flex-direction:column;gap:6px;margin-top:12px}.entry{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--card)}.entryhead{display:flex;gap:8px;align-items:center;padding:8px 9px;min-height:44px}.entryname{flex:1;min-width:0;overflow-wrap:anywhere}.entryhead button{flex-shrink:0;font-size:13px;padding:5px 7px}.children{padding:0 8px 8px 16px}.bodytext{white-space:pre-wrap;overflow-wrap:anywhere;padding:10px 2px}.muted{font-size:12px;color:var(--muted)}.hidden{display:none!important}.crumb{font-size:13px;color:var(--muted);overflow-wrap:anywhere}.status{font-size:13px;margin:8px 0;overflow-wrap:anywhere}.danger{border-color:#b66;background:#fff5f5}.modalback{position:fixed;inset:0;background:#0007;display:flex;align-items:center;justify-content:center;padding:16px;z-index:5}.modal{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:16px;width:min(100%,560px);max-height:90vh;overflow:auto}.modal h2{font-size:18px;margin:0 0 10px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.actions button{flex:1}.toplink{font-size:14px}
+</style>
+</head>
+<body>
+<main>
+<a class="toplink" href="index.html">← ともたよむ本棚へ戻る</a>
+<h1>🗂️ ともためも</h1>
+<p class="hint">フォルダのように整理する、ローカル保存のメモ棚。見るだけなら編集されません。</p>
+<div class="panel">
+ <input id="search" type="search" placeholder="名前・本文を検索">
+ <div class="toolbar"><button id="newRootFolder">＋ 大項目</button><button id="newRootText">＋ テキスト</button></div>
+ <div id="status" class="status" role="status">保存領域を準備しています…</div>
+</div>
+<div id="tree" class="tree"></div>
+<div id="editorBack" class="modalback hidden">
+ <section class="modal" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
+  <h2 id="editorTitle">項目</h2>
+  <label for="editName">名前</label><input id="editName" maxlength="200">
+  <div id="textAreaWrap" class="hidden" style="margin-top:10px"><label for="editBody">テキスト</label><textarea id="editBody" spellcheck="false" placeholder="ここにテキストを貼り付け"></textarea></div>
+  <div class="actions"><button id="saveItem">保存</button><button id="cancelEdit">キャンセル</button></div>
+  <p class="muted">変更は保存ボタンを押したときだけ反映されます。</p>
+ </section>
+</div>
+<script>
+(()=>{'use strict';
+const DB_NAME='tomotaMemoDB',DB_VERSION=1,STORE='items';
+const $=id=>document.getElementById(id);
+let db=null,items=[],editing=null,query='';
+function status(s){$('status').textContent=s}
+function makeId(){return 'memo_'+(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2))}
+function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,DB_VERSION);req.onupgradeneeded=()=>{const d=req.result;if(!d.objectStoreNames.contains(STORE)){const st=d.createObjectStore(STORE,{keyPath:'id'});st.createIndex('parentId','parentId',{unique:false})}};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error('メモ保存領域を開けません'))})}
+function allItems(){return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readonly'),req=tx.objectStore(STORE).getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error)})}
+function put(item){return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(item);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error('保存を中止しました'))})}
+function removeMany(ids){return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite'),st=tx.objectStore(STORE);ids.forEach(id=>st.delete(id));tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error('削除を中止しました'))})}
+function descendants(id){const out=[],queue=[id];while(queue.length){const p=queue.shift();out.push(p);items.filter(x=>x.parentId===p).forEach(x=>queue.push(x.id))}return out}
+function children(parentId){return items.filter(x=>(x.parentId||null)===(parentId||null)).sort((a,b)=>a.name.localeCompare(b.name,'ja',{numeric:true,sensitivity:'base'}))}
+function matches(item){if(!query)return true;const q=query.toLocaleLowerCase();if((item.name||'').toLocaleLowerCase().includes(q)||(item.body||'').toLocaleLowerCase().includes(q))return true;return descendants(item.id).slice(1).some(id=>{const x=items.find(y=>y.id===id);return x&&((x.name||'').toLocaleLowerCase().includes(q)||(x.body||'').toLocaleLowerCase().includes(q))})}
+function el(tag,cls,text){const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n}
+function addButton(parent,label,fn,cls){const b=el('button',cls||'',label);b.type='button';b.addEventListener('click',e=>{e.stopPropagation();fn()});parent.appendChild(b);return b}
+function render(){
+ const root=$('tree');root.replaceChildren();
+ const roots=children(null).filter(matches);
+ if(!roots.length){root.appendChild(el('div','panel',query?'一致する項目はありません。':'まだ項目がありません。「＋ 大項目」から始めてね。'));return}
+ roots.forEach(item=>root.appendChild(renderItem(item,0)));
+}
+function renderItem(item,depth){
+ const wrap=el('div','entry');wrap.dataset.id=item.id;
+ const head=el('div','entryhead'),label=el('div','entryname', (item.type==='folder'?'📁 ':'📄 ')+item.name);head.appendChild(label);
+ if(item.type==='text')addButton(head,'開く',()=>viewText(item.id));
+ addButton(head,'編集',()=>openEditor(item.id));
+ addButton(head,'＋中',()=>openEditor(null,item.id,'folder'));
+ addButton(head,'移動',()=>moveItem(item.id));
+ addButton(head,'削除',()=>deleteItem(item.id),'danger');
+ wrap.appendChild(head);
+ if(item.type==='folder'){
+   const kids=children(item.id).filter(matches);
+   if(kids.length){const list=el('div','children');kids.forEach(k=>list.appendChild(renderItem(k,depth+1)));wrap.appendChild(list)}
+   else if(query){wrap.appendChild(el('div','muted','一致項目を含むフォルダ'))}
+ }else if(query && item.body.toLocaleLowerCase().includes(query.toLocaleLowerCase())){
+   const snippet=el('div','bodytext',item.body.slice(0,240));wrap.appendChild(snippet)
+ }
+ return wrap;
+}
+function viewText(id){
+ const item=items.find(x=>x.id===id);if(!item)return;
+ const back=$('editorBack');editing={id,view:true};
+ $('editorTitle').textContent=item.name;$('editName').value=item.name;$('editName').disabled=true;
+ $('textAreaWrap').classList.remove('hidden');$('editBody').value=item.body||'';$('editBody').readOnly=true;
+ $('saveItem').classList.add('hidden');$('cancelEdit').textContent='閉じる';back.classList.remove('hidden');
+}
+function openEditor(id=null,parentId=null,type='text'){
+ const item=id?items.find(x=>x.id===id):null;editing={id:id||null,parentId:parentId||null,type:item?item.type:type,view:false};
+ $('editorTitle').textContent=item?'項目を編集':(type==='folder'?'フォルダを追加':'テキストを追加');
+ $('editName').disabled=false;$('editName').value=item?item.name:'';$('editBody').readOnly=false;$('editBody').value=item?item.body||'':'';
+ $('textAreaWrap').classList.toggle('hidden',editing.type!=='text');$('saveItem').classList.remove('hidden');$('cancelEdit').textContent='キャンセル';$('editorBack').classList.remove('hidden');$('editName').focus();
+}
+async function saveEditor(){
+ if(!editing||editing.view)return;const name=$('editName').value.trim();if(!name){alert('名前を入力してね。');return}
+ const old=editing.id?items.find(x=>x.id===editing.id):null;
+ const item={id:old?old.id:makeId(),parentId:old?old.parentId:editing.parentId,type:old?old.type:editing.type,name,body:(old?old.type:editing.type)==='text'?$('editBody').value:'',createdAt:old?old.createdAt:Date.now(),updatedAt:Date.now()};
+ try{await put(item);await refresh();$('editorBack').classList.add('hidden');status(old?'保存しました。':'項目を追加しました。')}catch(e){status('保存できませんでした：'+e.message)}
+}
+async function deleteItem(id){
+ const item=items.find(x=>x.id===id);if(!item)return;const ids=item.type==='folder'?descendants(id):[id];
+ const details=ids.map(x=>items.find(y=>y.id===x)).filter(Boolean);
+ const listing=details.slice(0,12).map(x=>(x.type==='folder'?'📁 ':'📄 ')+x.name).join('\n');
+ const extra=details.length>12?'\n…ほか '+(details.length-12)+' 件':'';
+ if(!confirm('「'+item.name+'」を削除しますか？\n'+(item.type==='folder'?'フォルダ内も含めて削除します。\n\n':'')+listing+extra+'\n\nこの操作は取り消せません。'))return;
+ try{await removeMany(ids);await refresh();status(details.length+'項目を削除しました。')}catch(e){status('削除できませんでした：'+e.message)}
+}
+async function moveItem(id){
+ const item=items.find(x=>x.id===id);if(!item)return;
+ const possible=items.filter(x=>x.type==='folder'&&x.id!==id&&!descendants(id).includes(x.id));
+ const choices=[{id:'',name:'（大項目・最上位）'},...possible.map(x=>({id:x.id,name:x.name}))];
+ const promptText='移動先の番号を入力：\n'+choices.map((x,i)=>i+': '+x.name).join('\n');
+ const answer=prompt(promptText,String(Math.max(0,choices.findIndex(x=>x.id===(item.parentId||'')))));
+ if(answer===null)return;const n=Number(answer);if(!Number.isInteger(n)||n<0||n>=choices.length){alert('番号が正しくありません。');return}
+ try{await put({...item,parentId:choices[n].id||null,updatedAt:Date.now()});await refresh();status('移動しました。')}catch(e){status('移動できませんでした：'+e.message)}
+}
+async function refresh(){items=await allItems();render()}
+$('newRootFolder').addEventListener('click',()=>openEditor(null,null,'folder'));
+$('newRootText').addEventListener('click',()=>openEditor(null,null,'text'));
+$('saveItem').addEventListener('click',saveEditor);
+$('cancelEdit').addEventListener('click',()=>$('editorBack').classList.add('hidden'));
+$('search').addEventListener('input',e=>{query=e.target.value.trim();render()});
+(async()=>{try{db=await openDB();await refresh();status('ローカル保存領域に接続しました。作品データとは別のデータベースです。')}catch(e){status('初期化に失敗しました：'+e.message)}})();
+})();
+</script>
+</main>
+</body>
+</html>
