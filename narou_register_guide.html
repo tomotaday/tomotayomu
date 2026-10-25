@@ -288,17 +288,69 @@ main{max-width:760px;margin:auto;padding:22px 16px 48px}a{color:#245e8c}h1{font-
 </ul>
 <p class="small">この資料は現行 <code>index.html</code> のコードを確認して作成した。Atom更新の処理手順は、この節には混在させず、別項目で管理する。</p>
 
-<h2>7. Atom更新用GitHubトークンの保管メモ</h2>
+
+</div>
+</details>
+
+<details class="guide">
+<summary><span class="tag">運用記録</span> Atom更新ショートカット・GitHub Actions・トークン設定（2026年10月25日）</summary>
+<div class="inside">
+<h2>1. 本棚更新との違い</h2>
+<section>
+<p>「② Atom更新」は作者のAtomフィードを更新する別機能。「🔄 本棚更新」とは目的も処理経路も異なる。</p>
+<ul>
+<li><strong>本棚更新：</strong><code>index.html</code> 内の <code>updateInfo()</code> を直接実行し、本棚に登録済みの作品情報を確認・反映する。</li>
+<li><strong>Atom更新：</strong>ショートカット「ともたよむAtom更新」からGitHub Actionsのワークフローを起動し、作者リストとAtomフィードのスナップショットを更新する。</li>
+</ul>
+</section>
+<h2>2. ショートカットの処理</h2>
+<section>
+<ol class="flow">
+<li><strong>トークンを取得：</strong>パスワード保管先から <code>GitHub_PAT</code> を取得し、変数 <code>token</code> に設定する。</li>
+<li><strong>トークンがない場合：</strong>GitHub Personal Access Token の入力を求め、入力値を <code>token</code> に設定してキー <code>GitHub_PAT</code> に保存する。</li>
+<li><strong>クリップボードを取得：</strong>クリップボードの内容をワークフローへ渡すデータとして使う。</li>
+<li><strong>GitHub Actionsを起動：</strong>POSTリクエストで <code>https://api.github.com/repos/tomotaday/tomotayomu/actions/workflows/publish-author-atom-feeds.yml/dispatches</code> にアクセスする。</li>
+<li><strong>リクエスト内容：</strong>ブランチは <code>main</code>。入力項目 <code>author_list_json</code> にクリップボードの内容を渡す。</li>
+<li><strong>本棚へ戻る：</strong>最後にクリップボードを取得し、<code>https://tomotaday.github.io/tomotayomu/</code> を開く。</li>
+</ol>
+<p class="small">共有されたショートカット画面と現行ワークフロー定義を照合した要約。API応答の細かな判定・表示など、画像から読み取れない挙動は断定しない。</p>
+</section>
+<h2>3. GitHub Actions側の処理</h2>
+<section>
+<p>ワークフロー：<code>.github/workflows/publish-author-atom-feeds.yml</code></p>
+<ol class="flow">
+<li>手動起動時に <code>author_list_json</code> が渡された場合、JSONとして読み込み、作者IDと作者種別を検証して重複を除く。</li>
+<li>有効な作者リストを <code>data/author-list.json</code> に保存する。入力が空の場合は保存済みの作者リストを使う。</li>
+<li><code>scripts/publish_author_atom_feeds.py</code> で作者のAtomフィード情報を取得し、<code>data/atom/author-feeds.json</code> を更新する。</li>
+<li>変更があればGitHub Actionsのボットとしてコミットし、<code>main</code> にプッシュする。変更がなければ、スナップショットは変更なしとして終了する。</li>
+<li>診断用にフィードスナップショットをアーティファクトとして保存する（保持期間7日）。</li>
+</ol>
+<p>ワークフローには毎日実行するスケジュールも定義されている（cron <code>0 1 * * *</code>、UTC）。ショートカットからの手動起動とは別に動作する。</p>
+</section>
+<h2>4. トークン設定（実画面で確認済み）</h2>
 <section>
 <ul>
-<li><strong>トークンの種類：</strong>GitHub Personal Access Token（PAT）。ショートカット内では <code>GitHub_PAT</code> という名前で取得・保存している。</li>
-<li><strong>発行元：</strong>GitHub（GitHubのアカウント設定内にある Personal access tokens の管理画面）。スクリーンショットから、Fine-grained token か Tokens (classic) かまでは特定できない。</li>
-<li><strong>トークンの値の心当たり：</strong>「ともた管理」。値そのものは資料室に記載しない。必要になったときは、まずともた管理の記録・保管場所を探す。</li>
-<li><strong>注意：</strong>ショートカットには既存トークンを読み込む処理と、値がない場合に入力して保存する処理がある。実際のトークン文字列をチャットや資料室、スクリーンショットに載せない。</li>
+<li><strong>種類：</strong>Fine-grained personal access token。</li>
+<li><strong>トークン名：</strong><code>tomotayomu-actions-shortcut</code>。</li>
+<li><strong>対象リポジトリ：</strong><code>tomotaday/tomotayomu</code> のみ。</li>
+<li><strong>User permissions：</strong>なし。</li>
+<li><strong>Repository permissions：</strong>Metadata は Read、Actions は Read and Write。</li>
+<li><strong>有効期限：</strong>期限なし（GitHub画面に “This token has no expiration date” と表示）。</li>
+<li><strong>ショートカット内の保管キー：</strong><code>GitHub_PAT</code>。</li>
+<li><strong>保存時のメモ：</strong>「tomotayomu のAction」。</li>
 </ul>
-<p class="small">発行場所の詳細な種類や、現在そのトークンが有効かどうかは未確認。必要時はGitHubのトークン管理画面で確認する。</p>
+<p>トークンの実際の値は資料室・チャット・スクリーンショットに記録しない。期限なしのため保管場所を限定し、不要になった場合や漏えいが疑われる場合はGitHubで失効させる。</p>
 </section>
-
+<h2>5. 運用・復旧時の確認点</h2>
+<section>
+<ul>
+<li>Atom更新が動かない場合は、ショートカットの実行結果とGitHub Actionsの実行履歴を確認する。</li>
+<li>GitHub APIが <code>401 Bad credentials</code> を返す場合、トークン値の誤り・失効などが考えられる。値をチャットに貼らず、GitHub側のトークン状態とショートカットの保管キーを確認する。</li>
+<li>ワークフローが失敗した場合はActionsの実行ログを確認する。トークンを作り直す前に、失敗内容と権限設定を確認する。</li>
+<li>トークンを再発行する場合は、ショートカットの保存キー <code>GitHub_PAT</code> も更新する。古いトークンの失効は、新しいトークンでの動作確認後に行う。</li>
+<li>本棚更新とAtom更新は別機能として記録し、手順やトークン情報を本棚更新の項目に混在させない。</li>
+</ul>
+<p class="small">本項はショートカットのスクリーンショット、GitHubのトークン詳細画面、現行ワークフロー定義をもとに作成。設定変更は行っていない。</p>
 </section>
 </div>
 </details>
