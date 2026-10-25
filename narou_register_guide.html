@@ -222,50 +222,71 @@ main{max-width:760px;margin:auto;padding:22px 16px 48px}a{color:#245e8c}h1{font-
 
 
 <details class="guide">
-<summary><span class="tag">運用記録</span> 本棚更新とAtom更新は別ルート（2026年10月25日）</summary>
+<summary><span class="tag">運用記録</span> 本棚更新の目的・判定ルール・再描画（2026年10月25日）</summary>
 <div class="inside">
-<h2>1. 本棚更新：ボタンを押したときの処理</h2>
+<h2>1. 本棚更新の目的</h2>
 <section>
-<p>現行の <code>index.html</code> を確認したところ、「🔄 本棚更新」ボタンは、iPhoneのショートカットを起動せず、ページ内のJavaScript関数 <code>updateInfo()</code> を直接実行する。</p>
+<p>本棚に登録済みのなろう作品について、最新話数と最終更新日時をAPIから確認し、作品カードと更新表示へ反映する。</p>
+<p>この処理は、作者のAtomフィードを取得する「Atom更新」とは別機能。現行の「🔄 本棚更新」ボタンは、ショートカットではなく <code>index.html</code> 内の <code>updateInfo()</code> を直接実行する。</p>
+</section>
+
+<h2>2. 更新対象の確認方法</h2>
+<section>
 <ol class="flow">
-<li><strong>更新ボタンを押す</strong>：ボタンのクリックイベントから <code>updateInfo()</code> が呼ばれる。</li>
-<li><strong>更新の基準日時を読む</strong>：保存されている本棚全体の基準日時を取得し、今回の確認終了日時を設定する。</li>
-<li><strong>なろうAPIへ問い合わせる</strong>：基準日時から今回までの範囲について、全年齢向けAPIとR18向けAPIを並行して確認する。</li>
-<li><strong>本棚にある作品と照合する</strong>：取得した作品のNコードを使い、既存カードと照合する。最終更新日時が基準日時より新しい作品を更新候補として扱う。</li>
-<li><strong>ブラウザー内のデータを更新する</strong>：作品情報や更新候補、基準日時を保存し、更新表示と本棚を再描画する。</li>
-<li><strong>画面に結果を反映する</strong>：成功時は処理中表示を消す。失敗時は「更新確認に失敗しました」とエラー内容を表示する。</li>
+<li>保存済みの「本棚基準日」を開始日時として取得する。</li>
+<li>ボタンを押した時点の日時を今回の終了日時とする。</li>
+<li>開始日時から終了日時までの更新作品を、全年齢向けAPIとR18向けAPIの両方に問い合わせる。</li>
+<li>APIの件数が多すぎる時間範囲は、時間範囲を分割して再検索する。取得件数に応じてページ分割も行う。</li>
+<li>取得結果を本棚カードのNコードと照合し、登録されている作品だけを反映対象にする。</li>
 </ol>
-<p>この処理は、現在の <code>index.html</code> の <code>updateInfo()</code> と、ボタンに登録された <code>addEventListener("click", updateInfo)</code> から確認できる。</p>
+<p class="small">APIから取得した作品がすべて本棚に追加されるわけではない。既存カードに一致する作品を対象に更新確認する。</p>
 </section>
 
-<h2>2. Atom更新：別のルート</h2>
-<section>
-<p>「② Atom更新」は、本棚更新とは別のボタンで、こちらはショートカットを明示的に起動する。</p>
-<ul>
-<li>起動するショートカット名：<strong>ともたよむAtom更新</strong></li>
-<li>呼び出し：<code>shortcuts://run-shortcut?name=ともたよむAtom更新</code></li>
-<li>GitHub Actionsのワークフロー：<code>publish-author-atom-feeds.yml</code></li>
-<li>作者Atomフィードの取得・公開JSONの生成後、本棚側が公開JSONを読み込む仕組みがある。</li>
-</ul>
-<p>したがって、「🔄 本棚更新」ボタンが「ともたよむAtom更新」ショートカットを経由するわけではない。作者Atomの取得と、本棚に登録された作品の更新確認は、目的の異なる処理である。</p>
-</section>
-
-<h2>3. 見分け方</h2>
+<h2>3. 作品情報を反映する判定ルール</h2>
 <section>
 <ul>
-<li><strong>🔄 本棚更新：</strong>ページ内でなろうAPIを確認し、保存済み作品の更新候補を判定する。</li>
-<li><strong>② Atom更新：</strong>「ともたよむAtom更新」ショートカットを起動し、GitHub Actions経由で作者のAtomフィードを更新する。</li>
-<li>Atom更新用ショートカットの「起動リクエスト送信」表示だけでは、GitHub Actionsや本棚への反映まで成功したとは限らない。Actionsの実行結果も確認する。</li>
+<li>取得した作品の <code>general_lastup</code> が空でなく、保存済みの本棚基準日時より新しい場合に、更新情報を反映する。</li>
+<li>作品カードには、最終更新日時・全話数・作品状態・あらすじなど、APIから得た情報を反映する。読書位置は別に保持し、「続き」リンクの表示も更新する。</li>
+<li>更新候補の記録には、作品の最終更新日時を保存する。</li>
+<li>本棚に所属している作品は更新候補として記録する。棚に所属していない作品は、更新候補から除外する。</li>
+<li>この判定は、作品の最終更新日時が本棚基準日時より新しいかどうかによる。Atomフィードの取得結果を判定に使う処理ではない。</li>
 </ul>
 </section>
 
-<h2>4. 困ったときの確認順</h2>
+<h2>4. 再描画と表示のルール</h2>
+<section>
+<ol class="flow">
+<li><strong>作品カードを更新</strong>：取得した情報でカードのタイトル、作者、最終更新日、全話数、状態、あらすじ、作品URL、読書位置から作る「続き」リンクを更新する。</li>
+<li><strong>更新候補を保存</strong>：更新日時を候補データに記録し、今回の本棚基準日時と最終確認日時を保存する。</li>
+<li><strong>本棚基準日を表示</strong>：基準日表示を更新する。</li>
+<li><strong>「✨新着作品 🆙」を再構築</strong>：本棚に所属し、更新候補に該当し、読書位置が全話数より前にある作品を抽出する。</li>
+<li><strong>棚を再描画</strong>：本棚の棚・カード表示を組み立て直す。</li>
+<li><strong>完了表示</strong>：成功時は状態メッセージを消す。失敗時はエラー内容を表示し、ボタンを再び押せる状態に戻す。</li>
+</ol>
+<p>「✨新着作品 🆙」は、単に更新日時が新しい作品をすべて並べるものではない。読書位置があり、全話数に追いついていないこと、本棚に所属していること、更新候補に記録されていることが条件。</p>
+</section>
+
+<h2>5. 保存される情報と注意点</h2>
 <section>
 <ul>
-<li><strong>本棚更新が失敗：</strong>本棚画面のエラーメッセージを確認する。処理の入口は <code>updateInfo()</code> なので、まずなろうAPIへの問い合わせや基準日時を確認する。</li>
-<li><strong>Atom更新が動かない：</strong>「ともたよむAtom更新」ショートカットの実行と、GitHub Actionsの <code>publish-author-atom-feeds.yml</code> の実行結果を確認する。</li>
-<li>本棚更新とAtom更新の結果を混同しない。それぞれ別々に原因を切り分ける。</li>
+<li>本棚基準日・更新候補・最新取得作品の情報は、ブラウザーの <code>localStorage</code> に保存する。</li>
+<li>更新候補データは、作品ごとの最終更新日時を持つ。</li>
+<li>取得に失敗した場合はエラーメッセージを表示する。成功していないのに更新完了と扱わない。</li>
+<li>本棚基準日は、今回の処理が最後まで進んだときに更新される。基準日が進んでいることだけで、すべての作品情報が正しいと保証されるわけではない。</li>
 </ul>
+</section>
+
+<h2>6. 確認に使うコード位置</h2>
+<section>
+<ul>
+<li>本棚更新ボタンとクリック処理：<code>updateBtn</code>、<code>addEventListener("click", updateInfo)</code></li>
+<li>更新本体：<code>updateInfo()</code></li>
+<li>APIから期間内の作品を集める処理：<code>collectRange()</code>、<code>countRange()</code></li>
+<li>カード情報の反映：<code>updateCard()</code></li>
+<li>「✨新着作品 🆙」の抽出・再描画：<code>buildUpdateView()</code></li>
+<li>棚の再描画：<code>buildShelfFolders()</code></li>
+</ul>
+<p class="small">この資料は現行 <code>index.html</code> のコードを確認して作成した。Atom更新の処理手順は、この節には混在させず、別項目で管理する。</p>
 </section>
 </div>
 </details>
