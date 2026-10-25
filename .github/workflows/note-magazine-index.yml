@@ -1,0 +1,140 @@
+name: noteマガジン目次取得（汎用）
+
+on:
+  workflow_dispatch:
+    inputs:
+      magazine_key:
+        description: "noteマガジンID（例：m01cdae273ca2）"
+        required: true
+        type: string
+      magazine_title:
+        description: "マガジン名（表示用）"
+        required: true
+        type: string
+      author_id:
+        description: "noteユーザーID（URLの /ユーザー名/m/ より。例：tomotaday）"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  fetch-note-index:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: note APIから目次を最終ページまで取得
+        uses: actions/github-script@v7
+        env:
+          MAGAZINE_KEY: ${{ inputs.magazine_key }}
+          MAGAZINE_TITLE: ${{ inputs.magazine_title }}
+          AUTHOR_ID: ${{ inputs.author_id }}
+        with:
+          script: |
+            const fs = require('fs');
+            const key = process.env.MAGAZINE_KEY.trim();
+            const title = process.env.MAGAZINE_TITLE.trim();
+            const author = process.env.AUTHOR_ID.trim();
+            if (!/^[a-zA-Z0-9]+$/.test(key)) throw new Error('マガジンIDの形式が不正です');
+            if (!/^[a-zA-Z0-9_-]+$/.test(author)) throw new Error('noteユーザーIDの形式が不正です');
+            if (!title) throw new Error('マガジン名が空です');
+
+            const base = `https://note.com/api/v1/layout/magazine/${key}/section?page=`;
+            const all = [];
+            const pageCounts = [];
+            const seen = new Set();
+            const duplicates = [];
+            let lastPage = null;
+
+            for (let page = 1; page <= 30; page++) {
+              core.info(`Fetching magazine ${key}, page ${page}`);
+              const response = await fetch(base + page, {
+                headers: {
+                  'Accept': 'application/json',
+                  'User-Agent': 'tomotayomu-note-magazine-index/1.0'
+                }
+              });
+              if (!response.ok) throw new Error(`Page ${page}: HTTP ${response.status}`);
+              const json = await response.json();
+              const section = json?.data?.section ?? json?.data?.page_layout?.section;
+              if (!section || !Array.isArray(section.contents)) {
+                throw new Error(`Page ${page}: note APIの応答形式が想定と異なります`);
+              }
+
+              pageCounts.push(section.contents.length);
+              for (const item of section.contents) {
+                const note = item.note || {};
+                const itemKey = item.key || note.key || '';
+                const name = item.name || note.name || '(タイトルなし)';
+                if (itemKey && seen.has(itemKey)) duplicates.push(itemKey);
+                if (itemKey) seen.add(itemKey);
+                all.push({
+                  page,
+                  positionOnPage: section.contents.indexOf(item) + 1,
+                  key: itemKey,
+                  name,
+                  url: itemKey ? `https://note.com/${author}/n/${itemKey}` : '',
+                  publish_at: item.publish_at || note.publish_at || note.published_at || ''
+                });
+              }
+              core.info(`Page ${page}: ${section.contents.length} items; is_last_page=${section.is_last_page}`);
+              if (section.is_last_page === true) {
+                lastPage = page;
+                break;
+              }
+            }
+            if (lastPage === null) throw new Error('30ページ以内に最終ページへ到達しませんでした');
+
+            const result = {
+              magazine: title,
+              magazineKey: key,
+              authorId: author,
+              magazineUrl: `https://note.com/${author}/m/${key}`,
+              fetchedAt: new Date().toISOString(),
+              lastPage,
+              pageCounts,
+              totalItems: all.length,
+              uniqueKeys: seen.size,
+              duplicateKeys: [...new Set(duplicates)],
+              items: all
+            };
+            const outputPath = `data/note-index-${key}.json`;
+            const encoded = Buffer.from(JSON.stringify(result, null, 2), 'utf8').toString('base64');
+            let existingSha;
+            try {
+              const existing = await github.rest.repos.getContent({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                path: outputPath,
+                ref: context.ref.replace('refs/heads/', '')
+              });
+              if (existing.data && !Array.isArray(existing.data)) existingSha = existing.data.sha;
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
+            await github.rest.repos.createOrUpdateFileContents({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              path: outputPath,
+              message: `Update note magazine index: ${key}`,
+              content: encoded,
+              ...(existingSha ? { sha: existingSha } : {}),
+              branch: context.ref.replace('refs/heads/', '')
+            });
+
+            await core.summary
+              .addHeading('noteマガジン目次取得')
+              .addTable([
+                [{data:'項目',header:true},{data:'結果',header:true}],
+                ['マガジン', title],
+                ['マガジンID', key],
+                ['最終ページ', String(lastPage)],
+                ['ページごとの件数', pageCounts.join(', ')],
+                ['取得記事数', String(all.length)],
+                ['ユニーク記事キー数', String(seen.size)],
+                ['重複キー数', String(new Set(duplicates).size)],
+                ['保存先', outputPath]
+              ])
+              .write();
+            core.setOutput('output_path', outputPath);
