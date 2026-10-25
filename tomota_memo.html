@@ -14,7 +14,7 @@ body[data-theme="night"] .panel,body[data-theme="night"] .entry,body[data-theme=
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.5}
 main{width:min(100%,720px);margin:auto;padding:16px 14px 42px}a{color:inherit}h1{font-size:22px;margin:10px 0 4px}.hint{font-size:13px;color:var(--muted);margin:0 0 14px}
 button,input,textarea{font:inherit;color:inherit}button{border:1px solid var(--line);border-radius:8px;background:var(--card);padding:7px 10px}input,textarea{width:100%;border:1px solid var(--line);border-radius:8px;background:var(--card);padding:9px;font-size:16px}textarea{min-height:45vh;resize:vertical;white-space:pre-wrap}
-.toolbar{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.panel{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px;margin:10px 0}.row{display:flex;gap:8px;align-items:center}.row input{min-width:0}.tree{display:flex;flex-direction:column;gap:6px;margin-top:12px}.entry{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--card)}.entryhead{display:flex;gap:8px;align-items:center;padding:8px 9px;min-height:44px}.entryname{flex:1;min-width:0;overflow-wrap:anywhere}.entryhead button{flex-shrink:0;font-size:13px;padding:5px 7px}.children{padding:0 8px 8px 16px}.bodytext{white-space:pre-wrap;overflow-wrap:anywhere;padding:10px 2px}.muted{font-size:12px;color:var(--muted)}.hidden{display:none!important}.crumb{font-size:13px;color:var(--muted);overflow-wrap:anywhere}.status{font-size:13px;margin:8px 0;overflow-wrap:anywhere}.danger{border-color:#b66;background:#fff5f5}.modalback{position:fixed;inset:0;background:#0007;display:flex;align-items:center;justify-content:center;padding:16px;z-index:5}.modal{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:16px;width:min(100%,560px);max-height:90vh;overflow:auto}.modal h2{font-size:18px;margin:0 0 10px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.actions button{flex:1}.toplink{font-size:14px}
+.toolbar{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.panel{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px;margin:10px 0}.row{display:flex;gap:8px;align-items:center}.row input{min-width:0}.tree{display:flex;flex-direction:column;gap:6px;margin-top:12px}.entry{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--card)}.entryhead{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 9px;min-height:44px}.entryname{flex:1 1 100%;min-width:0;overflow-wrap:break-word;word-break:normal;white-space:normal;font-size:17px;line-height:1.5}.entryhead button{flex:0 0 auto;font-size:13px;padding:5px 7px;max-width:100%}.children{padding:0 8px 8px 16px}.bodytext{white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;padding:10px 2px;max-height:none;overflow:visible}.muted{font-size:12px;color:var(--muted)}.hidden{display:none!important}.crumb{font-size:13px;color:var(--muted);overflow-wrap:break-word}.status{font-size:13px;margin:8px 0;overflow-wrap:break-word}.danger{border-color:#b66;background:#fff5f5}.modalback{position:fixed;inset:0;background:#0007;display:block;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 10px calc(24px + env(safe-area-inset-bottom));z-index:5}.modal{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:16px;width:100%;max-width:680px;margin:0 auto;max-height:none;overflow:visible}.modal h2{font-size:18px;margin:0 0 10px}.modal textarea{min-height:32vh;max-height:42vh}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.actions button{flex:1}.toplink{font-size:14px}
 </style>
 </head>
 <body>
@@ -114,6 +114,19 @@ async function moveItem(id){
  try{await put({...item,parentId:choices[n].id||null,updatedAt:Date.now()});await refresh();status('移動しました。')}catch(e){status('移動できませんでした：'+e.message)}
 }
 async function refresh(){items=await allItems();render()}
+function adjustForKeyboard(){
+ const vv=window.visualViewport,back=$('editorBack'),modal=back.querySelector('.modal');
+ if(!vv||back.classList.contains('hidden'))return;
+ back.style.height=vv.height+'px';back.style.top=vv.offsetTop+'px';back.style.bottom='auto';
+ modal.style.maxHeight=Math.max(160,vv.height-20)+'px';modal.style.overflowY='auto';
+}
+window.visualViewport?.addEventListener('resize',adjustForKeyboard);
+window.visualViewport?.addEventListener('scroll',adjustForKeyboard);
+const originalOpenEditor=openEditor;
+openEditor=function(id=null,parentId=null,type='text'){originalOpenEditor(id,parentId,type);setTimeout(()=>{adjustForKeyboard();$('editName').scrollIntoView({block:'nearest'});},80)};
+const originalViewText=viewText;
+viewText=function(id){originalViewText(id);const modal=$('editorBack').querySelector('.modal');modal.style.maxHeight='calc(100dvh - 24px)';modal.style.overflowY='auto';};
+
 $('newRootFolder').addEventListener('click',()=>openEditor(null,null,'folder'));
 $('newRootText').addEventListener('click',()=>openEditor(null,null,'text'));
 $('saveItem').addEventListener('click',saveEditor);
