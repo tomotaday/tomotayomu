@@ -132,7 +132,7 @@ $('newRootText').addEventListener('click',()=>openEditor(null,null,'text'));
 $('saveItem').addEventListener('click',saveEditor);
 $('cancelEdit').addEventListener('click',()=>$('editorBack').classList.add('hidden'));
 $('search').addEventListener('input',e=>{query=e.target.value.trim();render()});
-(async()=>{try{db=await openDB();await refresh();status('ローカル保存領域に接続しました。作品データとは別のデータベースです。')}catch(e){status('初期化に失敗しました：'+e.message)}})();
+(async()=>{try{db=await openDB();await refresh();status('ローカル保存領域に接続しました。作品データとは別のデータベースです。');const target=new URLSearchParams(location.search).get('item');if(target&&items.some(x=>x.id===target&&x.type==='text'))viewText(target)}catch(e){status('初期化に失敗しました：'+e.message)}})();
 })();
 </script>
 </main>
