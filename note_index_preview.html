@@ -23,7 +23,7 @@ summary{cursor:pointer;font-weight:700;color:var(--accent)}.hidden{display:none}
 <body>
 <main>
 <h1>📜 note作品の巻物目次</h1>
-<div class="muted">独立テストページ｜本棚本体には変更を加えません</div>
+<div class="muted">独立テストページ｜URLの ?id= にマガジンIDを指定できます。本棚本体には変更を加えません。</div>
 <section class="panel">
 <div id="status">GitHubに保存された目次データを読み込み中…</div>
 </section>
@@ -45,7 +45,7 @@ summary{cursor:pointer;font-weight:700;color:var(--accent)}.hidden{display:none}
 </details>
 </main>
 <script>
-const DATA_URL = './data/note-index-m8a34f89ccce0.json';
+const params = new URLSearchParams(location.search);\nconst requestedId = params.get('id') || 'm8a34f89ccce0';\nconst DATA_URL = /^[a-zA-Z0-9]+$/.test(requestedId) ? './data/note-index-' + requestedId + '.json' : './data/note-index-m8a34f89ccce0.json';
 const statusEl = document.getElementById('status');
 const listEl = document.getElementById('list');
 const bookmarkEl = document.getElementById('bookmark');
@@ -97,7 +97,7 @@ function render(){
     const found = items.find(item => item.key === key);
     statusEl.textContent = found
       ? '✅ しおりの記事を特定しました：' + found.name + '（目次 ' + found.page + 'ページ目）'
-      : '⚠️ URLから記事キーを読み取れましたが、今回の目次106件には一致しません。';
+      : '⚠️ URLから記事キーを読み取れましたが、今回の目次には一致しません。';
   } else if (bookmarkEl.value.trim()) {
     statusEl.textContent = '⚠️ noteの記事URLを認識できません。記事ページのURLを入力してください。';
   } else {
