@@ -3,16 +3,8 @@ name: noteマガジン目次取得（汎用）
 on:
   workflow_dispatch:
     inputs:
-      magazine_key:
-        description: "noteマガジンID（例：m01cdae273ca2）"
-        required: true
-        type: string
-      magazine_title:
-        description: "マガジン名（表示用）"
-        required: true
-        type: string
-      author_id:
-        description: "noteユーザーID（URLの /ユーザー名/m/ より。例：tomotaday）"
+      magazine_url:
+        description: "共有シートから受け取ったnoteマガジンURL（例：https://note.com/tomotaday/m/m01cdae273ca2）"
         required: true
         type: string
 
@@ -27,18 +19,20 @@ jobs:
       - name: note APIから目次を最終ページまで取得
         uses: actions/github-script@v7
         env:
-          MAGAZINE_KEY: ${{ inputs.magazine_key }}
-          MAGAZINE_TITLE: ${{ inputs.magazine_title }}
-          AUTHOR_ID: ${{ inputs.author_id }}
+          MAGAZINE_URL: ${{ inputs.magazine_url }}
         with:
           script: |
-            const fs = require('fs');
-            const key = process.env.MAGAZINE_KEY.trim();
-            const title = process.env.MAGAZINE_TITLE.trim();
-            const author = process.env.AUTHOR_ID.trim();
-            if (!/^[a-zA-Z0-9]+$/.test(key)) throw new Error('マガジンIDの形式が不正です');
-            if (!/^[a-zA-Z0-9_-]+$/.test(author)) throw new Error('noteユーザーIDの形式が不正です');
-            if (!title) throw new Error('マガジン名が空です');
+            const keyMatch = (process.env.MAGAZINE_URL || '').trim();
+            let parsed;
+            try { parsed = new URL(keyMatch); } catch { throw new Error('マガジンURLを読み取れません'); }
+            if (parsed.protocol !== 'https:' || parsed.hostname !== 'note.com') {
+              throw new Error('https://note.com/ のURLを指定してください');
+            }
+            const match = parsed.pathname.match(/^\/([a-zA-Z0-9_-]+)\/m\/([a-zA-Z0-9]+)\/?$/);
+            if (!match) throw new Error('マガジンURLの形式が不正です。/ユーザーID/m/マガジンID の形式が必要です');
+            const author = match[1];
+            const key = match[2];
+            const magazineUrl = `https://note.com/${author}/m/${key}`;
 
             const base = `https://note.com/api/v1/layout/magazine/${key}/section?page=`;
             const all = [];
@@ -46,6 +40,7 @@ jobs:
             const seen = new Set();
             const duplicates = [];
             let lastPage = null;
+            let title = key;
 
             for (let page = 1; page <= 30; page++) {
               core.info(`Fetching magazine ${key}, page ${page}`);
@@ -57,13 +52,16 @@ jobs:
               });
               if (!response.ok) throw new Error(`Page ${page}: HTTP ${response.status}`);
               const json = await response.json();
-              const section = json?.data?.section ?? json?.data?.page_layout?.section;
+              const data = json?.data || {};
+              const section = data.section ?? data.page_layout?.section;
               if (!section || !Array.isArray(section.contents)) {
                 throw new Error(`Page ${page}: note APIの応答形式が想定と異なります`);
               }
 
+              // API応答にマガジン名が含まれていれば採用。見つからない場合はIDを仮表示名にする。
+              title = data.magazine?.name || data.magazine?.title || data.name || title;
               pageCounts.push(section.contents.length);
-              for (const item of section.contents) {
+              section.contents.forEach((item, index) => {
                 const note = item.note || {};
                 const itemKey = item.key || note.key || '';
                 const name = item.name || note.name || '(タイトルなし)';
@@ -71,13 +69,13 @@ jobs:
                 if (itemKey) seen.add(itemKey);
                 all.push({
                   page,
-                  positionOnPage: section.contents.indexOf(item) + 1,
+                  positionOnPage: index + 1,
                   key: itemKey,
                   name,
                   url: itemKey ? `https://note.com/${author}/n/${itemKey}` : '',
                   publish_at: item.publish_at || note.publish_at || note.published_at || ''
                 });
-              }
+              });
               core.info(`Page ${page}: ${section.contents.length} items; is_last_page=${section.is_last_page}`);
               if (section.is_last_page === true) {
                 lastPage = page;
@@ -85,12 +83,13 @@ jobs:
               }
             }
             if (lastPage === null) throw new Error('30ページ以内に最終ページへ到達しませんでした');
+            if (all.length === 0) throw new Error('記事が0件でした。空の取得結果で既存データを上書きしないため保存を中止します');
 
             const result = {
               magazine: title,
               magazineKey: key,
               authorId: author,
-              magazineUrl: `https://note.com/${author}/m/${key}`,
+              magazineUrl,
               fetchedAt: new Date().toISOString(),
               lastPage,
               pageCounts,
@@ -129,6 +128,7 @@ jobs:
                 [{data:'項目',header:true},{data:'結果',header:true}],
                 ['マガジン', title],
                 ['マガジンID', key],
+                ['noteユーザーID', author],
                 ['最終ページ', String(lastPage)],
                 ['ページごとの件数', pageCounts.join(', ')],
                 ['取得記事数', String(all.length)],
