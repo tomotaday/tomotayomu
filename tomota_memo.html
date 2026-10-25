@@ -60,7 +60,7 @@ function renderItem(item,depth){
  const head=el('div','entryhead'),label=el('div','entryname', (item.type==='folder'?'📁 ':'📄 ')+item.name);head.appendChild(label);
  if(item.type==='text')addButton(head,'開く',()=>viewText(item.id));
  addButton(head,'編集',()=>openEditor(item.id));
- addButton(head,'＋中',()=>openEditor(null,item.id,'folder'));
+ if(item.type==='folder')addButton(head,'＋中',()=>openEditor(null,item.id,'folder'));
  addButton(head,'移動',()=>moveItem(item.id));
  addButton(head,'削除',()=>deleteItem(item.id),'danger');
  wrap.appendChild(head);
