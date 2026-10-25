@@ -81,8 +81,8 @@ function viewText(id){
  const item=items.find(x=>x.id===id);if(!item)return;
  const back=$('editorBack');editing={id,view:true};
  $('editorTitle').textContent=item.name;$('editName').value=item.name;$('editName').disabled=true;
- $('textAreaWrap').classList.remove('hidden');$('editBody').value=item.body||'';$('editBody').readOnly=true;
- $('saveItem').classList.add('hidden');$('cancelEdit').textContent='閉じる';back.classList.remove('hidden');
+ $('textAreaWrap').classList.remove('hidden');$('editBody').value=item.body||'';$('editBody').readOnly=true;$('editBody').style.height='calc(100dvh - 250px)';$('editBody').style.minHeight='55vh';$('editBody').style.maxHeight='none';$('editName').style.fontSize='18px';
+ $('saveItem').classList.add('hidden');$('cancelEdit').textContent='閉じる';back.classList.remove('hidden');adjustForKeyboard();
 }
 function openEditor(id=null,parentId=null,type='text'){
  const item=id?items.find(x=>x.id===id):null;editing={id:id||null,parentId:parentId||null,type:item?item.type:type,view:false};
@@ -132,7 +132,7 @@ $('newRootText').addEventListener('click',()=>openEditor(null,null,'text'));
 $('saveItem').addEventListener('click',saveEditor);
 $('cancelEdit').addEventListener('click',()=>$('editorBack').classList.add('hidden'));
 $('search').addEventListener('input',e=>{query=e.target.value.trim();render()});
-(async()=>{try{db=await openDB();await refresh();status('ローカル保存領域に接続しました。作品データとは別のデータベースです。');const target=new URLSearchParams(location.search).get('item');if(target&&items.some(x=>x.id===target&&x.type==='text'))viewText(target)}catch(e){status('初期化に失敗しました：'+e.message)}})();
+(async()=>{try{db=await openDB();await refresh();status('ローカル保存領域に接続しました。作品データとは別のデータベースです。');const params=new URLSearchParams(location.search);const target=params.get('item');if(target&&items.some(x=>x.id===target&&x.type==='text'))viewText(target);else if(params.get('new')==='folder')openEditor(null,null,'folder');else if(params.get('new')==='text')openEditor(null,null,'text')}catch(e){status('初期化に失敗しました：'+e.message)}})();
 })();
 </script>
 </main>
