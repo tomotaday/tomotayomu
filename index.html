@@ -675,6 +675,7 @@ function updateCard(card,w){
   const n=String(w.ncode||card.dataset.ncode).toUpperCase();
   const isR18=isR18Work(w);
   card.dataset.r18=isR18?"1":"";
+  card.dataset.noveltype=String(w.noveltype ?? w.novel_type ?? card.dataset.noveltype ?? "");
   const titleEl=card.querySelector("h2"); if(titleEl&&w.title)titleEl.textContent=w.title;
   const authorEl=card.querySelector(".authorName"); if(authorEl&&w.writer)authorEl.textContent=w.writer;
   card.dataset.lastUpdated = w.general_lastup || card.dataset.lastUpdated || "";
