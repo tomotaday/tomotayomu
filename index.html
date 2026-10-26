@@ -605,9 +605,16 @@ function receiveNoteUrlFromQuery(){
 function restoreReadingFromQuery(){
   const params = new URLSearchParams(location.search);
   const n = (params.get("ncode") || "").trim().toUpperCase();
-  const episode = params.get("episode") || "";
+  let episode = params.get("episode") || "";
 
   if(!/^N[0-9A-Z]+$/.test(n) || !/^\d+$/.test(episode)) return false;
+
+  // 短編は作品トップURLから共有されるため、しおりショートカットの話数が0でも、
+  // 本棚の作品情報で短編（noveltype=2）と確認できた場合は読了として1話を記録する。
+  if(Number(episode)===0){
+    const card=[...document.querySelectorAll("#shelf .card")].find(el=>String(el.dataset.ncode||"").toUpperCase()===n);
+    if(card && String(card.dataset.noveltype||"").trim()==="2") episode="1";
+  }
 
   setReading(n, Number(episode));
 
