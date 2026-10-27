@@ -308,9 +308,9 @@ main{max-width:760px;margin:auto;padding:22px 16px 48px}a{color:#245e8c}h1{font-
 <ol class="flow">
 <li><strong>トークンを取得：</strong>パスワード保管先から <code>GitHub_PAT</code> を取得し、変数 <code>token</code> に設定する。</li>
 <li><strong>トークンがない場合：</strong>GitHub Personal Access Token の入力を求め、入力値を <code>token</code> に設定してキー <code>GitHub_PAT</code> に保存する。</li>
-<li><strong>クリップボードを取得：</strong>クリップボードの内容をワークフローへ渡すデータとして使う。</li>
+<li><strong>IFブロック終了後にクリップボードを取得：</strong>「クリップボードからテキストを取得」アクションを置き、その出力を後続のAPIリクエストで使う。クリップボードの特殊変数を直接指定するのではなく、取得アクションの出力を明示的にテキストとして受け取る。</li>
 <li><strong>GitHub Actionsを起動：</strong>POSTリクエストで <code>https://api.github.com/repos/tomotaday/tomotayomu/actions/workflows/publish-author-atom-feeds.yml/dispatches</code> にアクセスする。</li>
-<li><strong>リクエスト内容：</strong>ブランチは <code>main</code>。入力項目 <code>author_list_json</code> にクリップボードの内容を渡す。</li>
+<li><strong>リクエスト内容：</strong>ブランチは <code>main</code>。本文はJSONで、<code>ref</code> に <code>main</code>、<code>inputs.author_list_json</code> に「クリップボードからテキストを取得」アクションの出力を渡す。</li>
 <li><strong>本棚へ戻る：</strong>最後にクリップボードを取得し、<code>https://tomotaday.github.io/tomotayomu/</code> を開く。</li>
 </ol>
 <p class="small">共有されたショートカット画面と現行ワークフロー定義を照合した要約。API応答の細かな判定・表示など、画像から読み取れない挙動は断定しない。</p>
@@ -364,7 +364,8 @@ main{max-width:760px;margin:auto;padding:22px 16px 48px}a{color:#245e8c}h1{font-
 <h3>② Atom更新</h3>
 <ul>
 <li>ショートカット「ともたよむAtom更新」を起動する。</li>
-<li>ショートカットはクリップボードのJSONをGitHub APIへ送り、<code>publish-author-atom-feeds.yml</code> のワークフローを <code>main</code> ブランチで起動する。</li>
+<li>ショートカットはIFブロック終了後に「クリップボードを取得」アクションを実行し、その出力を「テキストを取得」で明示的に受け取る。</li>
+<li>そのテキストをGitHub APIのJSON本文 <code>inputs.author_list_json</code> に渡し、<code>publish-author-atom-feeds.yml</code> のワークフローを <code>main</code> ブランチで起動する。</li>
 <li>GitHub Actions側で作者リストを検証・保存し、作者のAtomフィード情報を取得してスナップショットを更新する。</li>
 <li>ショートカットの最後に、ともたよむ本棚ページを開く。</li>
 </ul>
@@ -384,6 +385,33 @@ main{max-width:760px;margin:auto;padding:22px 16px 48px}a{color:#245e8c}h1{font-
 <li>本棚更新とAtom更新は別機能として記録し、手順やトークン情報を本棚更新の項目に混在させない。</li>
 </ul>
 <p class="small">本項はショートカットのスクリーンショット、GitHubのトークン詳細画面、現行ワークフロー定義をもとに作成。設定変更は行っていない。</p>
+</section>
+</div>
+</details>
+
+<details class="guide">
+<summary><span class="tag">実機確認済み</span> Atom更新ショートカットの動作確認記録（2026年10月27日）</summary>
+<div class="inside">
+<h2>1. 起動成功の確認</h2>
+<section>
+<ul>
+<li>動作確認に成功したショートカットの名称を「ともたよむAtom更新」に統一した。</li>
+<li>本棚画面で「① JSONコピー」→「② Atom更新」の順に押すと、GitHub Actionsの <code>Publish author Atom feeds</code> が起動し、実行 #70 が成功した。</li>
+<li>実行時間は4分29秒。画面上の結果は作者762人、取得失敗0件、新規0件／既存1781件。</li>
+</ul>
+<p>この実機確認により、現在のショートカットからGitHub Actionsを起動できることを確認した。以前の「GitHub Actionsに届かない」問題は、Atom更新経路については解消を確認。ただし、noteマガジン目次取得のショートカットも同じように動くかは別途確認が必要。</p>
+</section>
+<h2>2. 取得失敗が1件出た場合の記録</h2>
+<section>
+<ul>
+<li>別の実行で、ある作者の小説フィードはHTTP 304（変更なし）で成功し、活動報告フィードだけが <code>Connection reset by peer</code> で失敗した事例を確認。</li>
+<li>その事例では小説フィードの既存7件、活動報告フィードの既存6件が確認され、活動報告側の以前のデータは保持されていた。</li>
+<li>このエラーは通信接続が途中で切断されたことを示すが、切断元までは特定できない。1回だけなら一時的な通信エラーの可能性があるため、再発するかを見てから再試行処理の追加を判断する。</li>
+</ul>
+</section>
+<h2>3. noteマガジン目次取得への適用</h2>
+<section>
+<p>Atom更新のショートカットを土台に作成したnoteマガジン目次取得用ショートカットは、動作するAtom更新版と比較し、URL・workflow名・リクエスト本文の入力名・クリップボードのテキスト取得方法を確認する。Atom更新の成功だけでは、note側の成功までは確定しない。</p>
 </section>
 </div>
 </details>
