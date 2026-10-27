@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "source": "tomotaYomuDB.authors",
-  "exported_at": "2026-10-22T20:08:54.551Z",
-  "author_count": 754,
+  "exported_at": "2026-10-27T14:47:55.076Z",
+  "author_count": 762,
   "authors": [
     {
       "author_id": "23291",
@@ -22,6 +22,10 @@
     },
     {
       "author_id": "64980",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "73842",
       "author_type": "normal"
     },
     {
@@ -77,6 +81,10 @@
       "author_type": "normal"
     },
     {
+      "author_id": "183373",
+      "author_type": "normal"
+    },
+    {
       "author_id": "186111",
       "author_type": "normal"
     },
@@ -90,6 +98,10 @@
     },
     {
       "author_id": "199141",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "215441",
       "author_type": "normal"
     },
     {
@@ -202,6 +214,10 @@
     },
     {
       "author_id": "901920",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "957377",
       "author_type": "normal"
     },
     {
@@ -437,7 +453,15 @@
       "author_type": "normal"
     },
     {
+      "author_id": "2868332",
+      "author_type": "normal"
+    },
+    {
       "author_id": "2929963",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2946763",
       "author_type": "normal"
     },
     {
@@ -725,6 +749,10 @@
       "author_type": "r18"
     },
     {
+      "author_id": "X1105U",
+      "author_type": "r18"
+    },
+    {
       "author_id": "X1108H",
       "author_type": "r18"
     },
@@ -842,6 +870,10 @@
     },
     {
       "author_id": "X1471BH",
+      "author_type": "r18"
+    },
+    {
+      "author_id": "X1476CH",
       "author_type": "r18"
     },
     {
