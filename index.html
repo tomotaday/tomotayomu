@@ -702,7 +702,7 @@ function updateCard(card,w){
   const workUrl = siteUrl({...w,ncode:n}); card.querySelector(".workLink").href = workUrl;
   const current = readingFor(n), total = Number(w.general_all_no || card.dataset.totalEpisodes || 0);
   card.dataset.current = current==null ? "" : String(current);
-  const isShortStory = String(w.noveltype ?? "").trim() === "2";
+  const isShortStory = String(card.dataset.noveltype || "").trim() === "2";
   renderResumeLink(card,current,total,workUrl,isShortStory);
   applyCardState(card);
 }
