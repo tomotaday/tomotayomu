@@ -293,125 +293,129 @@ main{max-width:760px;margin:auto;padding:22px 16px 48px}a{color:#245e8c}h1{font-
 </details>
 
 <details class="guide">
-<summary><span class="tag">運用記録</span> Atom更新ショートカット・GitHub Actions・トークン設定（2026年10月25日）</summary>
+<summary><span class="tag">再構成資料</span> なろう作者Atom更新の構成・復元手順（2026年10月28日整理）</summary>
 <div class="inside">
-<h2>1. 本棚更新との違い</h2>
-<section>
-<p>「② Atom更新」は作者のAtomフィードを更新する別機能。「🔄 本棚更新」とは目的も処理経路も異なる。</p>
-<ul>
-<li><strong>本棚更新：</strong><code>index.html</code> 内の <code>updateInfo()</code> を直接実行し、本棚に登録済みの作品情報を確認・反映する。</li>
-<li><strong>Atom更新：</strong>ショートカット「ともたよむAtom更新」からGitHub Actionsのワークフローを起動し、作者リストとAtomフィードのスナップショットを更新する。</li>
-</ul>
-</section>
-<h2>2. ショートカットの処理</h2>
+<p>この項目は、なろう作者のAtomフィード更新を将来再構成できるよう、ショートカット・GitHub API・GitHub Actions・データ保存先を一か所にまとめた技術資料。別機能の説明は含めない。</p>
+<h2>1. 全体構成</h2>
 <section>
 <ol class="flow">
-<li><strong>トークンを取得：</strong>パスワード保管先から <code>GitHub_PAT</code> を取得し、変数 <code>token</code> に設定する。</li>
-<li><strong>トークンがない場合：</strong>GitHub Personal Access Token の入力を求め、入力値を <code>token</code> に設定してキー <code>GitHub_PAT</code> に保存する。</li>
-<li><strong>IFブロック終了後にクリップボードを取得：</strong>「クリップボードからテキストを取得」アクションを置き、その出力を後続のAPIリクエストで使う。クリップボードの特殊変数を直接指定するのではなく、取得アクションの出力を明示的にテキストとして受け取る。</li>
-<li><strong>GitHub Actionsを起動：</strong>POSTリクエストで <code>https://api.github.com/repos/tomotaday/tomotayomu/actions/workflows/publish-author-atom-feeds.yml/dispatches</code> にアクセスする。</li>
-<li><strong>リクエスト内容：</strong>ブランチは <code>main</code>。本文はJSONで、<code>ref</code> に <code>main</code>、<code>inputs.author_list_json</code> に「クリップボードからテキストを取得」アクションの出力を渡す。</li>
-<li><strong>本棚へ戻る：</strong>最後にクリップボードを取得し、<code>https://tomotaday.github.io/tomotayomu/</code> を開く。</li>
+<li><strong>ともたよむ本棚：</strong>IndexedDBに保存された作者情報を読み、作者IDと作者種別をJSONにまとめる。</li>
+<li><strong>① JSONコピー：</strong>本棚画面でJSONをクリップボードにコピーする。</li>
+<li><strong>② Atom更新：</strong>iOSショートカット「ともたよむAtom更新」を起動する。ショートカットがクリップボードのJSONをテキストとして取得し、GitHub APIへPOSTする。</li>
+<li><strong>GitHub Actions：</strong><code>publish-author-atom-feeds.yml</code> が <code>main</code> ブランチで実行され、作者リストを検証・保存してAtomフィード情報を取得する。</li>
+<li><strong>保存：</strong><code>data/author-list.json</code> と <code>data/atom/author-feeds.json</code> に変更があればコミットし、<code>main</code> にプッシュする。</li>
 </ol>
-<p class="small">共有されたショートカット画面と現行ワークフロー定義を照合した要約。API応答の細かな判定・表示など、画像から読み取れない挙動は断定しない。</p>
+<p><strong>操作順は必ず「① JSONコピー」→「② Atom更新」。</strong>①だけではGitHub Actionsは起動しない。</p>
 </section>
-<h2>3. GitHub Actions側の処理</h2>
+<h2>2. iOSショートカット「ともたよむAtom更新」</h2>
 <section>
-<p>ワークフロー：<code>.github/workflows/publish-author-atom-feeds.yml</code></p>
+<h3>2-1. トークン取得と初回設定</h3>
 <ol class="flow">
-<li>手動起動時に <code>author_list_json</code> が渡された場合、JSONとして読み込み、作者IDと作者種別を検証して重複を除く。</li>
-<li>有効な作者リストを <code>data/author-list.json</code> に保存する。入力が空の場合は保存済みの作者リストを使う。</li>
-<li><code>scripts/publish_author_atom_feeds.py</code> で作者のAtomフィード情報を取得し、<code>data/atom/author-feeds.json</code> を更新する。</li>
-<li>変更があればGitHub Actionsのボットとしてコミットし、<code>main</code> にプッシュする。変更がなければ、スナップショットは変更なしとして終了する。</li>
-<li>診断用にフィードスナップショットをアーティファクトとして保存する（保持期間7日）。</li>
+<li>共有シートから入力を受け取る設定。入力がない場合は「続ける」。</li>
+<li>保管領域から <code>GitHub_PAT</code> を取得し、変数 <code>token</code> に設定する。</li>
+<li><code>GitHub_PAT</code> の値がない場合は「GitHub Personal Access Tokenを入力してください」でテキスト入力を求める。</li>
+<li>入力結果を変数 <code>token</code> に設定し、保存キー <code>GitHub_PAT</code> に保存する。</li>
+<li>IFブロックを終了する。</li>
 </ol>
-<p>ワークフローには毎日実行するスケジュールも定義されている（cron <code>0 1 * * *</code>、UTC）。ショートカットからの手動起動とは別に動作する。</p>
+<p>トークンの実値は資料に書かない。再構成時は有効なトークンを用意し、必要な権限を確認して保管する。</p>
+<h3>2-2. クリップボードをテキストとして取得する（重要）</h3>
+<ol class="flow">
+<li>IFブロックの<strong>外側・終了後</strong>に「クリップボードを取得」アクションを置く。</li>
+<li>その直後に「クリップボードからテキストを取得」アクションを置く。</li>
+<li>後続のAPIリクエスト本文の <code>inputs.author_list_json</code> には、このテキスト取得アクションの出力を指定する。</li>
+</ol>
+<p><strong>重要：</strong>修正版では、クリップボード内容を明示的にテキストとして取得するアクションを、IF終了後、APIリクエストの前に置いた。この出力を本文に接続する。クリップボード変数を直接本文に指定する構成と混同しない。</p>
+<h3>2-3. URLとHTTPリクエスト</h3>
+<ul>
+<li><strong>URL：</strong><code>https://api.github.com/repos/tomotaday/tomotayomu/actions/workflows/publish-author-atom-feeds.yml/dispatches</code></li>
+<li><strong>方法：</strong><code>POST</code></li>
+<li><strong>ヘッダー：</strong><code>Authorization: Bearer [変数 token]</code>、<code>X-GitHub-Api-Version: 2022-11-28</code>、<code>Accept: application/vnd.github+json</code></li>
+<li><strong>本文形式：</strong>JSON</li>
+<li><strong>本文フィールド：</strong><code>ref</code> = <code>main</code>、<code>inputs.author_list_json</code> = 「クリップボードからテキストを取得」の出力。</li>
+</ul>
+<p>本文の形：</p>
+<pre><code>{
+  "ref": "main",
+  "inputs": {
+    "author_list_json": "クリップボードから取得した作者JSON文字列"
+  }
+}</code></pre>
+<p class="small">文字列は説明用のプレースホルダー。実際には文字列を手入力せず、テキスト取得アクションの出力を変数として接続する。</p>
+<h3>2-4. 最後の処理</h3>
+<p>APIリクエストの後に <code>https://tomotaday.github.io/tomotayomu/</code> を開くアクションを置く。修正版のスクリーンショットでは、クリップボードのテキスト取得 → GitHub APIへのPOST → 本棚を開く、という順序を確認できた。</p>
 </section>
-<h2>4. トークン設定（実画面で確認済み）</h2>
+<h2>3. 本棚側：① JSONコピー</h2>
 <section>
 <ul>
-<li><strong>種類：</strong>Fine-grained personal access token。</li>
-<li><strong>トークン名：</strong><code>tomotayomu-actions-shortcut</code>。</li>
-<li><strong>対象リポジトリ：</strong><code>tomotaday/tomotayomu</code> のみ。</li>
-<li><strong>User permissions：</strong>なし。</li>
-<li><strong>Repository permissions：</strong>Metadata は Read、Actions は Read and Write。</li>
-<li><strong>有効期限：</strong>期限なし（GitHub画面に “This token has no expiration date” と表示）。</li>
-<li><strong>ショートカット内の保管キー：</strong><code>GitHub_PAT</code>。</li>
-<li><strong>トークンの保存場所：</strong>ともたが管理・保管している。ショートカットはそこに保存した値を <code>GitHub_PAT</code> というキーで読み出す。</li>
-<li><strong>保存時のメモ：</strong>「tomotayomu のAction」。</li>
+<li>本棚のIndexedDBにある作者情報を読み取る。</li>
+<li>作者IDと作者種別をまとめたJSONを作る。通常作品由来は <code>normal</code>、R18作品由来は <code>r18</code>。</li>
+<li>JSONをクリップボードへコピーする。作者名などの表示用情報は含めず、作者IDと種別を渡す。</li>
+<li>コピー後、画面で「② Atom更新」を押す。</li>
 </ul>
-<p>トークンの実際の値は資料室・チャット・スクリーンショットに記録しない。期限なしのため保管場所を限定し、不要になった場合や漏えいが疑われる場合はGitHubで失効させる。</p>
+<p>GitHub Actions側は <code>authors</code> 配列を期待する。各要素は <code>author_id</code> と <code>author_type</code> を持つ。例：</p>
+<pre><code>{
+  "exported_at": "日時文字列",
+  "authors": [
+    {"author_id": "12345", "author_type": "normal"},
+    {"author_id": "XABC123", "author_type": "r18"}
+  ]
+}</code></pre>
+<p class="small">構造説明用の例であり、実際の作者ID一覧ではない。</p>
 </section>
-<h2>5. 作者更新の表示期間</h2>
+<h2>4. GitHub Actionsのワークフロー</h2>
+<section>
+<p><strong>ファイル：</strong><code>.github/workflows/publish-author-atom-feeds.yml</code></p>
+<ul>
+<li><strong>起動：</strong><code>workflow_dispatch</code> および毎日のスケジュール実行。</li>
+<li><strong>入力：</strong><code>author_list_json</code>。空の場合は保存済み作者リストを使う。</li>
+<li><strong>権限：</strong><code>contents: write</code>。</li>
+<li><strong>実行環境：</strong>Ubuntu、Python 3.x、タイムアウト30分。</li>
+</ul>
+<h3>処理手順</h3>
+<ol class="flow">
+<li><code>main</code> ブランチをチェックアウトする。</li>
+<li>作者JSONが渡された場合、JSONを解析し、<code>authors</code> が空でない配列であることを確認する。</li>
+<li><code>author_id</code> と <code>author_type</code> を検証する。種別は <code>normal</code> または <code>r18</code>。重複する組み合わせは除外する。</li>
+<li>検証済みの作者一覧を <code>data/author-list.json</code> に保存する。</li>
+<li><code>scripts/publish_author_atom_feeds.py</code> を実行し、<code>data/atom/author-feeds.json</code> を更新する。</li>
+<li>データに差分があればGitHub Actionsボットとしてコミットする。<code>main</code> の最新変更を取得してリベースし、最大3回までプッシュを試みる。</li>
+<li>差分がなければ変更コミットを作らず終了する。</li>
+<li>診断用に <code>author-atom-feeds</code> というArtifactを保存する。保存期間は7日間。</li>
+</ol>
+</section>
+<h2>5. 主要ファイルと役割</h2>
 <section>
 <ul>
-<li>本棚の作者更新欄に表示する期間は、管理設定の「作者更新の表示期間（最大30日）」で変更できる。</li>
-<li>設定範囲は1〜30日。初期値は7日間。</li>
-<li>設定値はブラウザーの <code>localStorage</code>（キー <code>tomotaYomu_atom_display_days</code>）に保存され、値を変更すると作者更新欄を再描画する。</li>
-<li>これは本棚画面で作者更新を表示する期間の設定。Atomフィードを取得・生成する処理そのものの実行頻度を変更する設定ではない。</li>
+<li><code>index.html</code>：作者情報をJSON化してクリップボードへコピーする本棚画面。</li>
+<li><code>.github/workflows/publish-author-atom-feeds.yml</code>：起動、入力検証、取得スクリプト、コミットを制御する。</li>
+<li><code>data/author-list.json</code>：取得対象の作者ID・作者種別を保存する。</li>
+<li><code>scripts/publish_author_atom_feeds.py</code>：作者のAtomフィード情報を取得・集約する。</li>
+<li><code>data/atom/author-feeds.json</code>：取得したAtomフィード情報のスナップショット。</li>
 </ul>
 </section>
-<h2>6. Atom更新時の操作手順</h2>
+<h2>6. 再構成・障害対応チェックリスト</h2>
 <section>
-<p><strong>現在の運用手順は、① JSONコピー → ② Atom更新 の順番。</strong>2つのボタンは別々の処理なので、順番に押す。</p>
-<h3>① JSONコピー</h3>
-<ul>
-<li>本棚のIndexedDBに保存されている作者情報を読み取る。</li>
-<li>作者IDと作者種別（通常作品の作者 <code>normal</code>／R18作品の作者 <code>r18</code>）をまとめたJSONを作成し、クリップボードへコピーする。</li>
-<li>作者名などの表示用情報は含めず、作者IDと種別をGitHub Actionsへ渡すための軽量データを作る。</li>
-<li>成功すると、コピーした作者人数と「続けて『② Atom更新』を押してください」という案内が表示される。</li>
-</ul>
-<h3>② Atom更新</h3>
-<ul>
-<li>ショートカット「ともたよむAtom更新」を起動する。</li>
-<li>ショートカットはIFブロック終了後に「クリップボードを取得」アクションを実行し、その出力を「テキストを取得」で明示的に受け取る。</li>
-<li>そのテキストをGitHub APIのJSON本文 <code>inputs.author_list_json</code> に渡し、<code>publish-author-atom-feeds.yml</code> のワークフローを <code>main</code> ブランチで起動する。</li>
-<li>GitHub Actions側で作者リストを検証・保存し、作者のAtomフィード情報を取得してスナップショットを更新する。</li>
-<li>ショートカットの最後に、ともたよむ本棚ページを開く。</li>
-</ul>
-<h3>将来の検討要望</h3>
-<ul>
-<li>① JSONコピーと② Atom更新を、将来的には1つのボタンで連続実行できるようにしたい。</li>
-<li>現時点では、クリップボードへのコピーとショートカット起動が別処理のため、手動で①→②と押す運用。統合方法は検討要望として記録し、未実装であることを明記する。</li>
-</ul>
+<ol class="flow">
+<li>本棚で① JSONコピーを実行し、作者JSONがクリップボードに入っていることを確認する。</li>
+<li>ショートカット名が「ともたよむAtom更新」であることを確認する。</li>
+<li>保管キー <code>GitHub_PAT</code> が存在し、トークンが有効であることを確認する。トークン文字列は共有・記録しない。</li>
+<li>「クリップボードを取得」→「クリップボードからテキストを取得」がIF終了後、APIリクエストの前にあることを確認する。</li>
+<li>API URL、POST、Bearer認証ヘッダーを確認する。</li>
+<li>本文の <code>ref</code> が <code>main</code>、<code>inputs.author_list_json</code> がテキスト取得アクションの出力になっていることを確認する。</li>
+<li>GitHub Actionsの実行履歴で起動したか、失敗した場合はどのステップで失敗したかを確認する。</li>
+<li><code>401 Bad credentials</code> の場合はトークンの誤り・失効・保存値の不一致を確認する。トークンをチャットに貼らない。</li>
+<li>作者JSONが不正なら入力検証ステップ、フィード取得エラーなら該当ステップのログを確認する。1回の通信エラーだけで保存済みデータを手動削除しない。</li>
+<li>実行後、<code>data/author-list.json</code> と <code>data/atom/author-feeds.json</code> の更新状況を確認する。</li>
+</ol>
 </section>
-<h2>7. 運用・復旧時の確認点</h2>
+<h2>7. 実機で確認できた基準点</h2>
 <section>
 <ul>
-<li>Atom更新が動かない場合は、ショートカットの実行結果とGitHub Actionsの実行履歴を確認する。</li>
-<li>GitHub APIが <code>401 Bad credentials</code> を返す場合、トークン値の誤り・失効などが考えられる。値をチャットに貼らず、GitHub側のトークン状態とショートカットの保管キーを確認する。</li>
-<li>ワークフローが失敗した場合はActionsの実行ログを確認する。トークンを作り直す前に、失敗内容と権限設定を確認する。</li>
-<li>トークンを再発行する場合は、ショートカットの保存キー <code>GitHub_PAT</code> も更新する。古いトークンの失効は、新しいトークンでの動作確認後に行う。</li>
-<li>本棚更新とAtom更新は別機能として記録し、手順やトークン情報を本棚更新の項目に混在させない。</li>
+<li>2026年10月27日、ショートカット名を「ともたよむAtom更新」とし、本棚で「① JSONコピー」→「② Atom更新」を順に押して、GitHub Actionsが起動・成功することを確認した。</li>
+<li>確認した実行は <code>Publish author Atom feeds</code>、実行 #70。表示結果は作者762人、取得失敗0件、新規0件／既存1781件、実行時間4分29秒。</li>
+<li>別の実行で活動報告フィードが <code>Connection reset by peer</code> となった事例がある。接続切断を示すが原因は特定されていない。再発時はログを確認する。</li>
 </ul>
-<p class="small">本項はショートカットのスクリーンショット、GitHubのトークン詳細画面、現行ワークフロー定義をもとに作成。設定変更は行っていない。</p>
-</section>
-</div>
-</details>
-
-<details class="guide">
-<summary><span class="tag">実機確認済み</span> Atom更新ショートカットの動作確認記録（2026年10月27日）</summary>
-<div class="inside">
-<h2>1. 起動成功の確認</h2>
-<section>
-<ul>
-<li>動作確認に成功したショートカットの名称を「ともたよむAtom更新」に統一した。</li>
-<li>本棚画面で「① JSONコピー」→「② Atom更新」の順に押すと、GitHub Actionsの <code>Publish author Atom feeds</code> が起動し、実行 #70 が成功した。</li>
-<li>実行時間は4分29秒。画面上の結果は作者762人、取得失敗0件、新規0件／既存1781件。</li>
-</ul>
-<p>この実機確認により、現在のショートカットからGitHub Actionsを起動できることを確認した。以前の「GitHub Actionsに届かない」問題は、Atom更新経路については解消を確認。ただし、noteマガジン目次取得のショートカットも同じように動くかは別途確認が必要。</p>
-</section>
-<h2>2. 取得失敗が1件出た場合の記録</h2>
-<section>
-<ul>
-<li>別の実行で、ある作者の小説フィードはHTTP 304（変更なし）で成功し、活動報告フィードだけが <code>Connection reset by peer</code> で失敗した事例を確認。</li>
-<li>その事例では小説フィードの既存7件、活動報告フィードの既存6件が確認され、活動報告側の以前のデータは保持されていた。</li>
-<li>このエラーは通信接続が途中で切断されたことを示すが、切断元までは特定できない。1回だけなら一時的な通信エラーの可能性があるため、再発するかを見てから再試行処理の追加を判断する。</li>
-</ul>
-</section>
-<h2>3. noteマガジン目次取得への適用</h2>
-<section>
-<p>Atom更新のショートカットを土台に作成したnoteマガジン目次取得用ショートカットは、動作するAtom更新版と比較し、URL・workflow名・リクエスト本文の入力名・クリップボードのテキスト取得方法を確認する。Atom更新の成功だけでは、note側の成功までは確定しない。</p>
+<p class="small">本項はGitHub上の現行ワークフロー定義と、2026年10月27日に共有されたショートカット画面・実行結果をもとに再構成した。スクリーンショットに写っていないアクション設定の細部は、実機で再確認する。</p>
 </section>
 </div>
 </details>
