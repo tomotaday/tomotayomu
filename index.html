@@ -140,6 +140,7 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 </script>
 <div id="apiStatus">本棚情報未反映</div>
 <div id="noteReceiveStatus" hidden style="border:1px solid #8caa9b;border-radius:10px;background:#f1f8f4;padding:10px;margin:10px 0;overflow-wrap:anywhere"></div>
+<div style="margin:8px 0"><button id="registerNoteMagazineBtn" type="button">📝 noteマガジンを本棚に登録</button></div>
 <details class="searchDetails">
 <summary>🔎 検索</summary>
 <div class="searchBody">
@@ -1094,6 +1095,47 @@ document.getElementById("launchAuthorAtomBtn")?.addEventListener("click",()=>{
     if(status)status.textContent="作者情報の更新を依頼しました。ショートカット完了後にこの画面へ戻ると、最新データを確認します。";
     window.location.href="shortcuts://run-shortcut?name=%E3%81%A8%E3%82%82%E3%81%9F%E3%82%88%E3%82%80Atom%E6%9B%B4%E6%96%B0";
   }).catch(e=>{if(status)status.textContent="更新準備に失敗しました："+e.message;});
+});
+document.getElementById("registerNoteMagazineBtn")?.addEventListener("click",async()=>{
+  const button=document.getElementById("registerNoteMagazineBtn");
+  const status=document.getElementById("apiStatus");
+  const input=prompt("登録するnoteマガジンのURLを入力してください。","https://note.com/");
+  if(input===null)return;
+  let url,keyMatch;
+  try{
+    url=new URL(input.trim());
+    keyMatch=url.pathname.match(/^\/([a-zA-Z0-9_-]+)\/m\/([a-zA-Z0-9]+)\/?$/);
+    if(url.protocol!=="https:"||url.hostname!=="note.com"||!keyMatch)throw new Error("マガジンURLの形式を確認してください。");
+  }catch(error){alert(error.message||"noteマガジンURLを確認してください。");return;}
+  const authorId=keyMatch[1],magazineKey=keyMatch[2],id="note-magazine:"+magazineKey;
+  if(readNoteItems().some(item=>String(item.id)===id)){
+    if(status)status.textContent="このnoteマガジンはすでに本棚に登録されています。";
+    return;
+  }
+  button.disabled=true;
+  try{
+    if(status)status.textContent="GitHubに保存された目次データを確認しています…";
+    const response=await fetch("./data/note-index-"+magazineKey+".json?ts="+Date.now(),{cache:"no-store"});
+    if(!response.ok)throw new Error("目次JSONが見つかりません（HTTP "+response.status+"）。先にnote目次更新を実行してください。");
+    const data=await response.json();
+    if(!Array.isArray(data.items)||data.items.length===0)throw new Error("目次データが空です。登録は行いません。");
+    let shelfId="";
+    try{
+      const db=await new Promise((resolve,reject)=>{const request=indexedDB.open("tomotaYomuDB",1);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error)});
+      const shelves=await new Promise((resolve,reject)=>{const values=[],request=db.transaction("shelf_names","readonly").objectStore("shelf_names").openCursor();request.onsuccess=()=>{if(request.result){values.push(request.result.value);request.result.continue()}else resolve(values)};request.onerror=()=>reject(request.error)});
+      const unclassified=shelves.find(v=>String(v.shelf_name??v.name??v.title??"").replace(/\s/g,"").includes("未分類"));
+      shelfId=String(unclassified?.shelf_id||"");
+      db.close();
+    }catch(error){console.warn("未分類棚IDの取得に失敗",error)}
+    const item={id,title:String(data.magazine||magazineKey),author:String(data.authorId||authorId),authorId,url:"https://note.com/"+authorId+"/m/"+magazineKey,bookmarkUrl:"https://note.com/"+authorId+"/m/"+magazineKey,shelfId,createdAt:new Date().toISOString().slice(0,10),lastPublishedAt:String(data.items[data.items.length-1]?.publish_at||"")};
+    saveNoteItem(item);
+    await buildV3CardsFromIndexedDB();
+    seedReadingCache();restoreReadingPositions();renderGlobalBaseline();restoreLatestWorks();buildUpdateView();buildShelfFolders();
+    if(status)status.textContent="noteマガジンを本棚に登録しました："+item.title+"（目次 "+data.items.length+"件）";
+  }catch(error){
+    if(status)status.textContent="noteマガジン登録失敗："+error.message;
+    alert("noteマガジンを登録できませんでした。\n"+error.message);
+  }finally{button.disabled=false;}
 });
 document.addEventListener("click",e=>{
   const saveInfo=e.target.closest(".saveNoteInfo");
