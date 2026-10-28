@@ -1,0 +1,24 @@
+{
+  "magazine": "m01cdae273ca2",
+  "magazineKey": "m01cdae273ca2",
+  "authorId": "tomotaday",
+  "magazineUrl": "https://note.com/tomotaday/m/m01cdae273ca2",
+  "fetchedAt": "2026-10-28T12:33:17.635Z",
+  "lastPage": 1,
+  "pageCounts": [
+    1
+  ],
+  "totalItems": 1,
+  "uniqueKeys": 1,
+  "duplicateKeys": [],
+  "items": [
+    {
+      "page": 1,
+      "positionOnPage": 1,
+      "key": "naa32d67b4df4",
+      "name": "第1話　道を待つ、それとも道を拓く？――ともたよむ誕生のはじまり",
+      "url": "https://note.com/tomotaday/n/naa32d67b4df4",
+      "publish_at": "2026-10-22T21:21:27.000+09:00"
+    }
+  ]
+}
