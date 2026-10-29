@@ -41,6 +41,37 @@ jobs:
             const duplicates = [];
             let lastPage = null;
             let title = key;
+            let authorName = '';
+
+            // マガジン詳細APIから表示名・作者名を取得（取得できなくても目次取得は継続）。
+            const pickText = (...values) => values.find(v => typeof v === 'string' && v.trim())?.trim() || '';
+            const readJson = async (url) => {
+              try {
+                const response = await fetch(url, {
+                  headers: {
+                    'Accept': 'application/json',
+                    'User-Agent': 'tomotayomu-note-magazine-index/1.0'
+                  }
+                });
+                if (!response.ok) {
+                  core.warning(`Metadata API returned HTTP ${response.status}: ${url}`);
+                  return {};
+                }
+                return await response.json();
+              } catch (error) {
+                core.warning(`Metadata API could not be read: ${url} (${error.message})`);
+                return {};
+              }
+            };
+            const detailJson = await readJson(`https://note.com/api/v1/magazines/${key}`);
+            const detail = detailJson?.data || {};
+            const detailMagazine = detail.magazine || detail.magazine_layout || {};
+            const detailUser = detail.user || detail.creator || detailMagazine.user || detailMagazine.creator || {};
+            title = pickText(detail.name, detail.title, detailMagazine.name, detailMagazine.title, title);
+            authorName = pickText(
+              detailUser.nickname, detailUser.name, detailUser.display_name,
+              detailMagazine.user_nickname, detailMagazine.creator_name
+            );
 
             for (let page = 1; page <= 30; page++) {
               core.info(`Fetching magazine ${key}, page ${page}`);
@@ -59,7 +90,13 @@ jobs:
               }
 
               // API応答にマガジン名が含まれていれば採用。見つからない場合はIDを仮表示名にする。
-              title = data.magazine?.name || data.magazine?.title || data.name || title;
+              title = pickText(data.magazine?.name, data.magazine?.title, data.magazine_layout?.name, data.name, title);
+              const pageMagazine = data.magazine || data.magazine_layout || {};
+              const pageUser = pageMagazine.user || pageMagazine.creator || data.user || data.creator || {};
+              authorName = authorName || pickText(
+                pageUser.nickname, pageUser.name, pageUser.display_name,
+                pageMagazine.user_nickname, pageMagazine.creator_name
+              );
               pageCounts.push(section.contents.length);
               section.contents.forEach((item, index) => {
                 const note = item.note || {};
@@ -87,6 +124,7 @@ jobs:
 
             const result = {
               magazine: title,
+              authorName,
               magazineKey: key,
               authorId: author,
               magazineUrl,
@@ -127,6 +165,7 @@ jobs:
               .addTable([
                 [{data:'項目',header:true},{data:'結果',header:true}],
                 ['マガジン', title],
+                ['作者名', authorName || 'API応答から取得できず'],
                 ['マガジンID', key],
                 ['noteユーザーID', author],
                 ['最終ページ', String(lastPage)],
