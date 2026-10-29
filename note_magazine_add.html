@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f3ed">
+<title>ともたよむ｜noteマガジン登録</title>
+<style>
+:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195;--blue:#e8edf8;--blue-line:#526b91}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.6}
+main{width:min(100%,720px);margin:auto;padding:24px 16px 48px}
+h1{font-size:26px;line-height:1.3;margin:0 0 8px}
+.lead{font-size:14px;color:var(--muted);margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin:14px 0}
+.status{white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px}
+label{display:block;font-weight:700;margin:14px 0 5px}
+input{width:100%;font:inherit;padding:11px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink)}
+button{width:100%;min-height:52px;margin-top:14px;padding:12px 14px;border:2px solid var(--blue-line);border-radius:12px;background:var(--blue);color:#18365f;font:inherit;font-size:18px;font-weight:800}
+button:disabled{opacity:.45}
+.small{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.success{color:#17633c;font-weight:700}
+.error{color:#9b3028;font-weight:700}
+.article{border-top:1px solid #ddd5ca;padding:10px 0}
+.article-title{font-weight:700}
+a{color:#24548b}
+</style>
+</head>
+<body>
+<main>
+<h1>📝 noteマガジン登録</h1>
+<p class="lead">ショートカットから受け取ったマガジンの目次を確認し、ともたよむの本棚へ登録・更新します。</p>
+<section class="card">
+<div id="status" class="status" aria-live="polite">受信したマガジンURLを確認しています…</div>
+<div id="source" class="small"></div>
+</section>
+<section id="details" class="card" hidden>
+<label for="magazineTitle">本棚に表示するマガジン名</label>
+<input id="magazineTitle" autocomplete="off" placeholder="マガジン名">
+<label for="magazineAuthor">作者名（任意）</label>
+<input id="magazineAuthor" autocomplete="off" placeholder="作者名">
+<div id="meta" class="small"></div>
+<div id="articles"></div>
+<button id="register" type="button" disabled>本棚に登録</button>
+</section>
+<section class="card">
+<a href="./index.html">← ともたよむ本棚へ戻る</a>
+</section>
+</main>
+<script>
+const NOTE_ITEMS_KEY="tomotaYomu_note_magazines_v1";
+const DB_NAME="tomotaYomuDB", DB_VERSION=1;
+const $=id=>document.getElementById(id);
+let magazineData=null, magazineUrl="", magazineKey="", authorId="", existingItem=null, loadToken=0;
+
+function setStatus(message,kind=""){const e=$("status");e.textContent=message;e.className="status "+kind}
+function readNoteItems(){try{const v=JSON.parse(localStorage.getItem(NOTE_ITEMS_KEY)||"null");return Array.isArray(v)?v:[]}catch(e){return []}}
+function writeNoteItems(items){localStorage.setItem(NOTE_ITEMS_KEY,JSON.stringify(items))}
+function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error("本棚データベースを開けません"));})}
+function readAll(db,name){return new Promise((resolve,reject)=>{if(!db.objectStoreNames.contains(name)){resolve([]);return}const out=[],r=db.transaction(name,"readonly").objectStore(name).openCursor();r.onsuccess=()=>{if(r.result){out.push(r.result.value);r.result.continue()}else resolve(out)};r.onerror=()=>reject(r.error||new Error(name+"の読み込みに失敗しました"));})}
+function validMagazineUrl(raw){
+  let u;try{u=new URL(raw)}catch(e){throw new Error("共有されたURLを読み取れません。noteマガジンのページから共有してください。")}
+  const m=u.pathname.match(/^\/([a-zA-Z0-9_-]+)\/m\/([a-zA-Z0-9]+)\/?$/);
+  if(u.protocol!=="https:"||u.hostname!=="note.com"||!m)throw new Error("受け取ったURLがnoteマガジンの形式ではありません。");
+  return {url:"https://note.com/"+m[1]+"/m/"+m[2],authorId:m[1],key:m[2]};
+}
+async function fetchIndex(){
+  const thisToken=++loadToken;
+  const path="./data/note-index-"+magazineKey+".json";
+  setStatus("目次データを探しています。GitHub Actionsの保存・公開を待っています…");
+  let lastError="";
+  for(let attempt=0;attempt<24;attempt++){
+    if(thisToken!==loadToken)return;
+    try{
+      const response=await fetch(path+"?t="+Date.now(),{cache:"no-store"});
+      if(response.ok){
+        const data=await response.json();
+        if(data&&data.magazineKey===magazineKey&&Array.isArray(data.items)&&data.items.length>0){
+          magazineData=data;
+          showDetails();
+          return;
+        }
+        lastError="JSONの内容が想定と異なります。";
+      }else lastError="HTTP "+response.status;
+    }catch(e){lastError=e.message||"通信エラー"}
+    if(attempt<23)await new Promise(resolve=>setTimeout(resolve,5000));
+  }
+  setStatus("目次JSONを取得できませんでした（"+lastError+"）。\nGitHub Actionsが成功している場合は、少し時間をおいてこのページを再読み込みしてください。","error");
+}
+async function showDetails(){
+  const key=magazineData.magazineKey;
+  const fallbackTitle=String(magazineData.magazine||"").trim();
+  const titleLooksLikeId=!fallbackTitle||fallbackTitle===key;
+  $("magazineTitle").value=titleLooksLikeId?"":fallbackTitle;
+  $("magazineAuthor").value=String(magazineData.authorName||magazineData.author||"").trim();
+  $("meta").textContent="取得記事数："+magazineData.totalItems+"件／最終ページ："+magazineData.lastPage+"／取得日時："+new Date(magazineData.fetchedAt).toLocaleString("ja-JP");
+  $("articles").innerHTML="";
+  magazineData.items.slice(0,5).forEach(item=>{
+    const div=document.createElement("div");div.className="article";
+    const title=document.createElement("div");title.className="article-title";title.textContent=item.name||"(タイトルなし)";
+    const link=document.createElement("a");link.href=item.url||"#";link.textContent="記事を開く";link.target="_blank";link.rel="noopener";
+    div.append(title,link);$("articles").append(div);
+  });
+  if(magazineData.items.length>5){const more=document.createElement("div");more.className="small";more.textContent="ほか "+(magazineData.items.length-5)+" 件";$("articles").append(more)}
+  existingItem=readNoteItems().find(x=>String(x.id)==="note-magazine:"+key)||null;
+  $("register").textContent=existingItem?"目次を更新":"本棚に登録";
+  $("details").hidden=false;
+  $("source").textContent="受信URL："+magazineUrl;
+  setStatus(existingItem?"登録済みのマガジンです。登録ボタンで目次情報を更新します。":"目次を取得しました。表示名を確認して、本棚への登録を進めてください。","success");
+  $("register").disabled=!String($("magazineTitle").value||"").trim();
+}
+$("magazineTitle").addEventListener("input",()=>{$("register").disabled=!magazineData||!String($("magazineTitle").value||"").trim()});
+$("register").addEventListener("click",async()=>{
+  const btn=$("register");btn.disabled=true;
+  try{
+    const title=String($("magazineTitle").value||"").trim();
+    const author=String($("magazineAuthor").value||"").trim();
+    if(!title)throw new Error("本棚に表示するマガジン名を入力してください。");
+    const items=readNoteItems();
+    const old=items.find(x=>String(x.id)==="note-magazine:"+magazineKey)||null;
+    let shelfId=String(old?.shelfId||"");
+    if(!shelfId){
+      const db=await openDB();
+      try{
+        const shelves=await readAll(db,"shelf_names");
+        const unclassified=shelves.find(v=>String(v?.shelf_name??v?.name??v?.title??"").replace(/\s/g,"").includes("未分類"));
+        shelfId=String(unclassified?.shelf_id||"");
+      }finally{db.close()}
+    }
+    const updated={
+      ...(old||{}),
+      id:"note-magazine:"+magazineKey,
+      title,author,
+      authorId,
+      url:magazineUrl,
+      bookmarkUrl:String(old?.bookmarkUrl||magazineUrl),
+      shelfId,
+      createdAt:String(old?.createdAt||new Date().toISOString().slice(0,10)),
+      lastIndexFetchedAt:String(magazineData.fetchedAt||""),
+      indexItemCount:Number(magazineData.totalItems||magazineData.items.length||0),
+      indexFile:"data/note-index-"+magazineKey+".json"
+    };
+    const index=items.findIndex(x=>String(x.id)===updated.id);
+    if(index<0)items.push(updated);else items[index]={...items[index],...updated};
+    writeNoteItems(items);
+    existingItem=updated;
+    setStatus((index<0?"✅ 本棚への登録が完了しました。":"✅ 登録済みマガジンの情報を更新しました。")+"\n本棚を開き直すと反映されます。","success");
+    btn.textContent="登録完了";
+  }catch(e){
+    setStatus("登録できませんでした："+e.message,"error");
+    btn.disabled=false;
+  }
+});
+(async()=>{
+  try{
+    const raw=new URLSearchParams(location.search).get("noteMagazineUrl");
+    if(!raw)throw new Error("マガジンURLが届いていません。ショートカットの最後のURL設定を確認してください。");
+    const parsed=validMagazineUrl(raw);
+    magazineUrl=parsed.url;authorId=parsed.authorId;magazineKey=parsed.key;
+    $("source").textContent="受信URL："+magazineUrl;
+    await fetchIndex();
+  }catch(e){setStatus("⚠️ "+e.message,"error")}
+})();
+</script>
+</body>
+</html>
