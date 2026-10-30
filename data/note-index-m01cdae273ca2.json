@@ -4,18 +4,26 @@
   "magazineKey": "m01cdae273ca2",
   "authorId": "tomotaday",
   "magazineUrl": "https://note.com/tomotaday/m/m01cdae273ca2",
-  "fetchedAt": "2026-10-30T00:40:34.543Z",
+  "fetchedAt": "2026-10-30T09:04:06.357Z",
   "lastPage": 1,
   "pageCounts": [
-    1
+    2
   ],
-  "totalItems": 1,
-  "uniqueKeys": 1,
+  "totalItems": 2,
+  "uniqueKeys": 2,
   "duplicateKeys": [],
   "items": [
     {
       "page": 1,
       "positionOnPage": 1,
+      "key": "nbc17719ff422",
+      "name": "第2話　記憶なんてあてにもならない",
+      "url": "https://note.com/tomotaday/n/nbc17719ff422",
+      "publish_at": "2026-10-30T18:03:00.000+09:00"
+    },
+    {
+      "page": 1,
+      "positionOnPage": 2,
       "key": "naa32d67b4df4",
       "name": "第1話　道を待つ、それとも道を拓く？――ともたよむ誕生のはじまり",
       "url": "https://note.com/tomotaday/n/naa32d67b4df4",
