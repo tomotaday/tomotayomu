@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#f6f3ed" name="theme-color"/>
-<title>ともたよむ v3.5.9【2026/10/30】サイト別バッジ追加</title>
+<title>ともたよむ v3.5.10【2026/10/30】サイト別バッジ右端・幅統一</title>
 <style>
 :root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195;--shelf-card:#fff;--shelf-ink:#252525;--shelf-line:#ddd;--topbtn-bg:#fffdf9;--topbtn-ink:#252525;--topbtn-line:#c9c0b4;--work-card-line:#aaa195}
 *{box-sizing:border-box}
@@ -25,10 +25,12 @@ button{border:1px solid #c8c0b5;border-radius:8px;background:transparent;padding
 .newMark{font-size:12px}
 h2{font-size:15px;line-height:1.45;font-weight:700;margin:0 0 4px}
 .author,.ncode{font-size:13px;color:#555}
-.siteBadge{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;font-size:11px;line-height:1.5;font-weight:700;vertical-align:1px;white-space:nowrap}
+.author{display:flex;align-items:center;gap:6px;min-width:0}
+.authorName{flex:1;min-width:0}
+.siteBadge{display:inline-block;flex:0 0 5.5rem;width:5.5rem;margin-left:auto;padding:1px 7px;border-radius:999px;font-size:11px;line-height:1.5;font-weight:700;text-align:center;white-space:nowrap;box-sizing:border-box}
 .siteBadge-narou{background:#DDF3E7;color:#278454}
 .siteBadge-kakuyomu{background:#DCEEFF;color:#2465A5}
-.siteBadge-note{background:#EEE0FA;color:#7542A7}
+.siteBadge-note{background:#EEE0FA;color:#7542A7;font-size:12px}
 details{margin-top:9px;font-size:13px}
 summary{cursor:pointer}
 .synopsis{white-space:pre-wrap;color:#555;margin:7px 0}
@@ -110,8 +112,8 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 
 
 <main>
-<h1 style="font-size:18px;margin:0 0 8px;white-space:nowrap;font-size:clamp(15px,4.4vw,18px)">ともたよむ v3.5.9【2026/10/30】</h1>
-<div class="note" style="font-weight:800;font-size:15px">サイト別バッジ追加</div>
+<h1 style="font-size:18px;margin:0 0 8px;white-space:nowrap;font-size:clamp(15px,4.4vw,18px)">ともたよむ v3.5.10【2026/10/30】</h1>
+<div class="note" style="font-weight:800;font-size:15px">サイト別バッジ右端・幅統一</div>
 <div class="top-update-actions">
 <button id="updateBtn" type="button">🔄 本棚更新</button>
 <button id="copyAuthorJsonBtn" type="button">① JSONコピー</button>
@@ -426,7 +428,7 @@ async function buildV3CardsFromIndexedDB(){
     card.dataset.authorManageName=am.get(n)?.authorManageName||"";
     card.dataset.current=pm.has(n)?String(pm.get(n).episode||""):"";
 
-    card.innerHTML='<div class="meta"><span class="newMark" hidden>🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ '+shelf+'</div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="siteBadge siteBadge-narou">なろう</span> <span class="searchExcludedMark" hidden title="検索除外に設定中">🚫</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから　📖 未読 / —話</a><button type="button" class="shortStoryReadToggle" hidden>未読</button></div><details class="managementDetails"><summary>詳細を開く</summary><div class="managementBody"><div class="ncode">Nコード：'+n+'</div><button type="button" class="moveShelfBtn">本棚を移動</button><button type="button" class="searchExcludedToggle">🔎 検索除外にする</button><button type="button" class="deleteWorkBtn">削除</button></div></details></article>';
+    card.innerHTML='<div class="meta"><span class="newMark" hidden>🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ '+shelf+'</div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="searchExcludedMark" hidden title="検索除外に設定中">🚫</span><span class="siteBadge siteBadge-narou">なろう</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから　📖 未読 / —話</a><button type="button" class="shortStoryReadToggle" hidden>未読</button></div><details class="managementDetails"><summary>詳細を開く</summary><div class="managementBody"><div class="ncode">Nコード：'+n+'</div><button type="button" class="moveShelfBtn">本棚を移動</button><button type="button" class="searchExcludedToggle">🔎 検索除外にする</button><button type="button" class="deleteWorkBtn">削除</button></div></details></article>';
     card.querySelector("h2").textContent=w.title||"";
     card.querySelector(".authorName").textContent=writer;
     updateCard(card,{...w,writer});
