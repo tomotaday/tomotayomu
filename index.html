@@ -515,7 +515,7 @@ async function refreshNotePublishedDates(){
         const resume=card.querySelector(".resumeLink");
         if(resume){
           resume.href=String(current.bookmarkUrl||current.url||"https://note.com/");
-          resume.textContent=bookmarkIndex>=0?"続き 📖 "+(bookmarkIndex+1)+"/"+indexItems.length+"話":"続き 📖 しおり未設定";
+          resume.textContent=bookmarkIndex>=0?"続き 📖 "+(indexItems.length-bookmarkIndex)+"/"+indexItems.length+"話":"続き 📖 しおり未設定";
         }
         const workLink=card.querySelector(".workLink");
         if(workLink)workLink.textContent="作品を開く";
