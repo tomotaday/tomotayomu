@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f6f3ed">
-<title>noteマガジン連携ガイド｜ともたよむ 資料室</title>
+<title>note登録・更新・復旧ガイド｜ともたよむ 資料室</title>
 <style>
 :root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195;--blue:#e8edf8;--blue-line:#526b91;--green:#17633c}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.7}
@@ -13,7 +13,7 @@ main{width:min(100%,760px);margin:auto;padding:22px 16px 52px}h1{font-size:25px;
 </head>
 <body><main>
 <a class="back" href="index.html">← ともたよむ本棚へ戻る</a>
-<h1>📝 noteマガジン連携・復旧ガイド</h1>
+<h1>📝 note登録・更新・復旧ガイド</h1>
 <p class="lead">noteマガジンのURLを共有シートから受け取り、GitHub Actionsで目次JSONを作成し、ともたよむの本棚へ登録・更新する仕組み。</p>
 <div class="card"><strong>現行方式：</strong>手動同期（マガジン単位）<br><span class="ok">2026/10/30 動作確認済み</span><p class="small">note側で新着記事を見つけたら、マガジントップを共有してショートカットを実行する。自動巡回ではない。GitHub Actionsの成功と、登録画面での目次表示まで確認済み。</p></div>
 
@@ -119,6 +119,6 @@ main{width:min(100%,760px);margin:auto;padding:22px 16px 52px}h1{font-size:25px;
 <li>未実装：note更新の自動検知・自動巡回。</li>
 </ul>
 <p class="small muted">復旧の基本方針：まず成功済みのショートカット構造を保ち、問題のある工程だけを確認する。PATの再発行やヘッダーの変更など、必要性が確認できない変更は行わない。</p>
-<div class="card"><strong>関連ファイル</strong><br><a href=".github/workflows/note-magazine-index.yml">GitHub Actionsワークフロー</a><br><a href="note_magazine_add.html">noteマガジン登録画面</a><br><a href="https://github.com/tomotaday/tomotayomu/actions/workflows/note-magazine-index.yml">GitHub Actions 実行履歴</a></div>
+<div class="card"><strong>関連ファイル</strong><br><a href="https://github.com/tomotaday/tomotayomu/blob/main/.github/workflows/note-magazine-index.yml">GitHub Actionsワークフロー</a><br><a href="note_magazine_add.html">noteマガジン登録画面</a><br><a href="https://github.com/tomotaday/tomotayomu/actions/workflows/note-magazine-index.yml">GitHub Actions 実行履歴</a></div>
 <a class="back" href="index.html">← ともたよむ本棚へ戻る</a>
 </main></body></html>
