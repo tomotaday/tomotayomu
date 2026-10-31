@@ -277,6 +277,10 @@ function loadShelfRestoreMap(){
   });
 }
 const NOTE_ITEMS_KEY="tomotaYomu_note_magazines_v1";
+const KAKUYOMU_ITEMS_KEY="tomotaYomu_kakuyomu_works_v1";
+function readKakuyomuItems(){try{const v=JSON.parse(localStorage.getItem(KAKUYOMU_ITEMS_KEY)||"null");return Array.isArray(v)?v:[]}catch(e){return []}}
+function writeKakuyomuItems(items){localStorage.setItem(KAKUYOMU_ITEMS_KEY,JSON.stringify(items))}
+function saveKakuyomuItem(updated){const items=readKakuyomuItems(),i=items.findIndex(x=>String(x.id)===String(updated.id));if(i<0)items.push(updated);else items[i]={...items[i],...updated};writeKakuyomuItems(items)}
 const NOTE_INITIAL_ITEM={id:"note-magazine:m8a34f89ccce0",title:"ツガイのセカイ",author:"ちかい",authorId:"campana",url:"https://note.com/campana/m/m8a34f89ccce0",bookmarkUrl:"https://note.com/campana/m/m8a34f89ccce0",shelfId:"",createdAt:"2026-10-19"};
 function readNoteItems(){try{const v=JSON.parse(localStorage.getItem(NOTE_ITEMS_KEY)||"null");return Array.isArray(v)?v:[]}catch(e){return []}}
 function writeNoteItems(items){localStorage.setItem(NOTE_ITEMS_KEY,JSON.stringify(items))}
@@ -306,6 +310,7 @@ async function buildV3CardsFromIndexedDB(){
     writeNoteItems([{...NOTE_INITIAL_ITEM,shelfId:String(unclassified?.shelf_id||"")}]);
   }
   let noteItems=readNoteItems();
+  const kakuyomuItems=readKakuyomuItems();
   const pendingBookmark=String(localStorage.getItem("tomotaYomu_pending_note_bookmark_v1")||"").trim();
   if(pendingBookmark){
     try{
@@ -463,6 +468,28 @@ async function buildV3CardsFromIndexedDB(){
     card.querySelector(".workLink").href=String(item.url||"https://note.com/");
     card.querySelector(".resumeLink").href=String(item.bookmarkUrl||item.url||"https://note.com/");
     card.querySelector(".noteBookmarkInput").value=String(item.bookmarkUrl||item.url||"");
+    source.appendChild(card);
+    made++;
+  }
+
+  for(const item of kakuyomuItems){
+    const card=document.createElement("article");
+    card.className="card kakuyomuWorkCard";
+    card.dataset.kakuyomuId=String(item.id||"");
+    card.dataset.shelfId=String(item.shelfId||"");
+    card.dataset.shelf=String(sm.get(String(item.shelfId||""))?.shelf_name||"");
+    card.dataset.authorName=String(item.author||"");
+    card.dataset.current="";
+    card.dataset.lastUpdated=String(item.updatedAt||"");
+    card.innerHTML='<div class="meta"><span class="kakuyomuLastUpdated">—</span> ｜ <span class="kakuyomuStatus"></span> ｜ <span class="kakuyomuShelfMark"></span></div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="siteBadge siteBadge-kakuyomu">カクヨム</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a></div><details class="managementDetails"><summary>詳細を開く</summary><div class="managementBody"><div class="ncode kakuyomuIdLabel"></div><button type="button" class="moveShelfBtn">本棚を移動</button><button type="button" class="deleteKakuyomuBtn">削除</button></div></details>';
+    card.querySelector("h2").textContent=String(item.title||"");
+    card.querySelector(".authorName").textContent=String(item.author||"");
+    card.querySelector(".synopsis").textContent=String(item.synopsis||"あらすじ未登録");
+    card.querySelector(".kakuyomuStatus").textContent=String(item.status||"未設定");
+    card.querySelector(".kakuyomuIdLabel").textContent="作品ID："+String(item.id||"");
+    card.querySelector(".kakuyomuLastUpdated").textContent=String(item.updatedAt||"—");
+    card.querySelector(".kakuyomuShelfMark").textContent=String(sm.get(String(item.shelfId||""))?.shelf_name||"未分類");
+    card.querySelector(".workLink").href=String(item.url||"https://kakuyomu.jp/");
     source.appendChild(card);
     made++;
   }
@@ -792,6 +819,8 @@ function buildShelfFolders(){
  const unclassified=cards.filter(card=>!getFolder(card)).sort(compareWorkDate);
  const ud=document.createElement("details");ud.className="folderDetails";ud.dataset.shelfKey="system:unclassified";const us=document.createElement("summary");us.textContent="未分類 "+unclassified.length;const uw=document.createElement("div");uw.className="folderCards";ud.addEventListener("toggle",()=>{if(!ud.open||uw.dataset.loaded==="1")return;uw.dataset.loaded="1";if(!unclassified.length){const empty=document.createElement("div");empty.className="searchHint";empty.textContent="0";uw.appendChild(empty);return}unclassified.forEach(card=>uw.appendChild(card.cloneNode(true)))});ud.append(us,uw);
  const all=document.createElement("details");all.className="folderDetails";all.dataset.shelfKey="system:all";const als=document.createElement("summary");als.textContent="📚 全作品 "+cards.length;const aw=document.createElement("div");aw.className="folderCards";all.addEventListener("toggle",()=>{if(!all.open||aw.dataset.loaded==="1")return;aw.dataset.loaded="1";cards.slice().sort(compareWorkDate).forEach(card=>aw.appendChild(card.cloneNode(true)))});all.append(als,aw);
+ const kakuyomuCards=cards.filter(card=>!!card.dataset.kakuyomuId).sort((a,b)=>(a.querySelector("h2")?.textContent||"").localeCompare(b.querySelector("h2")?.textContent||"","ja"));
+ const kakuyomuShelf=document.createElement("details");kakuyomuShelf.className="folderDetails";kakuyomuShelf.dataset.shelfKey="system:kakuyomu";const kks=document.createElement("summary");kks.textContent="📘 カクヨム "+kakuyomuCards.length;const kkw=document.createElement("div");kkw.className="folderCards";if(!kakuyomuCards.length){const empty=document.createElement("div");empty.className="searchHint";empty.textContent="カクヨム作品はありません。";kkw.appendChild(empty)}else kakuyomuCards.forEach(card=>kkw.appendChild(card.cloneNode(true)));kakuyomuShelf.append(kks,kkw);
  const noteCards=cards.filter(card=>!!card.dataset.noteId).sort((a,b)=>(a.querySelector("h2")?.textContent||"").localeCompare(b.querySelector("h2")?.textContent||"","ja"));
  const noteShelf=document.createElement("details");noteShelf.className="folderDetails";noteShelf.dataset.shelfKey="system:note";const nts=document.createElement("summary");nts.textContent="📝 note "+noteCards.length;const ntw=document.createElement("div");ntw.className="folderCards";
  if(!noteCards.length){const empty=document.createElement("div");empty.className="searchHint";empty.textContent="note作品はありません。";ntw.appendChild(empty)}else noteCards.forEach(card=>ntw.appendChild(card.cloneNode(true)));
@@ -963,8 +992,9 @@ async function moveWorkToShelf(ncode,newShelfId){
 }
 function showShelfMoveDialog(card){
   const noteId=String(card?.dataset?.noteId||"");
+  const kakuyomuId=String(card?.dataset?.kakuyomuId||"");
   const n=String(card?.dataset?.ncode||"").toUpperCase();
-  if(!n&&!noteId)return;
+  if(!n&&!noteId&&!kakuyomuId)return;
   if(card.querySelector(".shelfMovePanel"))return;
 
   const usable=(v3Shelves||[])
@@ -1014,6 +1044,10 @@ function showShelfMoveDialog(card){
         const item=readNoteItems().find(x=>x.id===noteId);
         if(!item)throw new Error("note作品データが見つかりません");
         saveNoteItem({...item,shelfId:newId});
+      }else if(kakuyomuId){
+        const item=readKakuyomuItems().find(x=>String(x.id)===kakuyomuId);
+        if(!item)throw new Error("カクヨム作品データが見つかりません");
+        saveKakuyomuItem({...item,shelfId:newId});
       }else{
         await moveWorkToShelf(n,newId);
       }
@@ -1182,6 +1216,16 @@ async function autoImportNoteMagazineFromShortcut(){
 window.addEventListener("load",()=>{autoImportNoteMagazineFromShortcut().catch(error=>{console.error(error);const status=document.getElementById("apiStatus");if(status)status.textContent="note目次の自動登録／更新に失敗しました："+error.message})});
 
 document.addEventListener("click",e=>{
+  const deleteKakuyomu=e.target.closest(".deleteKakuyomuBtn");
+  if(deleteKakuyomu){
+    const card=deleteKakuyomu.closest(".kakuyomuWorkCard"),id=String(card?.dataset?.kakuyomuId||"");
+    if(!id)return;
+    if(!confirm("このカクヨム作品を本棚から削除しますか？"))return;
+    writeKakuyomuItems(readKakuyomuItems().filter(x=>String(x.id)!==id));
+    buildV3CardsFromIndexedDB().then(()=>{seedReadingCache();restoreReadingPositions();renderGlobalBaseline();restoreLatestWorks();buildUpdateView();buildShelfFolders();});
+    const status=document.getElementById("apiStatus");if(status)status.textContent="カクヨム作品を削除しました。";
+    return;
+  }
   const saveInfo=e.target.closest(".saveNoteInfo");
   if(saveInfo){
     const card=e.target.closest(".noteWorkCard"),noteId=String(card?.dataset?.noteId||"");
