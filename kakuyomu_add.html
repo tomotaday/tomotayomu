@@ -26,7 +26,7 @@ button:disabled{opacity:.55}
 <main>
 <p><a href="index.html">← ともたよむ本棚へ戻る</a></p>
 <h1>📚 カクヨム作品登録</h1>
-<div class="note">カクヨム作品情報ページからコピーしたテキストを貼り付け、内容を確認して登録します。登録情報はこの端末のブラウザ内に保存します。</div>
+<div class="note">カクヨム作品情報ページからコピーしたテキストを貼り付け、内容を確認して登録します。登録すると、ともたよむの本棚に作品カードが追加されます。</div>
 
 <section class="card">
 <div class="step">STEP 1</div>
@@ -65,7 +65,7 @@ button:disabled{opacity:.55}
 <label for="shelfId">登録する本棚</label><select id="shelfId"><option value="">本棚を読み込み中…</option></select>
 <div id="preview" class="preview" hidden></div>
 <div class="step">STEP 5</div>
-<button id="saveButton" type="button">内容を確認して仮登録する</button>
+<button id="saveButton" type="button">確認した内容を本棚に登録する</button>
 <div id="saveStatus" class="status" aria-live="polite"></div>
 </section>
 </main>
@@ -185,7 +185,8 @@ $("saveButton").addEventListener("click",()=>{
     if(items.some(x=>String(x.id)===id))throw new Error("このカクヨム作品は既に登録されています。");
     const item={id,title,author,authorHandle:$("authorHandle").value.trim(),url,synopsis:$("synopsis").value.trim(),tags:$("tags").value.split(/[\n,、]+/).map(x=>x.trim()).filter(Boolean),status:$("workStatus").value.trim(),episodeCount:normalizeCount($("episodeCount").value),characterCount:normalizeCount($("characterCount").value),updatedAt:extractDate($("updatedAt").value),shelfId,site:"kakuyomu",createdAt:new Date().toISOString()};
     items.push(item);localStorage.setItem(STORAGE_KEY,JSON.stringify(items));
-    message("saveStatus","✅ カクヨム作品情報を端末内に仮登録しました。\n"+title+"\n作品ID："+id+"\n登録件数："+items.length+"件\n\n※本棚カードへの表示連携は、次の工程で行います。");
+    message("saveStatus","✅ 本棚に登録しました。\n"+title+"\n作品ID："+id+"\n本棚へ戻ります…");
+    setTimeout(()=>{location.href="index.html";},900);
   }catch(e){message("saveStatus","⚠️ 登録できませんでした："+e.message,true)}
   finally{btn.disabled=false}
 });
