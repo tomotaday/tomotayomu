@@ -15,7 +15,7 @@ h1{font-size:25px;margin:8px 0 4px}.note{font-size:13px;color:var(--muted);margi
 .status{font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}
 label{display:block;font-weight:700;margin:12px 0 4px}
 input,textarea,select{display:block;width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
-textarea{resize:vertical}
+textarea{resize:vertical}#rawText{height:145px;min-height:110px}#workUrl{height:48px}h2{font-size:19px;margin:0 0 12px}.step{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.04em;margin-bottom:3px}.sectionTitle{margin:0 0 10px}.fieldHint{font-size:12px;color:var(--muted);margin:4px 0 0}
 button{display:block;width:100%;min-height:50px;margin-top:14px;padding:12px 14px;border:1px solid #81769b;border-radius:10px;background:var(--accent);color:#302747;font:inherit;font-weight:800}
 button:disabled{opacity:.55}
 .small{font-size:12px;color:var(--muted)}
@@ -29,17 +29,29 @@ button:disabled{opacity:.55}
 <div class="note">カクヨム作品情報ページからコピーしたテキストを貼り付け、内容を確認して登録します。登録情報はこの端末のブラウザ内に保存します。</div>
 
 <section class="card">
-<h2>① 作品情報を取り込む</h2>
-<label for="rawText">コピーした作品情報テキスト</label>
-<textarea id="rawText" rows="9" placeholder="ここにカクヨム作品情報ページのテキストを貼り付け"></textarea>
-<button id="parseButton" type="button">テキストから作品情報を読み込む</button>
+<div class="step">STEP 1</div>
+<h2 class="sectionTitle">作品情報を貼り付け</h2>
+<label for="rawText">カクヨムからコピーした作品情報</label>
+<textarea id="rawText" rows="5" placeholder="ここに作品情報テキストを貼り付け"></textarea>
+</section>
+<section class="card">
+<div class="step">STEP 2</div>
+<h2 class="sectionTitle">作品URLを貼り付け</h2>
+<label for="workUrl">カクヨム作品ページのURL</label>
+<input id="workUrl" type="url" inputmode="url" placeholder="https://kakuyomu.jp/works/作品ID">
+<div class="fieldHint">作品ページのURLをコピーして貼り付けてね。作品IDは自動で取り出します。</div>
+<label for="workId">作品ID（自動取得）</label>
+<input id="workId" autocomplete="off" readonly placeholder="URLを貼り付けると表示されます">
+</section>
+<section class="card">
+<div class="step">STEP 3</div>
+<h2 class="sectionTitle">作品情報を読み込む</h2>
+<button id="parseButton" type="button">作品情報を読み込んで解析</button>
 <div id="parseStatus" class="status" aria-live="polite"></div>
 </section>
-
 <section class="card">
-<h2>② 内容を確認・修正</h2>
-<label for="workUrl">作品URL</label><input id="workUrl" type="url" placeholder="https://kakuyomu.jp/works/作品ID">
-<label for="workId">作品ID</label><input id="workId" autocomplete="off" placeholder="URLから自動取得">
+<div class="step">STEP 4</div>
+<h2 class="sectionTitle">解析結果を確認・修正</h2>
 <label for="workTitle">作品タイトル</label><input id="workTitle" autocomplete="off">
 <label for="authorName">作者名</label><input id="authorName" autocomplete="off">
 <label for="authorHandle">作者ハンドル</label><input id="authorHandle" autocomplete="off" placeholder="@ユーザー名">
@@ -51,7 +63,8 @@ button:disabled{opacity:.55}
 <label for="updatedAt">最終更新日</label><input id="updatedAt" placeholder="例：2026年9月30日">
 <label for="shelfId">登録する本棚</label><select id="shelfId"><option value="">本棚を読み込み中…</option></select>
 <div id="preview" class="preview" hidden></div>
-<button id="saveButton" type="button">カクヨム作品を登録</button>
+<div class="step">STEP 5</div>
+<button id="saveButton" type="button">内容を確認して仮登録する</button>
 <div id="saveStatus" class="status" aria-live="polite"></div>
 </section>
 </main>
@@ -62,7 +75,7 @@ const DB_NAME="tomotaYomuDB",DB_VERSION=1;
 const $=id=>document.getElementById(id);
 function message(id,text,error=false){$(id).textContent=text;$(id).style.color=error?"#9b3d32":""}
 function getWorkId(url){
-  const m=String(url||"").match(/kakuyomu\.jp\/works\/(\d+)/i);
+  const m=String(url||"").trim().match(/^https:\/\/(?:www\.)?kakuyomu\.jp\/works\/(\d+)(?:[/?#]|$)/i);
   return m?m[1]:"";
 }
 function normalizeCount(s){const m=String(s||"").replace(/,/g,"").match(/\d+/);return m?Number(m[0]):0}
@@ -135,28 +148,29 @@ function applyData(d){
 }
 function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error("本棚DBを開けません"));})}
 async function loadShelves(){
+  let db;
   try{
-    const db=await openDB();
+    db=await openDB();
     const rows=await new Promise((resolve,reject)=>{const out=[],r=db.transaction("shelf_names","readonly").objectStore("shelf_names").openCursor();r.onsuccess=()=>{if(r.result){out.push(r.result.value);r.result.continue()}else resolve(out)};r.onerror=()=>reject(r.error)});
     const select=$("shelfId");select.innerHTML="";
-    const preferred=rows.find(x=>String(x.shelf_name??x.name??x.title??"").includes("未分類"))||rows[0];
+    const target=rows.find(x=>x&&x.work_add_target===true);
     rows.sort((a,b)=>Number(a.display_order??a.order??0)-Number(b.display_order??b.order??0));
-    for(const row of rows){const id=String(row.shelf_id??"");if(!id)continue;const name=String(row.shelf_name??row.name??row.title??id);const opt=document.createElement("option");opt.value=id;opt.textContent=name;select.appendChild(opt)}
-    if(preferred)select.value=String(preferred.shelf_id??"");
-    db.close();
-  }catch(e){$("shelfId").innerHTML='<option value="">未分類（棚情報を取得できません）</option>';message("saveStatus","本棚一覧を読み込めませんでした。登録前に再読み込みしてください。",true)}
+    for(const row of rows){const id=String(row.shelf_id??"");if(!id)continue;const opt=document.createElement("option");opt.value=id;opt.textContent=String(row.shelf_name??row.name??row.title??id);select.appendChild(opt)}
+    if(target)select.value=String(target.shelf_id??"");
+    if(!target){select.innerHTML='<option value="">📥登録先を設定してください</option>';throw new Error("本棚管理で「📥登録先」を指定してください。")}
+  }catch(e){$("shelfId").innerHTML='<option value="">📥登録先を設定してください</option>';message("saveStatus","登録先を読み込めませんでした："+e.message,true)}
+  finally{if(db)db.close()}
 }
 $("parseButton").addEventListener("click",()=>{
-  const raw=$("rawText").value.trim();
-  if(!raw){message("parseStatus","先に作品情報テキストを貼り付けてね。",true);return}
-  const d=parseKakuyomu(raw);applyData(d);
-  const missing=[];
-  if(!d.id)missing.push("作品ID（作品URL）");
-  if(!d.title)missing.push("作品タイトル");
-  if(!d.author)missing.push("作者名");
-  message("parseStatus","テキストを解析しました。"+(missing.length?"\n確認・入力が必要："+missing.join("、"):"\n基本項目を抽出できました。内容を確認してね。"),missing.length>0);
+  const raw=$("rawText").value.trim(),url=$("workUrl").value.trim(),id=getWorkId(url);
+  if(!raw){message("parseStatus","STEP 1：作品情報テキストを貼り付けてね。",true);return}
+  if(!id){$("workId").value="";message("parseStatus","STEP 2：カクヨム作品ページのURLを貼り付けてね。\\n例：https://kakuyomu.jp/works/作品ID",true);$("workUrl").focus();return}
+  $("workId").value=id;
+  const d=parseKakuyomu(raw);d.url=url;d.id=id;applyData(d);
+  const missing=[];if(!d.title)missing.push("作品タイトル");if(!d.author)missing.push("作者名");
+  message("parseStatus","作品情報を解析しました。"+(missing.length?"\\n確認・入力が必要："+missing.join("、"):"\\n基本項目を抽出できました。下のフォームを確認してね。"),missing.length>0);
 });
-$("workUrl").addEventListener("input",()=>{if(!$("workId").value)$("workId").value=getWorkId($("workUrl").value)});
+$("workUrl").addEventListener("input",()=>{$("workId").value=getWorkId($("workUrl").value)});
 $("saveButton").addEventListener("click",()=>{
   const btn=$("saveButton");btn.disabled=true;
   try{
@@ -165,7 +179,7 @@ $("saveButton").addEventListener("click",()=>{
     if(!/^https:\/\/kakuyomu\.jp\/works\/\d+/.test(url)||!id)throw new Error("カクヨムの作品URLを確認してください。");
     if(id!==getWorkId(url))throw new Error("作品IDと作品URLが一致しません。");
     if(!title||!author)throw new Error("作品タイトルと作者名は必須です。");
-    if(!shelfId)throw new Error("登録先の本棚を選択してください。");
+    if(!shelfId)throw new Error("本棚管理で「📥登録先」を設定してください。");
     const items=JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]");
     if(items.some(x=>String(x.id)===id))throw new Error("このカクヨム作品は既に登録されています。");
     const item={id,title,author,authorHandle:$("authorHandle").value.trim(),url,synopsis:$("synopsis").value.trim(),tags:$("tags").value.split(/[\n,、]+/).map(x=>x.trim()).filter(Boolean),status:$("workStatus").value.trim(),episodeCount:normalizeCount($("episodeCount").value),characterCount:normalizeCount($("characterCount").value),updatedAt:extractDate($("updatedAt").value),shelfId,site:"kakuyomu",createdAt:new Date().toISOString()};
