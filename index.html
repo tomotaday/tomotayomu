@@ -319,7 +319,7 @@ async function buildV3CardsFromIndexedDB(){
   if(receivedKakuyomuUrl){
     try{
       const receivedUrl=new URL(receivedKakuyomuUrl);
-      const episodeMatch=receivedUrl.pathname.match(/^\\/works\\/(\\d+)\\/episodes\\/(\\d+)(?:\\/)?$/);
+      const episodeMatch=receivedUrl.pathname.match(/^\/works\/(\d+)\/episodes\/(\d+)(?:\/)?$/);
       if((receivedUrl.hostname==="kakuyomu.jp"||receivedUrl.hostname==="www.kakuyomu.jp")&&episodeMatch){
         const target=kakuyomuItems.find(x=>String(x.id)===episodeMatch[1]);
         if(target){
