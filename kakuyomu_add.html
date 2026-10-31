@@ -100,13 +100,20 @@ function parseKakuyomu(raw){
     data.author=(lines[readIndex-1]||"").replace(/^作者[:：]\s*/,"");
   }
 
-  // 概要の直後から、タグ・作品状態の直前までをあらすじとして扱う。
-  const overview=lines.findIndex(x=>x==="概要");
+  // ページ上部のナビゲーションにも「概要」があるため、
+  // 作品紹介本文に近い、タグ・作品状態より前の最後の「概要」を採用する。
   const statusIndex=lines.findIndex(x=>/(完結済|連載中|連載|短編)/.test(x)&&/全?\s*[\d,]+\s*(話|エピソード)/.test(x));
+  const tagIndex=lines.findIndex(x=>x==="タグ");
+  const synopsisLimit=[statusIndex,tagIndex].filter(i=>i>=0);
+  const synopsisEnd=synopsisLimit.length?Math.min(...synopsisLimit):lines.length;
+  let overview=-1;
+  for(let i=synopsisEnd-1;i>=0;i--){
+    if(lines[i]==="概要"){overview=i;break;}
+  }
   if(overview>=0){
-    const stopCandidates=[statusIndex,lines.findIndex((x,i)=>i>overview&&x==="タグ")].filter(i=>i>overview);
-    const stop=stopCandidates.length?Math.min(...stopCandidates):lines.length;
-    data.synopsis=lines.slice(overview+1,stop).join("\n").trim();
+    data.synopsis=lines.slice(overview+1,synopsisEnd)
+      .filter(x=>!["関連小説","詳細","概要"].includes(x))
+      .join("\n").trim();
   }
 
   if(statusIndex>=0){
