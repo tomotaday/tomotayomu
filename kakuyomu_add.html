@@ -165,11 +165,11 @@ async function loadShelves(){
 $("parseButton").addEventListener("click",()=>{
   const raw=$("rawText").value.trim(),url=$("workUrl").value.trim(),id=getWorkId(url);
   if(!raw){message("parseStatus","STEP 1：作品情報テキストを貼り付けてね。",true);return}
-  if(!id){$("workId").value="";message("parseStatus","STEP 2：カクヨム作品ページのURLを貼り付けてね。\\n例：https://kakuyomu.jp/works/作品ID",true);$("workUrl").focus();return}
+  if(!id){$("workId").value="";message("parseStatus","STEP 2：カクヨム作品ページのURLを貼り付けてね。\n例：https://kakuyomu.jp/works/作品ID",true);$("workUrl").focus();return}
   $("workId").value=id;
   const d=parseKakuyomu(raw);d.url=url;d.id=id;applyData(d);
   const missing=[];if(!d.title)missing.push("作品タイトル");if(!d.author)missing.push("作者名");
-  message("parseStatus","作品情報を解析しました。"+(missing.length?"\\n確認・入力が必要："+missing.join("、"):"\\n基本項目を抽出できました。下のフォームを確認してね。"),missing.length>0);
+  message("parseStatus","作品情報を解析しました。"+(missing.length?"\n確認・入力が必要："+missing.join("、"):"\n基本項目を抽出できました。下のフォームを確認してね。"),missing.length>0);
 });
 $("workUrl").addEventListener("input",()=>{$("workId").value=getWorkId($("workUrl").value)});
 $("saveButton").addEventListener("click",()=>{
