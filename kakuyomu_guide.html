@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f3ed">
+<title>カクヨム登録・しおりガイド｜ともたよむ 資料室</title>
+<style>
+:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195;--ok:#e8f3e9;--future:#f0edf8}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.7}
+main{width:min(100%,760px);margin:auto;padding:22px 16px 52px}h1{font-size:24px;line-height:1.35;margin:8px 0}h2{font-size:19px;margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:5px}h3{font-size:16px;margin:16px 0 5px}.lead,.muted{color:var(--muted)}.card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:14px;margin:12px 0}.current{background:var(--ok)}.future{background:var(--future)}.flow{padding-left:1.35em}.flow li{margin:6px 0}.code{display:block;overflow-wrap:anywhere;background:#f0eee9;border-radius:8px;padding:9px;font-family:ui-monospace,monospace;font-size:13px}.small{font-size:13px}.back{color:inherit}
+</style>
+</head>
+<body><main>
+<a class="back" href="index.html">← ともたよむ本棚へ戻る</a>
+<h1>📘 カクヨム登録・しおりガイド</h1>
+<p class="lead">カクヨム作品をともたよむへ登録し、読書位置をしおりとして保存する仕組み。</p>
+
+<section class="card current">
+<strong>現状：実装済みの構成</strong>
+<p class="small">2026/10/31時点。画面・コードで確認できた内容と、ショートカットのスクリーンショットで確認できた内容を記録。</p>
+</section>
+
+<h2>1. 作品登録用ショートカット</h2>
+<ol class="flow">
+<li>共有シートから入力を受け取る。</li>
+<li>ショートカットの入力からテキストを取得する。</li>
+<li>テキストを使った取得処理を行う。</li>
+<li>取得結果をテキストにまとめる。</li>
+<li>そのテキストをクリップボードにコピーする。</li>
+<li><code>kakuyomu_add.html</code> を開く。</li>
+</ol>
+<p class="small">上記は共有されたショートカット画面で確認できたアクションの並び。取得アクションの内部設定・取得対象の詳細までは、画面から確定できていない。</p>
+
+<h2>2. 作品登録画面</h2>
+<p><code>kakuyomu_add.html</code> は、カクヨム作品情報のテキストと作品URLを受け取り、解析結果を確認・修正して本棚へ登録する画面。</p>
+<ol class="flow">
+<li>作品情報テキストを貼り付ける。</li>
+<li>カクヨム作品ページのURLを貼り付ける。</li>
+<li>作品情報を解析する。</li>
+<li>作品ID、タイトル、作者名、作者ハンドル、あらすじ、タグ、作品状態、総話数、文字数、最終更新日を確認・修正する。</li>
+<li>登録先の本棚を選択し、本棚へ登録する。</li>
+</ol>
+<p>登録データは端末内のlocalStorage <code>tomotaYomu_kakuyomu_works_v1</code> に保存される。登録先の本棚は <code>tomotaYomuDB</code> の棚情報から読み込む。</p>
+
+<h2>3. しおり用ショートカット</h2>
+<p>既存の「とよむ＋しおり」にカクヨム分岐を追加済み。</p>
+<ol class="flow">
+<li>共有テキストに <code>kakuyomu.jp/works/</code> が含まれるか判定する。</li>
+<li>共有テキストからURLを取得する。</li>
+<li>URLをURLエンコードする。</li>
+<li>次のURLを作成してBraveで開く。</li>
+</ol>
+<span class="code">https://tomotaday.github.io/tomotayomu/index.html?kakuyomuUrl=エンコード済みURL</span>
+<p>ともたよむ側では受け取ったURLから作品ID・エピソードIDを解析し、登録済み作品のしおりURLとして保存する。旧形式の <code>kakuyomuId</code> と <code>episodeId</code> による受け取りも互換性のため残している。</p>
+
+<h2>4. 本棚カードの表示</h2>
+<p>カクヨム作品カードは、なろうと同じ形式の続き表示に統一済み。</p>
+<span class="code">続き📖1/1,132話</span>
+<p>しおりURLがある場合、「続き📖」のリンクから該当エピソードを開く。作品情報の編集リンクも表示する。</p>
+
+<section class="card future">
+<h2>これから目指すこと</h2>
+<ul>
+<li>登録用ショートカットから登録画面への情報受け渡しを簡単にし、手動コピー・貼り付けを減らす。</li>
+<li>登録時に必要な情報の取得・入力手順を整理し、登録作業を短縮する。</li>
+<li>しおり取得から本棚カードの続き表示・再開までを一連の操作として安定させる。</li>
+<li>なろう・note・カクヨムの作品カードと管理操作の共通部分を整理する。ただし各サイト固有の取得・保存処理は分離して維持する。</li>
+</ul>
+<p class="small">上記は今後の目標であり、未実装または動作確認前の項目を含む。</p>
+</section>
+</main></body></html>
