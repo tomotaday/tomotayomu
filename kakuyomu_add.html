@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f3ed">
+<title>ともたよむ｜カクヨム作品登録</title>
+<style>
+:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195;--accent:#e9e4f5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.6}
+main{width:min(100%,720px);margin:auto;padding:24px 16px 48px}
+h1{font-size:25px;margin:8px 0 4px}.note{font-size:13px;color:var(--muted);margin-bottom:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin:14px 0}
+.status{font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}
+label{display:block;font-weight:700;margin:12px 0 4px}
+input,textarea,select{display:block;width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+textarea{resize:vertical}
+button{display:block;width:100%;min-height:50px;margin-top:14px;padding:12px 14px;border:1px solid #81769b;border-radius:10px;background:var(--accent);color:#302747;font:inherit;font-weight:800}
+button:disabled{opacity:.55}
+.small{font-size:12px;color:var(--muted)}
+.preview{padding:12px;background:#f5f1fa;border-radius:10px;margin-top:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<main>
+<p><a href="index.html">← ともたよむ本棚へ戻る</a></p>
+<h1>📚 カクヨム作品登録</h1>
+<div class="note">カクヨム作品情報ページからコピーしたテキストを貼り付け、内容を確認して登録します。登録情報はこの端末のブラウザ内に保存します。</div>
+
+<section class="card">
+<h2>① 作品情報を取り込む</h2>
+<label for="rawText">コピーした作品情報テキスト</label>
+<textarea id="rawText" rows="9" placeholder="ここにカクヨム作品情報ページのテキストを貼り付け"></textarea>
+<button id="parseButton" type="button">テキストから作品情報を読み込む</button>
+<div id="parseStatus" class="status" aria-live="polite"></div>
+</section>
+
+<section class="card">
+<h2>② 内容を確認・修正</h2>
+<label for="workUrl">作品URL</label><input id="workUrl" type="url" placeholder="https://kakuyomu.jp/works/作品ID">
+<label for="workId">作品ID</label><input id="workId" autocomplete="off" placeholder="URLから自動取得">
+<label for="workTitle">作品タイトル</label><input id="workTitle" autocomplete="off">
+<label for="authorName">作者名</label><input id="authorName" autocomplete="off">
+<label for="authorHandle">作者ハンドル</label><input id="authorHandle" autocomplete="off" placeholder="@ユーザー名">
+<label for="synopsis">あらすじ</label><textarea id="synopsis" rows="5"></textarea>
+<label for="tags">タグ</label><textarea id="tags" rows="2" placeholder="タグを改行または読点で区切って入力"></textarea>
+<label for="workStatus">作品状態</label><input id="workStatus" placeholder="完結済・連載中など">
+<label for="episodeCount">総話数</label><input id="episodeCount" inputmode="numeric" placeholder="例：1132">
+<label for="characterCount">文字数</label><input id="characterCount" inputmode="numeric" placeholder="例：3966011">
+<label for="updatedAt">最終更新日</label><input id="updatedAt" placeholder="例：2026年9月30日">
+<label for="shelfId">登録する本棚</label><select id="shelfId"><option value="">本棚を読み込み中…</option></select>
+<div id="preview" class="preview" hidden></div>
+<button id="saveButton" type="button">カクヨム作品を登録</button>
+<div id="saveStatus" class="status" aria-live="polite"></div>
+</section>
+</main>
+<script>
+"use strict";
+const STORAGE_KEY="tomotaYomu_kakuyomu_works_v1";
+const DB_NAME="tomotaYomuDB",DB_VERSION=1;
+const $=id=>document.getElementById(id);
+function message(id,text,error=false){$(id).textContent=text;$(id).style.color=error?"#9b3d32":""}
+function getWorkId(url){
+  const m=String(url||"").match(/kakuyomu\.jp\/works\/(\d+)/i);
+  return m?m[1]:"";
+}
+function normalizeCount(s){const m=String(s||"").replace(/,/g,"").match(/\d+/);return m?Number(m[0]):0}
+function extractDate(s){
+  const m=String(s||"").match(/(\d{4})年\s*(\d{1,2})月\s*(\d{1,2})日/);
+  return m?m[1]+"-"+String(Number(m[2])).padStart(2,"0")+"-"+String(Number(m[3])).padStart(2,"0"):String(s||"").trim();
+}
+function parseKakuyomu(raw){
+  const text=String(raw||"").replace(/\r/g,"").replace(/[\u200e\u200f\u202a-\u202e]/g,"");
+  const lines=text.split("\n").map(x=>x.trim()).filter(Boolean);
+  const data={url:"",id:"",title:"",author:"",handle:"",synopsis:"",tags:[],status:"",episodes:0,characters:0,updatedAt:""};
+  const url=text.match(/https?:\/\/kakuyomu\.jp\/works\/\d+/i);
+  if(url){data.url=url[0];data.id=getWorkId(data.url)}
+  const statusLine=lines.find(x=>/(完結済|連載中|連載|短編)/.test(x)&&/(話|エピソード)/.test(x));
+  if(statusLine){
+    data.status=(statusLine.match(/完結済|連載中|連載|短編/)||[])[0]||"";
+    const n=statusLine.match(/全?\s*([\d,]+)\s*(?:話|エピソード)/);
+    if(n)data.episodes=normalizeCount(n[1]);
+  }
+  const chars=text.match(/([\d,]+)文字/);
+  if(chars)data.characters=normalizeCount(chars[1]);
+  const date=text.match(/(\d{4}年\s*\d{1,2}月\s*\d{1,2}日)更新/);
+  if(date)data.updatedAt=extractDate(date[1]);
+  const overview=lines.findIndex(x=>x==="概要"||x==="作品概要");
+  if(overview>=0){
+    const endMarkers=new Set(["タグ","小説情報","作品情報","レビュー","感想","おすすめレビュー"]);
+    const end=lines.findIndex((x,i)=>i>overview&&(endMarkers.has(x)||/(完結済|連載中|短編).*全?\s*[\d,]+\s*(話|エピソード)/.test(x)));
+    const block=lines.slice(overview+1,end<0?Math.min(lines.length,overview+14):end);
+    if(block.length){
+      data.title=block[0]||"";
+      if(block.length>1){
+        const a=block.find(x=>/^作者[:：]/.test(x));
+        data.author=a?a.replace(/^作者[:：]\s*/,""):block[1].replace(/^作者[:：]\s*/,"");
+      }
+      const synopsisStart=block.findIndex(x=>/あらすじ/.test(x));
+      if(synopsisStart>=0)data.synopsis=block.slice(synopsisStart+1).join("\n").trim();
+      else if(block.length>2)data.synopsis=block.slice(2).join("\n").trim();
+    }
+  }
+  if(!data.title){
+    const idx=lines.findIndex(x=>/^(コピー|共有|ログイン|カクヨム)/.test(x));
+    const candidates=lines.slice(Math.max(0,idx+1),Math.min(lines.length,idx+12));
+    data.title=candidates.find(x=>x.length>8&&!/^https?:/.test(x)&&!/@/.test(x))||"";
+  }
+  const handle=text.match(/@([A-Za-z0-9_-]+)/);
+  if(handle)data.handle="@"+handle[1];
+  const tagStart=lines.findIndex(x=>x==="タグ");
+  if(tagStart>=0)data.tags=lines.slice(tagStart+1,Math.min(lines.length,tagStart+12)).filter(x=>x.length<80&&!/^(レビュー|感想|小説情報)/.test(x));
+  return data;
+}
+function applyData(d){
+  $("workUrl").value=d.url||$("workUrl").value;
+  $("workId").value=d.id||getWorkId($("workUrl").value);
+  $("workTitle").value=d.title||"";
+  $("authorName").value=d.author||"";
+  $("authorHandle").value=d.handle||"";
+  $("synopsis").value=d.synopsis||"";
+  $("tags").value=(d.tags||[]).join("\n");
+  $("workStatus").value=d.status||"";
+  $("episodeCount").value=d.episodes||"";
+  $("characterCount").value=d.characters||"";
+  $("updatedAt").value=d.updatedAt||"";
+  $("preview").hidden=false;
+  $("preview").textContent="抽出結果\n作品ID："+(d.id||"未取得")+"\nタイトル："+(d.title||"未取得")+"\n作者："+(d.author||"未取得")+"\n総話数："+(d.episodes||"未取得")+"\n文字数："+(d.characters||"未取得");
+}
+function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error("本棚DBを開けません"));})}
+async function loadShelves(){
+  try{
+    const db=await openDB();
+    const rows=await new Promise((resolve,reject)=>{const out=[],r=db.transaction("shelf_names","readonly").objectStore("shelf_names").openCursor();r.onsuccess=()=>{if(r.result){out.push(r.result.value);r.result.continue()}else resolve(out)};r.onerror=()=>reject(r.error)});
+    const select=$("shelfId");select.innerHTML="";
+    const preferred=rows.find(x=>String(x.shelf_name??x.name??x.title??"").includes("未分類"))||rows[0];
+    rows.sort((a,b)=>Number(a.display_order??a.order??0)-Number(b.display_order??b.order??0));
+    for(const row of rows){const id=String(row.shelf_id??"");if(!id)continue;const name=String(row.shelf_name??row.name??row.title??id);const opt=document.createElement("option");opt.value=id;opt.textContent=name;select.appendChild(opt)}
+    if(preferred)select.value=String(preferred.shelf_id??"");
+    db.close();
+  }catch(e){$("shelfId").innerHTML='<option value="">未分類（棚情報を取得できません）</option>';message("saveStatus","本棚一覧を読み込めませんでした。登録前に再読み込みしてください。",true)}
+}
+$("parseButton").addEventListener("click",()=>{
+  const raw=$("rawText").value.trim();
+  if(!raw){message("parseStatus","先に作品情報テキストを貼り付けてね。",true);return}
+  const d=parseKakuyomu(raw);applyData(d);
+  const missing=[];
+  if(!d.id)missing.push("作品ID（作品URL）");
+  if(!d.title)missing.push("作品タイトル");
+  if(!d.author)missing.push("作者名");
+  message("parseStatus","テキストを解析しました。"+(missing.length?"\n確認・入力が必要："+missing.join("、"):"\n基本項目を抽出できました。内容を確認してね。"),missing.length>0);
+});
+$("workUrl").addEventListener("input",()=>{if(!$("workId").value)$("workId").value=getWorkId($("workUrl").value)});
+$("saveButton").addEventListener("click",()=>{
+  const btn=$("saveButton");btn.disabled=true;
+  try{
+    const url=$("workUrl").value.trim(),id=$("workId").value.trim()||getWorkId(url);
+    const title=$("workTitle").value.trim(),author=$("authorName").value.trim(),shelfId=$("shelfId").value;
+    if(!/^https:\/\/kakuyomu\.jp\/works\/\d+/.test(url)||!id)throw new Error("カクヨムの作品URLを確認してください。");
+    if(id!==getWorkId(url))throw new Error("作品IDと作品URLが一致しません。");
+    if(!title||!author)throw new Error("作品タイトルと作者名は必須です。");
+    if(!shelfId)throw new Error("登録先の本棚を選択してください。");
+    const items=JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]");
+    if(items.some(x=>String(x.id)===id))throw new Error("このカクヨム作品は既に登録されています。");
+    const item={id,title,author,authorHandle:$("authorHandle").value.trim(),url,synopsis:$("synopsis").value.trim(),tags:$("tags").value.split(/[\n,、]+/).map(x=>x.trim()).filter(Boolean),status:$("workStatus").value.trim(),episodeCount:normalizeCount($("episodeCount").value),characterCount:normalizeCount($("characterCount").value),updatedAt:extractDate($("updatedAt").value),shelfId,site:"kakuyomu",createdAt:new Date().toISOString()};
+    items.push(item);localStorage.setItem(STORAGE_KEY,JSON.stringify(items));
+    message("saveStatus","✅ カクヨム作品情報を端末内に仮登録しました。\n"+title+"\n作品ID："+id+"\n登録件数："+items.length+"件\n\n※本棚カードへの表示連携は、次の工程で行います。");
+  }catch(e){message("saveStatus","⚠️ 登録できませんでした："+e.message,true)}
+  finally{btn.disabled=false}
+});
+loadShelves();
+</script>
+</body>
+</html>
