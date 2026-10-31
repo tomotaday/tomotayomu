@@ -72,45 +72,50 @@ function extractDate(s){
 }
 function parseKakuyomu(raw){
   const text=String(raw||"").replace(/\r/g,"").replace(/[\u200e\u200f\u202a-\u202e]/g,"");
-  const lines=text.split("\n").map(x=>x.trim()).filter(Boolean);
+  const lines=text.split("\n").map(x=>x.trim().replace(/^[•・▪◦]\s*/,"")).filter(Boolean);
   const data={url:"",id:"",title:"",author:"",handle:"",synopsis:"",tags:[],status:"",episodes:0,characters:0,updatedAt:""};
-  const url=text.match(/https?:\/\/kakuyomu\.jp\/works\/\d+/i);
-  if(url){data.url=url[0];data.id=getWorkId(data.url)}
-  const statusLine=lines.find(x=>/(完結済|連載中|連載|短編)/.test(x)&&/(話|エピソード)/.test(x));
-  if(statusLine){
-    data.status=(statusLine.match(/完結済|連載中|連載|短編/)||[])[0]||"";
-    const n=statusLine.match(/全?\s*([\d,]+)\s*(?:話|エピソード)/);
+
+  // 共有テキストに作品URLが含まれる場合だけIDを抽出する。URLがなければ手入力で補う。
+  const url=text.match(/https?:\/\/kakuyomu\.jp\/works\/(\d+)/i);
+  if(url){data.url=url[0];data.id=url[1]}
+
+  // 作品タイトル・作者名は「1話目から読む」の直前に並ぶページ見出しから取得する。
+  const readIndex=lines.findIndex(x=>x.includes("1話目から読む"));
+  if(readIndex>=2){
+    data.title=lines[readIndex-2]||"";
+    data.author=(lines[readIndex-1]||"").replace(/^作者[:：]\s*/,"");
+  }
+
+  // 概要の直後から、タグ・作品状態の直前までをあらすじとして扱う。
+  const overview=lines.findIndex(x=>x==="概要");
+  const statusIndex=lines.findIndex(x=>/(完結済|連載中|連載|短編)/.test(x)&&/全?\s*[\d,]+\s*(話|エピソード)/.test(x));
+  if(overview>=0){
+    const stopCandidates=[statusIndex,lines.findIndex((x,i)=>i>overview&&x==="タグ")].filter(i=>i>overview);
+    const stop=stopCandidates.length?Math.min(...stopCandidates):lines.length;
+    data.synopsis=lines.slice(overview+1,stop).join("\n").trim();
+  }
+
+  if(statusIndex>=0){
+    const line=lines[statusIndex];
+    data.status=(line.match(/完結済|連載中|連載|短編/)||[])[0]||"";
+    const n=line.match(/全?\s*([\d,]+)\s*(?:話|エピソード)/);
     if(n)data.episodes=normalizeCount(n[1]);
   }
   const chars=text.match(/([\d,]+)文字/);
   if(chars)data.characters=normalizeCount(chars[1]);
   const date=text.match(/(\d{4}年\s*\d{1,2}月\s*\d{1,2}日)更新/);
   if(date)data.updatedAt=extractDate(date[1]);
-  const overview=lines.findIndex(x=>x==="概要"||x==="作品概要");
-  if(overview>=0){
-    const endMarkers=new Set(["タグ","小説情報","作品情報","レビュー","感想","おすすめレビュー"]);
-    const end=lines.findIndex((x,i)=>i>overview&&(endMarkers.has(x)||/(完結済|連載中|短編).*全?\s*[\d,]+\s*(話|エピソード)/.test(x)));
-    const block=lines.slice(overview+1,end<0?Math.min(lines.length,overview+14):end);
-    if(block.length){
-      data.title=block[0]||"";
-      if(block.length>1){
-        const a=block.find(x=>/^作者[:：]/.test(x));
-        data.author=a?a.replace(/^作者[:：]\s*/,""):block[1].replace(/^作者[:：]\s*/,"");
-      }
-      const synopsisStart=block.findIndex(x=>/あらすじ/.test(x));
-      if(synopsisStart>=0)data.synopsis=block.slice(synopsisStart+1).join("\n").trim();
-      else if(block.length>2)data.synopsis=block.slice(2).join("\n").trim();
-    }
-  }
-  if(!data.title){
-    const idx=lines.findIndex(x=>/^(コピー|共有|ログイン|カクヨム)/.test(x));
-    const candidates=lines.slice(Math.max(0,idx+1),Math.min(lines.length,idx+12));
-    data.title=candidates.find(x=>x.length>8&&!/^https?:/.test(x)&&!/@/.test(x))||"";
-  }
+
+  // 作者ハンドルは作品ページ本文の先頭側にある最初の @表記を採用。
   const handle=text.match(/@([A-Za-z0-9_-]+)/);
   if(handle)data.handle="@"+handle[1];
+
   const tagStart=lines.findIndex(x=>x==="タグ");
-  if(tagStart>=0)data.tags=lines.slice(tagStart+1,Math.min(lines.length,tagStart+12)).filter(x=>x.length<80&&!/^(レビュー|感想|小説情報)/.test(x));
+  if(tagStart>=0){
+    const tagEnd=lines.findIndex((x,i)=>i>tagStart&&(x==="書籍化情報"||x==="おすすめレビュー"||x==="関連小説"));
+    data.tags=lines.slice(tagStart+1,tagEnd<0?tagStart+8:tagEnd)
+      .filter(x=>x.length<80&&!/^(レビュー|感想|小説情報)/.test(x));
+  }
   return data;
 }
 function applyData(d){
