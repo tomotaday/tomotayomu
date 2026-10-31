@@ -40,8 +40,7 @@ button:disabled{opacity:.55}
 <label for="workUrl">カクヨム作品ページのURL</label>
 <input id="workUrl" type="url" inputmode="url" placeholder="https://kakuyomu.jp/works/作品ID">
 <div class="fieldHint">作品ページのURLをコピーして貼り付けてね。作品IDは自動で取り出します。</div>
-<label for="workId">作品ID（自動取得）</label>
-<input id="workId" autocomplete="off" readonly placeholder="URLを貼り付けると表示されます">
+
 </section>
 <section class="card">
 <div class="step">STEP 3</div>
@@ -52,6 +51,7 @@ button:disabled{opacity:.55}
 <section class="card">
 <div class="step">STEP 4</div>
 <h2 class="sectionTitle">解析結果を確認・修正</h2>
+<label for="workId">作品ID（URLから自動取得）</label><input id="workId" autocomplete="off" readonly placeholder="URLから自動取得">
 <label for="workId">作品ID</label><input id="workId" autocomplete="off" readonly placeholder="URLから自動取得">
 <label for="workTitle">作品タイトル</label><input id="workTitle" autocomplete="off">
 <label for="authorName">作者名</label><input id="authorName" autocomplete="off">
