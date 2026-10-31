@@ -485,7 +485,10 @@ async function buildV3CardsFromIndexedDB(){
     card.querySelector("h2").textContent=String(item.title||"");
     card.querySelector(".authorName").textContent=String(item.author||"");
     card.querySelector(".synopsis").textContent=String(item.synopsis||"あらすじ未登録");
-    card.querySelector(".kakuyomuStatus").textContent=String(item.status||"未設定");
+    const rawKakuyomuStatus=String(item.status||"").trim();
+    const normalizedKakuyomuStatus=rawKakuyomuStatus.replace(/[🔵🟢🟣]/g,"").trim();
+    const kakuyomuStatusLabel=/^(完結済|完結)$/.test(normalizedKakuyomuStatus)?"🔵 完結":normalizedKakuyomuStatus==="連載中"?"🟢 連載中":normalizedKakuyomuStatus==="短編"?"🟣 短編":(rawKakuyomuStatus||"未設定");
+    card.querySelector(".kakuyomuStatus").textContent=kakuyomuStatusLabel;
     card.querySelector(".kakuyomuIdLabel").textContent="作品ID："+String(item.id||"");
     card.querySelector(".kakuyomuLastUpdated").textContent=String(item.updatedAt||"—");
     card.querySelector(".kakuyomuShelfMark").textContent=String(sm.get(String(item.shelfId||""))?.shelf_name||"未分類");
