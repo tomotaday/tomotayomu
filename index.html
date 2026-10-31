@@ -312,22 +312,53 @@ async function buildV3CardsFromIndexedDB(){
   let noteItems=readNoteItems();
   let kakuyomuItems=readKakuyomuItems();
   const kakuyomuParams=new URLSearchParams(location.search);
+  const receivedKakuyomuUrl=String(kakuyomuParams.get("kakuyomuUrl")||"").trim();
   const receivedKakuyomuId=String(kakuyomuParams.get("kakuyomuId")||"").trim();
   const receivedEpisodeId=String(kakuyomuParams.get("episodeId")||"").trim();
-  if(/^\d+$/.test(receivedKakuyomuId)&&/^\d+$/.test(receivedEpisodeId)){
+  let kakuyomuBookmarkSaved=false;
+  if(receivedKakuyomuUrl){
+    try{
+      const receivedUrl=new URL(receivedKakuyomuUrl);
+      const episodeMatch=receivedUrl.pathname.match(/^\\/works\\/(\\d+)\\/episodes\\/(\\d+)(?:\\/)?$/);
+      if((receivedUrl.hostname==="kakuyomu.jp"||receivedUrl.hostname==="www.kakuyomu.jp")&&episodeMatch){
+        const target=kakuyomuItems.find(x=>String(x.id)===episodeMatch[1]);
+        if(target){
+          saveKakuyomuItem({...target,bookmarkEpisodeId:episodeMatch[2],bookmarkEpisodeUrl:receivedUrl.href});
+          kakuyomuItems=readKakuyomuItems();
+          kakuyomuBookmarkSaved=true;
+          const receiveBox=document.getElementById("noteReceiveStatus");
+          if(receiveBox){receiveBox.hidden=false;receiveBox.textContent="🔖 カクヨムのしおりURLを受け取りました。作品カードの「続きから読む」から開けます。";}
+          kakuyomuParams.delete("kakuyomuUrl");
+        }else{
+          const receiveBox=document.getElementById("noteReceiveStatus");
+          if(receiveBox){receiveBox.hidden=false;receiveBox.textContent="📩 カクヨムのURLは受信しましたが、該当作品が本棚に見つかりません。しおりは保存していません。";}
+        }
+      }else{
+        const receiveBox=document.getElementById("noteReceiveStatus");
+        if(receiveBox){receiveBox.hidden=false;receiveBox.textContent="📩 カクヨムのURL形式を確認できません。しおりは保存していません。";}
+      }
+    }catch(e){
+      const receiveBox=document.getElementById("noteReceiveStatus");
+      if(receiveBox){receiveBox.hidden=false;receiveBox.textContent="📩 カクヨムのURLを読み取れませんでした。しおりは保存していません。";}
+    }
+  }
+  if(!receivedKakuyomuUrl&&/^\\d+$/.test(receivedKakuyomuId)&&/^\\d+$/.test(receivedEpisodeId)){
     const target=kakuyomuItems.find(x=>String(x.id)===receivedKakuyomuId);
     if(target){
       saveKakuyomuItem({...target,bookmarkEpisodeId:receivedEpisodeId,bookmarkEpisodeUrl:"https://kakuyomu.jp/works/"+receivedKakuyomuId+"/episodes/"+receivedEpisodeId});
       kakuyomuItems=readKakuyomuItems();
+      kakuyomuBookmarkSaved=true;
       const receiveBox=document.getElementById("noteReceiveStatus");
       if(receiveBox){receiveBox.hidden=false;receiveBox.textContent="🔖 カクヨムのしおりURLを受け取りました。作品カードの「続きから読む」から開けます。";}
       kakuyomuParams.delete("kakuyomuId");kakuyomuParams.delete("episodeId");
-      const remaining=kakuyomuParams.toString();
-      history.replaceState(null,"",location.pathname+(remaining?"?"+remaining:"")+location.hash);
     }else{
       const receiveBox=document.getElementById("noteReceiveStatus");
       if(receiveBox){receiveBox.hidden=false;receiveBox.textContent="📩 カクヨムのURLは受信しましたが、該当作品が本棚に見つかりません。しおりは保存していません。";}
     }
+  }
+  if(kakuyomuBookmarkSaved){
+    const remaining=kakuyomuParams.toString();
+    history.replaceState(null,"",location.pathname+(remaining?"?"+remaining:"")+location.hash);
   }
   const pendingBookmark=String(localStorage.getItem("tomotaYomu_pending_note_bookmark_v1")||"").trim();
   if(pendingBookmark){
