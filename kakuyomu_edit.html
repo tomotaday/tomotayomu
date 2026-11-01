@@ -25,7 +25,6 @@ button{display:block;width:100%;min-height:50px;margin-top:16px;padding:12px;bor
 <label for="tags">タグ（改行区切り）</label><textarea id="tags" rows="3"></textarea>
 <label for="status">作品状態</label><input id="status" placeholder="完結済・連載中など">
 <label for="episodes">総話数</label><input id="episodes" inputmode="numeric">
-<label for="bookmark">しおり（読了話数）</label><input id="bookmark" inputmode="numeric" placeholder="まだ読んでいない場合は0">
 <label for="characters">文字数</label><input id="characters" inputmode="numeric">
 <label for="updated">最終更新日</label><input id="updated">
 <div class="muted" id="workId"></div>
@@ -46,16 +45,15 @@ function init(){
  if(!item){say("作品データが見つかりません。",true);$("save").disabled=true;return}
  $("title").value=item.title||"";$("author").value=item.author||"";$("handle").value=item.authorHandle||"";
  $("synopsis").value=item.synopsis||"";$("tags").value=(item.tags||[]).join("\n");$("status").value=item.status||"";
- $("episodes").value=Number(item.episodeCount)||0;$("bookmark").value=Number(item.bookmarkEpisode)||0;
+ $("episodes").value=Number(item.episodeCount)||0;
  $("characters").value=Number(item.characterCount)||0;$("updated").value=item.updatedAt||"";
  $("workId").textContent="作品ID："+item.id;
 }
 $("save").addEventListener("click",()=>{
  if(!item)return;
- const total=num($("episodes").value),bookmark=num($("bookmark").value);
- if(bookmark>total&&total>0){say("しおりは総話数を超えない値にしてね。",true);return}
+ const total=num($("episodes").value);
  const all=items(),i=all.findIndex(x=>String(x.id)===id);if(i<0){say("作品データが見つかりません。",true);return}
- all[i]={...all[i],title:$("title").value.trim(),author:$("author").value.trim(),authorHandle:$("handle").value.trim(),synopsis:$("synopsis").value.trim(),tags:$("tags").value.split(/[\n,、]+/).map(x=>x.trim()).filter(Boolean),status:$("status").value.trim(),episodeCount:total,bookmarkEpisode:bookmark,characterCount:num($("characters").value),updatedAt:$("updated").value.trim()};
+ all[i]={...all[i],title:$("title").value.trim(),author:$("author").value.trim(),authorHandle:$("handle").value.trim(),synopsis:$("synopsis").value.trim(),tags:$("tags").value.split(/[\n,、]+/).map(x=>x.trim()).filter(Boolean),status:$("status").value.trim(),episodeCount:total,characterCount:num($("characters").value),updatedAt:$("updated").value.trim()};
  localStorage.setItem(KEY,JSON.stringify(all));say("保存しました。本棚へ戻ります。");setTimeout(()=>location.href="index.html",700);
 });
 init();
