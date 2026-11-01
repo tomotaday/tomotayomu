@@ -9,12 +9,15 @@ on:
         default: "1177354054891965415"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   fetch-toc:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Fetch work page and extract episode order
         env:
           WORK_ID: ${{ inputs.work_id }}
@@ -144,3 +147,19 @@ jobs:
             kakuyomu_toc.csv
           if-no-files-found: error
           retention-days: 7
+
+      - name: Save TOC JSON to repository
+        env:
+          WORK_ID: ${{ inputs.work_id }}
+        run: |
+          mkdir -p data/kakuyomu-toc
+          mv kakuyomu_toc.json "data/kakuyomu-toc/${WORK_ID}.json"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "data/kakuyomu-toc/${WORK_ID}.json"
+          if git diff --cached --quiet; then
+            echo "目次JSONに変更はありません。"
+          else
+            git commit -m "カクヨム目次更新: ${WORK_ID}"
+            git push
+          fi
