@@ -17,16 +17,16 @@ small{color:#666}
 <body>
 <main>
 <h1>📚 とよむ➕しおり 起動テスト</h1>
-<p>Braveを直接起動するのではなく、Apple公式のURL方式で既存ショートカット「とよむ＋しおり」を呼び出すテストです。</p>
+<p>Braveを直接起動するのではなく、Apple公式のURL方式で既存ショートカット「とよむ➕しおり」を呼び出すテストです。</p>
 <p class="note">既存ショートカットの内容は変更しません。実際のカクヨムのエピソードURLを入力してから、下のボタンを押してください。</p>
 <label for="target">カクヨムのエピソードURL</label>
 <input id="target" type="url" value="https://kakuyomu.jp/works/1177354054891965415/episodes/" autocomplete="url" spellcheck="false">
-<a href="#" id="run">「とよむ＋しおり」を起動する</a>
+<a href="#" id="run">「とよむ➕しおり」を起動する</a>
 <p><small>起動後、ショートカットがBraveを開き、カクヨムのWEB版に移動するか確認してください。</small></p>
 </main>
 <script>
 (function(){
- const shortcutName='とよむ＋しおり';
+ const shortcutName='とよむ➕しおり';
  const link=document.getElementById('run');
  link.addEventListener('click',function(event){
   event.preventDefault();
