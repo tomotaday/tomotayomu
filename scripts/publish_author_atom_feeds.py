@@ -144,6 +144,19 @@ def main():
             typ, aid, kind = future_map[future]
             feed_results[(typ, aid, kind)] = future.result()
 
+    # Keep Atom headlines for a rolling 7-day window only, regardless of fetch success.
+    cutoff = datetime.now(timezone.utc).timestamp() - 7 * 24 * 60 * 60
+
+    def is_within_window(entry):
+        value = str(entry.get("updated") or entry.get("published") or "").strip()
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed.timestamp() >= cutoff
+        except (TypeError, ValueError):
+            return False
+
     authors = []
     for author in valid_authors:
         aid, typ = author["author_id"], author["author_type"]
@@ -159,6 +172,9 @@ def main():
                 feed["previous_data_retained"] = True
             else:
                 feed["previous_data_retained"] = False
+            # Expired headlines are removed even when the feed request failed.
+            feed["entries"] = [entry for entry in feed.get("entries", []) if is_within_window(entry)]
+            feed["entry_count"] = len(feed["entries"])
         authors.append({"author_id": aid, "author_type": typ,
                         "ok": all(x["ok"] for x in feeds), "feeds": feeds})
         print(f"{aid} ({typ}): " + ", ".join(
