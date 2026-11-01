@@ -18,7 +18,7 @@ main{width:min(100%,760px);margin:auto;padding:22px 16px 52px}h1{font-size:24px;
 
 <section class="card current">
 <strong>現状：実装済みの構成</strong>
-<p class="small">2026/10/31時点。画面・コードで確認できた内容と、ショートカットのスクリーンショットで確認できた内容を記録。</p>
+<p class="small">2026/11/01時点。画面・コードで確認できた内容と、ショートカットのスクリーンショットで確認できた内容を記録。</p>
 </section>
 
 <h2>1. 作品登録用ショートカット</h2>
@@ -54,7 +54,20 @@ main{width:min(100%,760px);margin:auto;padding:22px 16px 52px}h1{font-size:24px;
 <span class="code">https://tomotaday.github.io/tomotayomu/index.html?kakuyomuUrl=エンコード済みURL</span>
 <p>ともたよむ側では受け取ったURLから作品ID・エピソードIDを解析し、登録済み作品のしおりURLとして保存する。旧形式の <code>kakuyomuId</code> と <code>episodeId</code> による受け取りも互換性のため残している。</p>
 
-<h2>4. 本棚カードの表示</h2>
+<h2>4. カクヨム目次の取得と話数表示</h2>
+<p>しおりURLに含まれるエピソードIDを、作品の何話目かに変換するため、GitHub Actionsで作品目次を取得して保存する。</p>
+<ol class="flow">
+<li>ともたよむ本棚の「⚙️管理設定用」を開く。</li>
+<li>「カクヨム目次取得」を開く。</li>
+<li>GitHub Actions画面で「Run workflow」を押す。</li>
+<li>作品ID欄に、登録済みカクヨム作品の作品IDを入力して、もう一度「Run workflow」を押す。</li>
+<li>処理が成功すると、目次JSONが <code>data/kakuyomu-toc/作品ID.json</code> としてGitHubへ保存される。</li>
+<li>ともたよむを再読み込みすると、保存済み目次からしおりのエピソードIDを照合し、「続き📖345/1,132話」のように表示する。</li>
+</ol>
+<p class="small">目次取得は作品ごとに実行する。初期値には検証用作品IDが入っているため、新しい作品を試すときは必ずその作品のIDに変更する。目次JSONが未取得・未照合の場合は、従来の表示のままになる。</p>
+<p><a href="https://github.com/tomotaday/tomotayomu/actions/workflows/kakuyomu-toc-test.yml" target="_blank" rel="noopener noreferrer">GitHub Actions：カクヨム目次取得を開く</a></p>
+
+<h2>5. 本棚カードの表示</h2>
 <p>カクヨム作品カードは、なろうと同じ形式の続き表示に統一済み。</p>
 <span class="code">続き📖1/1,132話</span>
 <p>しおりURLがある場合、「続き📖」のリンクから該当エピソードを開く。作品情報の編集リンクも表示する。</p>
