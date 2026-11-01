@@ -61,6 +61,8 @@ const API_URL="https://api.syosetu.com/novelapi/api/";
 const R18_API_URL="https://api.syosetu.com/novel18api/api/";
 const LEGACY_TARGET_SHELF_NAME="🏝️とりあえず";
 const SEARCH_EXCLUDED_KEY="tomotaYomu_search_excluded_ncodes_v1";
+const WORK_ADD_TARGET_KEY="tomotaYomu_work_add_target_v1";
+const UNCLASSIFIED_TARGET="system:unclassified";
 
 function setStatus(t,cls=""){const e=document.getElementById("status");e.textContent=t;e.className="status "+cls}
 function ncodeFromUrl(raw){
@@ -111,9 +113,10 @@ async function saveWork(work,rawUrl,manualAuthorId=""){
   const shelves=await readAll(db,"shelf_names");
   // 登録先は棚名ではなく、棚マスターに保存された固定の指定で判断する。
   // 初回移行時だけ旧名称を使い、見つかった棚を登録先として記憶する。
-  const shelf=shelves.find(v=>v?.work_add_target===true)
-    || shelves.find(v=>String(v?.shelf_name??v?.name??v?.title??"").trim()===LEGACY_TARGET_SHELF_NAME);
-  if(!shelf?.shelf_id)throw new Error("作品登録先の本棚が指定されていません。本棚管理で「作品登録先にする」を選んでください。");
+  const unclassifiedTarget=localStorage.getItem(WORK_ADD_TARGET_KEY)===UNCLASSIFIED_TARGET;
+  const shelf=unclassifiedTarget?null:(shelves.find(v=>v?.work_add_target===true)
+    || shelves.find(v=>String(v?.shelf_name??v?.name??v?.title??"").trim()===LEGACY_TARGET_SHELF_NAME));
+  if(!unclassifiedTarget&&!shelf?.shelf_id)throw new Error("作品登録先の本棚が指定されていません。本棚管理で「📥登録先」を選んでください。");
   const ncode=String(work.ncode||"").toUpperCase();
   const placements=await readAll(db,"shelf_placement");
   const authors=await readAll(db,"authors");
@@ -139,10 +142,10 @@ async function saveWork(work,rawUrl,manualAuthorId=""){
   putRow(tx,"works_cache",saved,ncode);
   // 旧名称で初回検出した棚も、固定の登録先として保存しておく。
   for(const item of shelves){
-    const updatedShelf={...item,work_add_target:String(item?.shelf_id)===String(shelf.shelf_id)};
-    putRow(tx,"shelf_names",updatedShelf,shelf.shelf_id);
+    const updatedShelf={...item,work_add_target:!unclassifiedTarget&&String(item?.shelf_id)===String(shelf.shelf_id)};
+    putRow(tx,"shelf_names",updatedShelf,item.shelf_id);
   }
-  const placement={...(existing||{}),ncode,shelf_id:String(existing?.shelf_id||shelf.shelf_id)};
+  const placement={...(existing||{}),ncode,shelf_id:existing?String(existing.shelf_id??""):(unclassifiedTarget?"":String(shelf.shelf_id))};
   putRow(tx,"shelf_placement",placement,ncode);
   const chosenAuthorId=String(manualAuthorId||matchedAuthorId||"").trim();
   if(chosenAuthorId){
@@ -151,7 +154,7 @@ async function saveWork(work,rawUrl,manualAuthorId=""){
     putRow(tx,"authors",authorRow,ncode);
   }
   await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存失敗"));tx.onabort=()=>reject(tx.error||new Error("保存中止"));});
-  return {shelfName:String(shelf.shelf_name??shelf.name??shelf.title??"本棚"),existing:!!existing,work:saved,authorId:matchedAuthorId};
+  return {shelfName:unclassifiedTarget?"未分類（一般本棚に配置しない）":String(shelf.shelf_name??shelf.name??shelf.title??"本棚"),existing:!!existing,work:saved,authorId:matchedAuthorId};
 }
 
 function setManualStatus(text,cls=""){const e=document.getElementById("manualStatus");e.textContent=text;e.className="status "+cls}
