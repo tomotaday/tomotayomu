@@ -64,7 +64,7 @@ main{width:min(100%,760px);margin:auto;padding:22px 16px 52px}h1{font-size:24px;
 <li>処理が成功すると、目次JSONが <code>data/kakuyomu-toc/作品ID.json</code> としてGitHubへ保存される。</li>
 <li>ともたよむを再読み込みすると、保存済み目次からしおりのエピソードIDを照合し、「続き📖345/1,132話」のように表示する。</li>
 </ol>
-<p class="small">目次取得は作品ごとに実行する。初期値には検証用作品IDが入っているため、新しい作品を試すときは必ずその作品のIDに変更する。目次JSONが未取得・未照合の場合は、従来の表示のままになる。</p>
+<p class="small">目次取得は作品ごとに実行する。初期値には検証用作品IDが入っているため、新しい作品を試すときは必ずその作品のIDに変更する。取得時には、検証用作品の先頭10話のID・順序と、カクヨム公表話数との一致を確認する。不一致の場合は不完全なJSONを保存せず、Actionsを失敗として止める。目次JSONが未取得・未照合の場合は、従来の表示のままになる。</p>
 <p><a href="https://github.com/tomotaday/tomotayomu/actions/workflows/kakuyomu-toc-test.yml" target="_blank" rel="noopener noreferrer">GitHub Actions：カクヨム目次取得を開く</a></p>
 
 <h2>5. 本棚カードの表示</h2>
