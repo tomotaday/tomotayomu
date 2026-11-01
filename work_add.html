@@ -142,7 +142,7 @@ async function saveWork(work,rawUrl,manualAuthorId=""){
   putRow(tx,"works_cache",saved,ncode);
   // 旧名称で初回検出した棚も、固定の登録先として保存しておく。
   for(const item of shelves){
-    const updatedShelf={...item,work_add_target:!unclassifiedTarget&&String(item?.shelf_id)===String(shelf.shelf_id)};
+    const updatedShelf={...item,work_add_target:!unclassifiedTarget&&String(item?.shelf_id)===String(shelf?.shelf_id??"")};
     putRow(tx,"shelf_names",updatedShelf,item.shelf_id);
   }
   const placement={...(existing||{}),ncode,shelf_id:existing?String(existing.shelf_id??""):(unclassifiedTarget?"":String(shelf.shelf_id))};
