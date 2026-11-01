@@ -3,10 +3,10 @@ name: Kakuyomu TOC test
 on:
   workflow_dispatch:
     inputs:
-      work_id:
-        description: "カクヨム作品ID"
+      work_url:
+        description: "カクヨム作品URL（作品IDだけでも可）"
         required: true
-        default: "1177354054891965415"
+        default: "https://kakuyomu.jp/works/1177354054891965415"
 
 permissions:
   contents: write
@@ -20,7 +20,7 @@ jobs:
 
       - name: Fetch work page and extract episode order
         env:
-          WORK_ID: ${{ inputs.work_id }}
+          WORK_URL: ${{ inputs.work_url }}
         run: |
           python - <<'PY'
           import csv
@@ -28,10 +28,17 @@ jobs:
           import os
           import re
           import urllib.request
+          from urllib.parse import urlparse
 
-          work_id = os.environ["WORK_ID"].strip()
-          if not re.fullmatch(r"\d+", work_id):
-              raise SystemExit("作品IDは数字で指定してください")
+          raw_input = os.environ["WORK_URL"].strip()
+          if re.fullmatch(r"\d+", raw_input):
+              work_id = raw_input
+          else:
+              parsed = urlparse(raw_input)
+              match_id = re.fullmatch(r"/works/(\d+)/?", parsed.path)
+              if parsed.scheme not in ("http", "https") or parsed.hostname not in ("kakuyomu.jp", "www.kakuyomu.jp") or not match_id:
+                  raise SystemExit("カクヨム作品URL（https://kakuyomu.jp/works/作品ID）を入力してください")
+              work_id = match_id.group(1)
 
           url = f"https://kakuyomu.jp/works/{work_id}"
           req = urllib.request.Request(
@@ -130,7 +137,8 @@ jobs:
               writer.writeheader()
               writer.writerows(episodes)
 
-          # Compare the first 10 episode IDs supplied by Tomota.
+          # Compare the first 10 known IDs only for the dedicated reference work.
+          known_reference_work_id = "1177354054891965415"
           known_first_ten = [
               "16816927860524242968",
               "1177354054891965429",
@@ -144,7 +152,7 @@ jobs:
               "16816927860264077825",
           ]
           actual_first_ten = [row["episode_id"] for row in episodes[:10]]
-          if actual_first_ten != known_first_ten:
+          if work_id == known_reference_work_id and actual_first_ten != known_first_ten:
               raise SystemExit(
                   "先頭10話のID・順序が検証値と一致しません。"
                   f" expected={known_first_ten} actual={actual_first_ten}"
@@ -160,7 +168,7 @@ jobs:
       - name: Upload TOC result
         uses: actions/upload-artifact@v4
         with:
-          name: kakuyomu-toc-${{ inputs.work_id }}
+          name: kakuyomu-toc
           path: |
             kakuyomu_toc.json
             kakuyomu_toc.csv
@@ -169,8 +177,9 @@ jobs:
 
       - name: Save TOC JSON to repository
         env:
-          WORK_ID: ${{ inputs.work_id }}
+          WORK_URL: ${{ inputs.work_url }}
         run: |
+          WORK_ID="$(python -c 'import json; print(json.load(open("kakuyomu_toc.json", encoding="utf-8"))["work_id"])')"
           mkdir -p data/kakuyomu-toc
           mv kakuyomu_toc.json "data/kakuyomu-toc/${WORK_ID}.json"
           git config user.name "github-actions[bot]"
