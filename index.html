@@ -552,6 +552,15 @@ async function buildV3CardsFromIndexedDB(){
       resume.style.opacity=episodeId?"1":".75";
     }
     card.querySelector(".kakuyomuEditLink").href="kakuyomu_edit.html?id="+encodeURIComponent(String(item.id||""));
+    if(episodeId){
+      loadKakuyomuToc(String(item.id||"")).then(toc=>{
+        const found=toc?.episodes?.find(ep=>String(ep.episode_id)===episodeId);
+        if(found&&resume){
+          resume.textContent="続き📖"+Number(found.number).toLocaleString("ja-JP")+"/"+(total?total.toLocaleString("ja-JP"):"—")+"話";
+          resume.dataset.episodeNumber=String(found.number);
+        }
+      }).catch(()=>{});
+    }
     source.appendChild(card);
     made++;
   }
@@ -564,6 +573,20 @@ async function buildV3CardsFromIndexedDB(){
   renderGlobalBaseline();
   if(status)status.textContent="";
   return {shelves:v3Shelves,placements,made,deleted,works,authors,positions,unmapped};
+}
+
+/* カクヨム目次：GitHub Pages上の作品別JSONを必要な作品だけ読み込む */
+const KAKUYOMU_TOC_CACHE=new Map();
+function loadKakuyomuToc(workId){
+  const id=String(workId||"").trim();
+  if(!/^\\d+$/.test(id))return Promise.reject(new Error("作品ID不正"));
+  if(!KAKUYOMU_TOC_CACHE.has(id)){
+    const p=fetch("./data/kakuyomu-toc/"+encodeURIComponent(id)+".json?ts="+Date.now(),{cache:"no-store"})
+      .then(res=>{if(!res.ok)throw new Error("目次未登録 HTTP "+res.status);return res.json()})
+      .then(data=>{if(String(data.work_id)!==id||!Array.isArray(data.episodes))throw new Error("目次データ形式不正");return data});
+    KAKUYOMU_TOC_CACHE.set(id,p);
+  }
+  return KAKUYOMU_TOC_CACHE.get(id);
 }
 
 /* note作品の目次：開いたときだけ読み込み、折りたたみを標準にする */
