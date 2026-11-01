@@ -130,12 +130,31 @@ jobs:
               writer.writeheader()
               writer.writerows(episodes)
 
-          # Compare the first known episode supplied by Tomota (episode 1).
-          known_first = "16816927860524242968"
-          if episodes[0]["episode_id"] != known_first:
-              print("WARNING: 先頭IDが手元の検証値と一致しません。目次の並び・先頭項目を確認してください。")
+          # Compare the first 10 episode IDs supplied by Tomota.
+          known_first_ten = [
+              "16816927860524242968",
+              "1177354054891965429",
+              "1177354054891965448",
+              "1177354054891965464",
+              "1177354054891965484",
+              "1177354054898104784",
+              "16816927860263910947",
+              "16816927860263970990",
+              "16816927860264015134",
+              "16816927860264077825",
+          ]
+          actual_first_ten = [row["episode_id"] for row in episodes[:10]]
+          if actual_first_ten != known_first_ten:
+              raise SystemExit(
+                  "先頭10話のID・順序が検証値と一致しません。"
+                  f" expected={known_first_ten} actual={actual_first_ten}"
+              )
+
           if expected is not None and int(expected) != len(episodes):
-              print("WARNING: 公表話数と抽出件数が一致しません。未取得・重複・空エピソードの可能性があります。")
+              raise SystemExit(
+                  "公表話数と抽出件数が一致しません。JSON保存を中止します。"
+                  f" 公表={expected} 抽出={len(episodes)}"
+              )
           PY
 
       - name: Upload TOC result
