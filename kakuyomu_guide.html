@@ -68,9 +68,9 @@ main{width:min(100%,760px);margin:auto;padding:22px 16px 52px}h1{font-size:24px;
 <p><a href="https://github.com/tomotaday/tomotayomu/actions/workflows/kakuyomu-toc-test.yml" target="_blank" rel="noopener noreferrer">GitHub Actions：カクヨム目次取得を開く</a></p>
 
 <h2>5. 本棚カードの表示</h2>
-<p>カクヨム作品カードは、なろうと同じ形式の続き表示に統一済み。</p>
-<span class="code">続き📖1/1,132話</span>
-<p>しおりURLがある場合、「続き📖」のリンクから該当エピソードを開く。作品情報の編集リンクも表示する。</p>
+<p>カクヨム作品カードは、しおりURLに含まれるエピソードIDを作品別目次JSONと照合し、話数を自動表示する。</p>
+<span class="code">続き📖345/1,132話</span>
+<p>「続き📖」のリンクから保存済みエピソードを開く。編集画面では「しおり（読了話数）」の手入力欄を廃止し、しおりURLを正として扱う。目次未取得・未照合の場合は、その状態を表示する。</p>
 
 <section class="card future">
 <h2>これから目指すこと</h2>
