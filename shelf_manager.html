@@ -49,6 +49,8 @@ const DB_NAME="tomotaYomuDB",DB_VERSION=1;
 const STORES={shelves:"shelf_names",placements:"shelf_placement",works:"works_cache"};
 const DESIRED_ORDER=["読書中","あ〜お","か〜こ","さ〜そ","た〜と","な〜の","は〜ほ","ま〜も","や〜ん","更新待ち"];
 const MIXED_ORDER_KEY="tomotaYomu_mixed_shelf_order_v1";
+const WORK_ADD_TARGET_KEY="tomotaYomu_work_add_target_v1";
+const UNCLASSIFIED_TARGET="system:unclassified";
 const SYSTEM_SHELVES=[{key:"system:search",name:"🔎 検索"},{key:"system:authors",name:"👤作者"},{key:"system:works",name:"✨新着作品"},{key:"system:note",name:"📝 note"},{key:"system:kakuyomu",name:"📘 カクヨム"},{key:"system:tomota-memo",name:"🗂️ ともためも"},
 {key:"system:search-excluded",name:"🚫 検索除外"},{key:"system:all",name:"📚 全作品"},{key:"system:history",name:"🗄️ 履歴"},{key:"system:unclassified",name:"未分類"},{key:"system:management",name:"⚙️ 管理設定用"}];
 let db=null,shelves=[],placements=[],rows=[],dragRow=null,dragPointerId=null;
@@ -84,11 +86,11 @@ function setOrderInitial(){
 function render(){
  const list=document.getElementById("shelfList");list.innerHTML="";
  rows.forEach((r,i)=>{const el=document.createElement("div");el.className="row"+(r.kind==="system"?" systemRow":"");el.dataset.index=String(i);
- const id=r.kind==="shelf"?getId(r.shelf):"",name=r.kind==="system"?r.name:(shelfText(r.shelf)||label(r.core||core(shelfText(r.shelf)))),count=r.kind==="shelf"?(countMap.get(id)||0):0;
+ const id=r.kind==="shelf"?getId(r.shelf):"",name=r.kind==="system"?r.name:(shelfText(r.shelf)||label(r.core||core(shelfText(r.shelf)))),count=r.kind==="shelf"?(countMap.get(id)||0):0,systemTarget=r.kind==="system"&&r.key===UNCLASSIFIED_TARGET&&localStorage.getItem(WORK_ADD_TARGET_KEY)===UNCLASSIFIED_TARGET;
  const head=document.createElement("div");head.className="head";const h=document.createElement("div");h.className="handle";h.textContent="☰";h.setAttribute("aria-label","棚を並べ替える");const nm=document.createElement("div");nm.className="name";
  if(r.kind==="system"){const fixed=document.createElement("div");fixed.className="nameInput fixedName";fixed.textContent=name;nm.appendChild(fixed)}else{const inp=document.createElement("input");inp.className="nameInput";inp.type="text";inp.value=name;inp.setAttribute("aria-label","本棚名");inp.addEventListener("click",e=>e.stopPropagation());inp.addEventListener("pointerdown",e=>e.stopPropagation());nm.appendChild(inp)}
  const ct=document.createElement("div");ct.className="count";ct.textContent=r.kind==="system"?"システム棚":count+"作品";const ord=document.createElement("div");ord.className="order";ord.textContent=String(i+1);head.append(h,nm,ct);
- if(r.kind==="shelf"){const targetBtn=document.createElement("button");targetBtn.className="deleteBtn";targetBtn.type="button";targetBtn.textContent=r.shelf.work_add_target===true?"📥登録先✓":"📥登録先";targetBtn.style.borderColor=r.shelf.work_add_target===true?"#4b8b67":"#c8c0b5";targetBtn.addEventListener("click",e=>{e.stopPropagation();setWorkAddTarget(id,name)});head.appendChild(targetBtn);if(count===0){const del=document.createElement("button");del.className="deleteBtn";del.type="button";del.textContent="🗑削除";del.addEventListener("click",e=>{e.stopPropagation();deleteEmptyShelf(id,name)});head.appendChild(del)}}
+ if(r.kind==="shelf"||r.key===UNCLASSIFIED_TARGET){const active=r.kind==="shelf"?r.shelf.work_add_target===true:systemTarget;const targetBtn=document.createElement("button");targetBtn.className="deleteBtn";targetBtn.type="button";targetBtn.textContent=active?"📥登録先✓":"📥登録先";targetBtn.style.borderColor=active?"#4b8b67":"#c8c0b5";targetBtn.addEventListener("click",e=>{e.stopPropagation();if(r.kind==="shelf")setWorkAddTarget(id,name);else setUnclassifiedWorkAddTarget()});head.appendChild(targetBtn)}if(r.kind==="shelf"&&count===0){const del=document.createElement("button");del.className="deleteBtn";del.type="button";del.textContent="🗑削除";del.addEventListener("click",e=>{e.stopPropagation();deleteEmptyShelf(id,name)});head.appendChild(del)}}
  head.appendChild(ord);const body=document.createElement("div");body.className="body";const sid=document.createElement("div");sid.className="shelfId";sid.textContent=r.kind==="system"?"固定システム棚。名称変更・削除はできません。":"shelf_id："+id;body.appendChild(sid);const note=document.createElement("div");note.className="empty";note.textContent=r.kind==="system"?"棚の位置だけを変更します。機能や作品の所属判定は変更しません。":(count?"作品情報を表示するには棚をタップしてください。":"この棚に所属する作品はありません");body.appendChild(note);el.append(head,body);h.addEventListener("pointerdown",startDrag);if(r.kind==="shelf")head.addEventListener("click",async e=>{if(e.target===h||e.target.closest("button")||e.target.closest("input"))return;const opening=!el.classList.contains("open");el.classList.toggle("open");if(opening&&count)await loadShelfWorks(id,body)});list.appendChild(el);
  });
 }
@@ -118,6 +120,7 @@ async function setWorkAddTarget(id,name){
     updated.forEach(v=>st.put(v));
     await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error("登録先変更中止"))});
     shelves=updated;
+    localStorage.removeItem(WORK_ADD_TARGET_KEY);
     const byId=new Map(updated.map(v=>[getId(v),v]));
     rows=rows.map(r=>({...r,shelf:byId.get(getId(r.shelf))||r.shelf}));
     render();
@@ -125,6 +128,20 @@ async function setWorkAddTarget(id,name){
   }catch(e){
     document.getElementById("status").textContent="作品登録先の設定失敗："+e.message;
   }
+}
+async function setUnclassifiedWorkAddTarget(){
+  try{
+    const tx=db.transaction(STORES.shelves,"readwrite"),st=tx.objectStore(STORES.shelves);
+    const updated=shelves.map(v=>({...v,work_add_target:false}));
+    updated.forEach(v=>st.put(v));
+    await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error("登録先変更中止"))});
+    shelves=updated;
+    localStorage.setItem(WORK_ADD_TARGET_KEY,UNCLASSIFIED_TARGET);
+    const byId=new Map(updated.map(v=>[getId(v),v]));
+    rows=rows.map(r=>r.kind==="shelf"?({...r,shelf:byId.get(getId(r.shelf))||r.shelf}):r);
+    render();
+    document.getElementById("status").textContent="作品登録先を「未分類」に設定しました。作品カードは登録されますが、一般本棚には配置されません。";
+  }catch(e){document.getElementById("status").textContent="作品登録先の設定失敗："+e.message}
 }
 async function deleteEmptyShelf(id,name){
   if(!id)return;
