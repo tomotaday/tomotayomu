@@ -548,7 +548,7 @@ async function buildV3CardsFromIndexedDB(){
     const episodeId=String(item.bookmarkEpisodeId||"").trim();
     if(resume){
       resume.href=episodeUrl||"https://kakuyomu.jp/works/"+encodeURIComponent(String(item.id||""));
-      resume.textContent=episodeId?"続き📖"+bookmark.toLocaleString("ja-JP")+"/"+(total?total.toLocaleString("ja-JP"):"—")+"話":"続き📖📝記録なし / "+(total?total.toLocaleString("ja-JP"):"—")+"話";
+      resume.textContent=episodeId?"続き📖話数を確認中… / "+(total?total.toLocaleString("ja-JP"):"—")+"話":"続き📖📝記録なし / "+(total?total.toLocaleString("ja-JP"):"—")+"話";
       resume.style.opacity=episodeId?"1":".75";
     }
     card.querySelector(".kakuyomuEditLink").href="kakuyomu_edit.html?id="+encodeURIComponent(String(item.id||""));
@@ -558,8 +558,13 @@ async function buildV3CardsFromIndexedDB(){
         if(found&&resume){
           resume.textContent="続き📖"+Number(found.number).toLocaleString("ja-JP")+"/"+(total?total.toLocaleString("ja-JP"):"—")+"話";
           resume.dataset.episodeNumber=String(found.number);
+        }else if(resume){
+          resume.textContent="続き📖話数未照合 / "+(total?total.toLocaleString("ja-JP"):"—")+"話";
         }
-      }).catch(()=>{});
+      }).catch(error=>{
+        if(resume)resume.textContent="続き📖目次未取得 / "+(total?total.toLocaleString("ja-JP"):"—")+"話";
+        console.warn("カクヨム目次の照合に失敗:",error);
+      });
     }
     source.appendChild(card);
     made++;
@@ -579,7 +584,7 @@ async function buildV3CardsFromIndexedDB(){
 const KAKUYOMU_TOC_CACHE=new Map();
 function loadKakuyomuToc(workId){
   const id=String(workId||"").trim();
-  if(!/^\\d+$/.test(id))return Promise.reject(new Error("作品ID不正"));
+  if(!/^\d+$/.test(id))return Promise.reject(new Error("作品ID不正"));
   if(!KAKUYOMU_TOC_CACHE.has(id)){
     const p=fetch("./data/kakuyomu-toc/"+encodeURIComponent(id)+".json?ts="+Date.now(),{cache:"no-store"})
       .then(res=>{if(!res.ok)throw new Error("目次未登録 HTTP "+res.status);return res.json()})
