@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f7f7fb">
+<title>ともたよむ｜削除済み作品の整理</title>
+<style>
+:root{color-scheme:light;--ink:#273044;--muted:#687386;--line:#dfe4ed;--paper:#fff;--bg:#f5f7fb;--accent:#526b9a;--danger:#a33b43}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:var(--bg);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:760px;margin:0 auto}
+h1{font-size:1.35rem;margin:0 0 4px}
+h2{font-size:1.05rem;margin:0 0 10px}
+.lead,.small{color:var(--muted)}
+.lead{margin:0 0 18px}
+.small{font-size:.84rem}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px;margin:12px 0}
+.warning{border-color:#e7c7c9;background:#fffafa}
+button{border:0;border-radius:10px;padding:12px 16px;font-size:1rem}
+#preview{background:var(--accent);color:#fff}
+#delete{background:var(--danger);color:#fff;width:100%;margin-top:12px}
+button:disabled{opacity:.45}
+.status{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600}
+label{display:flex;gap:10px;align-items:flex-start;margin-top:14px}
+input{width:20px;height:20px;flex:0 0 auto;margin-top:2px}
+code{overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<main>
+<h1>ともたよむ｜削除済み作品の整理</h1>
+<p class="lead">確認済みの削除作品9件だけを、本棚DBから整理します。</p>
+
+<section class="panel warning">
+<h2>削除対象（固定9件）</h2>
+<p class="small">このページは下記Nコード以外を削除しません。</p>
+<table>
+<thead><tr><th>No.</th><th>Nコード</th><th>作品ページ</th></tr></thead>
+<tbody id="targets"></tbody>
+</table>
+</section>
+
+<section class="panel">
+<h2>① 削除前の確認</h2>
+<p class="small">現在のDBに対象データが残っているか、読み取り専用で確認します。</p>
+<button id="preview" type="button">削除対象を確認</button>
+<div id="previewStatus" class="status" aria-live="polite">まだ確認していません。</div>
+<div id="previewResult"></div>
+</section>
+
+<section class="panel warning">
+<h2>② 削除の実行</h2>
+<p>削除対象は、次の4つのStoreにある同じNコードのレコードだけです。</p>
+<ul>
+<li><code>shelf_placement</code>（本棚配置）</li>
+<li><code>works_cache</code>（作品情報）</li>
+<li><code>authors</code>（作品に紐づく作者情報）</li>
+<li><code>reading_position</code>（しおり位置）</li>
+</ul>
+<p class="small">本棚名の <code>shelf_names</code>、ほかの作品、note・カクヨムのデータには触れません。削除は元に戻せないため、実行前に本棚データのバックアップをおすすめします。</p>
+<label><input id="confirm" type="checkbox"><span>上記9件の削除対象と、削除するデータの範囲を確認しました。</span></label>
+<button id="delete" type="button" disabled>確認した9件を削除する</button>
+<div id="deleteStatus" class="status" aria-live="polite">削除はまだ実行していません。</div>
+</section>
+
+<p class="small">保守用ファイル：maintenance_cleanup_deleted_works.html</p>
+</main>
+<script>
+(() => {
+  "use strict";
+  const DB_NAME = "tomotaYomuDB";
+  const DB_VERSION = 1;
+  const TARGETS = [
+    "N0747JE","N1351MD","N1632IO","N2184HF","N4411DT",
+    "N5420MC","N5909FO","N6158JM","N8546MG"
+  ];
+  const STORES = ["shelf_placement","works_cache","authors","reading_position"];
+  const targetsEl = document.getElementById("targets");
+  const previewStatus = document.getElementById("previewStatus");
+  const previewResult = document.getElementById("previewResult");
+  const deleteStatus = document.getElementById("deleteStatus");
+  const previewButton = document.getElementById("preview");
+  const deleteButton = document.getElementById("delete");
+  const confirmBox = document.getElementById("confirm");
+  let previewPassed = false;
+  let dbVersionAtPreview = null;
+
+  TARGETS.forEach((ncode, index) => {
+    const row = document.createElement("tr");
+    const no = document.createElement("td");
+    no.textContent = String(index + 1);
+    const code = document.createElement("td");
+    code.textContent = ncode;
+    const linkCell = document.createElement("td");
+    const link = document.createElement("a");
+    link.href = "https://ncode.syosetu.com/" + ncode.toLowerCase() + "/";
+    link.textContent = "作品ページ";
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    linkCell.appendChild(link);
+    row.append(no, code, linkCell);
+    targetsEl.appendChild(row);
+  });
+
+  function openExistingDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error("本棚DBを開けませんでした。"));
+      request.onblocked = () => reject(new Error("DBが別の画面で使用中です。ほかのともたよむ画面を閉じてください。"));
+      request.onupgradeneeded = () => {
+        request.transaction.abort();
+        reject(new Error("本棚DBが存在しないため、新規作成せずに中止しました。ともたよむ本体を先に開いてください。"));
+      };
+    });
+  }
+
+  function inspectTargets(db) {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORES, "readonly");
+      const result = {};
+      let pending = STORES.length * TARGETS.length;
+      for (const storeName of STORES) {
+        const store = tx.objectStore(storeName);
+        result[storeName] = {};
+        for (const ncode of TARGETS) {
+          const request = store.get(ncode);
+          request.onsuccess = () => {
+            result[storeName][ncode] = request.result !== undefined;
+            if (--pending === 0) resolve(result);
+          };
+          request.onerror = () => reject(request.error || new Error(storeName + " の確認に失敗しました。"));
+        }
+      }
+      tx.onerror = () => reject(tx.error || new Error("確認処理に失敗しました。"));
+      tx.onabort = () => reject(tx.error || new Error("確認処理が中断されました。"));
+    });
+  }
+
+  function renderInspection(result) {
+    const table = document.createElement("table");
+    const head = document.createElement("tr");
+    ["Nコード", ...STORES].forEach(value => {
+      const th = document.createElement("th");
+      th.textContent = value;
+      head.appendChild(th);
+    });
+    table.appendChild(head);
+    TARGETS.forEach(ncode => {
+      const row = document.createElement("tr");
+      const first = document.createElement("td");
+      first.textContent = ncode;
+      row.appendChild(first);
+      STORES.forEach(storeName => {
+        const cell = document.createElement("td");
+        cell.textContent = result[storeName][ncode] ? "あり" : "なし";
+        row.appendChild(cell);
+      });
+      table.appendChild(row);
+    });
+    previewResult.replaceChildren(table);
+  }
+
+  previewButton.addEventListener("click", async () => {
+    previewButton.disabled = true;
+    deleteButton.disabled = true;
+    confirmBox.checked = false;
+    previewPassed = false;
+    previewStatus.textContent = "確認中…";
+    previewResult.replaceChildren();
+    let db;
+    try {
+      db = await openExistingDB();
+      const names = Array.from(db.objectStoreNames);
+      const missingStores = STORES.filter(name => !names.includes(name));
+      if (missingStores.length) throw new Error("必要なStoreがありません：" + missingStores.join(", "));
+      const result = await inspectTargets(db);
+      renderInspection(result);
+      const cacheHits = TARGETS.filter(ncode => result.works_cache[ncode]);
+      const placementHits = TARGETS.filter(ncode => result.shelf_placement[ncode]);
+      dbVersionAtPreview = db.version;
+      if (cacheHits.length) {
+        previewStatus.textContent = "削除を保留しました。works_cache に作品本体が存在する対象があります：" + cacheHits.join(", ") + "。内容を再確認してください。";
+      } else if (placementHits.length !== TARGETS.length) {
+        previewStatus.textContent = "削除を保留しました。shelf_placement に対象9件すべてが揃っていません。現在の状態を確認してください。";
+      } else {
+        previewPassed = true;
+        previewStatus.textContent = "確認完了。9件すべて shelf_placement にあり、works_cache にはありません。上の表で関連データの有無を確認し、内容に同意できる場合だけチェックを入れて削除してください。";
+        deleteButton.disabled = false;
+      }
+    } catch (error) {
+      previewStatus.textContent = "確認できませんでした。\n" + (error && error.message ? error.message : String(error));
+    } finally {
+      if (db) db.close();
+      previewButton.disabled = false;
+    }
+  });
+
+  confirmBox.addEventListener("change", () => {
+    deleteButton.disabled = !(previewPassed && confirmBox.checked);
+  });
+
+  deleteButton.addEventListener("click", async () => {
+    if (!previewPassed || !confirmBox.checked) return;
+    const accepted = window.confirm("確認済みのNコード9件について、4つのStoreの該当レコードだけを削除します。実行しますか？");
+    if (!accepted) return;
+    previewPassed = false;
+    previewButton.disabled = true;
+    deleteButton.disabled = true;
+    confirmBox.disabled = true;
+    deleteStatus.textContent = "削除中…";
+    let db;
+    try {
+      db = await openExistingDB();
+      if (db.version !== dbVersionAtPreview) throw new Error("確認後にDBバージョンが変わりました。もう一度、削除対象を確認してください。");
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(STORES, "readwrite");
+        for (const storeName of STORES) {
+          const store = tx.objectStore(storeName);
+          for (const ncode of TARGETS) store.delete(ncode);
+        }
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error || new Error("削除処理に失敗しました。"));
+        tx.onabort = () => reject(tx.error || new Error("削除処理が中断されました。"));
+      });
+      deleteStatus.textContent = "削除処理が完了しました。診断ページに戻り、DB件数と不一致一覧を再確認してください。\n対象Nコード：" + TARGETS.join(", ");
+      previewStatus.textContent = "削除済み。再度削除する必要はありません。";
+    } catch (error) {
+      deleteStatus.textContent = "削除できませんでした。\n" + (error && error.message ? error.message : String(error));
+      previewPassed = false;
+    } finally {
+      if (db) db.close();
+      previewButton.disabled = false;
+      confirmBox.disabled = false;
+      confirmBox.checked = false;
+      deleteButton.disabled = true;
+    }
+  });
+})();
+</script>
+</body>
+</html>
