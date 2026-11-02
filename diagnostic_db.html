@@ -35,6 +35,7 @@ code{overflow-wrap:anywhere}
 <h2>診断結果</h2>
 <div id="status" class="status" role="status" aria-live="polite">まだ診断していません。</div>
 <div id="result"></div>
+<div id="orphanResult"></div>
 </section>
 <p class="small">診断専用ファイル：diagnostic_db.html</p>
 </main>
@@ -45,6 +46,7 @@ code{overflow-wrap:anywhere}
   const DB_VERSION = 1;
   const statusEl = document.getElementById("status");
   const resultEl = document.getElementById("result");
+  const orphanResultEl = document.getElementById("orphanResult");
   const runButton = document.getElementById("run");
 
   function openExistingDB() {
@@ -85,6 +87,7 @@ code{overflow-wrap:anywhere}
     runButton.disabled = true;
     statusEl.textContent = "診断中…";
     resultEl.replaceChildren();
+    orphanResultEl.replaceChildren();
     let db;
     try {
       db = await openExistingDB();
@@ -119,6 +122,68 @@ code{overflow-wrap:anywhere}
       }
       table.appendChild(tbody);
       resultEl.appendChild(table);
+
+      // 配置情報はあるが作品本体がないNコードを読み取り専用で抽出する
+      if (names.includes("shelf_placement") && names.includes("works_cache")) {
+        const tx = db.transaction(["shelf_placement", "works_cache"], "readonly");
+        const placementKeysRequest = tx.objectStore("shelf_placement").getAllKeys();
+        const cacheKeysRequest = tx.objectStore("works_cache").getAllKeys();
+        const [placementKeys, cacheKeys] = await Promise.all([
+          new Promise((resolve, reject) => {
+            placementKeysRequest.onsuccess = () => resolve(placementKeysRequest.result);
+            placementKeysRequest.onerror = () => reject(placementKeysRequest.error);
+          }),
+          new Promise((resolve, reject) => {
+            cacheKeysRequest.onsuccess = () => resolve(cacheKeysRequest.result);
+            cacheKeysRequest.onerror = () => reject(cacheKeysRequest.error);
+          })
+        ]);
+        const cacheSet = new Set(cacheKeys.map(String));
+        const missingWorks = placementKeys.map(String).filter(ncode => !cacheSet.has(ncode)).sort();
+
+        const heading = document.createElement("h2");
+        heading.textContent = "作品本体が見つからない配置データ";
+        orphanResultEl.appendChild(heading);
+        const note = document.createElement("p");
+        note.className = "small";
+        note.textContent = "shelf_placement には存在し、works_cache には存在しないNコードです。件数差だけでなく、主キーを照合して抽出しています。ここでは削除しません。";
+        orphanResultEl.appendChild(note);
+
+        const orphanStatus = document.createElement("p");
+        orphanStatus.textContent = "該当件数：" + missingWorks.length;
+        orphanResultEl.appendChild(orphanStatus);
+
+        if (missingWorks.length) {
+          const orphanTable = document.createElement("table");
+          const orphanHead = document.createElement("tr");
+          ["No.", "Nコード", "作品ページ"].forEach(x => addCell(orphanHead, x, "th"));
+          orphanTable.appendChild(orphanHead);
+          missingWorks.forEach((ncode, index) => {
+            const row = document.createElement("tr");
+            addCell(row, index + 1);
+            addCell(row, ncode);
+            const cell = document.createElement("td");
+            if (/^n[0-9a-z]+$/i.test(ncode)) {
+              const link = document.createElement("a");
+              link.href = "https://ncode.syosetu.com/" + encodeURIComponent(ncode.toLowerCase()) + "/";
+              link.textContent = "作品ページを開く";
+              link.target = "_blank";
+              link.rel = "noopener noreferrer";
+              cell.appendChild(link);
+            } else {
+              cell.textContent = "Nコード形式を確認してください";
+            }
+            row.appendChild(cell);
+            orphanTable.appendChild(row);
+          });
+          orphanResultEl.appendChild(orphanTable);
+        } else {
+          const none = document.createElement("p");
+          none.textContent = "該当する配置データはありません。";
+          orphanResultEl.appendChild(none);
+        }
+      }
+
       statusEl.textContent =
         "取得成功\nDB名：" + db.name +
         "\nDBバージョン：" + db.version +
