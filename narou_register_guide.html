@@ -420,5 +420,50 @@ main{max-width:760px;margin:auto;padding:22px 16px 48px}a{color:#245e8c}h1{font-
 </div>
 </details>
 
+
+<details class="guide">
+<summary><span class="tag">未実装・整理候補</span> 削除済み作品9件の本棚データ整理（2026年11月2日）</summary>
+<div class="inside">
+<section>
+<p><strong>状態：</strong>未実施。削除はバックアップ・復元手段を用意するまで保留。</p>
+<p>旧アプリから本棚データを移行した際、ともたよむへの作品登録に失敗した作品が残っていた。ユーザー確認により、以下の9作品は小説家になろう上で作品がすでに存在しないことを確認した。</p>
+<h3>対象Nコード（9件）</h3>
+<ul>
+<li><a href="https://ncode.syosetu.com/n0747je/">N0747JE</a></li>
+<li><a href="https://ncode.syosetu.com/n1351md/">N1351MD</a></li>
+<li><a href="https://ncode.syosetu.com/n1632io/">N1632IO</a></li>
+<li><a href="https://ncode.syosetu.com/n2184hf/">N2184HF</a></li>
+<li><a href="https://ncode.syosetu.com/n4411dt/">N4411DT</a></li>
+<li><a href="https://ncode.syosetu.com/n5420mc/">N5420MC</a></li>
+<li><a href="https://ncode.syosetu.com/n5909fo/">N5909FO</a></li>
+<li><a href="https://ncode.syosetu.com/n6158jm/">N6158JM</a></li>
+<li><a href="https://ncode.syosetu.com/n8546mg/">N8546MG</a></li>
+</ul>
+<h3>発見の経緯・確認結果</h3>
+<ul>
+<li>IndexedDB <code>tomotaYomuDB</code> の <code>shelf_placement</code> と <code>works_cache</code> をNコード単位で照合した。</li>
+<li>検索除外作品を追加登録する前は不一致が13件だった。</li>
+<li>検索除外作品の登録後、4件が解消し、上記9件が残った。</li>
+<li>残った9件は、ユーザーが作品ページを確認し、すべて作品が存在しないことを確認済み。</li>
+</ul>
+<h3>削除時の方針</h3>
+<ul>
+<li>削除対象は上記9件のNコードに限定する。</li>
+<li>対象Store候補は <code>shelf_placement</code>、<code>works_cache</code>、<code>authors</code>、<code>reading_position</code>。各Storeに実際に存在する同一Nコードのレコードだけを削除する。</li>
+<li><code>shelf_names</code> や、ほかの作品、note・カクヨムの保存データには触れない。</li>
+<li>削除実行前に、本棚DBの全Storeをバックアップし、復元できる手段を用意・検証する。</li>
+<li>バックアップが正常に保存され、復元可能性を確認できた後に、対象9件を削除する。</li>
+<li>削除後はDB診断を再実行し、5つのStoreの件数と不一致一覧を確認する。</li>
+</ul>
+<h3>関連ファイル</h3>
+<ul>
+<li><code>diagnostic_db.html</code>：DB構造・件数・作品本体がない配置データの読み取り専用診断。</li>
+<li><code>maintenance_cleanup_deleted_works.html</code>：対象9件の確認・削除用ページ。削除はまだ実行しない。バックアップ・復元機能が整うまで使用保留。</li>
+</ul>
+<p><strong>忘れずに消そうね候補：</strong>バックアップ・復元機能の実装と検証が完了したら、この9件の整理を再開する。</p>
+</section>
+</div>
+</details>
+
 <p class="small">関連ページ：<a href="register.html">作品登録ページ</a> ／ <a href="index.html">本棚</a></p>
 </main></body></html>
