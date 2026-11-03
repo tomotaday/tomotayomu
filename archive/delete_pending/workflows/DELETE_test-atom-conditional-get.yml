@@ -1,0 +1,35 @@
+name: Test Atom conditional GET headers
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atom-conditional-get-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Probe a small sample of Atom feeds
+        run: python scripts/test_atom_conditional_get.py
+      - name: Upload diagnostic report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atom-conditional-get-report
+          path: atom-conditional-get-report.json
+          if-no-files-found: warn
+          retention-days: 7
