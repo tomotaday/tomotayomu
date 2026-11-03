@@ -556,7 +556,7 @@ async function buildV3CardsFromIndexedDB(){
       resume.textContent=episodeId?"続き📖話数を確認中… / "+(total?total.toLocaleString("ja-JP"):"—")+"話":"続き📖📝記録なし / "+(total?total.toLocaleString("ja-JP"):"—")+"話";
       resume.style.opacity=episodeId?"1":".75";
     }
-    card.querySelector(".kakuyomuEditLink").href="kakuyomu_edit.html?id="+encodeURIComponent(String(item.id||""));
+    card.querySelector(".kakuyomuEditLink").href="app/kakuyomu/kakuyomu_edit.html?id="+encodeURIComponent(String(item.id||""));
     if(episodeId){
       loadKakuyomuToc(String(item.id||"")).then(toc=>{
         const found=toc?.episodes?.find(ep=>String(ep.episode_id)===episodeId);
