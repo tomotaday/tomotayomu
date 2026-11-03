@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ともたよむ｜note目次API自動取得テスト</title>
+<style>
+:root{color-scheme:light dark}body{font-family:system-ui,-apple-system,sans-serif;max-width:760px;margin:0 auto;padding:18px;line-height:1.6}
+button{font:inherit;padding:10px 16px;border-radius:10px;border:1px solid #888;background:transparent}
+#status{white-space:pre-wrap;overflow-wrap:anywhere;padding:12px;border:1px solid #888;border-radius:10px;margin-top:14px}
+.small{font-size:.9em;opacity:.8}
+</style>
+</head>
+<body>
+<h1>📜 note目次・自動取得テスト</h1>
+<p>対象：ツガイのセカイ（m8a34f89ccce0）</p>
+<p class="small">本棚本体は変更しない独立テストページです。note APIへ1ページずつアクセスし、is_last_page が true になるまで取得を試します。</p>
+<button id="run">自動取得を開始</button>
+<div id="status" role="status">開始ボタンを押すとテストします。</div>
+<script>
+const API = "https://note.com/api/v1/layout/magazine/m8a34f89ccce0/section?page=";
+const statusBox = document.getElementById("status");
+const runButton = document.getElementById("run");
+runButton.addEventListener("click", async () => {
+  runButton.disabled = true;
+  const all = [];
+  const seen = new Set();
+  const duplicates = [];
+  const pageCounts = [];
+  statusBox.textContent = "取得開始…\n";
+  try {
+    let last = false;
+    for (let page = 1; page <= 30; page++) {
+      statusBox.textContent += page + "ページ目を取得中…\n";
+      const response = await fetch(API + page, {headers: {"Accept":"application/json"}});
+      if (!response.ok) throw new Error("HTTP " + response.status + "（" + page + "ページ目）");
+      const json = await response.json();
+      const section = json?.data?.section || json?.data?.page_layout?.section;
+      if (!section || !Array.isArray(section.contents)) {
+        throw new Error(page + "ページ目のJSON構造が想定と異なります。");
+      }
+      pageCounts.push(section.contents.length);
+      for (const item of section.contents) {
+        const key = item.key || item.note?.key || "";
+        const name = item.name || item.note?.name || "(タイトルなし)";
+        if (key && seen.has(key)) duplicates.push(key);
+        if (key) seen.add(key);
+        all.push({page, key, name});
+      }
+      last = section.is_last_page === true;
+      statusBox.textContent = "取得中：ページ " + page + "、記事 " + all.length + "件\n";
+      if (last) {
+        statusBox.textContent =
+          "✅ 自動取得成功！\n" +
+          "最終ページ判定：is_last_page = true（" + page + "ページ目）\n" +
+          "各ページの記事数：" + pageCounts.join("、") + "\n" +
+          "取得記事数：" + all.length + "\n" +
+          "記事キーあり：" + seen.size + "件\n" +
+          "重複キー：" + duplicates.length + "件\n\n" +
+          all.map((x,i) => (i+1) + ". [p." + x.page + "] " + x.name + " — " + x.key).join("\n");
+        return;
+      }
+    }
+    throw new Error("30ページまで取得しましたが、is_last_page = true になりませんでした。");
+  } catch (error) {
+    statusBox.textContent =
+      "❌ 自動取得できませんでした。\n" +
+      "エラー：" + (error?.message || String(error)) + "\n\n" +
+      "CORSなどブラウザ側の制限、またはAPI応答の変更が考えられます。\n" +
+      "このテストでは本棚データを変更していません。";
+  } finally {
+    runButton.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
