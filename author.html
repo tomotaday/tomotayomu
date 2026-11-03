@@ -446,7 +446,7 @@ async function downloadAuthorsJson(){
   btn.disabled=true;
   try{
     const payload=await buildAuthorsJson();
-    const json=JSON.stringify(payload,null,2)+"\\n";
+    const json=JSON.stringify(payload,null,2)+"\n";
     document.getElementById("authorsJsonOutput").value=JSON.stringify(payload,null,2);
     const blob=new Blob([json],{type:"application/json;charset=utf-8"});
     const url=URL.createObjectURL(blob),a=document.createElement("a");
