@@ -43,8 +43,9 @@ summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;
 <div class="badge">未送信差分：<strong id="authorDiffCount">--</strong></div>
 </div>
 <p id="syncStatus" class="meta">GitHubの保存済み作者一覧と照合しています…</p>
-<div class="stat"><button id="copyAuthors" type="button">📋 ① JSONコピー</button><button id="launchAtomUpdate" type="button">📡 ② Atom更新</button></div>
-<p class="small">①でIndexedDBの最新作者一覧をコピーし、②で「ともたよむ Atom更新」ショートカットを起動します。送信完了はGitHub Actionsの結果で確認します。</p>
+<div class="stat"><button id="copyAuthors" type="button">📋 ① JSONコピー</button><button id="downloadAuthors" type="button">💾 JSON保存</button><button id="launchAtomUpdate" type="button">📡 ② Atom更新</button></div>
+<textarea id="authorsJsonOutput" rows="5" readonly placeholder="JSONコピーまたは保存を実行すると、作者一覧JSONをここに表示します。" style="box-sizing:border-box;width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font:12px/1.4 ui-monospace,monospace;background:#fff"></textarea>
+<p class="small">IndexedDBの最新作者一覧をJSONコピー・保存できます。Atom更新は従来どおり「ともたよむ Atom更新」ショートカットから実行します。送信完了はGitHub Actionsの結果で確認します。</p>
 </div>
 
 <details>
@@ -417,26 +418,47 @@ async function loadGitHubAuthorCount(){
     status.textContent="GitHub一覧の比較に失敗しました："+e.message;
   }
 }
+async function buildAuthorsJson(){
+  const db=await openDB(),rows=await readAll(db,"authors"),byKey=new Map();
+  for(const a of rows){
+    if(!a||!String(a.authorId||"").trim())continue;
+    const id=String(a.authorId).trim(),type=a.authorType==="r18"?"r18":"normal";
+    byKey.set(type+":"+id,{author_id:id,author_type:type});
+  }
+  const authors=[...byKey.values()].sort((a,b)=>a.author_type.localeCompare(b.author_type)||a.author_id.localeCompare(b.author_id,undefined,{numeric:true}));
+  if(!authors.length)throw new Error("出力対象の作者が0人です。");
+  return {schema_version:1,exported_at:new Date().toISOString(),source:"tomotaYomuDB.authors",author_count:authors.length,authors};
+}
 async function copyAuthorsJson(){
   const btn=document.getElementById("copyAuthors"),status=document.getElementById("syncStatus");
   btn.disabled=true;
   try{
-    const db=await openDB(),rows=await readAll(db,"authors"),byKey=new Map();
-    for(const a of rows){
-      if(!a||!String(a.authorId||"").trim())continue;
-      const id=String(a.authorId).trim(),type=a.authorType==="r18"?"r18":"normal";
-      byKey.set(type+":"+id,{author_id:id,author_type:type});
-    }
-    const authors=[...byKey.values()].sort((a,b)=>a.author_type.localeCompare(b.author_type)||a.author_id.localeCompare(b.author_id,undefined,{numeric:true}));
-    if(!authors.length)throw new Error("コピー対象の作者が0人です。");
-    const payload={schema_version:1,exported_at:new Date().toISOString(),source:"tomotaYomuDB.authors",author_count:authors.length,authors};
-    await navigator.clipboard.writeText(JSON.stringify(payload));
-    status.textContent="作者"+authors.length+"人分のJSONをコピーしました。続けて「② Atom更新」を押してください。";
+    const payload=await buildAuthorsJson(),json=JSON.stringify(payload);
+    document.getElementById("authorsJsonOutput").value=JSON.stringify(payload,null,2);
+    await navigator.clipboard.writeText(json);
+    status.textContent="作者"+payload.author_count+"人分のJSONをコピーしました。続けて「② Atom更新」を押してください。";
   }catch(e){
     status.textContent="JSONコピー失敗："+e.message+"。クリップボードの許可を確認してください。";
   }finally{btn.disabled=false;}
 }
+async function downloadAuthorsJson(){
+  const btn=document.getElementById("downloadAuthors"),status=document.getElementById("syncStatus");
+  btn.disabled=true;
+  try{
+    const payload=await buildAuthorsJson();
+    const json=JSON.stringify(payload,null,2)+"\\n";
+    document.getElementById("authorsJsonOutput").value=JSON.stringify(payload,null,2);
+    const blob=new Blob([json],{type:"application/json;charset=utf-8"});
+    const url=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=url;a.download="tomotayomu-author-list.json";a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    status.textContent="作者"+payload.author_count+"人分のJSONを保存しました。";
+  }catch(e){
+    status.textContent="JSON保存失敗："+e.message;
+  }finally{btn.disabled=false;}
+}
 document.getElementById("copyAuthors").addEventListener("click",copyAuthorsJson);
+document.getElementById("downloadAuthors").addEventListener("click",downloadAuthorsJson);
 document.getElementById("launchAtomUpdate").addEventListener("click",()=>{
   const status=document.getElementById("syncStatus");
   status.textContent="Atom更新ショートカットを起動します。GitHub Actionsの実行結果を確認してください。";
