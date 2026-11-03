@@ -1,0 +1,46 @@
+name: Test author Atom conditional GET benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_authors:
+        description: "Small read-only sample size"
+        required: true
+        default: "25"
+        type: choice
+        options:
+          - "25"
+          - "50"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: author-atom-conditional-get-benchmark
+  cancel-in-progress: false
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Compare normal and conditional GET
+        env:
+          MAX_AUTHORS: ${{ inputs.max_authors }}
+        run: python scripts/test_author_atom_conditional_get.py
+      - name: Upload benchmark report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: author-atom-conditional-get-benchmark
+          path: conditional-get-benchmark-report.json
+          if-no-files-found: warn
+          retention-days: 7
