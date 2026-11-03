@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f3ed">
+<title>ともたよむ｜データ受信テスト</title>
+<style>
+:root{color-scheme:light;--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.6}
+main{width:min(100%,760px);margin:auto;padding:24px 16px 48px}
+h1{font-size:24px;margin:0 0 6px}
+.note{font-size:13px;color:var(--muted);margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
+.status{font-weight:700;white-space:pre-wrap}
+.ok{color:#27623b}.error{color:#9b3d32}
+.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+.metric{background:#f1eee8;border-radius:10px;padding:10px}
+.metric small{display:block;color:var(--muted);font-size:12px}
+.metric strong{font-size:19px;overflow-wrap:anywhere}
+textarea{display:block;width:100%;min-height:240px;margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre;overflow:auto}
+button{border:1px solid var(--line);border-radius:9px;background:#fff;padding:10px 14px;font:inherit;font-weight:700;margin-top:10px}
+.hint{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+<h1>🧪 データ受信テスト</h1>
+<p class="note">ショートカットからURLの #data= に渡された文字列を、ブラウザ内だけで読み取る実験ページです。</p>
+<section class="card">
+<div id="status" class="status">受信データを確認しています…</div>
+<div class="metrics">
+<div class="metric"><small>文字数</small><strong id="length">—</strong></div>
+<div class="metric"><small>改行数</small><strong id="lines">—</strong></div>
+<div class="metric"><small>日本語の確認</small><strong id="japanese">—</strong></div>
+<div class="metric"><small>受信方式</small><strong>URLフラグメント</strong></div>
+</div>
+</section>
+<section class="card">
+<strong>受信した内容</strong>
+<textarea id="payload" readonly placeholder="まだデータを受信していません。"></textarea>
+<p class="hint">受信後はURLからデータ部分を取り除きます。内容はこのページの画面内に表示するだけで、サーバーやIndexedDBには保存しません。</p>
+<button id="copy" type="button">受信内容をコピー</button>
+</section>
+<section class="card">
+<strong>テスト方法</strong>
+<p class="hint">URLの末尾に <code>#data=</code> と、URLエンコードした文字列を付けて開きます。例：<code>#data=%E3%81%A8%E3%82%82%E3%81%9F%E3%83%86%E3%82%B9%E3%83%88123</code></p>
+</section>
+</main>
+<script>
+(()=>{
+ const status=document.getElementById("status");
+ const payload=document.getElementById("payload");
+ const params=new URLSearchParams(location.hash.startsWith("#")?location.hash.slice(1):"");
+ const hasData=params.has("data");
+ const data=params.get("data");
+ if(!hasData){
+  status.textContent="データ未受信。URLの #data= にテスト文字列を付けて開いてください。";
+  status.className="status";
+  return;
+ }
+ if(data===null){
+  status.textContent="受信データが空です。";
+  status.className="status error";
+  return;
+ }
+ payload.value=data;
+ document.getElementById("length").textContent=data.length.toLocaleString("ja-JP");
+ document.getElementById("lines").textContent=(data.match(/\n/g)||[]).length.toLocaleString("ja-JP");
+ document.getElementById("japanese").textContent=/[ぁ-んァ-ヶ一-龠]/.test(data)?"含まれています":"見つかりません";
+ status.textContent="✅ データを受信しました。";
+ status.className="status ok";
+ // URL履歴にメタデータを残さないよう、フラグメントを取り除く。
+ history.replaceState(null,document.title,location.pathname+location.search);
+ document.getElementById("copy").addEventListener("click",async()=>{
+  try{await navigator.clipboard.writeText(data);status.textContent="✅ 受信成功。内容をクリップボードにコピーしました。";}
+  catch(e){status.textContent="受信は成功しました。コピーはブラウザの制限でできませんでした。";status.className="status";}
+ });
+})();
+</script>
+</body>
+</html>
