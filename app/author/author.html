@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ｜作者管理</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;margin:0;padding:16px;line-height:1.45;background:#fafafa;color:#222}
+h1{font-size:20px;margin:0 0 2px} h2{font-size:17px;margin:18px 0 8px} p{margin:5px 0 10px;color:#666}
+.top{position:sticky;top:0;background:#fafafa;padding-bottom:8px;z-index:2}
+.version{font-size:12px;color:#888;margin-bottom:10px}.notice{background:#fff8d8;border-radius:10px;padding:11px;margin:10px 0}
+.card,.authorBlock{background:#fff;border:1px solid #ddd;border-radius:12px;padding:13px;margin:9px 0}
+.title{font-size:16px;font-weight:600;margin-bottom:5px}.writer{font-size:14px;color:#666;margin-bottom:9px}.meta{font-size:13px;color:#666}
+a,button{display:inline-block;padding:9px 12px;border-radius:8px;background:#eee;color:#111;text-decoration:none;border:0;font-size:14px}
+summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.badge{background:#fff;border:1px solid #ddd;border-radius:9px;padding:7px 9px;font-size:13px}
+.authorSync{margin-top:12px}.authorSync h2{font-size:17px}.authorSync .stat{margin:8px 0}.authorSync button{background:#176b2c;color:white;font-weight:600;padding:12px 14px}.authorSync button:disabled{opacity:.55}.authorSync .meta{margin:8px 0;color:#555}
+.authorName{font-weight:600}.authorId{font-family:ui-monospace,monospace;font-size:13px;color:#555}
+.workLine{font-size:13px;padding:4px 0;border-top:1px solid #eee}.small{font-size:12px;color:#777}.authorTools{margin-top:10px;padding:10px;background:#fafafa;border-radius:9px}.authorTools label{display:block;font-size:12px;color:#666;margin:6px 0 3px}.authorManageName{font-weight:600;font-size:15px;margin-bottom:4px}.authorTools input{box-sizing:border-box;width:100%;padding:8px;border:1px solid #ccc;border-radius:7px;font-size:14px}.authorWeb{display:inline-block;margin:3px 0 7px}.kanaSave,.kanaNext{margin-top:7px;padding:7px 10px;font-size:13px}.kanaNext{margin-left:6px}.kanaStatus{font-size:12px;color:#176b2c;margin-left:6px}
+</style>
+</head>
+<body>
+<p style="margin:0 0 14px"><a href="../../index.html" style="display:inline-block;padding:9px 12px;border-radius:8px;background:#eee;color:#111;text-decoration:none">← ともたよむ本棚へ戻る</a></p>
+
+<div class="top">
+<h1>ともたよむ｜作者管理</h1>
+<div class="version">作者登録・五十音整理・GitHub送信</div>
+<p>作者登録からAtom更新用の作者一覧送信までを管理します。</p>
+</div>
+
+<div id="notice" class="notice">作者ページURLを受け取ると、全年齢・R18を自動判定して登録します。全年齢作者のふりがなは公式APIから自動取得し、五十音順に整理します。</div>
+<div class="stat">
+<div class="badge">未登録・全年齢：<span id="normalCount">--</span></div>
+<div class="badge">未登録・R18：<span id="r18Count">--</span></div>
+<div class="badge">作者ID付き作品：<span id="linkedCount">--</span></div>
+<div class="badge">登録作者：<span id="authorCount">--</span></div>
+</div>
+<div class="authorSync card">
+<h2 style="margin-top:0">GitHub作者一覧</h2>
+<div class="stat">
+<div class="badge">本体の登録作者：<strong id="localAuthorCount">--</strong></div>
+<div class="badge">GitHub登録済み：<strong id="githubAuthorCount">読込中</strong></div>
+<div class="badge">未送信差分：<strong id="authorDiffCount">--</strong></div>
+</div>
+<p id="syncStatus" class="meta">GitHubの保存済み作者一覧と照合しています…</p>
+<div class="stat"><button id="copyAuthors" type="button">📋 ① JSONコピー</button><button id="downloadAuthors" type="button">💾 JSON保存</button><button id="launchAtomUpdate" type="button">📡 ② Atom更新</button></div>
+<textarea id="authorsJsonOutput" rows="5" readonly placeholder="JSONコピーまたは保存を実行すると、作者一覧JSONをここに表示します。" style="box-sizing:border-box;width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font:12px/1.4 ui-monospace,monospace;background:#fff"></textarea>
+<p class="small">IndexedDBの最新作者一覧をJSONコピー・保存できます。Atom更新は従来どおり「ともたよむ Atom更新」ショートカットから実行します。送信完了はGitHub Actionsの結果で確認します。</p>
+</div>
+
+<details>
+<summary>📚 整理状況を見る</summary>
+<div id="authors"></div>
+</details>
+
+
+<h2>未登録作品｜全年齢</h2><div id="normalList"></div>
+<h2>未登録作品｜R18</h2><div id="r18List"></div>
+
+<script>
+const VERSION="3.1.0.13";
+const DB_NAME="tomotaYomuDB",DB_VERSION=1;
+const LEGACY_MASTER_KEY="tomotayomu_v214_works_master";
+const LEGACY_AUTHORS_KEY="tomotaYomu_authors";
+const LEGACY_AUTHORS_KEY2="tomotaYomu_authors";
+const LEGACY_LINKS_KEY="tomotaYomu_author_links";
+const LEGACY_V215_AUTHOR_KEY="tomotaYomu_v215_author_registry";
+const LEGACY_V215_DONE_KEY="tomotaYomu_v215_author_done_ncodes";
+
+function esc(s){return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function readJson(key,fallback){try{const v=JSON.parse(localStorage.getItem(key)||"");return v??fallback;}catch(e){return fallback;}}
+function legacyMaster(){return readJson(LEGACY_MASTER_KEY,{});}
+function legacyAuthors(){return readJson(LEGACY_AUTHORS_KEY2,{});}
+function legacyLinks(){return readJson(LEGACY_LINKS_KEY,{});}
+function ncode(v){return String(v||"").trim().toUpperCase();}
+function parseAuthor(url){
+  const s=String(url||"").trim();
+  let m=s.match(/xmypage\.syosetu\.com\/(x[a-z0-9]+)\/?/i);
+  if(m)return {type:"r18",id:m[1].toUpperCase(),url:s};
+  m=s.match(/(?:www\.)?mypage\.syosetu\.com\/(\d+)\/?/i);
+  if(m)return {type:"normal",id:m[1],url:s};
+  return null;
+}
+function jsonp(url){
+  return new Promise((resolve,reject)=>{
+    const cb="tyAuthorCb_"+Date.now()+"_"+Math.random().toString(36).slice(2);
+    const s=document.createElement("script");let done=false;
+    const cleanup=()=>{if(done)return;done=true;clearTimeout(timer);try{delete window[cb]}catch(e){}s.remove()};
+    const timer=setTimeout(()=>{cleanup();reject(new Error("作者API timeout"))},20000);
+    window[cb]=d=>{cleanup();resolve(d)};
+    s.onerror=()=>{cleanup();reject(new Error("作者API load error"))};
+    s.src=url+"&callback="+cb;document.body.appendChild(s);
+  });
+}
+async function fetchAuthor(info){
+  if(info.type==="r18"){
+    const api="https://api.syosetu.com/novel18api/api/?out=jsonp&of=n-t-w-gl-ga-nt-e&xid="+encodeURIComponent(info.id)+"&lim=500";
+    const data=await jsonp(api);
+    return Array.isArray(data)?data.filter((x,i)=>i>0&&x&&x.ncode):[];
+  }
+  const api="https://api.syosetu.com/novelapi/api/?out=jsonp&of=n-t-w-gl-ga-nt-e-u&userid="+encodeURIComponent(info.id)+"&lim=500";
+  const data=await jsonp(api);
+  return Array.isArray(data)?data.filter((x,i)=>i>0&&x&&x.ncode):[];
+}
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    const r=indexedDB.open(DB_NAME,DB_VERSION);
+    r.onsuccess=()=>resolve(r.result);
+    r.onerror=()=>reject(r.error||new Error("IndexedDBを開けません"));
+  });
+}
+function readAll(db,name){
+  return new Promise((resolve,reject)=>{
+    const st=db.transaction(name,"readonly").objectStore(name),out=[],r=st.openCursor();
+    r.onsuccess=()=>{const c=r.result;if(c){out.push(c.value);c.continue()}else resolve(out)};
+    r.onerror=()=>reject(r.error||new Error(name+"読込失敗"));
+  });
+}
+function putAuthorRow(tx,row){
+  const st=tx.objectStore("authors");
+  return st.keyPath==null?st.put(row,row.ncode):st.put(row);
+}
+async function getWorksAndAuthors(){
+  const db=await openDB();
+  const [works,authors]=await Promise.all([readAll(db,"works_cache"),readAll(db,"authors")]);
+  return {db,works,authors};
+}
+async function mergeAuthorLinksToIndexedDB(){
+  const legacyM=legacyMaster(), legacyA=legacyAuthors(), legacyL=legacyLinks();
+  const ids=Object.keys(legacyL);
+  if(!ids.length)return 0;
+  const {db,works,authors}=await getWorksAndAuthors();
+  const wm=new Map(works.map(w=>[ncode(w.ncode),w]));
+  const am=new Map(authors.map(w=>[ncode(w.ncode),w]));
+  const updates=[];
+  for(const nc of ids){
+    const n=ncode(nc),id=String(legacyL[nc]||"").trim(),a=legacyA[id];
+    if(!n||!id||!a)continue;
+    const w=wm.get(n)||legacyM[n]||{},old=am.get(n)||{};
+    const row={...old,ncode:n,writer:old.writer||w.writer||"",authorId:id,authorType:a.type==="r18"?"r18":"normal",authorName:a.authorName||w.writer||"",authorUrl:a.authorUrl||""};
+    updates.push(row);
+  }
+  if(!updates.length)return 0;
+  await new Promise((resolve,reject)=>{
+    const tx=db.transaction("authors","readwrite");
+    updates.forEach(row=>putAuthorRow(tx,row));
+    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("作者情報移行失敗"));tx.onabort=()=>reject(tx.error||new Error("作者情報移行中止"));
+  });
+  return updates.length;
+}
+async function readIndexed(){
+  const db=await openDB();
+  const [works,authors]=await Promise.all([readAll(db,"works_cache"),readAll(db,"authors")]);
+  return {db,works,authors};
+}
+async function render(){
+  const {works,authors}=await readIndexed();
+  const rows=authors.filter(a=>a&&a.ncode);
+  const byN=new Map(rows.map(a=>[ncode(a.ncode),a]));
+  const linkedRows=rows.filter(a=>String(a.authorId||"").trim());
+  const linkedSet=new Set(linkedRows.map(a=>ncode(a.ncode)));
+  const normal=works.filter(w=>w&&w.ncode&&w.__r18!==true);
+  const r18=works.filter(w=>w&&w.ncode&&w.__r18===true);
+  document.getElementById("normalCount").textContent=normal.filter(w=>!linkedSet.has(ncode(w.ncode))).length;
+  document.getElementById("r18Count").textContent=r18.filter(w=>!linkedSet.has(ncode(w.ncode))).length;
+  document.getElementById("linkedCount").textContent=works.filter(w=>linkedSet.has(ncode(w.ncode))).length;
+  const groups=new Map();
+  linkedRows.forEach(a=>{
+    const id=String(a.authorId).trim();
+    if(!groups.has(id))groups.set(id,{id,type:a.authorType==="r18"?"R18":"全年齢",name:a.authorName||a.writer||"作者名不明",manageName:a.authorManageName||a.authorName||a.writer||"作者名不明",url:a.authorUrl||"",kana:a.authorKana||"",ns:[]});
+    const g=groups.get(id);
+    if(!g.url&&a.authorUrl)g.url=a.authorUrl;
+    if(!g.kana&&a.authorKana)g.kana=a.authorKana;
+    g.ns.push(ncode(a.ncode));
+  });
+  document.getElementById("authorCount").textContent=groups.size;
+  document.getElementById("localAuthorCount").textContent=groups.size+"人";
+  loadGitHubAuthorCount();
+  const box=document.getElementById("authors");
+  if(!groups.size)box.innerHTML='<p class="small">まだ作者IDは登録されていません。</p>';
+  else{
+    const buckets=new Map([["あ行",[]],["か行",[]],["さ行",[]],["た行",[]],["な行",[]],["は行",[]],["ま行",[]],["や行",[]],["ら行",[]],["わ行",[]],["🔤 A〜Z",[]],["🔤 読み仮名未登録",[]]]);
+    [...groups.values()].forEach(g=>buckets.get(kanaGroup(g.kana)).push(g));
+    box.innerHTML=[...buckets.entries()].filter(([label,list])=>list.length).map(([label,list])=>{
+      list.sort((a,b)=>String(a.kana||"").localeCompare(String(b.kana||""),"ja")||a.name.localeCompare(b.name,"ja"));
+      const cards=list.map(g=>{
+        const items=g.ns.map(n=>{const w=works.find(x=>ncode(x.ncode)===n);return w
+          ? '<div class="workLine">'+esc(w.title||"作品名なし")+' <span class="small">'+esc(n)+(w.__r18?'｜R18':'｜全年齢')+'</span></div>'
+          : '<div class="workLine">'+esc(n)+' <span class="small">作品マスター外</span></div>';}).join("");
+        const web=g.url?'<a class="authorWeb" href="'+esc(g.url)+'" target="_blank" rel="noopener">🌐 作者WEBを開く</a>':'<div class="small">🌐 作者WEB：未登録</div>';
+        const tools='<div class="authorTools">'+web+'<div class="authorManageName">作者管理名：'+esc(g.manageName)+'</div><label for="manageName_'+esc(g.id)+'">作者管理名を変更</label><input id="manageName_'+esc(g.id)+'" class="manageNameInput" data-author-id="'+esc(g.id)+'" value="'+esc(g.manageName)+'" placeholder="作者IDを管理する名前"><button type="button" class="manageNameSave" data-author-id="'+esc(g.id)+'">名前を保存</button><span id="manageNameStatus_'+esc(g.id)+'" class="kanaStatus"></span><label for="kana_'+esc(g.id)+'">ふりがな</label><input id="kana_'+esc(g.id)+'" class="kanaInput" data-author-id="'+esc(g.id)+'" value="'+esc(g.kana)+'" placeholder="作者名のふりがなを入力"><button type="button" class="kanaSave" data-author-id="'+esc(g.id)+'">保存</button><button type="button" class="kanaNext" data-author-id="'+esc(g.id)+'">保存して次へ ▶</button><span id="kanaStatus_'+esc(g.id)+'" class="kanaStatus"></span></div>';
+        const kanaText=g.kana?'<span class="small">｜'+esc(g.kana)+'</span>':'';
+        return '<details class="authorBlock"><summary><span class="authorName">'+esc(g.manageName)+'</span>'+kanaText+'　<span class="authorId">'+esc(g.id)+'</span>　'+g.type+'　'+g.ns.length+'作品</summary><div style="margin-top:8px">'+tools+items+'</div></details>';
+      }).join("");
+      return '<details class="authorBlock"><summary>▶ '+esc(label)+'　'+list.length+'作者</summary><div style="margin-top:8px">'+cards+'</div></details>';
+    }).join("");
+  }
+  renderList("normalList",normal,linkedSet);
+  renderList("r18List",r18,linkedSet);
+  bindKanaButtons();
+}
+async function saveAuthorManageName(authorId,name){
+  const id=String(authorId||"").trim(),value=String(name||"").trim();
+  if(!id||!value)throw new Error("作者管理名を入力してください。");
+  const db=await openDB();
+  const authors=await readAll(db,"authors");
+  const rows=authors.filter(a=>a&&String(a.authorId||"").trim()===id);
+  if(!rows.length)throw new Error("対象作者の作品紐付けが見つかりません。");
+  await new Promise((resolve,reject)=>{
+    const tx=db.transaction("authors","readwrite"),st=tx.objectStore("authors");
+    rows.forEach(row=>st.put({...row,authorManageName:value}));
+    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("作者管理名保存失敗"));tx.onabort=()=>reject(tx.error||new Error("作者管理名保存中止"));
+  });
+}
+async function saveAuthorKana(authorId,kana){
+  const id=String(authorId||"").trim(),value=kanaToHiragana(kana);
+  if(!id)return;
+  const db=await openDB();
+  const authors=await readAll(db,"authors");
+  const rows=authors.filter(a=>a&&String(a.authorId||"").trim()===id);
+  if(!rows.length)throw new Error("対象作者の作品紐付けが見つかりません。");
+  await new Promise((resolve,reject)=>{
+    const tx=db.transaction("authors","readwrite"),st=tx.objectStore("authors");
+    rows.forEach(row=>st.put({...row,authorKana:value,authorKanaFirst:value.charAt(0),authorKanaChecked:true}));
+    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("ふりがな保存失敗"));tx.onabort=()=>reject(tx.error||new Error("ふりがな保存中止"));
+  });
+}
+function bindKanaButtons(){
+  document.querySelectorAll(".manageNameSave").forEach(btn=>{
+    btn.onclick=async()=>{
+      const id=btn.dataset.authorId,input=document.querySelector('.manageNameInput[data-author-id="'+CSS.escape(id)+'"]'),status=document.getElementById("manageNameStatus_"+id);
+      btn.disabled=true;
+      try{await saveAuthorManageName(id,input?.value||"");status.textContent="✓ 保存しました";await render();}
+      catch(e){status.textContent="⚠️ "+e.message;}
+      finally{btn.disabled=false}
+    };
+  });
+  const saveAndMove=async(btn,moveNext)=>{
+    const id=btn.dataset.authorId,input=document.querySelector('.kanaInput[data-author-id="'+CSS.escape(id)+'"]'),status=document.getElementById("kanaStatus_"+id);
+    btn.disabled=true;
+    try{
+      await saveAuthorKana(id,input?.value||"");
+      status.textContent="✓ 保存しました";
+      if(moveNext)focusNextKana(input);
+    }catch(e){
+      status.textContent="⚠️ "+e.message;
+    }finally{btn.disabled=false}
+  };
+  document.querySelectorAll(".kanaSave").forEach(btn=>btn.onclick=()=>saveAndMove(btn,false));
+  document.querySelectorAll(".kanaNext").forEach(btn=>btn.onclick=()=>saveAndMove(btn,true));
+}
+function focusNextKana(current){
+  const inputs=[...document.querySelectorAll(".kanaInput")];
+  const i=inputs.indexOf(current);
+  const next=inputs.slice(i+1).find(el=>!String(el.value||"").trim())||inputs[i+1];
+  if(!next){
+    current?.scrollIntoView({behavior:"smooth",block:"center"});
+    return;
+  }
+  let d=next.closest("details");
+  while(d){
+    d.open=true;
+    d=d.parentElement?.closest("details");
+  }
+  next.scrollIntoView({behavior:"smooth",block:"center"});
+  setTimeout(()=>next.focus(),250);
+}
+function kanaToHiragana(v){
+  return String(v||"").trim().replace(/[ァ-ヶ]/g,ch=>String.fromCharCode(ch.charCodeAt(0)-0x60));
+}
+function kanaGroup(v){
+  const s=kanaToHiragana(v),ch=s.charAt(0);
+  if(!ch)return "🔤 読み仮名未登録";
+  if(/^[a-zA-Z]/.test(String(v||"").trim()))return "🔤 A〜Z";
+  const sets=[
+    ["あいうえおうぁうぃうぇうぉゔ","あ行"],["かきくけこがぎぐげご","か行"],
+    ["さしすせそざじずぜぞ","さ行"],["たちつてとだぢづでど","た行"],
+    ["なにぬねの","な行"],["はひふへほばびぶべぼぱぴぷぺぽ","は行"],
+    ["まみむめも","ま行"],["やゆよ","や行"],["らりるれろ","ら行"],["わをん","わ行"]
+  ];
+  for(const [chars,label] of sets)if(chars.includes(ch))return label;
+  return "🔤 読み仮名未登録";
+}
+async function fetchNormalKanas(){
+  const {db,authors}=await readIndexed();
+  const groups=new Map();
+  authors.forEach(a=>{
+    if(!a||String(a.authorType||"")!=="normal")return;
+    const id=String(a.authorId||"").trim();
+    if(!/^\d+$/.test(id))return;
+    if(!groups.has(id))groups.set(id,{id,rows:[],kana:String(a.authorKana||"").trim(),checked:Boolean(a.authorKanaChecked)});
+    const g=groups.get(id);
+    g.rows.push(a);
+    if(!g.kana&&a.authorKana)g.kana=String(a.authorKana).trim();
+    if(a.authorKanaChecked)g.checked=true;
+  });
+
+  // ふりがなが保存済み、またはAPI確認済みなら再取得しない。
+  const targets=[...groups.values()].filter(g=>!g.kana&&!g.checked);
+  if(!targets.length)return {target:0,updated:0,missing:0};
+
+  let updated=0,missing=0;
+  const errors=[];
+  for(let i=0;i<targets.length;i++){
+    const g=targets[i];
+    document.getElementById("notice").textContent="全年齢作者のふりがなを取得中… "+(i+1)+"/"+targets.length;
+    try{
+      const api="https://api.syosetu.com/userapi/api/?out=jsonp&of=u-n-y-1&lim=1&userid="+encodeURIComponent(g.id);
+      let data;
+      try{
+        data=await jsonp(api);
+      }catch(firstError){
+        // 一時的なJSONP失敗だけ1回再試行する。
+        await new Promise(r=>setTimeout(r,300));
+        data=await jsonp(api+"&_cb="+Date.now());
+      }
+      const row=Array.isArray(data)?data.find(x=>x&&String(x.userid||"")===g.id):null;
+      const kana=kanaToHiragana(row?.yomikata||"");
+
+      await new Promise((resolve,reject)=>{
+        const tx=db.transaction("authors","readwrite"),st=tx.objectStore("authors");
+        g.rows.forEach(a=>{
+          st.put({...a,authorKana:kana,authorKanaFirst:kana.charAt(0),authorKanaChecked:true});
+        });
+        tx.oncomplete=resolve;
+        tx.onerror=()=>reject(tx.error||new Error("ふりがな保存失敗"));
+        tx.onabort=()=>reject(tx.error||new Error("ふりがな保存中止"));
+      });
+
+      if(kana)updated++;
+      else missing++;
+    }catch(e){
+      // API通信そのものに失敗した場合だけ未確認として残し、次回再試行する。
+      errors.push(g.id+":"+e.message);
+      missing++;
+    }
+    await new Promise(r=>setTimeout(r,120));
+  }
+
+  if(errors.length){
+    throw new Error("API取得に失敗した作者 "+errors.length+"人："+errors.slice(0,3).join(" / "));
+  }
+  return {target:targets.length,updated,missing};
+}
+
+function renderList(id,arr,linkedSet){
+  const box=document.getElementById(id), works0=arr.filter(w=>!linkedSet.has(ncode(w.ncode)));
+  if(!works0.length){box.innerHTML='<div class="notice">🎉 未登録作品はありません。</div>';return;}
+  box.innerHTML=works0.map(w=>{
+    const url=w.__r18?"https://novel18.syosetu.com/"+ncode(w.ncode).toLowerCase()+"/":"https://ncode.syosetu.com/"+ncode(w.ncode).toLowerCase()+"/";
+    return '<div class="card"><div class="title">'+esc(w.title||"作品名なし")+'</div><div class="writer">作者：'+esc(w.writer||"作者名なし")+'　<span class="small">未登録</span></div><a href="'+esc(url)+'" target="_blank" rel="noopener">作品を開く</a></div>';
+  }).join("");
+}
+async function saveAuthorToIndexedDB(info,apiWorks,hits,authorName){
+  const {db,works,authors}=await readIndexed();
+  const wm=new Map(works.map(w=>[ncode(w.ncode),w]));
+  const am=new Map(authors.map(a=>[ncode(a.ncode),a]));
+  const rows=hits.map(n=>{
+    const w=wm.get(n)||{},old=am.get(n)||{};
+    return {...old,ncode:n,writer:old.writer||w.writer||"",authorId:info.id,authorType:info.type,authorName,authorUrl:String(info.url||""),authorKanaChecked:Boolean(old.authorKanaChecked)};
+  });
+  await new Promise((resolve,reject)=>{
+    const tx=db.transaction("authors","readwrite");
+    rows.forEach(row=>putAuthorRow(tx,row));
+    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("作者情報保存失敗"));tx.onabort=()=>reject(tx.error||new Error("作者情報保存中止"));
+  });
+}
+async function processAuthor(authorUrl){
+  const info=parseAuthor(authorUrl);
+  if(!info)throw new Error("作者ページURLを判定できませんでした。全年齢は mypage.syosetu.com、R18は xmypage.syosetu.com の作者ページを渡してください。");
+  const apiWorks=await fetchAuthor(info);
+  if(!apiWorks.length)throw new Error("作者APIから作品を取得できませんでした。");
+  const {works}=await readIndexed();
+  const wm=new Map(works.map(w=>[ncode(w.ncode),w]));
+  const hits=[],seen=new Set();
+  apiWorks.forEach(w=>{
+    const n=ncode(w.ncode);if(!n||seen.has(n))return;seen.add(n);
+    const mw=wm.get(n);
+    if(mw&&((info.type==="r18"&&mw.__r18===true)||(info.type==="normal"&&mw.__r18!==true)))hits.push(n);
+  });
+  if(!hits.length)throw new Error("本棚マスターと照合できる"+(info.type==="r18"?"R18":"全年齢")+"作品がありません。");
+  if(info.type==="normal"){
+    const bad=apiWorks.find(w=>String(w.userid??"")!==String(info.id));
+    if(bad)throw new Error("作者APIのuseridが受信URLと一致しません。保存を中止しました。");
+  }
+  const authorName=String(apiWorks.find(w=>w.writer)?.writer||"");
+  await saveAuthorToIndexedDB(info,apiWorks,hits,authorName);
+  return {info,authorName,apiCount:apiWorks.length,hitCount:hits.length,added:hits.length};
+}
+async function handleIncoming(){
+  const params=new URLSearchParams(location.search),authorUrl=params.get("authorurl");
+  if(!authorUrl)return;
+  const notice=document.getElementById("notice");
+  notice.textContent="作者URLを受信しました。作者種別を判定してAPIを確認中…";
+  try{
+    const r=await processAuthor(authorUrl);
+    notice.textContent="✅ 作者登録完了｜"+r.authorName+"｜"+r.info.id+"｜"+(r.info.type==="r18"?"R18":"全年齢")+"｜作者API "+r.apiCount+"作品｜本棚照合 "+r.hitCount+"作品｜今回の新規紐付け "+r.added+"作品";
+    history.replaceState({},document.title,location.pathname);await render();
+  }catch(e){notice.textContent="⚠️ 作者登録失敗｜"+e.message+"｜データは変更していません。"}
+}
+async function loadGitHubAuthorCount(){
+  const status=document.getElementById("syncStatus");
+  try{
+    const response=await fetch("../../data/author-list.json?ts="+Date.now(),{cache:"no-store"});
+    if(!response.ok)throw new Error("GitHub保存済み一覧を読めません（HTTP "+response.status+"）");
+    const data=await response.json();
+    const ids=new Set((Array.isArray(data.authors)?data.authors:[]).map(a=>String(a.author_type||"")+":"+String(a.author_id||"").trim()).filter(k=>!k.endsWith(":")));
+    const remote=ids.size;
+    const local=Number(document.getElementById("authorCount").textContent)||0;
+    document.getElementById("githubAuthorCount").textContent=remote+"人";
+    document.getElementById("localAuthorCount").textContent=local+"人";
+    document.getElementById("authorDiffCount").textContent=(local-remote>=0?"+":"")+(local-remote)+"人";
+    status.textContent="GitHub保存済み一覧："+remote+"人｜最終送付データ："+String(data.exported_at||"不明");
+    status.dataset.remoteCount=String(remote);
+  }catch(e){
+    document.getElementById("githubAuthorCount").textContent="確認不可";
+    document.getElementById("authorDiffCount").textContent="比較不可";
+    status.textContent="GitHub一覧の比較に失敗しました："+e.message;
+  }
+}
+async function buildAuthorsJson(){
+  const db=await openDB(),rows=await readAll(db,"authors"),byKey=new Map();
+  for(const a of rows){
+    if(!a||!String(a.authorId||"").trim())continue;
+    const id=String(a.authorId).trim(),type=a.authorType==="r18"?"r18":"normal";
+    byKey.set(type+":"+id,{author_id:id,author_type:type});
+  }
+  const authors=[...byKey.values()].sort((a,b)=>a.author_type.localeCompare(b.author_type)||a.author_id.localeCompare(b.author_id,undefined,{numeric:true}));
+  if(!authors.length)throw new Error("出力対象の作者が0人です。");
+  return {schema_version:1,exported_at:new Date().toISOString(),source:"tomotaYomuDB.authors",author_count:authors.length,authors};
+}
+async function copyAuthorsJson(){
+  const btn=document.getElementById("copyAuthors"),status=document.getElementById("syncStatus");
+  btn.disabled=true;
+  try{
+    const payload=await buildAuthorsJson(),json=JSON.stringify(payload);
+    document.getElementById("authorsJsonOutput").value=JSON.stringify(payload,null,2);
+    await navigator.clipboard.writeText(json);
+    status.textContent="作者"+payload.author_count+"人分のJSONをコピーしました。続けて「② Atom更新」を押してください。";
+  }catch(e){
+    status.textContent="JSONコピー失敗："+e.message+"。クリップボードの許可を確認してください。";
+  }finally{btn.disabled=false;}
+}
+async function downloadAuthorsJson(){
+  const btn=document.getElementById("downloadAuthors"),status=document.getElementById("syncStatus");
+  btn.disabled=true;
+  try{
+    const payload=await buildAuthorsJson();
+    const json=JSON.stringify(payload,null,2)+"\n";
+    document.getElementById("authorsJsonOutput").value=JSON.stringify(payload,null,2);
+    const blob=new Blob([json],{type:"application/json;charset=utf-8"});
+    const url=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=url;a.download="tomotayomu-author-list.json";a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    status.textContent="作者"+payload.author_count+"人分のJSONを保存しました。";
+  }catch(e){
+    status.textContent="JSON保存失敗："+e.message;
+  }finally{btn.disabled=false;}
+}
+document.getElementById("copyAuthors").addEventListener("click",copyAuthorsJson);
+document.getElementById("downloadAuthors").addEventListener("click",downloadAuthorsJson);
+document.getElementById("launchAtomUpdate").addEventListener("click",()=>{
+  const status=document.getElementById("syncStatus");
+  status.textContent="Atom更新ショートカットを起動します。GitHub Actionsの実行結果を確認してください。";
+  location.href="shortcuts://run-shortcut?name="+encodeURIComponent("ともたよむAtom更新");
+});
+
+(async()=>{
+  try{
+    const legacyA=legacyAuthors(),legacyL=legacyLinks(),legacyM=legacyMaster();
+    const legacyV215A=readJson(LEGACY_V215_AUTHOR_KEY,{});
+    const legacyV215Done=readJson(LEGACY_V215_DONE_KEY,[]);
+    const legacyAuthorCount=Object.keys(legacyA).length,legacyLinkCount=Object.keys(legacyL).length,legacyMasterCount=Object.keys(legacyM).length;
+    const legacyV215AuthorCount=Object.keys(legacyV215A).length,legacyV215DoneCount=Array.isArray(legacyV215Done)?legacyV215Done.length:0;
+    const migrated=await mergeAuthorLinksToIndexedDB();
+    await render();
+    if(migrated){
+      document.getElementById("notice").textContent="旧作者台帳をIndexedDBへ移行しました："+migrated+"作品｜旧作者："+legacyAuthorCount+"｜旧紐付け："+legacyLinkCount;
+    }else if(legacyAuthorCount||legacyLinkCount){
+      document.getElementById("notice").textContent="⚠️ 旧作者台帳を検出："+legacyAuthorCount+"作者｜"+legacyLinkCount+"紐付け｜旧v2.1.5作者："+legacyV215AuthorCount+"｜処理済みNコード："+legacyV215DoneCount+"｜旧作品マスター："+legacyMasterCount+"｜IndexedDB移行対象を確認中";
+    }else{
+      document.getElementById("notice").textContent="ℹ️ 旧作者台帳：作者0｜紐付け0｜旧v2.1.5作者："+legacyV215AuthorCount+"｜処理済みNコード："+legacyV215DoneCount+"｜旧作品マスター："+legacyMasterCount;
+    }
+    await handleIncoming();
+    try{
+      const kanaResult=await fetchNormalKanas();
+      await render();
+      if(kanaResult.target && kanaResult.missing){
+        document.getElementById("notice").textContent="⚠️ 全年齢ふりがな：取得できなかった作者 "+kanaResult.missing+"人が未登録のままです。";
+      }else{
+        document.getElementById("notice").hidden=true;
+      }
+    }catch(e){
+      document.getElementById("notice").textContent="⚠️ 全年齢ふりがな取得失敗｜"+e.message+"｜作者データ自体は変更していません。";
+    }
+  }catch(e){
+    document.getElementById("notice").textContent="⚠️ 作者管理のIndexedDB読込失敗｜"+e.message;
+  }
+})();
+</script>
+</body>
+</html>
