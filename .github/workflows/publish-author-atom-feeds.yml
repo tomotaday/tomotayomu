@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       author_list_json:
-        description: "Compact JSON exported from author-export.html. Leave empty to use the saved list."
+        description: "Compact JSON exported from author.html. Leave empty to use the saved list."
         required: false
         type: string
   schedule:
