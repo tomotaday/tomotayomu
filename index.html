@@ -438,6 +438,7 @@ async function buildV3CardsFromIndexedDB(){
     const writer=isSearchExcluded?(w.writer||am.get(n)?.writer||""):(am.get(n)?.writer||w.writer||"");
     card.dataset.authorName=writer;
     card.dataset.authorManageName=am.get(n)?.authorManageName||"";
+    card.dataset.authorId=am.get(n)?.authorId||"";
     card.dataset.current=pm.has(n)?String(pm.get(n).episode||""):"";
 
     card.innerHTML='<div class="meta"><span class="newMark" hidden>🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> ｜ '+shelf+'</div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="searchExcludedMark" hidden title="検索除外に設定中">🚫</span><span class="siteBadge siteBadge-narou">なろう</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから　📖 未読 / —話</a><button type="button" class="shortStoryReadToggle" hidden>未読</button></div><details class="managementDetails"><summary>詳細を開く</summary><div class="managementBody"><div class="ncode">Nコード：'+n+'</div><button type="button" class="moveShelfBtn">本棚を移動</button><button type="button" class="searchExcludedToggle">🔎 検索除外にする</button><button type="button" class="deleteWorkBtn">削除</button></div></details></article>';
@@ -810,6 +811,7 @@ function initSearch(){
         card.querySelector("h2")?.textContent||"",
         card.dataset.authorName||"",
         card.dataset.authorManageName||"",
+        card.dataset.authorId||"",
         card.dataset.ncode||""
       ].join("\n").toLocaleLowerCase("ja-JP");
       return hay.includes(q);
