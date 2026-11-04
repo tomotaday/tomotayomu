@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#f6f3ed" name="theme-color"/>
-<title>ともたよむ v3.6.1【2026/11/01】カクヨム対応</title>
+<title>ともたよむ v3.6.2【2026/11/05】本棚取得・表示構成改善</title>
 <style>
 :root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195;--shelf-card:#fff;--shelf-ink:#252525;--shelf-line:#ddd;--topbtn-bg:#fffdf9;--topbtn-ink:#252525;--topbtn-line:#c9c0b4;--work-card-line:#aaa195}
 *{box-sizing:border-box}
@@ -112,8 +112,8 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 
 
 <main>
-<h1 style="font-size:18px;margin:0 0 8px;white-space:nowrap;font-size:clamp(15px,4.4vw,18px)">ともたよむ v3.6.1【2026/11/01】</h1>
-<div class="note" style="font-weight:800;font-size:15px">Atom更新見直し版</div>
+<h1 style="font-size:18px;margin:0 0 8px;white-space:nowrap;font-size:clamp(15px,4.4vw,18px)">ともたよむ v3.6.2【2026/11/05】</h1>
+<div class="note" style="font-weight:800;font-size:15px">本棚取得・表示構成改善</div>
 <div class="top-update-actions">
 <button id="updateBtn" type="button">🔄 本棚更新</button>
 <button id="copyAuthorJsonBtn" type="button">① JSONコピー</button>
@@ -175,8 +175,9 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 <section id="development-notes" style="margin-top:28px;padding-top:12px;border-top:1px solid var(--line)">
 <div id="current-dev-task" style="margin:10px 0 14px;padding:10px 12px;border:1px solid #9aa9c5;border-radius:10px;background:rgba(255,255,255,.58);font-size:13px;line-height:1.55">
   <div style="font-weight:800;margin-bottom:3px">🛠️ 進行中の課題</div>
-  <div style="font-weight:700">リポジトリ整理：機能別フォルダへのHTML移動</div>
-  <div style="color:var(--muted);margin-top:3px">進捗：機能別フォルダへの移動・参照確認完了｜旧ファイル19件は削除保留領域で隔離中</div>
+  <div style="font-weight:700">本棚取得・表示構成の改善</div>
+  <div style="color:var(--muted);margin-top:3px">進捗：IndexedDB一括取得・カード一括追加・読書位置処理の効率化・検索結果からの本棚移動を実装｜読み込み途中の作品カード表示を解消・実機確認済み</div>
+  <div style="color:var(--muted);margin-top:3px">保留：Atom取得の全件403（1,540フィード）を原因調査予定｜本棚改善完了後に対応</div>
 </div>
 </section>
 </main>
