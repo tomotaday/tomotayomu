@@ -712,17 +712,27 @@ function restoreReadingFromQuery(){
   return true;
 }
 
-function restoreReadingPositions(){
+function prepareReadingCards(){
+  const m=readingMap();
+  let changed=false;
   document.querySelectorAll("#shelf .card").forEach(card=>{
     if(card.dataset.noteId)return;
     const n=String(card.dataset.ncode||"").toUpperCase();
-    const current=readingFor(n);
+    if(!n)return;
+    if(!(n in m)){
+      const v=card.dataset.current;
+      m[n]=(v!=="" && /^\\d+$/.test(v)) ? Number(v) : null;
+      changed=true;
+    }
+    const raw=m[n];
+    const current=Number.isFinite(Number(raw)) ? Number(raw) : null;
     const total=Number(card.dataset.totalEpisodes||0);
     const workUrl=card.querySelector(".workLink")?.href||"";
     const isShortStory=String(card.dataset.noveltype||"").trim()==="2";
     card.dataset.current=current==null ? "" : String(current);
     renderResumeLink(card,current,total,workUrl,isShortStory);
   });
+  if(changed)saveJSON(READ_KEY,m);
 }
 
 function readingMap(){ return loadJSON(READ_KEY,{}); }
@@ -1122,8 +1132,7 @@ function showShelfMoveDialog(card){
         await moveWorkToShelf(n,newId);
       }
       await buildV3CardsFromIndexedDB();
-      seedReadingCache();
-      restoreReadingPositions();
+      prepareReadingCards();
       renderGlobalBaseline();
       restoreLatestWorks();
       buildUpdateView();
@@ -1276,7 +1285,7 @@ async function autoImportNoteMagazineFromShortcut(){
     };
     saveNoteItem(item);
     await buildV3CardsFromIndexedDB();
-    seedReadingCache();restoreReadingPositions();renderGlobalBaseline();restoreLatestWorks();buildUpdateView();buildShelfFolders();
+    prepareReadingCards();renderGlobalBaseline();restoreLatestWorks();buildUpdateView();buildShelfFolders();
     if(status)status.textContent=(current?"noteマガジンの目次を更新しました：":"noteマガジンを本棚に登録しました：")+item.title+"（目次 "+data.items.length+"件）";
   }catch(error){
     console.error("note目次の自動登録／更新に失敗",error);
@@ -1292,7 +1301,7 @@ document.addEventListener("click",e=>{
     if(!id)return;
     if(!confirm("このカクヨム作品を本棚から削除しますか？"))return;
     writeKakuyomuItems(readKakuyomuItems().filter(x=>String(x.id)!==id));
-    buildV3CardsFromIndexedDB().then(()=>{seedReadingCache();restoreReadingPositions();renderGlobalBaseline();restoreLatestWorks();buildUpdateView();buildShelfFolders();});
+    buildV3CardsFromIndexedDB().then(()=>{prepareReadingCards();renderGlobalBaseline();restoreLatestWorks();buildUpdateView();buildShelfFolders();});
     const status=document.getElementById("apiStatus");if(status)status.textContent="カクヨム作品を削除しました。";
     return;
   }
@@ -1303,7 +1312,7 @@ document.addEventListener("click",e=>{
     const item=readNoteItems().find(x=>x.id===noteId);
     if(!item){alert("note作品データが見つかりません");return}
     saveNoteItem({...item,status:String(card.querySelector(".noteStatusInput")?.value||"").trim(),synopsis:String(card.querySelector(".noteSynopsisInput")?.value||"").trim()});
-    buildV3CardsFromIndexedDB().then(()=>{seedReadingCache();restoreReadingPositions();restoreLatestWorks();buildUpdateView();buildShelfFolders();});
+    buildV3CardsFromIndexedDB().then(()=>{prepareReadingCards();restoreLatestWorks();buildUpdateView();buildShelfFolders();});
     const status=document.getElementById("apiStatus");if(status)status.textContent="note作品情報を保存しました。";
     return;
   }
@@ -1319,7 +1328,7 @@ document.addEventListener("click",e=>{
       if(!item)throw new Error("note作品データが見つかりません");
       saveNoteItem({...item,bookmarkUrl:url.href});
       document.getElementById("apiStatus").textContent="しおりURLを保存しました。";
-      buildV3CardsFromIndexedDB().then(()=>{seedReadingCache();restoreReadingPositions();restoreLatestWorks();buildUpdateView();buildShelfFolders();});
+      buildV3CardsFromIndexedDB().then(()=>{prepareReadingCards();restoreLatestWorks();buildUpdateView();buildShelfFolders();});
     }catch(err){alert("しおりを保存できません："+err.message)}
     return;
   }
@@ -1330,7 +1339,7 @@ document.addEventListener("click",e=>{
     return;
   }
 });
-window.addEventListener("load",async()=>{ try{ const s=document.getElementById("apiStatus"); if(s)s.textContent="本棚情報反映中"; await buildV3CardsFromIndexedDB(); await refreshNotePublishedDates(); try{localStorage.removeItem("tomotaYomu_work_edit_overrides_v1");}catch(e){console.warn("旧作品編集表示データの削除をスキップ",e);} seedReadingCache(); restoreReadingFromQuery(); restoreReadingPositions(); renderGlobalBaseline(); restoreLatestWorks(); buildUpdateView(); buildShelfFolders(); syncSearchExcludedButtons(); }catch(e){ console.warn("v3 IndexedDB本棚再構築失敗",e); const s=document.getElementById("apiStatus"); if(s)s.textContent="v3 IndexedDB接続失敗："+e.message; } });
+window.addEventListener("load",async()=>{ try{ const s=document.getElementById("apiStatus"); if(s)s.textContent="本棚情報反映中"; await buildV3CardsFromIndexedDB(); await refreshNotePublishedDates(); try{localStorage.removeItem("tomotaYomu_work_edit_overrides_v1");}catch(e){console.warn("旧作品編集表示データの削除をスキップ",e);} restoreReadingFromQuery(); prepareReadingCards(); renderGlobalBaseline(); restoreLatestWorks(); buildUpdateView(); buildShelfFolders(); syncSearchExcludedButtons(); }catch(e){ console.warn("v3 IndexedDB本棚再構築失敗",e); const s=document.getElementById("apiStatus"); if(s)s.textContent="v3 IndexedDB接続失敗："+e.message; } });
 
 /* 作者Atomフィード：本棚DBと独立した保存領域 */
 const ATOM_DB_NAME="tomotaYomuAtomDB", ATOM_DB_VERSION=1;
