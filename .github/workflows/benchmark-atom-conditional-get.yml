@@ -24,7 +24,7 @@ jobs:
         with:
           python-version: "3.x"
       - name: Compare initial and conditional requests for 50 authors
-        run: python scripts/benchmark_atom_conditional_get.py
+        run: python scripts/diagnostics/atom/benchmark_atom_conditional_get.py
       - name: Upload benchmark report
         if: always()
         uses: actions/upload-artifact@v4
