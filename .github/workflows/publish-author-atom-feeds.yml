@@ -78,7 +78,7 @@ jobs:
         env:
           AUTHOR_LIST_PATH: data/author-list.json
           OUTPUT_PATH: data/atom/author-feeds.json
-        run: python scripts/publish_author_atom_feeds.py
+        run: python scripts/atom/publish_author_atom_feeds.py
 
       - name: Commit changed feed snapshot
         run: |
