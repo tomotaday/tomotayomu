@@ -421,6 +421,7 @@ async function buildV3CardsFromIndexedDB(){
 
   const source=document.getElementById("shelf");
   source.innerHTML="";
+  const cardFragment=document.createDocumentFragment();
   let made=0,deleted=0,unmapped=0;
 
   for(const p of placements){
@@ -448,7 +449,7 @@ async function buildV3CardsFromIndexedDB(){
     card.querySelector("h2").textContent=w.title||"";
     card.querySelector(".authorName").textContent=writer;
     updateCard(card,{...w,writer});
-    source.appendChild(card);
+    cardFragment.appendChild(card);
     made++;
   }
 
@@ -479,7 +480,7 @@ async function buildV3CardsFromIndexedDB(){
     card.querySelector(".workLink").href=String(item.url||"https://note.com/");
     card.querySelector(".resumeLink").href=String(item.bookmarkUrl||item.url||"https://note.com/");
     card.querySelector(".noteBookmarkInput").value=String(item.bookmarkUrl||item.url||"");
-    source.appendChild(card);
+    cardFragment.appendChild(card);
     made++;
   }
 
@@ -528,9 +529,11 @@ async function buildV3CardsFromIndexedDB(){
         console.warn("カクヨム目次の照合に失敗:",error);
       });
     }
-    source.appendChild(card);
+    cardFragment.appendChild(card);
     made++;
   }
+
+  source.appendChild(cardFragment);
 
   const s=document.getElementById("apiStatus");
   if(s){ s.textContent=""; }
