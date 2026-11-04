@@ -294,8 +294,8 @@ async function buildV3CardsFromIndexedDB(){
     r.onerror=()=>no(r.error);
   });
   const readAll=name=>new Promise((ok,no)=>{
-    const a=[],r=db.transaction(name,"readonly").objectStore(name).openCursor();
-    r.onsuccess=()=>{if(r.result){a.push(r.result.value);r.result.continue()}else ok(a)};
+    const r=db.transaction(name,"readonly").objectStore(name).getAll();
+    r.onsuccess=()=>ok(r.result||[]);
     r.onerror=()=>no(r.error);
   });
   const [shelfRows,placements,works,authors,positions]=await Promise.all([
