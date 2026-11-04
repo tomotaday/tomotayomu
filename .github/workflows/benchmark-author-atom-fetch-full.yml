@@ -36,7 +36,7 @@ jobs:
         env:
           MAX_WORKERS: ${{ inputs.max_workers }}
           REPORT_PATH: author-fetch-full-benchmark.json
-        run: python scripts/benchmark_author_atom_fetch_full.py
+        run: python scripts/diagnostics/atom/benchmark_author_atom_fetch_full.py
       - name: Upload benchmark report
         if: always()
         uses: actions/upload-artifact@v4
