@@ -420,6 +420,7 @@ async function buildV3CardsFromIndexedDB(){
   saveJSON(READ_KEY,readMap);
 
   const source=document.getElementById("shelf");
+  source.hidden=true;
   source.innerHTML="";
   const cardFragment=document.createDocumentFragment();
   let made=0,deleted=0,unmapped=0;
