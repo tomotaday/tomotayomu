@@ -838,7 +838,12 @@ function initSearch(){
       resultBox.innerHTML='<div class="searchHint">該当する作品はありません。</div>';
       return;
     }
-    hits.forEach(card=>resultBox.appendChild(card.cloneNode(true)));
+    hits.forEach(card=>{
+      const clone=card.cloneNode(true);
+      const moveButton=clone.querySelector(".moveShelfBtn");
+      if(moveButton)moveButton.addEventListener("click",()=>showShelfMoveDialog(clone));
+      resultBox.appendChild(clone);
+    });
   };
   input.addEventListener("input",run);
   input.addEventListener("search",run);
