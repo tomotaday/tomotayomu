@@ -34,7 +34,8 @@ code{overflow-wrap:anywhere}
 <option value="r18">R18 API</option>
 </select>
 <br>
-<button id="run">照会する</button>
+<button id="run">選択APIで照会</button>
+<button id="runBoth" type="button">一括判定（通常API→R18 API）</button>
 <button id="clear" type="button">入力・結果を消去</button>
 </section>
 
@@ -90,6 +91,74 @@ function jsonp(url) {
     script.src = url + "&callback=" + callback;
     document.body.appendChild(script);
   });
+}
+
+async function runBoth() {
+  const codes = parseNcodes($("ncodes").value);
+  if (!codes.length) {
+    $("status").textContent = "Nコードを認識できませんでした。例：n0001a";
+    return;
+  }
+  if (codes.length > 20) {
+    $("status").textContent = "初回実験は20件までです。件数を減らしてください。";
+    return;
+  }
+
+  $("run").disabled = true;
+  $("runBoth").disabled = true;
+  $("summary").textContent = "";
+  $("results").replaceChildren();
+  $("status").textContent = codes.length + "件を通常APIで照会します…";
+
+  const request = async (base, targets) => {
+    if (!targets.length) return new Set();
+    const query = new URLSearchParams({
+      out: "jsonp",
+      of: "n",
+      ncode: targets.map(x => x.toLowerCase()).join("-"),
+      lim: String(targets.length)
+    });
+    const data = await jsonp(base + "?" + query.toString());
+    if (!Array.isArray(data) || !data.length || !data[0] || typeof data[0].allcount !== "number") {
+      throw new Error("想定外の応答形式です。応答：" + JSON.stringify(data).slice(0, 300));
+    }
+    return new Set(data.slice(1).filter(x => x && x.ncode).map(x => String(x.ncode).toUpperCase()));
+  };
+
+  try {
+    const normalFound = await request(API.normal, codes);
+    const normalMissing = codes.filter(code => !normalFound.has(code));
+    $("status").textContent = "通常API取得 " + normalFound.size + "件。未検出 " + normalMissing.length + "件をR18 APIで照会します…";
+    const r18Found = await request(API.r18, normalMissing);
+    const bothMissing = normalMissing.filter(code => !r18Found.has(code));
+
+    $("summary").textContent =
+      "入力 " + codes.length + "件 ／ 通常API取得 " + normalFound.size +
+      "件 ／ R18 API取得 " + r18Found.size + "件 ／ 両API未検出 " + bothMissing.length + "件";
+    const list = document.createElement("ul");
+    for (const code of codes) {
+      const li = document.createElement("li");
+      let label, cls;
+      if (normalFound.has(code)) {
+        label = "通常API取得"; cls = "good";
+      } else if (r18Found.has(code)) {
+        label = "R18 API取得"; cls = "good";
+      } else {
+        label = "両API未検出"; cls = "miss";
+      }
+      li.textContent = code + " — " + label;
+      li.className = cls;
+      list.appendChild(li);
+    }
+    $("results").appendChild(list);
+    $("status").textContent = "一括判定完了。両API未検出は、削除確定ではありません。";
+  } catch (error) {
+    $("status").textContent = "照会エラー： " + (error && error.message ? error.message : String(error));
+    $("summary").textContent = "判定を中断しました。未検出とは扱いません。";
+  } finally {
+    $("run").disabled = false;
+    $("runBoth").disabled = false;
+  }
 }
 
 async function run() {
