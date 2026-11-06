@@ -117,14 +117,15 @@ async function run() {
       lim: String(codes.length)
     });
     const data = await jsonp(api + "?" + query.toString());
-    if (!Array.isArray(data) || !data.length || typeof data[0] !== "number") {
+    if (!Array.isArray(data) || !data.length || !data[0] || typeof data[0].allcount !== "number") {
       throw new Error("想定外の応答形式です。応答：" + JSON.stringify(data).slice(0, 500));
     }
 
+    const apiCount = data[0].allcount;
     const found = new Set(data.slice(1).filter(x => x && x.ncode).map(x => String(x.ncode).toUpperCase()));
     const missing = codes.filter(x => !found.has(x));
     $("summary").textContent =
-      "入力 " + codes.length + "件 ／ API応答 " + data[0] + "件 ／ 取得 " + found.size + "件 ／ 未検出 " + missing.length + "件";
+      "入力 " + codes.length + "件 ／ API応答 " + apiCount + "件 ／ 取得 " + found.size + "件 ／ 未検出 " + missing.length + "件";
     const list = document.createElement("ul");
     for (const code of codes) {
       const li = document.createElement("li");
