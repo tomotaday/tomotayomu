@@ -44,6 +44,7 @@ strong.num{font-size:1.5rem}
 <h2>全Nコード</h2>
 <p class="small">抽出結果を確認・コピーするための表示欄です。ここで編集しても本棚DBには反映されません。</p>
 <textarea id="allCodes" readonly placeholder="抽出後にNコード一覧が表示されます。"></textarea>
+<button id="copy20" type="button" disabled>先頭20件をコピー（API試験用）</button>
 <button id="copy" type="button" disabled>照会対象Nコードをコピー</button>
 <div id="copyStatus" class="small"></div>
 </section>
@@ -90,6 +91,7 @@ async function extract() {
   $("preview").textContent = "";
   $("allCodes").value = "";
   $("copy").disabled = true;
+  $("copy20").disabled = true;
   $("copyStatus").textContent = "";
   let db;
   try {
@@ -144,6 +146,7 @@ async function extract() {
     $("preview").textContent = targetCodes.slice(0, 20).join("\n") || "照会対象Nコードは見つかりませんでした。";
     $("allCodes").value = targetCodes.join("\n");
     $("copy").disabled = targetCodes.length === 0;
+    $("copy20").disabled = targetCodes.length === 0;
   } catch (error) {
     $("status").textContent = "抽出できませんでした。\n" + (error && error.message ? error.message : String(error));
   } finally {
@@ -153,6 +156,18 @@ async function extract() {
 }
 
 $("run").addEventListener("click", extract);
+$("copy20").addEventListener("click", async () => {
+  const codes = $("allCodes").value.split(/\\s+/).filter(Boolean).slice(0, 20);
+  try {
+    await navigator.clipboard.writeText(codes.join("\\n"));
+    $("copyStatus").textContent = "先頭 " + codes.length + "件をコピーしました。API試験ページに貼り付けてください。";
+  } catch (_) {
+    $("allCodes").value = codes.join("\\n");
+    $("allCodes").focus();
+    $("allCodes").select();
+    $("copyStatus").textContent = "先頭20件を選択しました。手動でコピーしてください。";
+  }
+});
 $("copy").addEventListener("click", async () => {
   try {
     await navigator.clipboard.writeText($("allCodes").value);
