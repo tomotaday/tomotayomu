@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>なろうAPI 複数Nコード照会テスト</title>
+<style>
+:root{color-scheme:light dark;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{max-width:760px;margin:0 auto;padding:20px;line-height:1.6}
+h1{font-size:1.35rem}
+textarea{box-sizing:border-box;width:100%;min-height:180px;padding:12px;font:16px/1.5 ui-monospace,monospace}
+button,select{font:inherit;padding:10px 14px;margin:5px 5px 5px 0}
+button{border:0;border-radius:8px;background:#2563eb;color:white}
+button:disabled{opacity:.5}
+.panel{border:1px solid #8886;border-radius:10px;padding:14px;margin:14px 0}
+.muted{opacity:.75;font-size:.92rem}
+#status{white-space:pre-wrap}
+#results{overflow-wrap:anywhere}
+.good{color:#16803c}.miss{color:#b7791f}.bad{color:#c33}
+code{overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<h1>なろうAPI 複数Nコード照会テスト</h1>
+<p class="muted">実験専用ページです。本棚のIndexedDB、GitHub Actions、ショートカットには接続しません。入力したNコードを公式APIへ送信し、取得できるかだけを確認します。</p>
+
+<section class="panel">
+<label for="ncodes"><strong>Nコード（改行・空白・カンマ区切り）</strong></label>
+<textarea id="ncodes" spellcheck="false" placeholder="n0001a&#10;n1111b&#10;n9999d"></textarea>
+<p class="muted">初回は10件程度で試してください。最大20件まで。重複は自動除去します。</p>
+<label for="api">照会先：</label>
+<select id="api">
+<option value="normal">通常API</option>
+<option value="r18">R18 API</option>
+</select>
+<br>
+<button id="run">照会する</button>
+<button id="clear" type="button">入力・結果を消去</button>
+</section>
+
+<section class="panel">
+<strong>実行状況</strong>
+<div id="status" class="muted">Nコードを入力して照会してください。</div>
+</section>
+<section class="panel">
+<strong>照会結果</strong>
+<div id="summary" class="muted">まだ照会していません。</div>
+<div id="results"></div>
+</section>
+
+<script>
+(() => {
+"use strict";
+const API = {
+  normal: "https://api.syosetu.com/novelapi/api/",
+  r18: "https://api.syosetu.com/novel18api/api/"
+};
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+function parseNcodes(raw) {
+  const found = String(raw || "").toUpperCase().match(/N[0-9]{1,}[A-Z]{1,5}/g) || [];
+  return [...new Set(found)];
+}
+
+function jsonp(url) {
+  return new Promise((resolve, reject) => {
+    const callback = "tomotaNcodeTest_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+    const script = document.createElement("script");
+    let finished = false;
+    const cleanup = () => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      try { delete window[callback]; } catch (_) { window[callback] = undefined; }
+      script.remove();
+    };
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error("タイムアウト（20秒）"));
+    }, 20000);
+    window[callback] = data => {
+      cleanup();
+      resolve(data);
+    };
+    script.onerror = () => {
+      cleanup();
+      reject(new Error("APIスクリプトの読み込みに失敗"));
+    };
+    script.src = url + "&callback=" + callback;
+    document.body.appendChild(script);
+  });
+}
+
+async function run() {
+  const codes = parseNcodes($("ncodes").value);
+  if (!codes.length) {
+    $("status").textContent = "Nコードを認識できませんでした。例：n0001a";
+    return;
+  }
+  if (codes.length > 20) {
+    $("status").textContent = "初回実験は20件までです。件数を減らしてください。";
+    return;
+  }
+
+  $("run").disabled = true;
+  $("summary").textContent = "";
+  $("results").replaceChildren();
+  const apiName = $("api").value;
+  const api = API[apiName];
+  $("status").textContent = codes.length + "件を照会します…";
+  try {
+    const query = new URLSearchParams({
+      out: "jsonp",
+      of: "n",
+      ncode: codes.map(x => x.toLowerCase()).join("-"),
+      lim: String(codes.length)
+    });
+    const data = await jsonp(api + "?" + query.toString());
+    if (!Array.isArray(data) || !data.length || typeof data[0] !== "number") {
+      throw new Error("想定外の応答形式です。応答：" + JSON.stringify(data).slice(0, 500));
+    }
+
+    const found = new Set(data.slice(1).filter(x => x && x.ncode).map(x => String(x.ncode).toUpperCase()));
+    const missing = codes.filter(x => !found.has(x));
+    $("summary").textContent =
+      "入力 " + codes.length + "件 ／ API応答 " + data[0] + "件 ／ 取得 " + found.size + "件 ／ 未検出 " + missing.length + "件";
+    const list = document.createElement("ul");
+    for (const code of codes) {
+      const li = document.createElement("li");
+      li.textContent = code + (found.has(code) ? " — 取得成功" : " — 未検出");
+      li.className = found.has(code) ? "good" : "miss";
+      list.appendChild(li);
+    }
+    $("results").appendChild(list);
+    $("status").textContent = "照会完了。今回の結果はこの画面にだけ表示しています。";
+  } catch (error) {
+    $("status").textContent = "照会エラー： " + (error && error.message ? error.message : String(error));
+    $("summary").textContent = "判定できませんでした。未検出とは扱いません。";
+  } finally {
+    $("run").disabled = false;
+  }
+}
+
+$("run").addEventListener("click", run);
+$("clear").addEventListener("click", () => {
+  $("ncodes").value = "";
+  $("status").textContent = "入力・結果を消去しました。";
+  $("summary").textContent = "まだ照会していません。";
+  $("results").replaceChildren();
+});
+})();
+</script>
+</body>
+</html>
