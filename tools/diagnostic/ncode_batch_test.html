@@ -52,6 +52,7 @@ code{overflow-wrap:anywhere}
 <script>
 (() => {
 "use strict";
+const SEARCH_EXCLUDED_KEY = "tomotaYomu_search_excluded_ncodes_v1";
 const API = {
   normal: "https://api.syosetu.com/novelapi/api/",
   r18: "https://api.syosetu.com/novel18api/api/"
@@ -132,9 +133,24 @@ async function runBoth() {
     const r18Found = await request(API.r18, normalMissing);
     const bothMissing = normalMissing.filter(code => !r18Found.has(code));
 
+    let excludedSet = null;
+    let excludedReadError = "";
+    try {
+      const raw = localStorage.getItem(SEARCH_EXCLUDED_KEY);
+      const saved = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(saved)) throw new Error("保存形式が配列ではありません");
+      excludedSet = new Set(saved.map(x => String(x).toUpperCase()));
+    } catch (error) {
+      excludedReadError = error && error.message ? error.message : String(error);
+    }
+
+    const excludedMissing = excludedSet ? bothMissing.filter(code => excludedSet.has(code)) : [];
+    const reviewMissing = excludedSet ? bothMissing.filter(code => !excludedSet.has(code)) : [];
     $("summary").textContent =
       "入力 " + codes.length + "件 ／ 通常API取得 " + normalFound.size +
-      "件 ／ R18 API取得 " + r18Found.size + "件 ／ 両API未検出 " + bothMissing.length + "件";
+      "件 ／ R18 API取得 " + r18Found.size + "件 ／ 検索除外・未検出 " +
+      (excludedSet ? excludedMissing.length : "判定不可") +
+      "件 ／ 要確認・未検出 " + (excludedSet ? reviewMissing.length : "判定不可") + "件";
     const list = document.createElement("ul");
     for (const code of codes) {
       const li = document.createElement("li");
@@ -143,15 +159,26 @@ async function runBoth() {
         label = "通常API取得"; cls = "good";
       } else if (r18Found.has(code)) {
         label = "R18 API取得"; cls = "good";
+      } else if (!excludedSet) {
+        label = "両API未検出（検索除外リスト読取不可）"; cls = "bad";
+      } else if (excludedSet.has(code)) {
+        label = "検索除外・未検出"; cls = "miss";
       } else {
-        label = "両API未検出"; cls = "miss";
+        label = "要確認・未検出"; cls = "bad";
+      }
+      if (excludedSet && excludedSet.has(code) && (normalFound.has(code) || r18Found.has(code))) {
+        label += " ／ 検索除外作品がAPI取得可能";
       }
       li.textContent = code + " — " + label;
       li.className = cls;
       list.appendChild(li);
     }
     $("results").appendChild(list);
-    $("status").textContent = "一括判定完了。両API未検出は、削除確定ではありません。";
+    $("status").textContent = "一括判定完了。" +
+      (excludedSet
+        ? "検索除外リスト " + excludedSet.size + "件を読み取り、照合しました。"
+        : "検索除外リストを読み取れませんでした：" + excludedReadError) +
+      " このページはリストを読み取るだけで、変更・登録は行いません。";
   } catch (error) {
     $("status").textContent = "照会エラー： " + (error && error.message ? error.message : String(error));
     $("summary").textContent = "判定を中断しました。未検出とは扱いません。";
