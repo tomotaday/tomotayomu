@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#f7f7fb">
-<title>ともたよむ｜Nコード抽出診断</title>
+<title>ともたよむ｜判定センター</title>
 <style>
 :root{color-scheme:light;--ink:#273044;--muted:#687386;--line:#dfe4ed;--paper:#fff;--bg:#f5f7fb;--accent:#526b9a}
 *{box-sizing:border-box}
@@ -24,12 +24,12 @@ strong.num{font-size:1.5rem}
 <body>
 <main>
 <p style="margin:0 0 14px"><a href="../../index.html" style="display:inline-block;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--accent);text-decoration:none;font-weight:600">← ともたよむに戻る</a></p>
-<h1>ともたよむ｜Nコード抽出診断</h1>
-<p class="lead">本棚DBから小説家になろう作品のNコードを抽出する読み取り専用診断です。</p>
+<h1>ともたよむ｜判定センター</h1>
+<p class="lead">本棚DBからNコードを抽出し、通常API→R18 APIの順で照会します。診断専用・読み取り中心のページです。</p>
 <section class="panel">
 <p><strong>対象DB：</strong>tomotaYomuDB（既存DBのみ）</p>
 <p class="small">shelf_placement と works_cache を読み取ります。追加・変更・削除・API照会は行いません。DBが存在しない場合も新規作成しません。</p>
-<button id="run" type="button">Nコード抽出を実行</button>
+<button id="run" type="button">本棚からNコードを抽出</button>
 </section>
 <section class="panel">
 <h2>抽出結果</h2>
@@ -44,9 +44,17 @@ strong.num{font-size:1.5rem}
 <h2>全Nコード</h2>
 <p class="small">抽出結果を確認・コピーするための表示欄です。ここで編集しても本棚DBには反映されません。</p>
 <textarea id="allCodes" readonly placeholder="抽出後にNコード一覧が表示されます。"></textarea>
-<button id="copy20" type="button" disabled>先頭20件をコピー（API試験用）</button>
-<button id="copy" type="button" disabled>照会対象Nコードをコピー</button>
+<button id="copy20" type="button" disabled>先頭20件をコピー</button>
+<button id="copy" type="button" disabled>全Nコードをコピー</button>
 <div id="copyStatus" class="small"></div>
+</section>
+<section class="panel">
+<h2>API一括判定</h2>
+<p class="small">抽出したNコードの先頭50件を対象にします。通常APIで未検出だった作品だけをR18 APIへ照会します。検索除外リストは同じブラウザの保存内容を読み取って照合します。</p>
+<button id="runCheck" type="button" disabled>先頭50件を一括判定</button>
+<div id="checkStatus" class="status">先に本棚からNコードを抽出してください。</div>
+<div id="checkSummary" class="status"></div>
+<div id="checkResults"></div>
 </section>
 </main>
 <script>
@@ -54,6 +62,8 @@ strong.num{font-size:1.5rem}
 "use strict";
 const DB_NAME = "tomotaYomuDB";
 const DB_VERSION = 1;
+const SEARCH_EXCLUDED_KEY = "tomotaYomu_search_excluded_ncodes_v1";
+const API = { normal: "https://api.syosetu.com/novelapi/api/", r18: "https://api.syosetu.com/novel18api/api/" };
 const $ = id => document.getElementById(id);
 
 function openExistingDB() {
@@ -92,6 +102,10 @@ async function extract() {
   $("allCodes").value = "";
   $("copy").disabled = true;
   $("copy20").disabled = true;
+  $("runCheck").disabled = true;
+  $("checkStatus").textContent = "抽出中…";
+  $("checkSummary").textContent = "";
+  $("checkResults").replaceChildren();
   $("copyStatus").textContent = "";
   let db;
   try {
@@ -147,6 +161,8 @@ async function extract() {
     $("allCodes").value = targetCodes.join("\n");
     $("copy").disabled = targetCodes.length === 0;
     $("copy20").disabled = targetCodes.length === 0;
+    $("runCheck").disabled = targetCodes.length === 0;
+    $("checkStatus").textContent = targetCodes.length ? "抽出完了。先頭50件のAPI判定を実行できます。" : "照会対象Nコードがありません。";
   } catch (error) {
     $("status").textContent = "抽出できませんでした。\n" + (error && error.message ? error.message : String(error));
   } finally {
@@ -155,7 +171,82 @@ async function extract() {
   }
 }
 
+
+function jsonp(url) {
+  return new Promise((resolve, reject) => {
+    const callback = "tomotaCenter_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+    const script = document.createElement("script");
+    let finished = false;
+    const cleanup = () => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      try { delete window[callback]; } catch (_) { window[callback] = undefined; }
+      script.remove();
+    };
+    const timer = setTimeout(() => { cleanup(); reject(new Error("タイムアウト（20秒）")); }, 20000);
+    window[callback] = data => { cleanup(); resolve(data); };
+    script.onerror = () => { cleanup(); reject(new Error("APIスクリプトの読み込みに失敗")); };
+    script.src = url + "&callback=" + callback;
+    document.body.appendChild(script);
+  });
+}
+
+async function runCheck() {
+  const codes = $("allCodes").value.split(/\\s+/).filter(Boolean).slice(0, 50);
+  if (!codes.length) return;
+  $("runCheck").disabled = true;
+  $("checkSummary").textContent = "";
+  $("checkResults").replaceChildren();
+  const request = async (base, targets) => {
+    if (!targets.length) return new Set();
+    const query = new URLSearchParams({ out:"jsonp", of:"n", ncode:targets.map(x=>x.toLowerCase()).join("-"), lim:String(targets.length) });
+    const data = await jsonp(base + "?" + query.toString());
+    if (!Array.isArray(data) || !data.length || !data[0] || typeof data[0].allcount !== "number") {
+      throw new Error("想定外のAPI応答形式です。");
+    }
+    return new Set(data.slice(1).filter(x=>x && x.ncode).map(x=>String(x.ncode).toUpperCase()));
+  };
+  try {
+    $("checkStatus").textContent = codes.length + "件を通常APIで照会中…";
+    const normalFound = await request(API.normal, codes);
+    const normalMissing = codes.filter(x=>!normalFound.has(x));
+    $("checkStatus").textContent = "通常API取得 " + normalFound.size + "件。残り " + normalMissing.length + "件をR18 APIで照会中…";
+    const r18Found = await request(API.r18, normalMissing);
+    let excludedSet = null, excludedError = "";
+    try {
+      const raw = localStorage.getItem(SEARCH_EXCLUDED_KEY);
+      const saved = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(saved)) throw new Error("保存形式が配列ではありません");
+      excludedSet = new Set(saved.map(x=>String(x).toUpperCase()));
+    } catch (e) { excludedError = e.message || String(e); }
+    let excluded=0, review=0;
+    const list=document.createElement("ul");
+    for (const code of codes) {
+      const li=document.createElement("li");
+      let label, cls;
+      if (normalFound.has(code)) { label="通常API取得"; cls="good"; }
+      else if (r18Found.has(code)) { label="R18 API取得"; cls="good"; }
+      else if (!excludedSet) { label="両API未検出（検索除外リスト読取不可）"; cls="bad"; }
+      else if (excludedSet.has(code)) { label="検索除外・未検出"; cls="miss"; excluded++; }
+      else { label="要確認・未検出"; cls="bad"; review++; }
+      if (excludedSet && excludedSet.has(code) && (normalFound.has(code)||r18Found.has(code))) label += " ／ 検索除外作品がAPI取得可能";
+      li.textContent=code+" — "+label; li.className=cls; list.appendChild(li);
+    }
+    $("checkResults").appendChild(list);
+    $("checkSummary").textContent =
+      "入力 "+codes.length+"件 ／ 通常API取得 "+normalFound.size+"件 ／ R18 API取得 "+r18Found.size+
+      "件 ／ 検索除外・未検出 "+(excludedSet?excluded:"判定不可")+"件 ／ 要確認・未検出 "+(excludedSet?review:"判定不可")+"件";
+    $("checkStatus").textContent = "一括判定完了。"+(excludedSet?"検索除外リスト "+excludedSet.size+"件を照合しました。":"検索除外リスト読取エラー："+excludedError)+
+      " API照会結果は画面表示のみで、本棚DBやリストは変更していません。";
+  } catch (error) {
+    $("checkStatus").textContent="照会エラー："+(error.message||String(error));
+    $("checkSummary").textContent="判定を中断しました。未検出とは扱いません。";
+  } finally { $("runCheck").disabled=false; }
+}
+
 $("run").addEventListener("click", extract);
+$("runCheck").addEventListener("click", runCheck);
 $("copy20").addEventListener("click", async () => {
   const codes = $("allCodes").value.split(/\\s+/).filter(Boolean).slice(0, 20);
   try {
