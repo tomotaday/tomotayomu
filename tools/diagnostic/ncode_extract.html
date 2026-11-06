@@ -193,7 +193,7 @@ function jsonp(url) {
 }
 
 async function runCheck() {
-  const codes = $("allCodes").value.split(/\\s+/).filter(Boolean).slice(0, 50);
+  const codes = $("allCodes").value.split(/\s+/).filter(Boolean).slice(0, 50);
   if (!codes.length) return;
   $("runCheck").disabled = true;
   $("checkSummary").textContent = "";
@@ -248,12 +248,12 @@ async function runCheck() {
 $("run").addEventListener("click", extract);
 $("runCheck").addEventListener("click", runCheck);
 $("copy20").addEventListener("click", async () => {
-  const codes = $("allCodes").value.split(/\\s+/).filter(Boolean).slice(0, 20);
+  const codes = $("allCodes").value.split(/\s+/).filter(Boolean).slice(0, 20);
   try {
-    await navigator.clipboard.writeText(codes.join("\\n"));
+    await navigator.clipboard.writeText(codes.join("\n"));
     $("copyStatus").textContent = "先頭 " + codes.length + "件をコピーしました。API試験ページに貼り付けてください。";
   } catch (_) {
-    $("allCodes").value = codes.join("\\n");
+    $("allCodes").value = codes.join("\n");
     $("allCodes").focus();
     $("allCodes").select();
     $("copyStatus").textContent = "先頭20件を選択しました。手動でコピーしてください。";
