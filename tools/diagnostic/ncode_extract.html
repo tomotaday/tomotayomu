@@ -44,7 +44,7 @@ strong.num{font-size:1.5rem}
 <h2>全Nコード</h2>
 <p class="small">抽出結果を確認・コピーするための表示欄です。ここで編集しても本棚DBには反映されません。</p>
 <textarea id="allCodes" readonly placeholder="抽出後にNコード一覧が表示されます。"></textarea>
-<button id="copy" type="button" disabled>全Nコードをコピー</button>
+<button id="copy" type="button" disabled>照会対象Nコードをコピー</button>
 <div id="copyStatus" class="small"></div>
 </section>
 </main>
@@ -110,8 +110,10 @@ async function extract() {
     const uniqueCodes = [...new Set(validCodes)].sort();
     const invalidRows = placements.length - placementCodes.length + placementCodes.filter(code => !/^N[0-9A-Z]+$/.test(code)).length;
 
-    const workCodes = new Set(works.map(row => String(row && row.ncode || "").trim().toUpperCase()).filter(Boolean));
+    const workCodes = new Set(works.map(row => String(row && row.ncode || "").trim().toUpperCase()).filter(code => /^N[0-9A-Z]+$/.test(code)));
+    const targetCodes = uniqueCodes.filter(code => workCodes.has(code));
     const noWorkCache = uniqueCodes.filter(code => !workCodes.has(code));
+    const workOnlyCodes = [...workCodes].filter(code => !new Set(uniqueCodes).has(code));
 
     $("status").textContent =
       "抽出完了。データの変更は行っていません。\n" +
@@ -122,9 +124,12 @@ async function extract() {
       ["Nコードあり", placementCodes.length],
       ["形式不正・Nコードなし", invalidRows],
       ["有効なNコード（重複除去前）", validCodes.length],
-      ["ユニークNコード", uniqueCodes.length],
+      ["配置側ユニークNコード", uniqueCodes.length],
       ["works_cache レコード", works.length],
-      ["配置あり・作品本体なし", noWorkCache.length]
+      ["works_cache内ユニークNコード", workCodes.size],
+      ["照会対象Nコード（両方に存在）", targetCodes.length],
+      ["配置あり・作品本体なし（対象外）", noWorkCache.length],
+      ["作品本体あり・配置なし", workOnlyCodes.length]
     ];
     const list = document.createElement("ul");
     for (const [label, value] of lines) {
@@ -136,9 +141,9 @@ async function extract() {
       li.appendChild(strong);
       $("counts").appendChild(li);
     }
-    $("preview").textContent = uniqueCodes.slice(0, 20).join("\n") || "Nコードは見つかりませんでした。";
-    $("allCodes").value = uniqueCodes.join("\n");
-    $("copy").disabled = uniqueCodes.length === 0;
+    $("preview").textContent = targetCodes.slice(0, 20).join("\n") || "照会対象Nコードは見つかりませんでした。";
+    $("allCodes").value = targetCodes.join("\n");
+    $("copy").disabled = targetCodes.length === 0;
   } catch (error) {
     $("status").textContent = "抽出できませんでした。\n" + (error && error.message ? error.message : String(error));
   } finally {
@@ -151,7 +156,7 @@ $("run").addEventListener("click", extract);
 $("copy").addEventListener("click", async () => {
   try {
     await navigator.clipboard.writeText($("allCodes").value);
-    $("copyStatus").textContent = "全Nコードをクリップボードにコピーしました。";
+    $("copyStatus").textContent = "照会対象Nコードをクリップボードにコピーしました。";
   } catch (_) {
     $("allCodes").focus();
     $("allCodes").select();
