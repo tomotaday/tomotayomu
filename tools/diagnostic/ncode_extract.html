@@ -325,6 +325,13 @@ async function runFullCheck() {
     }
 
     const allResults = state.completed.flatMap(item => item.results);
+    // API未検出作品は、今回読み取った最新の検索除外リストで再分類する。
+    for (const row of allResults) {
+      if (row.status === "検索除外・未検出" || row.status === "要確認・未検出") {
+        row.status = excludedSet.has(String(row.ncode).toUpperCase()) ? "検索除外・未検出" : "要確認・未検出";
+      }
+    }
+    saveState();
     const counts = { "通常API取得": 0, "R18 API取得": 0, "検索除外・未検出": 0, "要確認・未検出": 0 };
     for (const row of allResults) counts[row.status]++;
     const list = document.createElement("ul");
@@ -510,7 +517,7 @@ async function loadAuthorWorks(author) {
       open.addEventListener("click", () => window.open(workPageUrl(work), "_blank", "noopener"));
       card.appendChild(open);
       if (!excluded.has(ncode) && !workAudit[ncode]?.deletedAt &&
-          (label === "要確認・未検出" || label === "検索除外・未検出")) {
+          label === "要確認・未検出") {
         const mark = document.createElement("button");
         mark.type = "button";
         mark.textContent = "削除確認済（未実施）";
