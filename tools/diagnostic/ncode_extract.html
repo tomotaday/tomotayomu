@@ -49,12 +49,21 @@ strong.num{font-size:1.5rem}
 <div id="copyStatus" class="small"></div>
 </section>
 <section class="panel">
-<h2>API一括判定</h2>
-<p class="small">抽出したNコードの先頭1000件を対象にします。通常APIで未検出だった作品だけをR18 APIへ照会します。検索除外リストは同じブラウザの保存内容を読み取って照合します。</p>
+<h2>API一括判定（試験）</h2>
+<p class="small">先頭1000件の動作確認用です。通常API→R18 APIの順で100件ずつ照会します。</p>
 <button id="runCheck" type="button" disabled>先頭1000件を一括判定</button>
 <div id="checkStatus" class="status">先に本棚からNコードを抽出してください。</div>
 <div id="checkSummary" class="status"></div>
 <div id="checkResults"></div>
+</section>
+<section class="panel">
+<h2>全件判定（再開対応・準備版）</h2>
+<p class="small">抽出したNコードすべてを100件ずつ照会します。完了した100件単位の結果は、このブラウザの診断専用領域に一時保存し、通信中断後に同じ一覧を再抽出すれば続きから再開できます。本棚DB・検索除外リストは変更しません。GitHubへの結果保存はまだ行いません。</p>
+<button id="runFullCheck" type="button" disabled>全件判定を開始／再開</button>
+<button id="clearFullCheck" type="button">一時進捗を消去</button>
+<div id="fullStatus" class="status">先に本棚からNコードを抽出してください。</div>
+<div id="fullSummary" class="status"></div>
+<div id="fullResults"></div>
 </section>
 </main>
 <script>
@@ -103,6 +112,7 @@ async function extract() {
   $("copy").disabled = true;
   $("copy20").disabled = true;
   $("runCheck").disabled = true;
+  $("runFullCheck").disabled = true;
   $("checkStatus").textContent = "抽出中…";
   $("checkSummary").textContent = "";
   $("checkResults").replaceChildren();
@@ -162,6 +172,7 @@ async function extract() {
     $("copy").disabled = targetCodes.length === 0;
     $("copy20").disabled = targetCodes.length === 0;
     $("runCheck").disabled = targetCodes.length === 0;
+    $("runFullCheck").disabled = targetCodes.length === 0;
     $("checkStatus").textContent = targetCodes.length ? "抽出完了。先頭1000件のAPI判定を実行できます。" : "照会対象Nコードがありません。";
   } catch (error) {
     $("status").textContent = "抽出できませんでした。\n" + (error && error.message ? error.message : String(error));
@@ -191,6 +202,140 @@ function jsonp(url) {
     document.body.appendChild(script);
   });
 }
+
+const FULL_CHECK_KEY = "tomotaYomu_diagnostic_fullcheck_v1";
+
+async function runFullCheck() {
+  const codes = $("allCodes").value.split(/\s+/).filter(Boolean);
+  if (!codes.length) return;
+  $("runFullCheck").disabled = true;
+  $("runCheck").disabled = true;
+  $("fullResults").replaceChildren();
+
+  const CHUNK_SIZE = 100;
+  const batches = [];
+  for (let i = 0; i < codes.length; i += CHUNK_SIZE) batches.push(codes.slice(i, i + CHUNK_SIZE));
+
+  let excludedSet;
+  try {
+    const raw = localStorage.getItem(SEARCH_EXCLUDED_KEY);
+    const saved = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(saved)) throw new Error("保存形式が配列ではありません");
+    excludedSet = new Set(saved.map(x => String(x).toUpperCase()));
+  } catch (error) {
+    $("fullStatus").textContent = "検索除外リストを読み取れないため中止しました：" + (error.message || String(error));
+    $("runFullCheck").disabled = false;
+    $("runCheck").disabled = false;
+    return;
+  }
+
+  let state = null;
+  try {
+    const rawState = localStorage.getItem(FULL_CHECK_KEY);
+    if (rawState) {
+      const parsed = JSON.parse(rawState);
+      if (parsed && parsed.version === 1 && Array.isArray(parsed.codes) &&
+          parsed.codes.length === codes.length && parsed.codes.every((v, i) => v === codes[i]) &&
+          Array.isArray(parsed.completed)) state = parsed;
+    }
+  } catch (_) { state = null; }
+
+  if (!state) {
+    state = { version: 1, codes, completed: [], startedAt: new Date().toISOString(), updatedAt: null };
+    try { localStorage.setItem(FULL_CHECK_KEY, JSON.stringify(state)); }
+    catch (error) {
+      $("fullStatus").textContent = "一時進捗を保存できないため開始できません：" + (error.message || String(error));
+      $("runFullCheck").disabled = false;
+      $("runCheck").disabled = false;
+      return;
+    }
+  }
+
+  const done = new Map(state.completed.map(item => [item.batchIndex, item]));
+  const request = async (base, targets, stage) => {
+    const found = new Set();
+    if (!targets.length) return found;
+    const query = new URLSearchParams({
+      out: "jsonp", of: "n",
+      ncode: targets.map(x => x.toLowerCase()).join("-"),
+      lim: String(targets.length)
+    });
+    const data = await jsonp(base + "?" + query.toString());
+    if (!Array.isArray(data) || !data.length || !data[0] || typeof data[0].allcount !== "number") {
+      throw new Error(stage + "の応答形式が不正です。");
+    }
+    const rows = data.slice(1).filter(x => x && x.ncode);
+    if (rows.length !== data[0].allcount) {
+      throw new Error(stage + "の応答件数が不一致です（API件数 " + data[0].allcount + "／受信 " + rows.length + "）。");
+    }
+    for (const row of rows) found.add(String(row.ncode).toUpperCase());
+    return found;
+  };
+
+  const saveState = () => {
+    state.updatedAt = new Date().toISOString();
+    localStorage.setItem(FULL_CHECK_KEY, JSON.stringify(state));
+  };
+
+  try {
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      if (done.has(batchIndex)) continue;
+      const part = batches[batchIndex];
+      $("fullStatus").textContent = "判定中：" + (batchIndex + 1) + "/" + batches.length +
+        "バッチ（" + part.length + "件）。完了済み " + done.size + "バッチ。";
+      const normalFound = await request(API.normal, part, "通常API");
+      const normalMissing = part.filter(code => !normalFound.has(code));
+      const r18Found = await request(API.r18, normalMissing, "R18 API");
+      const results = part.map(code => ({
+        ncode: code,
+        status: normalFound.has(code) ? "通常API取得" :
+          r18Found.has(code) ? "R18 API取得" :
+          excludedSet.has(code) ? "検索除外・未検出" : "要確認・未検出"
+      }));
+      const item = { batchIndex, results };
+      state.completed = state.completed.filter(x => x.batchIndex !== batchIndex);
+      state.completed.push(item);
+      state.completed.sort((a, b) => a.batchIndex - b.batchIndex);
+      done.set(batchIndex, item);
+      saveState();
+      $("fullStatus").textContent = "判定中：" + done.size + "/" + batches.length +
+        "バッチ完了（" + Math.min(done.size * CHUNK_SIZE, codes.length) + "/" + codes.length + "件）。";
+    }
+
+    const allResults = state.completed.flatMap(item => item.results);
+    const counts = { "通常API取得": 0, "R18 API取得": 0, "検索除外・未検出": 0, "要確認・未検出": 0 };
+    for (const row of allResults) counts[row.status]++;
+    const list = document.createElement("ul");
+    for (const row of allResults) {
+      const li = document.createElement("li");
+      li.textContent = row.ncode + " — " + row.status;
+      li.className = row.status === "要確認・未検出" ? "bad" :
+        row.status === "検索除外・未検出" ? "miss" : "good";
+      list.appendChild(li);
+    }
+    $("fullResults").appendChild(list);
+    $("fullSummary").textContent = "入力 " + codes.length + "件 ／ 通常API取得 " + counts["通常API取得"] +
+      "件 ／ R18 API取得 " + counts["R18 API取得"] + "件 ／ 検索除外・未検出 " +
+      counts["検索除外・未検出"] + "件 ／ 要確認・未検出 " + counts["要確認・未検出"] + "件";
+    $("fullStatus").textContent = "全件判定完了。100件単位で照会し、" + batches.length +
+      "バッチすべての結果をブラウザに一時保存しました。GitHubへの保存はまだ行っていません。";
+  } catch (error) {
+    $("fullStatus").textContent = "照会を中断しました：" + (error.message || String(error)) +
+      " 完了済みバッチは一時保存されています。同じNコード一覧で再開できます。";
+    $("fullSummary").textContent = "完了済み " + done.size + "/" + batches.length + "バッチ。未完了分は未検出扱いにしていません。";
+  } finally {
+    $("runFullCheck").disabled = false;
+    $("runCheck").disabled = false;
+  }
+}
+
+$("runFullCheck").addEventListener("click", runFullCheck);
+$("clearFullCheck").addEventListener("click", () => {
+  localStorage.removeItem(FULL_CHECK_KEY);
+  $("fullStatus").textContent = "一時進捗を消去しました。次回は最初から判定します。";
+  $("fullSummary").textContent = "";
+  $("fullResults").replaceChildren();
+});
 
 async function runCheck() {
   const codes = $("allCodes").value.split(/\s+/).filter(Boolean).slice(0, 1000);
