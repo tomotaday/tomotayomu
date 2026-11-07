@@ -438,22 +438,28 @@ async function loadAtomFailures() {
       stateLine.className = "small";
       stateLine.textContent = state.retiredAt
         ? "作者退会確認済：" + new Date(state.retiredAt).toLocaleString("ja-JP")
-        : "未確認：作者ページを開いて、なろう側の表示を確認してください。";
+        : state.openedAt ? "作者ページを開きました。退会表示を確認したら下のボタンを押してください。" : "未確認：先に作者ページを開いてください。";
       card.appendChild(stateLine);
       const open = document.createElement("button");
       open.type = "button";
       open.textContent = "取得失敗を確認する（WEB作者ページ）";
-      open.addEventListener("click", () => window.open(authorPageUrl(author), "_blank", "noopener"));
+      open.addEventListener("click", () => {
+        const current = readAudit(ATOM_AUDIT_KEY);
+        current[author.author_type + ":" + author.author_id] = { ...current[author.author_type + ":" + author.author_id], author_id: author.author_id, author_type: author.author_type, openedAt: new Date().toISOString() };
+        saveAudit(ATOM_AUDIT_KEY, current);
+        window.open(authorPageUrl(author), "_blank", "noopener");
+        loadAtomFailures();
+      });
       card.appendChild(open);
       const confirmBtn = document.createElement("button");
       confirmBtn.type = "button";
       confirmBtn.textContent = state.retiredAt ? "作者退会確認済（記録済み）" : "作者退会確認済";
-      confirmBtn.disabled = !!state.retiredAt;
+      confirmBtn.disabled = !!state.retiredAt || !state.openedAt;
       confirmBtn.addEventListener("click", () => {
         if (!window.confirm("なろうの作者ページに「退会しました」と表示されていることを確認しましたか？")) return;
         const current = readAudit(ATOM_AUDIT_KEY);
         current[author.author_type + ":" + author.author_id] = {
-          author_id: author.author_id, author_type: author.author_type,
+          author_id: author.author_id, author_type: author.author_type, openedAt: current[author.author_type + ":" + author.author_id]?.openedAt || new Date().toISOString(),
           retiredAt: new Date().toISOString(), evidence: "なろう作者ページ「退会しました」目視確認"
         };
         saveAudit(ATOM_AUDIT_KEY, current);
@@ -514,10 +520,16 @@ async function loadAuthorWorks(author) {
       const open = document.createElement("button");
       open.type = "button";
       open.textContent = "作品を確認する（WEB作品ページ）";
-      open.addEventListener("click", () => window.open(workPageUrl(work), "_blank", "noopener"));
+      open.addEventListener("click", () => {
+        const current = readAudit(WORK_AUDIT_KEY);
+        current[ncode] = { ...current[ncode], ncode, openedAt: new Date().toISOString() };
+        saveAudit(WORK_AUDIT_KEY, current);
+        window.open(workPageUrl(work), "_blank", "noopener");
+        loadAuthorWorks(author);
+      });
       card.appendChild(open);
       if (!excluded.has(ncode) && !workAudit[ncode]?.deletedAt &&
-          label === "要確認・未検出") {
+          workAudit[ncode]?.openedAt && label === "要確認・未検出") {
         const mark = document.createElement("button");
         mark.type = "button";
         mark.textContent = "削除確認済（未実施）";
