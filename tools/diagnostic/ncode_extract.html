@@ -50,8 +50,8 @@ strong.num{font-size:1.5rem}
 </section>
 <section class="panel">
 <h2>API一括判定</h2>
-<p class="small">抽出したNコードの先頭100件を対象にします。通常APIで未検出だった作品だけをR18 APIへ照会します。検索除外リストは同じブラウザの保存内容を読み取って照合します。</p>
-<button id="runCheck" type="button" disabled>先頭100件を一括判定</button>
+<p class="small">抽出したNコードの先頭300件を対象にします。通常APIで未検出だった作品だけをR18 APIへ照会します。検索除外リストは同じブラウザの保存内容を読み取って照合します。</p>
+<button id="runCheck" type="button" disabled>先頭300件を一括判定</button>
 <div id="checkStatus" class="status">先に本棚からNコードを抽出してください。</div>
 <div id="checkSummary" class="status"></div>
 <div id="checkResults"></div>
@@ -162,7 +162,7 @@ async function extract() {
     $("copy").disabled = targetCodes.length === 0;
     $("copy20").disabled = targetCodes.length === 0;
     $("runCheck").disabled = targetCodes.length === 0;
-    $("checkStatus").textContent = targetCodes.length ? "抽出完了。先頭100件のAPI判定を実行できます。" : "照会対象Nコードがありません。";
+    $("checkStatus").textContent = targetCodes.length ? "抽出完了。先頭300件のAPI判定を実行できます。" : "照会対象Nコードがありません。";
   } catch (error) {
     $("status").textContent = "抽出できませんでした。\n" + (error && error.message ? error.message : String(error));
   } finally {
@@ -193,7 +193,7 @@ function jsonp(url) {
 }
 
 async function runCheck() {
-  const codes = $("allCodes").value.split(/\s+/).filter(Boolean).slice(0, 100);
+  const codes = $("allCodes").value.split(/\s+/).filter(Boolean).slice(0, 300);
   if (!codes.length) return;
   $("runCheck").disabled = true;
   $("checkSummary").textContent = "";
