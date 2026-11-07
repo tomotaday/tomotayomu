@@ -438,12 +438,12 @@ async function loadAtomFailures() {
       open.textContent = "取得失敗を確認する（WEB作者ページ）";
       open.addEventListener("click", () => window.open(authorPageUrl(author), "_blank", "noopener"));
       card.appendChild(open);
-      const confirm = document.createElement("button");
-      confirm.type = "button";
-      confirm.textContent = state.retiredAt ? "作者退会確認済（記録済み）" : "作者退会確認済";
-      confirm.disabled = !!state.retiredAt;
-      confirm.addEventListener("click", () => {
-        if (!confirm("なろうの作者ページに「退会しました」と表示されていることを確認しましたか？")) return;
+      const confirmBtn = document.createElement("button");
+      confirmBtn.type = "button";
+      confirmBtn.textContent = state.retiredAt ? "作者退会確認済（記録済み）" : "作者退会確認済";
+      confirmBtn.disabled = !!state.retiredAt;
+      confirmBtn.addEventListener("click", () => {
+        if (!window.confirm("なろうの作者ページに「退会しました」と表示されていることを確認しましたか？")) return;
         const current = readAudit(ATOM_AUDIT_KEY);
         current[author.author_type + ":" + author.author_id] = {
           author_id: author.author_id, author_type: author.author_type,
@@ -453,7 +453,7 @@ async function loadAtomFailures() {
         loadAtomFailures();
         loadAuthorWorks(author);
       });
-      card.appendChild(confirm);
+      card.appendChild(confirmBtn);
       list.appendChild(card);
       if (state.retiredAt) loadAuthorWorks(author);
     }
