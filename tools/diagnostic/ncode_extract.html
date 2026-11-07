@@ -252,15 +252,19 @@ async function runFullCheck() {
   }
 
   const done = new Map(state.completed.map(item => [item.batchIndex, item]));
+  let lastRequestAt = 0;
   const request = async (base, targets, stage) => {
     const found = new Set();
     if (!targets.length) return found;
+    const waitMs = Math.max(0, 500 - (Date.now() - lastRequestAt));
+    if (waitMs) await new Promise(resolve => setTimeout(resolve, waitMs));
     const query = new URLSearchParams({
       out: "jsonp", of: "n",
       ncode: targets.map(x => x.toLowerCase()).join("-"),
       lim: String(targets.length)
     });
     const data = await jsonp(base + "?" + query.toString());
+    lastRequestAt = Date.now();
     if (!Array.isArray(data) || !data.length || !data[0] || typeof data[0].allcount !== "number") {
       throw new Error(stage + "の応答形式が不正です。");
     }
