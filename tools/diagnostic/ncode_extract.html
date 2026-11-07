@@ -64,6 +64,11 @@ strong.num{font-size:1.5rem}
 <div id="fullStatus" class="status">先に本棚からNコードを抽出してください。</div>
 <div id="fullSummary" class="status"></div>
 <div id="fullResults"></div>
+<h3>API未検出一覧（Nコード・理由）</h3>
+<p class="small">両APIで取得できなかった作品だけを表示します。理由は検索除外リストとの照合結果です。削除確定を意味しません。</p>
+<textarea id="missingReport" readonly placeholder="全件判定完了後、API未検出作品がここに表示されます。"></textarea>
+<button id="copyMissing" type="button" disabled>未検出一覧をコピー</button>
+<div id="missingStatus" class="small"></div>
 </section>
 </main>
 <script>
@@ -318,6 +323,24 @@ async function runFullCheck() {
       list.appendChild(li);
     }
     $("fullResults").appendChild(list);
+
+    const missingRows = allResults.filter(row =>
+      row.status === "検索除外・未検出" || row.status === "要確認・未検出"
+    );
+    const missingText = missingRows.length
+      ? missingRows.map(row => row.ncode + " — " +
+          (row.status === "検索除外・未検出"
+            ? "通常API・R18 APIとも未検出／検索除外リスト登録済み"
+            : "通常API・R18 APIとも未検出／検索除外リスト未登録・要確認"
+          )
+        ).join("\\n")
+      : "API未検出作品はありません。";
+    $("missingReport").value = missingText;
+    $("copyMissing").disabled = missingRows.length === 0;
+    $("missingStatus").textContent = "API未検出 " + missingRows.length +
+      "件（検索除外 " + counts["検索除外・未検出"] +
+      "件／要確認 " + counts["要確認・未検出"] + "件）。削除確定ではありません。";
+
     $("fullSummary").textContent = "入力 " + codes.length + "件 ／ 通常API取得 " + counts["通常API取得"] +
       "件 ／ R18 API取得 " + counts["R18 API取得"] + "件 ／ 検索除外・未検出 " +
       counts["検索除外・未検出"] + "件 ／ 要確認・未検出 " + counts["要確認・未検出"] + "件";
@@ -339,6 +362,22 @@ $("clearFullCheck").addEventListener("click", () => {
   $("fullStatus").textContent = "一時進捗を消去しました。次回は最初から判定します。";
   $("fullSummary").textContent = "";
   $("fullResults").replaceChildren();
+  $("missingReport").value = "";
+  $("copyMissing").disabled = true;
+  $("missingStatus").textContent = "";
+});
+
+$("copyMissing").addEventListener("click", async () => {
+  const value = $("missingReport").value;
+  if (!value) return;
+  try {
+    await navigator.clipboard.writeText(value);
+    $("missingStatus").textContent = "未検出一覧をコピーしました。";
+  } catch (_) {
+    $("missingReport").focus();
+    $("missingReport").select();
+    $("missingStatus").textContent = "自動コピーできません。選択された一覧を手動でコピーしてください。";
+  }
 });
 
 async function runCheck() {
