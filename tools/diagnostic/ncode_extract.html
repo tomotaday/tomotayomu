@@ -70,6 +70,19 @@ strong.num{font-size:1.5rem}
 <button id="copyMissing" type="button" disabled>未検出一覧をコピー</button>
 <div id="missingStatus" class="small"></div>
 </section>
+
+<section class="panel" id="atomAuditPanel">
+<h2>Atom取得失敗の確認</h2>
+<p class="small">GitHubに公開された最新Atom取得結果を読み取り、取得失敗した作者だけを表示します。作者ページの確認・判定記録はこのブラウザ内に保存します。</p>
+<div id="atomAuditStatus" class="status">Atom取得結果を読み込み中…</div>
+<div id="atomFailureList"></div>
+</section>
+<section class="panel" id="authorWorkPanel">
+<h2>作者に関連する本棚作品</h2>
+<p class="small">作者の退会確認後、その作者IDに紐づく本棚作品を表示します。作品データは読み取り専用です。</p>
+<div id="authorWorkStatus" class="status">作者退会確認後に表示します。</div>
+<div id="authorWorkCards"></div>
+</section>
 </main>
 <script>
 (() => {
@@ -356,6 +369,169 @@ async function runFullCheck() {
   }
 }
 
+
+const ATOM_AUDIT_KEY = "tomotaYomu_diagnostic_atom_audit_v1";
+const WORK_AUDIT_KEY = "tomotaYomu_diagnostic_work_audit_v1";
+const ATOM_FEEDS_URL = "../../data/atom/author-feeds.json";
+
+function readAudit(key) {
+  try { const value = JSON.parse(localStorage.getItem(key) || "{}"); return value && typeof value === "object" ? value : {}; }
+  catch (_) { return {}; }
+}
+function saveAudit(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+function authorPageUrl(author) {
+  return author.author_type === "r18"
+    ? "https://xmypage.syosetu.com/" + encodeURIComponent(author.author_id) + "/"
+    : "https://mypage.syosetu.com/" + encodeURIComponent(author.author_id) + "/";
+}
+function workPageUrl(work) {
+  const host = work.__r18 ? "https://novel18.syosetu.com/" : "https://ncode.syosetu.com/";
+  return host + String(work.ncode || "").toLowerCase() + "/";
+}
+function getFullCheckResults() {
+  try {
+    const state = JSON.parse(localStorage.getItem(FULL_CHECK_KEY) || "null");
+    if (!state || !Array.isArray(state.completed)) return new Map();
+    return new Map(state.completed.flatMap(x => x.results || []).map(x => [String(x.ncode).toUpperCase(), x.status]));
+  } catch (_) { return new Map(); }
+}
+async function loadAtomFailures() {
+  const status = $("atomAuditStatus");
+  const list = $("atomFailureList");
+  list.replaceChildren();
+  try {
+    const response = await fetch(ATOM_FEEDS_URL, { cache: "no-store" });
+    if (!response.ok) throw new Error("Atom取得結果を読み込めません（HTTP " + response.status + "）。");
+    const data = await response.json();
+    const failures = (data.authors || []).filter(a => a && (
+      a.ok === false || (a.feeds || []).some(f => f && f.ok === false)
+    ));
+    status.textContent = "取得日時：" + (data.fetched_at || "不明") +
+      " ／ 取得失敗作者：" + failures.length + "人（失敗フィード " + (data.failed_feed_count ?? "不明") + "件）";
+    if (!failures.length) {
+      list.textContent = "現在、Atom取得失敗の作者はいません。";
+      return;
+    }
+    const audit = readAudit(ATOM_AUDIT_KEY);
+    for (const author of failures) {
+      const card = document.createElement("div");
+      card.className = "panel";
+      const heading = document.createElement("strong");
+      heading.textContent = "作者ID：" + author.author_id + "（" + (author.author_type === "r18" ? "R18" : "全年齢") + "）";
+      card.appendChild(heading);
+      const detail = document.createElement("p");
+      detail.className = "small";
+      detail.textContent = (author.feeds || []).filter(f => !f.ok).map(f =>
+        (f.kind === "novel" ? "作品Atom" : f.kind === "activity" ? "活動報告Atom" : f.kind) +
+        "：HTTP " + (f.http_status || "不明") + (f.error ? "／" + f.error : "")
+      ).join("　");
+      card.appendChild(detail);
+      const state = audit[author.author_type + ":" + author.author_id] || {};
+      const stateLine = document.createElement("p");
+      stateLine.className = "small";
+      stateLine.textContent = state.retiredAt
+        ? "作者退会確認済：" + new Date(state.retiredAt).toLocaleString("ja-JP")
+        : "未確認：作者ページを開いて、なろう側の表示を確認してください。";
+      card.appendChild(stateLine);
+      const open = document.createElement("button");
+      open.type = "button";
+      open.textContent = "取得失敗を確認する（WEB作者ページ）";
+      open.addEventListener("click", () => window.open(authorPageUrl(author), "_blank", "noopener"));
+      card.appendChild(open);
+      const confirm = document.createElement("button");
+      confirm.type = "button";
+      confirm.textContent = state.retiredAt ? "作者退会確認済（記録済み）" : "作者退会確認済";
+      confirm.disabled = !!state.retiredAt;
+      confirm.addEventListener("click", () => {
+        if (!confirm("なろうの作者ページに「退会しました」と表示されていることを確認しましたか？")) return;
+        const current = readAudit(ATOM_AUDIT_KEY);
+        current[author.author_type + ":" + author.author_id] = {
+          author_id: author.author_id, author_type: author.author_type,
+          retiredAt: new Date().toISOString(), evidence: "なろう作者ページ「退会しました」目視確認"
+        };
+        saveAudit(ATOM_AUDIT_KEY, current);
+        loadAtomFailures();
+        loadAuthorWorks(author);
+      });
+      card.appendChild(confirm);
+      list.appendChild(card);
+      if (state.retiredAt) loadAuthorWorks(author);
+    }
+  } catch (error) {
+    status.textContent = "読み込み失敗：" + (error.message || String(error));
+  }
+}
+async function loadAuthorWorks(author) {
+  const status = $("authorWorkStatus");
+  const cards = $("authorWorkCards");
+  status.textContent = "作者ID " + author.author_id + " の本棚作品を照合中…";
+  cards.replaceChildren();
+  let db;
+  try {
+    db = await openExistingDB();
+    const [authors, works] = await Promise.all([
+      readAll(db, "authors"), readAll(db, "works_cache")
+    ]);
+    const workMap = new Map(works.map(w => [String(w.ncode || "").toUpperCase(), w]));
+    const linked = authors.filter(a =>
+      String(a.authorId || "").trim() === String(author.author_id) &&
+      (a.authorType === "r18" ? "r18" : "normal") === author.author_type
+    ).map(a => workMap.get(String(a.ncode || "").toUpperCase())).filter(Boolean);
+    const excludedRaw = localStorage.getItem(SEARCH_EXCLUDED_KEY);
+    const excluded = new Set((excludedRaw ? JSON.parse(excludedRaw) : []).map(x => String(x).toUpperCase()));
+    const results = getFullCheckResults();
+    const workAudit = readAudit(WORK_AUDIT_KEY);
+    status.textContent = "該当作品：" + linked.length + "件 ／ API生存確認の結果は「全件判定」を実行すると反映されます。";
+    if (!linked.length) {
+      cards.textContent = "この作者IDに紐づく本棚作品は見つかりませんでした。";
+      return;
+    }
+    for (const work of linked) {
+      const ncode = String(work.ncode || "").toUpperCase();
+      const card = document.createElement("div");
+      card.className = "panel";
+      const title = document.createElement("strong");
+      title.textContent = work.title || ncode;
+      card.appendChild(title);
+      const meta = document.createElement("p");
+      meta.className = "small";
+      meta.textContent = ncode + " ／ " + (work.writer || author.author_id);
+      card.appendChild(meta);
+      let label = excluded.has(ncode) ? "検索除外（本体登録済み）" :
+        workAudit[ncode]?.deletedAt ? "削除確認済（未実施）" :
+        results.get(ncode) || "未調査";
+      const state = document.createElement("p");
+      state.className = "small";
+      state.textContent = "判定：" + label;
+      card.appendChild(state);
+      const open = document.createElement("button");
+      open.type = "button";
+      open.textContent = "作品を確認する（WEB作品ページ）";
+      open.addEventListener("click", () => window.open(workPageUrl(work), "_blank", "noopener"));
+      card.appendChild(open);
+      if (!excluded.has(ncode) && !workAudit[ncode]?.deletedAt &&
+          (label === "要確認・未検出" || label === "検索除外・未検出")) {
+        const mark = document.createElement("button");
+        mark.type = "button";
+        mark.textContent = "削除確認済（未実施）";
+        mark.addEventListener("click", () => {
+          if (!confirm(ncode + " がなろう側で削除されていることを確認しましたか？")) return;
+          const current = readAudit(WORK_AUDIT_KEY);
+          current[ncode] = { ncode, deletedAt: new Date().toISOString(), reason: "WEB作品ページ目視確認" };
+          saveAudit(WORK_AUDIT_KEY, current);
+          loadAuthorWorks(author);
+        });
+        card.appendChild(mark);
+      }
+      cards.appendChild(card);
+    }
+  } catch (error) {
+    status.textContent = "本棚作品の照合に失敗：" + (error.message || String(error));
+  } finally {
+    if (db) db.close();
+  }
+}
+
 $("runFullCheck").addEventListener("click", runFullCheck);
 $("clearFullCheck").addEventListener("click", () => {
   localStorage.removeItem(FULL_CHECK_KEY);
@@ -462,6 +638,7 @@ async function runCheck() {
 }
 
 $("run").addEventListener("click", extract);
+loadAtomFailures();
 $("runCheck").addEventListener("click", runCheck);
 $("copy20").addEventListener("click", async () => {
   const codes = $("allCodes").value.split(/\s+/).filter(Boolean).slice(0, 20);
