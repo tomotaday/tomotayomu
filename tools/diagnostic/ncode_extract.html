@@ -366,6 +366,7 @@ async function runFullCheck() {
       counts["検索除外・未検出"] + "件 ／ 要確認・未検出 " + counts["要確認・未検出"] + "件";
     $("fullStatus").textContent = "全件判定完了。100件単位で照会し、" + batches.length +
       "バッチすべての結果をブラウザに一時保存しました。GitHubへの保存はまだ行っていません。";
+    loadAtomFailures();
   } catch (error) {
     $("fullStatus").textContent = "照会を中断しました：" + (error.message || String(error)) +
       " 完了済みバッチは一時保存されています。同じNコード一覧で再開できます。";
