@@ -334,6 +334,10 @@ async function runFullCheck() {
     saveState();
     const counts = { "通常API取得": 0, "R18 API取得": 0, "検索除外・未検出": 0, "要確認・未検出": 0 };
     for (const row of allResults) counts[row.status]++;
+    const resultDetails = document.createElement("details");
+    resultDetails.className = "panel";
+    const resultSummary = document.createElement("summary");
+    resultSummary.textContent = "判定結果一覧を表示（" + allResults.length.toLocaleString("ja-JP") + "件）";
     const list = document.createElement("ul");
     for (const row of allResults) {
       const li = document.createElement("li");
@@ -342,7 +346,8 @@ async function runFullCheck() {
         row.status === "検索除外・未検出" ? "miss" : "good";
       list.appendChild(li);
     }
-    $("fullResults").appendChild(list);
+    resultDetails.append(resultSummary, list);
+    $("fullResults").appendChild(resultDetails);
 
     const missingRows = allResults.filter(row =>
       row.status === "検索除外・未検出" || row.status === "要確認・未検出"
@@ -443,7 +448,8 @@ async function loadAtomFailures() {
       card.appendChild(stateLine);
       const open = document.createElement("button");
       open.type = "button";
-      open.textContent = "取得失敗を確認する（WEB作者ページ）";
+      open.textContent = state.retiredAt ? "取得失敗確認済（WEB確認済み）" : "取得失敗を確認する（WEB作者ページ）";
+      open.disabled = !!state.retiredAt;
       open.addEventListener("click", () => {
         const current = readAudit(ATOM_AUDIT_KEY);
         current[author.author_type + ":" + author.author_id] = { ...current[author.author_type + ":" + author.author_id], author_id: author.author_id, author_type: author.author_type, openedAt: new Date().toISOString() };
@@ -520,7 +526,8 @@ async function loadAuthorWorks(author) {
       card.appendChild(state);
       const open = document.createElement("button");
       open.type = "button";
-      open.textContent = "作品を確認する（WEB作品ページ）";
+      open.textContent = workAudit[ncode]?.deletedAt ? "作品確認済（WEB確認済み）" : "作品を確認する（WEB作品ページ）";
+      open.disabled = !!workAudit[ncode]?.deletedAt;
       open.addEventListener("click", () => {
         const current = readAudit(WORK_AUDIT_KEY);
         current[ncode] = { ...current[ncode], ncode, openedAt: new Date().toISOString() };
