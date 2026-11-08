@@ -137,3 +137,43 @@
 - `tomotaYomu_rebuild` および再構築localStorageキーの現行参照箇所。
 
 以上はバックアップ時点の観測結果。実データの削除、DBスキーマ変更、既存書き込み停止は一切行っていない。
+
+
+## 2026-11-09 現行コードの参照経路追加確認
+
+対象：main `index.html`（取得時SHA `b8534fc60183f7ff91a46df7ba7962cd9969be35`）。コードは読み取り専用で確認。
+
+### latest_works
+
+- `getLatestWorks()` / `saveLatestWorks()` がlocalStorageの `tomotaYomu_v214_latest_works` を読み書きする。
+- 起動時はIndexedDBから作品カードを構築した後、`restoreLatestWorks()` が該当Nコードのカードへ最新情報を反映する。
+- 更新確認 `updateInfo()` はAPIから取得した更新作品を `slimWork()` で整形し、`latest_works` に保存してカードへ反映する。
+- バックアップの79件はすべて `works_cache` に存在。比較した全項目のうち少なくとも1項目が異なる作品は79件。うち74件は `general_lastup` と `general_all_no` の両方に差がある。
+- よって `latest_works` は単純な重複控えではなく、作品カード表示の上書きデータとして現行利用中。新DB移行時に無視・削除・旧データによる上書きをしない。
+
+### update_candidates
+
+- `getUpdateCandidates()` / `saveUpdateCandidates()` がlocalStorageの `tomotaYomu_v214_update_candidates` を読み書きする。
+- `updateInfo()` が更新作品のうち棚登録済み作品を候補として登録し、未登録扱いの作品は候補から外す。
+- `applyCardState()` と `buildUpdateView()` が候補情報を使って🆙表示・更新棚表示を判定する。
+- バックアップの33件はすべて `works_cache` と `latest_works` に存在し、33件すべてがNコード単位で一致。
+- 候補値は更新日時文字列。作品本体とは別の「更新確認状態」として保持する必要がある。
+
+### 候補作品の再取得関数
+
+- `hydrateCandidateWorks()` は定義されており、候補NコードをAPIで再取得して `latest_works` を更新する処理を持つ。
+- main `index.html` 全体の呼び出し箇所を確認した範囲では、関数定義以外に呼び出しが見つからなかった。現行の通常起動・更新確認経路で実行されているとは判断しない。
+- 未使用関数か、別経路から呼ぶ想定の残存関数かは追加確認事項。現段階で削除しない。
+
+### 読書位置の実際の優先順位
+
+- `buildV3CardsFromIndexedDB()` はIndexedDBの `reading_position` を読み、localStorageの `tomotaYomu_v211_reading` にある読書位置マップへ反映して保存する。
+- したがって、起動時の読書位置復元ではIndexedDB側の数値がlocalStorage側を上書きする。
+- `setReading()` はlocalStorageへ保存した後、`saveReadingToIndexedDB()` でIndexedDBにも保存する。
+- これは二重保存であり、現在の実装ではIndexedDBが復元時の優先元。ただし書き込みは非同期で別処理のため、片方の失敗時に不整合となる可能性は残る。
+- 移行ではこの挙動を再現・検証し、片方の保存先を早期に廃止しない。
+
+### 修正・補足
+
+- 前節のバックアップ照合について、`latest_works` 79件はすべて何らかの比較対象項目に差があり、そのうち74件は更新日時と話数にも差がある、という意味である。全79件が更新日時・話数とも異なるという意味ではない。
+- この追記も調査記録のみ。本番コード・DB・localStorageの変更は行っていない。
