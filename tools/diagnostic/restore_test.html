@@ -65,7 +65,7 @@ table{width:100%;border-collapse:collapse;font-size:.88rem}th,td{text-align:left
 const $=id=>document.getElementById(id);
 const EXPECTED_DB='tomotaYomuDB';
 const REQUIRED_STORES=['shelf_names','shelf_placement','works_cache','authors','reading_position'];
-let parsedBackup=null,sourceDB=null,testDBName=null,restored=false;
+let parsedBackup=null,sourceDB=null,testDBName=null,restored=false,testDBCreated=false;
 
 function setText(id,text){$(id).textContent=text}
 function makeTable(headers,rows){
@@ -155,7 +155,7 @@ function readAll(db,storeName){
  });
 }
 async function restore(){
- if(!parsedBackup||!sourceDB)return;
+ if(!parsedBackup||!sourceDB||testDBCreated)return;
  $('restoreBtn').disabled=true;$('deleteBtn').classList.add('hidden');
  setText('restoreStatus','テストDBを作成しています…');
  const stamp=new Date().toISOString().replace(/[^0-9]/g,'').slice(0,17);
@@ -165,7 +165,7 @@ async function restore(){
    const list=await indexedDB.databases();
    if(list.some(x=>x.name===testDBName))throw new Error('同名のテストDBが既に存在します。上書きしません。');
   }
-  const db=await openNewTestDB(testDBName,sourceDB.version);
+  const db=await openNewTestDB(testDBName,sourceDB.version);\n  testDBCreated=true;
   try{
    for(const name of REQUIRED_STORES){
     const records=sourceDB.stores[name].records;
@@ -188,11 +188,11 @@ async function restore(){
  }catch(e){
   setText('restoreStatus','復元を中止しました：'+(e.message||String(e)));
   setText('verifyStatus','復元完了を確認できていません。テストDBが途中まで作成された可能性があります。\nテストDB名：'+(testDBName||'未作成'));
-  if(testDBName)$('deleteBtn').classList.remove('hidden');
- }finally{$('restoreBtn').disabled=false}
+  if(testDBCreated)$('deleteBtn').classList.remove('hidden');
+ }finally{$('restoreBtn').disabled=testDBCreated}
 }
 async function deleteTestDB(){
- if(!testDBName)return;
+ if(!testDBName||!testDBCreated)return;
  if(!confirm('今回のテスト用DBだけを削除します。\n'+testDBName+'\n\n本番DBは削除しません。続けますか？'))return;
  $('deleteBtn').disabled=true;
  try{
@@ -202,7 +202,7 @@ async function deleteTestDB(){
    req.onblocked=()=>reject(new Error('別画面でテストDBが開かれているため削除できません'));
   });
   setText('verifyStatus','テストDBを削除しました：'+testDBName);
-  $('verifyResult').replaceChildren();$('deleteBtn').classList.add('hidden');testDBName=null;restored=false;
+  $('verifyResult').replaceChildren();$('deleteBtn').classList.add('hidden');testDBName=null;restored=false;testDBCreated=false;$('restoreBtn').disabled=!sourceDB;
  }catch(e){setText('verifyStatus','削除できませんでした：'+(e.message||String(e)))}finally{$('deleteBtn').disabled=false}
 }
 $('backupFile').addEventListener('change',()=>{setText('fileStatus','ファイル選択済み。検査ボタンを押してください。');$('inspectBtn').disabled=false});
