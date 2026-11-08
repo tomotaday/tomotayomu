@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f7f7fb">
+<title>ともたよむ｜保存領域調査</title>
+<style>
+:root{color-scheme:light;--ink:#273044;--muted:#687386;--line:#dfe4ed;--paper:#fff;--bg:#f5f7fb;--accent:#526b9a}
+*{box-sizing:border-box}body{margin:0;padding:18px;background:var(--bg);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:780px;margin:0 auto}h1{font-size:1.35rem;margin:0 0 4px}h2{font-size:1.08rem;margin:0 0 10px}
+.lead,.muted,.small{color:var(--muted)}.lead{margin:0 0 16px}.small{font-size:.82rem}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:15px;margin:12px 0}
+button{border:0;border-radius:10px;background:var(--accent);color:white;padding:11px 16px;font-size:1rem}
+button:disabled{opacity:.5}table{width:100%;border-collapse:collapse;font-size:.88rem;overflow-wrap:anywhere}
+th,td{text-align:left;padding:8px 5px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-weight:600}
+.status{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--muted)}.tag{display:inline-block;background:#edf1f8;border-radius:6px;padding:2px 7px;font-size:.8rem}
+</style>
+</head>
+<body><main>
+<p style="margin:0 0 14px"><a href="../../index.html">← ともたよむに戻る</a></p>
+<h1>ともたよむ｜保存領域調査</h1>
+<p class="lead">バックアップ計画のため、端末内の保存領域を読み取り専用で調べます。</p>
+<section class="panel">
+<strong>安全確認</strong>
+<ul class="small">
+<li>IndexedDBは既存DBだけを開き、存在しないDBは新規作成しません。</li>
+<li>全ストアの件数と構造だけを確認します。レコード内容は画面に表示しません。</li>
+<li>localStorageはキー名と概算容量だけを表示し、保存値は表示しません。</li>
+<li>追加・変更・削除・エクスポートは一切行いません。</li>
+</ul>
+<button id="run" type="button">保存領域を調査する</button>
+</section>
+<section class="panel"><h2>IndexedDB</h2><div id="dbStatus" class="status">未調査</div><div id="dbResult"></div></section>
+<section class="panel"><h2>localStorage</h2><div id="lsStatus" class="status">未調査</div><div id="lsResult"></div></section>
+<section class="panel"><h2>調査上の注意</h2><p class="small">localStorageの容量はキーと値の文字数から求めた概算値です。ブラウザが報告する実使用容量とは異なります。IndexedDBのレコード件数も、データ内容や復元可能性を保証するものではありません。</p></section>
+</main>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id);
+const DB_NAMES=['tomotaYomuDB','tomotaYomuAtomDB','tomotaMemoDB'];
+function cell(row,value,tag='td'){const el=document.createElement(tag);el.textContent=String(value);row.appendChild(el);return el}
+function table(headers){const t=document.createElement('table'),h=document.createElement('tr');headers.forEach(x=>cell(h,x,'th'));t.appendChild(h);return t}
+async function openExisting(name){
+ if(typeof indexedDB.databases==='function'){
+  const known=await indexedDB.databases();
+  if(!known.some(x=>x.name===name))return {missing:true};
+ }
+ return await new Promise((resolve,reject)=>{
+  let upgraded=false;const req=indexedDB.open(name);
+  req.onupgradeneeded=()=>{upgraded=true;try{req.transaction.abort()}catch(e){}};
+  req.onsuccess=()=>{if(upgraded){req.result.close();resolve({missing:true})}else resolve({db:req.result})};
+  req.onerror=()=>{if(upgraded)resolve({missing:true});else reject(req.error||new Error(name+' を開けません'))};
+  req.onblocked=()=>reject(new Error(name+' が別画面で使用中です'));
+ });
+}
+function countStore(db,name){return new Promise((resolve,reject)=>{
+ const tx=db.transaction(name,'readonly'),req=tx.objectStore(name).count();
+ req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error(name+' の件数取得失敗'));
+ tx.onabort=()=>reject(tx.error||new Error(name+' の読み取り中断'));
+})}
+async function inspectDB(name){
+ const opened=await openExisting(name);if(opened.missing)return {name,missing:true};
+ const db=opened.db;try{
+  const stores=Array.from(db.objectStoreNames),rows=[];
+  for(const name of stores){
+   const tx=db.transaction(name,'readonly'),st=tx.objectStore(name);
+   const keyPath=st.keyPath===null?'(なし)':Array.isArray(st.keyPath)?st.keyPath.join(', '):st.keyPath;
+   const indexes=Array.from(st.indexNames).map(n=>{const x=st.index(n);return n+' → '+(Array.isArray(x.keyPath)?x.keyPath.join(', '):x.keyPath)});
+   rows.push({name,keyPath,indexes,count:await countStore(db,name)});
+  }
+  return {name,version:db.version,rows};
+ }finally{db.close()}
+}
+async function diagnose(){
+ const button=$('run');button.disabled=true;$('dbStatus').textContent='調査中…';$('lsStatus').textContent='調査中…';$('dbResult').replaceChildren();$('lsResult').replaceChildren();
+ try{
+  const results=[];
+  for(const name of DB_NAMES)results.push(await inspectDB(name));
+  const total=results.reduce((n,x)=>n+(x.rows||[]).reduce((m,r)=>m+r.count,0),0);
+  $('dbStatus').textContent='確認したDB：'+results.filter(x=>!x.missing).length+' / '+DB_NAMES.length+'｜全ストア合計レコード：'+total+'｜'+new Date().toLocaleString('ja-JP');
+  for(const result of results){
+   const box=document.createElement('div');box.style.marginTop='14px';
+   const title=document.createElement('p');title.innerHTML='';title.textContent=result.name+' '+(result.missing?'（このブラウザでは未作成）':'｜version '+result.version);box.appendChild(title);
+   if(result.rows){const t=table(['ストア','keyPath','インデックス','件数']);result.rows.forEach(r=>{const tr=document.createElement('tr');cell(tr,r.name);cell(tr,r.keyPath);cell(tr,r.indexes.join('\n')||'なし');cell(tr,r.count);t.appendChild(tr)});box.appendChild(t)}
+   $('dbResult').appendChild(box);
+  }
+ }catch(e){$('dbStatus').textContent='IndexedDB調査エラー：'+(e.message||String(e))}
+ try{
+  const rows=[];let total=0;
+  for(let i=0;i<localStorage.length;i++){
+   const key=localStorage.key(i);if(key===null)continue;
+   const value=localStorage.getItem(key)||'';const bytes=(key.length+value.length)*2;total+=bytes;rows.push({key,bytes});
+  }
+  rows.sort((a,b)=>b.bytes-a.bytes);
+  $('lsStatus').textContent='キー数：'+rows.length+'｜概算合計：'+(total/1024).toFixed(1)+' KB｜'+new Date().toLocaleString('ja-JP');
+  const t=table(['キー名','概算容量']);
+  rows.forEach(r=>{const tr=document.createElement('tr');cell(tr,r.key);cell(tr,r.bytes.toLocaleString()+' bytes');t.appendChild(tr)});
+  $('lsResult').appendChild(t);
+ }catch(e){$('lsStatus').textContent='localStorage調査エラー：'+(e.message||String(e))}
+ button.disabled=false;
+}
+$('run').addEventListener('click',diagnose);
+})();
+</script></body></html>
