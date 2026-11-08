@@ -151,7 +151,9 @@ async function exportAllData(){
      });
      if(result.records.length!==result.count)throw new Error(dbName+'/'+storeName+' 件数不一致');
      validateJsonSafe(result.records,dbName+'/'+storeName);
-     if(result.keys.length!==result.count)throw new Error(dbName+'/'+storeName+' キー件数不一致');\n     validateJsonSafe(result.keys,dbName+'/'+storeName+' keys');\n     stores[storeName]={...result.schema,count:result.count,records:result.records,keys:result.keys};
+     if(result.keys.length!==result.count)throw new Error(dbName+'/'+storeName+' キー件数不一致');
+     validateJsonSafe(result.keys,dbName+'/'+storeName+' keys');
+     stores[storeName]={...result.schema,count:result.count,records:result.records,keys:result.keys};
     }
     databases.push({name:dbName,version:db.version,stores});
    }finally{db.close()}
