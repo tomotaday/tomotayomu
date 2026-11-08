@@ -47,12 +47,12 @@ main{width:min(100%,780px);margin:auto;padding:22px 16px 52px}h1{font-size:24px;
 <h3>① 本棚からNコードを抽出</h3>
 <ul>
 <li>既存のIndexedDBを読み取り専用で開く。</li>
-<li><code>shelf_placement</code> と <code>works_cache</code> を読み、Nコードを抽出・重複除去する。</li>
+<li><code>shelf_placement</code> と <code>works_cache</code> を読み、Nコードを抽出・重複除去する。実際のAPI照会対象は、両方のストアに存在するNコード。</li>
 <li>配置側にだけ存在するコード、作品キャッシュ側にだけ存在するコード、形式不正の件数を分けて表示する。</li>
 <li>抽出結果の先頭20件・全件を確認、コピーできる。</li>
 </ul>
 <h3>② API一括判定（試験）</h3>
-<p>先頭最大1,000件を対象に、通常APIとR18 APIで照会する試験機能。</p>
+<p>抽出した照会対象Nコードの先頭最大1,000件を対象に、通常APIとR18 APIで照会する試験機能。全件判定とは別の、先頭部分で動作を確認するための機能。</p>
 <h3>③ 全件判定（再開対応）</h3>
 <ul>
 <li>全Nコードを100件単位に分割して照会する。</li>
@@ -68,7 +68,7 @@ main{width:min(100%,780px);margin:auto;padding:22px 16px 52px}h1{font-size:24px;
 </ul>
 <h3>⑤ 作者に関連する本棚作品</h3>
 <ul>
-<li>作者ID・区分を使ってIndexedDBの作者情報と作品キャッシュを照合する。</li>
+<li>IndexedDBの <code>authors</code> と <code>works_cache</code> を読み取り、作者IDと全年齢/R18区分を照合して関連作品を抽出する。</li>
 <li>該当作品のタイトル・Nコード・判定結果をカード表示する。</li>
 <li>作品WEBページを開いて確認できる。</li>
 <li>条件を満たす未検出作品について「削除確認済（未実施）」を記録できる。</li>
