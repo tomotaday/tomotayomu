@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f3ed">
+<title>バックアップ・復元ガイド｜ともたよむ 資料室</title>
+<style>
+:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195;--ok:#e8f3e9;--warn:#fff3d9;--future:#f0edf8;--blue:#eaf0fb}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.7}
+main{width:min(100%,780px);margin:auto;padding:22px 16px 52px}h1{font-size:24px;line-height:1.35;margin:8px 0}h2{font-size:19px;margin:27px 0 8px;border-bottom:1px solid var(--line);padding-bottom:5px}h3{font-size:16px;margin:17px 0 5px}.lead,.muted{color:var(--muted)}.card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:14px;margin:12px 0}.current{background:var(--ok)}.warn{background:var(--warn)}.future{background:var(--future)}.blue{background:var(--blue)}.small{font-size:13px}.back{color:inherit}table{width:100%;border-collapse:collapse;font-size:14px}th,td{border:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}th{background:#f0eee9}code{overflow-wrap:anywhere}.code{display:block;overflow-wrap:anywhere;background:#f0eee9;border-radius:8px;padding:9px;font-family:ui-monospace,monospace;font-size:13px}
+</style>
+</head>
+<body><main>
+<a class="back" href="../../index.html">← ともたよむ本棚へ戻る</a>
+<h1>💾 バックアップ・復元ガイド</h1>
+<p class="lead">保存領域のバックアップ機能、2026/11/08時点の復元・表示検証結果、および今後の保全方針を記録する。</p>
+
+<section class="card current">
+<strong>初回バックアップ・復元検証｜2026/11/08</strong>
+<p>バックアップJSONの書き出しに成功し、Safari上に専用の検証用IndexedDBを作成して、5ストア・9,850件の復元後データが元データと完全一致することを確認した。さらに、検証用DBを読み取り専用で開き、本棚表示まで確認した。</p>
+<p class="small">この確認はバックアップ機能の初回デビューを示すもの。アプリ全体の完全復旧を保証するものではない。</p>
+</section>
+
+<h2>1. 関連ページと役割</h2>
+<table>
+<tr><th>ファイル</th><th>役割</th></tr>
+<tr><td><code>tools/diagnostic/storage_inventory.html</code></td><td>保存領域を読み取り専用で調査し、IndexedDB・localStorage等をJSONへ書き出すバックアップ作成ページ。</td></tr>
+<tr><td><code>tools/diagnostic/restore_test.html</code></td><td>バックアップJSONを検査し、専用の検証用DBへ復元して読み戻し照合するページ。</td></tr>
+<tr><td><code>tools/diagnostic/restore_render_test.html</code></td><td>復元済みの専用DBを読み取り専用で開き、なろう作品の本棚表示を確認するページ。</td></tr>
+</table>
+<p>各ページは本番の本棚データを変更せずに検証することを目的とする。特に表示確認では、本番の <code>index.html</code> をSafariで直接起動しない。通常の本体ページはlocalStorageや複数DBへのアクセス・更新処理を含むため、復元データの安全な表示試験には専用ページを使用する。</p>
+
+<h2>2. バックアップ形式 v3 の実績</h2>
+<p>2026/11/08に実際に書き出したバックアップの情報。</p>
+<table>
+<tr><th>項目</th><th>確認値</th></tr>
+<tr><td>ファイル名</td><td><code>tomotayomu-backup-2026-11-08T08-28-42-729Z.json</code></td></tr>
+<tr><td>書き出し時刻</td><td>2026-11-08 08:28:42.729 UTC（日本時間 17:28:42.729）</td></tr>
+<tr><td>origin</td><td><code>https://tomotaday.github.io</code></td></tr>
+<tr><td>形式</td><td><code>tomotayomu-storage-backup</code> / formatVersion 3</td></tr>
+<tr><td>ファイルサイズ</td><td>16,075,615 bytes（約15.3 MiB）</td></tr>
+<tr><td>IndexedDB</td><td>4データベース・9ストア・合計10,273レコード</td></tr>
+<tr><td>localStorage</td><td>50キー</td></tr>
+</table>
+<h3>IndexedDBの内訳</h3>
+<table>
+<tr><th>データベース</th><th>ストア数</th><th>レコード数</th></tr>
+<tr><td><code>tomotaYomuDB</code></td><td>5</td><td>9,850</td></tr>
+<tr><td><code>tomotaYomuAtomDB</code></td><td>2</td><td>395</td></tr>
+<tr><td><code>tomotaMemoDB</code></td><td>1</td><td>25</td></tr>
+<tr><td><code>tomotaYomu_rebuild</code></td><td>1</td><td>3</td></tr>
+<tr><th>合計</th><th>9</th><th>10,273</th></tr>
+</table>
+<p class="small">上記は2026/11/08に作成した当該バックアップの実測値であり、将来のバックアップ件数を固定するものではない。</p>
+
+<h2>3. 復元検証の内容と結果</h2>
+<p>Safariで復元テストページを開き、バックアップJSONを選択。ページはバックアップ形式・origin・対象5ストア・keyPath・autoIncrement・index構成・レコード数・キーを検査したうえで、専用DBへ復元した。</p>
+<section class="card current">
+<strong>実機確認済み｜5ストア・9,850 / 9,850件が完全一致</strong>
+<p>復元後に全レコードを読み戻して比較し、5ストアすべてで内容の一致を確認した。</p>
+<p><code>tomotaYomu_restore_test_20261108084247875</code></p>
+</section>
+<table>
+<tr><th>ストア</th><th>復元・照合件数</th></tr>
+<tr><td><code>authors</code></td><td>2,410</td></tr>
+<tr><td><code>reading_position</code></td><td>414</td></tr>
+<tr><td><code>shelf_names</code></td><td>14</td></tr>
+<tr><td><code>shelf_placement</code></td><td>3,506</td></tr>
+<tr><td><code>works_cache</code></td><td>3,506</td></tr>
+<tr><th>合計</th><th>9,850</th></tr>
+</table>
+<p>この結果で確認できたのは、バックアップ内の <code>tomotaYomuDB</code> に含まれる5ストアの復元と、読み戻し後の完全一致である。Atom DB・メモ DB・rebuild DB・localStorageを含めたアプリ全体の復元試験は、まだ実施していない。</p>
+
+<h2>4. Safariでの本棚表示検証</h2>
+<p>復元済みの専用DBを、<code>restore_render_test.html</code> から読み取り専用で開き、なろう作品を棚ごとに表示した。検索機能も含め、検証用データの表示を確認した。</p>
+<ul>
+<li>読み取り専用トランザクションで5ストアを参照する。</li>
+<li>本番DB名 <code>tomotaYomuDB</code> は開かない。</li>
+<li>localStorageを参照・変更しない。</li>
+<li>表示確認ページからレコードの追加・更新・削除を行わない。</li>
+<li>読み込み後にDB接続を閉じる。</li>
+</ul>
+<h3>Brave本番とSafari検証の件数差</h3>
+<p>画面比較では、Brave本番の作品数がSafari検証より4件多かった。差分はカクヨム・note作品の合計4件（📌に3件、未分類に1件）であり、Safari側の表示試験はなろうIndexedDBの5ストアを対象としているため、この4件は表示対象外。なろう作品の棚別件数は、差分を除けば一致した。</p>
+<p>したがって、この4件の差は今回の検証対象の違いによるもので、なろう作品データの欠落を示すものではない。</p>
+
+<h2>5. しおり・作品情報の確認で分かったこと</h2>
+<ul>
+<li>複数作品の画面比較では、読み進めた話数の分子がBraveとSafariで一致する例を確認した。ただし、サンプル数が限られるため、全作品での一致を断定しない。</li>
+<li>Nコード <code>N2215GH</code> の作品では、IndexedDBの <code>works_cache</code> に最終更新日 <code>2026-10-25 04:00:00</code>・全410話が保存されていた。</li>
+<li>同じ作品のlocalStorageキー <code>tomotaYomu_v214_latest_works</code> には、最終更新日 <code>2026-11-08 00:00:00</code>・全411話の情報が保存されていた。</li>
+<li>Safari検証ページが表示した410話はIndexedDBのバックアップ内容と一致しており、Brave本番側の411話はlocalStorage側の新しい情報による表示と確認できた。</li>
+</ul>
+
+<section class="card warn">
+<strong>重要な発見：作品メタデータが2か所に存在する</strong>
+<p><code>works_cache</code> と <code>localStorage</code> の <code>tomotaYomu_v214_latest_works</code> に、同じ作品のメタデータが保存されている。後者にはIndexedDBより新しい情報が含まれる場合があり、現行画面では新しい情報を上書き表示する役割を持つ。</p>
+<p>このため、localStorage側のデータを単純に削除したり、二重保存をすぐに解消したりすると、更新済み情報が古い内容に戻る可能性がある。</p>
+</section>
+
+<h2>6. 今後の保存領域の検討課題</h2>
+<p>保存先を一つに整理する設計は候補となるが、現時点では方針決定・移行を行わない。まず両方の保存内容と利用箇所を調べる。</p>
+<ol>
+<li><code>latestWorks</code> の全件数と各レコードを確認し、<code>works_cache</code> と比較する。</li>
+<li>どちらが新しいかを判断する条件（更新日時、情報の完全性など）を決める。</li>
+<li>移行する場合は、更新情報の取りこぼしや巻き戻りがないことを照合する。</li>
+<li>作品更新・候補取得・画面復元などの処理が、どの保存先を使っているか監査する。</li>
+<li>新方式で複数回の検証を行い、旧キーを廃止できると確認できるまで保持する。</li>
+</ol>
+<p class="small">現時点では二重保存の理由・全ライフサイクルを調査しきっていない。二重保存が不要と確定したわけではなく、統合は設計上の検討候補である。</p>
+
+<h2>7. 安全方針・未実施事項</h2>
+<section class="card current">
+<strong>現状維持を優先する</strong>
+<ul>
+<li>Brave本番のIndexedDB・localStorageを、この検証のために消去・初期化しない。</li>
+<li>Safariに既に存在していたDBも、ユーザーの明示指示なしに削除・初期化しない。</li>
+<li>Safariに作成した検証用DB <code>tomotaYomu_restore_test_20261108084247875</code> は残してある。明示指示なしに削除しない。</li>
+<li>本番の <code>index.html</code> を復元テストのためにSafariで直接実行しない。</li>
+<li>バックアップ機能と保存領域の設計変更は別作業として扱う。</li>
+<li>本番データ、IndexedDB、GitHub Actions、ショートカット連携を壊さない。変更は小さく分けて検証する。</li>
+</ul>
+</section>
+<h3>まだ確認していないこと</h3>
+<ul>
+<li>4つのIndexedDBすべてを新しい環境へ復元し、アプリ全体を復旧できるか。</li>
+<li>localStorageを含む全保存領域の復元と、本体アプリでの整合性。</li>
+<li>Safariで最初に発生した「One of the specified object stores was not found.」の原因確定。</li>
+<li>Safariの復元テストページが、時間経過後に再表示時エラーとなった原因確定。</li>
+<li>しおりの話数・総話数の差が、全作品でどのような条件で発生するか。</li>
+<li><code>latestWorks</code> と <code>works_cache</code> の二重保存の全体像と統合可否。</li>
+</ul>
+
+<h2>8. 現時点での結論</h2>
+<p>バックアップJSONの書き出しと、主要な本棚DB（<code>tomotaYomuDB</code>）の復元・全件照合・読み取り専用表示は実機で確認できた。よって、バックアップ機能は初回デビューを果たした。</p>
+<p>一方で、今回の試験はアプリ全体の完全復旧試験ではない。また、作品メタデータがIndexedDBとlocalStorageに二重保存され、localStorage側に新しい情報が存在することが分かった。</p>
+<p><strong>当面はバックアップ機能を現状維持し、保存領域の構造は慎重に調査・検討する。確認が終わる前にデータ移行・削除を行わない。</strong></p>
+<p class="small">記録日：2026/11/08｜対象：ともたよむ v3.7.0 時点のバックアップ・復元検証</p>
+</main></body></html>
