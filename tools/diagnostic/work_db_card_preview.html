@@ -124,7 +124,7 @@ function render(){
       if(indexFile){
         fetch("../../"+indexFile,{cache:"no-store"}).then(res=>{if(!res.ok)throw new Error();return res.json();}).then(data=>{
           const items=Array.isArray(data.items)?data.items:[];
-          const key=(bookmarkUrl.match(/\\/n\\/([a-z0-9]+)/i)||[])[1]||"";
+          const key=(bookmarkUrl.match(/\/n\/([a-z0-9]+)/i)||[])[1]||"";
           const position=key?items.findIndex(entry=>String(entry.key||"")===key):-1;
           resume.textContent=position>=0?"続き 📖 "+(position+1)+"/"+items.length+"話":"続き 📖 しおり未設定";
         }).catch(()=>{resume.textContent="続き 📖 目次未取得";});
