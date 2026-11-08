@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#f7f7fb">
-<title>ともたよむ｜保存領域調査・バックアップ v2</title>
+<title>ともたよむ｜保存領域調査・バックアップ v3</title>
 <style>
 :root{color-scheme:light;--ink:#273044;--muted:#687386;--line:#dfe4ed;--paper:#fff;--bg:#f5f7fb;--accent:#526b9a}
 *{box-sizing:border-box}body{margin:0;padding:18px;background:var(--bg);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -19,8 +19,8 @@ th,td{text-align:left;padding:8px 5px;border-bottom:1px solid var(--line);vertic
 </head>
 <body><main>
 <p style="margin:0 0 14px"><a href="../../index.html">← ともたよむに戻る</a></p>
-<h1>ともたよむ｜保存領域調査・バックアップ v2</h1>
-<p class="lead">バックアップ形式：v2（formatVersion: 2）｜端末内の保存領域を読み取り専用で調べます。</p>
+<h1>ともたよむ｜保存領域調査・バックアップ v3</h1>
+<p class="lead">バックアップ形式：v3（formatVersion: 3）｜端末内の保存領域を読み取り専用で調べます。</p>
 <section class="panel">
 <strong>安全確認</strong>
 <ul class="small">
@@ -135,7 +135,7 @@ async function exportAllData(){
      const result=await new Promise((resolve,reject)=>{
       let tx;
       try{tx=db.transaction(storeName,'readonly')}catch(e){reject(e);return}
-      const store=tx.objectStore(storeName),getReq=store.getAll(),countReq=store.count();
+      const store=tx.objectStore(storeName),getReq=store.getAll(),countReq=store.count(),keys=[];\n      const cursorReq=store.openKeyCursor();
       const schema={keyPath:store.keyPath,autoIncrement:store.autoIncrement,indexes:Array.from(store.indexNames).map(indexName=>{const index=store.index(indexName);return {name:index.name,keyPath:index.keyPath,unique:index.unique,multiEntry:index.multiEntry}})};
       let records,count,gotRecords=false,gotCount=false;
       const finish=()=>{if(gotRecords&&gotCount)resolve({records,count,schema})};
@@ -148,7 +148,7 @@ async function exportAllData(){
      });
      if(result.records.length!==result.count)throw new Error(dbName+'/'+storeName+' 件数不一致');
      validateJsonSafe(result.records,dbName+'/'+storeName);
-     stores[storeName]={...result.schema,count:result.count,records:result.records};
+     if(result.keys.length!==result.count)throw new Error(dbName+'/'+storeName+' キー件数不一致');\n     validateJsonSafe(result.keys,dbName+'/'+storeName+' keys');\n     stores[storeName]={...result.schema,count:result.count,records:result.records,keys:result.keys};
     }
     databases.push({name:dbName,version:db.version,stores});
    }finally{db.close()}
@@ -157,13 +157,13 @@ async function exportAllData(){
   for(let i=0;i<localStorage.length;i++){
    const key=localStorage.key(i);if(key!==null)local[key]=localStorage.getItem(key);
   }
-  const payload={format:'tomotayomu-storage-backup',formatVersion:2,exportedAt,origin:location.origin,databases,localStorage:local};
+  const payload={format:'tomotayomu-storage-backup',formatVersion:3,exportedAt,origin:location.origin,databases,localStorage:local};
   const json=JSON.stringify(payload);
   if(!json)throw new Error('JSONデータを作成できませんでした');
   const check=JSON.parse(json);
   const checks=[];
   for(const db of check.databases)for(const [storeName,store] of Object.entries(db.stores)){
-   if(!Array.isArray(store.records)||store.records.length!==store.count)throw new Error(db.name+'/'+storeName+' 保存後照合失敗');
+   if(!Array.isArray(store.records)||store.records.length!==store.count||!Array.isArray(store.keys)||store.keys.length!==store.count)throw new Error(db.name+'/'+storeName+' 保存後照合失敗');
    checks.push({db:db.name,store:storeName,count:store.count});
   }
   const localCount=Object.keys(check.localStorage).length;
