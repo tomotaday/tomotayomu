@@ -25,11 +25,14 @@ th,td{text-align:left;padding:8px 5px;border-bottom:1px solid var(--line);vertic
 <strong>安全確認</strong>
 <ul class="small">
 <li>IndexedDBは既存DBだけを開き、存在しないDBは新規作成しません。</li>
-<li>全ストアの件数と構造だけを確認します。レコード内容は画面に表示しません。</li>
-<li>localStorageはキー名と概算容量だけを表示し、保存値は表示しません。</li>
-<li>追加・変更・削除・エクスポートは一切行いません。</li>
+<li>調査ボタンは件数・構造だけを読み取ります。</li>
+<li>データ取り出しボタンは既存DBの全ストア・全レコードとlocalStorageの全キー・全値をJSONに保存します。</li>
+<li>どちらの操作も元データの追加・変更・削除は行いません。</li>
+<li>取り出し後、DBごと・ストアごとの件数を照合し、結果を表示します。</li>
 </ul>
 <button id="run" type="button">保存領域を調査する</button>
+<button id="export" type="button" style="margin-left:8px;background:#315f50">データを取り出す</button>
+<div id="exportStatus" class="status" style="margin-top:12px">データ取り出し：未実行</div>
 </section>
 <section class="panel"><h2>IndexedDB</h2><div id="dbStatus" class="status">未調査</div><div id="dbResult"></div></section>
 <section class="panel"><h2>localStorage</h2><div id="lsStatus" class="status">未調査</div><div id="lsResult"></div></section>
@@ -100,6 +103,69 @@ async function diagnose(){
  }catch(e){$('lsStatus').textContent='localStorage調査エラー：'+(e.message||String(e))}
  button.disabled=false;
 }
+async function exportAllData(){
+ const button=$('export'),status=$('exportStatus');
+ button.disabled=true;status.textContent='取り出し中… DBと保存データを読み取っています。画面を閉じないでください。';
+ const exportedAt=new Date().toISOString(),databases=[];
+ try{
+  let names=DB_NAMES.slice();
+  if(typeof indexedDB.databases==='function'){
+   const listed=await indexedDB.databases();
+   names=Array.from(new Set(names.concat(listed.map(x=>x.name).filter(Boolean))));
+  }
+  for(const dbName of names){
+   const opened=await openExisting(dbName);
+   if(opened.missing)continue;
+   const db=opened.db;
+   try{
+    const storeNames=Array.from(db.objectStoreNames),stores={};
+    for(const storeName of storeNames){
+     const result=await new Promise((resolve,reject)=>{
+      let tx;
+      try{tx=db.transaction(storeName,'readonly')}catch(e){reject(e);return}
+      const store=tx.objectStore(storeName),getReq=store.getAll(),countReq=store.count();
+      let records,count,gotRecords=false,gotCount=false;
+      const finish=()=>{if(gotRecords&&gotCount)resolve({records,count})};
+      getReq.onsuccess=()=>{records=getReq.result;gotRecords=true;finish()};
+      countReq.onsuccess=()=>{count=countReq.result;gotCount=true;finish()};
+      getReq.onerror=()=>reject(getReq.error||new Error(storeName+' getAll失敗'));
+      countReq.onerror=()=>reject(countReq.error||new Error(storeName+' count失敗'));
+      tx.onabort=()=>reject(tx.error||new Error(storeName+' 読み取り中断'));
+      tx.onerror=()=>reject(tx.error||new Error(storeName+' 読み取りエラー'));
+     });
+     if(result.records.length!==result.count)throw new Error(dbName+'/'+storeName+' 件数不一致');
+     stores[storeName]={count:result.count,records:result.records};
+    }
+    databases.push({name:dbName,version:db.version,stores});
+   }finally{db.close()}
+  }
+  const local={};
+  for(let i=0;i<localStorage.length;i++){
+   const key=localStorage.key(i);if(key!==null)local[key]=localStorage.getItem(key);
+  }
+  const payload={format:'tomotayomu-storage-backup',formatVersion:1,exportedAt,origin:location.origin,databases,localStorage:local};
+  const json=JSON.stringify(payload);
+  if(!json)throw new Error('JSONデータを作成できませんでした');
+  const check=JSON.parse(json);
+  const checks=[];
+  for(const db of check.databases)for(const [storeName,store] of Object.entries(db.stores)){
+   if(!Array.isArray(store.records)||store.records.length!==store.count)throw new Error(db.name+'/'+storeName+' 保存後照合失敗');
+   checks.push({db:db.name,store:storeName,count:store.count});
+  }
+  const localCount=Object.keys(check.localStorage).length;
+  if(localCount!==Object.keys(local).length)throw new Error('localStorage件数照合失敗');
+  const blob=new Blob([json],{type:'application/json;charset=utf-8'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  const stamp=exportedAt.replace(/[:.]/g,'-');
+  a.href=url;a.download='tomotayomu-backup-'+stamp+'.json';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+  const total=checks.reduce((n,x)=>n+x.count,0);
+  status.textContent='取り出しデータを作成しました。\nDB：'+databases.length+'個／ストア：'+checks.length+'個／IndexedDBレコード：'+total+'件／localStorage：'+localCount+'キー\nJSON内の件数照合：すべて一致\nファイル名：'+a.download+'\n\n重要：この表示はブラウザが保存処理を開始したことを示します。iPhoneの「ファイル」アプリ等でファイルが実際に保存されたことを確認してください。ファイルを開き、formatが tomotayomu-storage-backup であることも確認してください。';
+ }catch(e){status.textContent='取り出し失敗：'+(e.message||String(e))+'\nファイルは完成していない可能性があります。元データは変更していません。'}
+ finally{button.disabled=false}
+}
 $('run').addEventListener('click',diagnose);
+$('export').addEventListener('click',exportAllData);
 })();
 </script></body></html>
