@@ -30,7 +30,7 @@ input{max-width:100%;margin:10px 0}
 </div>
 <div class="card">
 <h2>1. 移行用JSONを選択</h2>
-<p class="note">先に「作品レコード移行テストJSON v2」をiPhoneのファイルに保存し、ここから選択してください。</p>
+<p class="note">先に「作品レコード移行テストJSON v3」をiPhoneのファイルに保存し、ここから選択してください。</p>
 <input id="file" type="file" accept=".json,application/json">
 <div id="fileInfo" class="note">ファイル未選択</div>
 </div>
@@ -82,6 +82,27 @@ function openTestDB(){
     request.onerror = () => reject(request.error || new Error("DBを開けませんでした"));
     request.onblocked = () => reject(new Error("DBが別タブで使用中です。ほかのテストページを閉じてください"));
   });
+}
+function inspectReading(before, after){
+  const oldById = new Map(before.map(r=>[r.id,r]));
+  let shortRead=0, shortUnread=0, normalWithPosition=0;
+  let missingReading=0, readingMismatch=0, shortInvalid=0, normalInvalid=0;
+  for(const saved of after){
+    const original=oldById.get(saved.id);
+    if(!original){readingMismatch++;continue;}
+    if(!saved.reading || typeof saved.reading!=="object"){missingReading++;continue;}
+    if(JSON.stringify(saved.reading)!==JSON.stringify(original.reading) ||
+       saved.status!==original.status) readingMismatch++;
+    if(saved.site==="narou" && String(saved.siteData?.noveltype||"").trim()==="2"){
+      if(typeof saved.reading.isRead!=="boolean" || saved.reading.position!==null) shortInvalid++;
+      else if(saved.reading.isRead) shortRead++;
+      else shortUnread++;
+    }else if(saved.site==="narou"){
+      if(saved.reading.isRead!==null) normalInvalid++;
+      if(saved.reading.position!==null) normalWithPosition++;
+    }
+  }
+  return {shortRead,shortUnread,normalWithPosition,missingReading,readingMismatch,shortInvalid,normalInvalid};
 }
 function validatePayload(payload){
   if(!payload || !Array.isArray(payload.records)) throw new Error("JSONに records 配列がありません");
@@ -145,19 +166,31 @@ importButton.addEventListener("click",async()=>{
       tx.onerror = () => reject(tx.error || new Error("保存後の読み取りに失敗"));
     });
     const after = validatePayload({records:verify.records});
-    const ok = verify.count === parsedPayload.records.length && after.duplicates.length === 0 && after.missingAuthorName === 0;
+    const detail = inspectReading(parsedPayload.records, verify.records);
+    const ok = verify.count === parsedPayload.records.length &&
+      after.duplicates.length === 0 && after.missingAuthorName === 0 &&
+      detail.missingReading === 0 && detail.readingMismatch === 0 &&
+      detail.shortInvalid === 0 && detail.normalInvalid === 0;
     metrics.innerHTML = [
       ["保存件数",verify.count.toLocaleString()],
       ["作者名空欄",after.missingAuthorName],
       ["重複ID",after.duplicates.length],
-      ["サイト別件数","なろう "+after.siteCounts.narou+" / note "+after.siteCounts.note+" / カクヨム "+after.siteCounts.kakuyomu]
+      ["読書情報不一致",detail.readingMismatch],
+      ["短編・既読 / 未読",detail.shortRead+" / "+detail.shortUnread],
+      ["通常作品・しおり",detail.normalWithPosition]
     ].map(([label,value])=>'<div class="metric"><span>'+label+'</span><b>'+value+'</b></div>').join("");
-    log((ok?"保存・再読込検査に成功しました。":"保存後検査に不一致があります。")+
+    log((ok?"保存・再読込・読書情報照合に成功しました。":"保存後検査に不一致があります。")+
       "\nDB: "+DB_NAME+
       "\n保存件数: "+verify.count+
       "\n作者名空欄: "+after.missingAuthorName+
       "\n重複ID: "+after.duplicates.length+
       "\nサイト別: "+JSON.stringify(after.siteCounts)+
+      "\n\n短編既読: "+detail.shortRead+"件 / 未読: "+detail.shortUnread+"件"+
+      "\n通常作品しおり位置あり: "+detail.normalWithPosition+"件"+
+      "\nreading欠落: "+detail.missingReading+
+      "\n読書情報不一致: "+detail.readingMismatch+
+      "\n短編形式不正: "+detail.shortInvalid+
+      "\n通常作品形式不正: "+detail.normalInvalid+
       "\n\nこの結果はテストDBだけのものです。本番DBは変更していません。");
   }catch(error){
     log("エラー: "+error.message);
