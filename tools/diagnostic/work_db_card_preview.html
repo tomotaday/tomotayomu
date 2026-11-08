@@ -118,7 +118,7 @@ function render(){
     card.querySelector(".managementBody").innerHTML='<div class="detailCode">作品ID：'+esc(r.workId)+'</div><div class="detailActions"><button type="button" disabled>本棚を移動</button><button type="button" disabled>削除</button></div>';
   }else if(r.site==="note"){
     const bookmarkUrl=String(r.bookmark?.url||"");
-    const indexFile=String(r.siteData?.indexFile||"");
+    const indexFile=String(r.siteData?.indexFile||("data/note-index-"+String(r.workId||"")+".json"));
     const resume=card.querySelector(".noteResume");
     if(resume){
       resume.href=bookmarkUrl||r.url||"#";
