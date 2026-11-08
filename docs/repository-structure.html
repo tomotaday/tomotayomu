@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f3ed">
+<title>リポジトリ構成表｜ともたよむ 資料室</title>
+<style>
+:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195;--head:#eeeae2}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.65}
+main{width:min(100%,900px);margin:auto;padding:18px 14px 48px}
+.back{display:inline-block;padding:9px 13px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:inherit;text-decoration:none;font-weight:600}
+h1{font-size:23px;line-height:1.35;margin:18px 0 5px}h2{font-size:19px;margin:30px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}p{margin:9px 0}.lead,.meta{color:var(--muted)}.meta{font-size:13px}.section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0;overflow:hidden}
+.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:560px;font-size:14px}th,td{border:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}th{background:var(--head)}code{background:#f0eee9;border-radius:4px;padding:1px 4px;overflow-wrap:anywhere}ul,ol{padding-left:1.4em}li{margin:5px 0}.source{font-size:12px;color:var(--muted);margin-top:26px}
+</style>
+</head>
+<body><main>
+<a class="back" href="../index.html">← ともたよむ本棚へ戻る</a>
+<h1>リポジトリ構成表</h1>
+<p class="lead">GitHub上にある、ともたよむのファイル配置と役割を確認するための資料。</p>
+<div id="content"></div>
+<p class="source">元資料：<a href="repository-structure.md">repository-structure.md</a></p>
+</main>
+<script type="text/markdown" id="source">
+# ともたよむ リポジトリ構成表
+
+最終確認日：2026-11-05
+対象リポジトリ：tomotaday/tomotayomu
+対象ブランチ：main
+現行アプリ基準版：v3.6.2【2026/11/05】
+正本：ルートの `index.html`
+
+この資料は、2026年11月5日時点で確認したファイル配置と役割をまとめたもの。
+ファイルの移動・追加・削除を行う際は、必ずGitHub上の最新状態を再確認すること。
+
+## 1. リポジトリ全体
+
+| パス | 役割・内容 | 備考 |
+|---|---|---|
+| `index.html` | ともたよむ本体 | GitHub Pagesの正本。IndexedDBを利用 |
+| `register.html` | なろう作品登録の入口 | Shortcut等から `register.html?ncode=...` で呼び出すためルート固定 |
+| `kakuyomu_add.html` | カクヨム作品登録の入口 | 現役Shortcutの呼び出し先。ルート固定 |
+| `note_magazine_add.html` | noteマガジン登録の入口 | 現役Shortcutの呼び出し先。ルート固定 |
+| `README.md` | リポジトリ概要 | 現状は最小限の内容。今回の整理では変更しない |
+| `.github/workflows/` | GitHub Actions | 自動取得・更新・検証処理 |
+| `app/` | アプリ内の管理・補助画面 | 機能別に分類 |
+| `data/` | アプリが参照するデータ | JSON等。用途ごとに分類 |
+| `docs/` | 説明資料・ガイド | GitHub Pagesのアプリ本体とは分離 |
+| `scripts/` | Actions等から実行するスクリプト | 本番処理と診断処理を分離 |
+| `tools/` | 手動利用する診断・出力ツール | 本体機能とは独立 |
+| `archive/delete_pending/` | 削除候補の一時保管場所 | 退避中。削除未実施 |
+
+## 2. app（管理・補助画面）
+
+| パス | 主なファイル | 役割 |
+|---|---|---|
+| `app/author/` | `author.html` | 作者管理 |
+| `app/kakuyomu/` | `kakuyomu_edit.html` | カクヨム作品情報の編集 |
+| `app/memo/` | `tomota_memo.html` | ともた用メモ |
+| `app/register/` | `work_add.html` | 検索除外作品等の手動登録 |
+| `app/register/` | `search_excluded_compare.html` | 取得失敗Nコード照合 |
+| `app/register/` | `search_excluded_edit.html` | 検索除外作品情報の編集 |
+| `app/settings/` | `color_studio.html` | 表示カラー設定 |
+| `app/shelf/` | `shelf_manager.html` | 本棚管理 |
+| `app/shelf/` | `synopsis_repair.html` | あらすじ修復 |
+
+## 3. docs（説明資料）
+
+| パス | 主なファイル | 役割 |
+|---|---|---|
+| `docs/guides/` | `kakuyomu_guide.html` | カクヨム利用ガイド |
+| `docs/guides/` | `narou_register_guide.html` | なろう登録ガイド |
+| `docs/guides/` | `note_magazine_guide.html` | noteマガジン登録ガイド |
+| `docs/` | `repository-structure.md` | 本ファイル。リポジトリ構成表 |
+
+## 4. data（アプリ参照データ）
+
+| パス | 内容 | 備考 |
+|---|---|---|
+| `data/author-list.json` | 作者一覧 | 作者管理・Atom対象作者情報 |
+| `data/atom/author-feeds.json` | 作者Atomフィード取得結果 | GitHub Actionsが更新 |
+| `data/kakuyomu-toc/` | カクヨム目次データ | 作品ID単位のJSON |
+| `data/note-index-*.json` | noteマガジン目次データ | マガジン単位のJSON |
+
+## 5. scripts（実行スクリプト）
+
+| パス | 主なファイル | 役割 |
+|---|---|---|
+| `scripts/atom/` | `publish_author_atom_feeds.py` | 作者Atomフィードの本番取得・公開 |
+| `scripts/diagnostics/atom/` | `benchmark_atom_conditional_get.py` | Atom条件付きGETの診断 |
+| `scripts/diagnostics/atom/` | `benchmark_author_atom_fetch.py` | 作者Atom取得の診断 |
+| `scripts/diagnostics/atom/` | `benchmark_author_atom_fetch_full.py` | 作者Atom全件取得の診断 |
+
+本番スクリプトと診断スクリプトは混在させない。
+本番Workflowから参照されるスクリプトの移動時は、Workflow側のパスも必ず確認する。
+
+## 6. .github/workflows（GitHub Actions）
+
+2026-11-05時点で確認した現役Workflow：
+
+| ファイル | 役割・区分 |
+|---|---|
+| `publish-author-atom-feeds.yml` | 作者Atomフィード本番取得・公開 |
+| `note-magazine-index.yml` | noteマガジン目次更新 |
+| `kakuyomu-toc.yml` | カクヨム目次取得 |
+| `benchmark-atom-conditional-get.yml` | Atom条件付きGETの検証 |
+| `benchmark-author-atom-fetch.yml` | 作者Atom取得の検証 |
+| `benchmark-author-atom-fetch-full.yml` | 作者Atom全件取得の検証 |
+| `measure-author-atom-window.yml` | 作者Atom取得範囲・時間の計測 |
+
+Workflowを変更・移動する場合は、参照するスクリプトのパス、トリガー、権限、生成データの保存先を確認する。
+診断用Workflowは本番Workflowと区別し、実行確認が済んでいないものを正常確認済みと扱わない。
+
+## 7. tools（手動利用ツール）
+
+| パス | 主なファイル | 役割 |
+|---|---|---|
+| `tools/diagnostic/` | `diagnostic_db.html` | IndexedDB診断（読み取り専用） |
+| `tools/export/` | `export_ncodes.html` | Nコード出力 |
+
+## 8. archive/delete_pending（削除保留ファイル）
+
+削除候補を一時退避している場所。2026-11-05時点で合計19ファイル。
+
+| パス | 件数 | 状態 |
+|---|---:|---|
+| `archive/delete_pending/html/` | 10 | HTML旧版・実験用ページ |
+| `archive/delete_pending/scripts/` | 4 | Atom等の診断・実験用スクリプト |
+| `archive/delete_pending/workflows/` | 5 | 旧診断用Workflow |
+| **合計** | **19** | **削除未実施・保留中** |
+
+注意：
+- 退避ファイルは現役処理から切り離した削除候補であり、現役ファイルとして使用しない。
+- 退避Workflowには古いスクリプトパスを参照するものがある。再利用する場合は、そのまま実行せず内容と参照先を再確認する。
+- 削除は依存関係・必要性を確認し、別途判断してから行う。
+
+## 9. ルートに残す入口ファイル
+
+次のファイルは、外部から直接URLで呼び出されるため、原則としてルートに置く。
+
+| ファイル | 残す理由 |
+|---|---|
+| `index.html` | GitHub Pagesの本体URL |
+| `register.html` | なろう登録Shortcut等の呼び出し先 |
+| `kakuyomu_add.html` | カクヨム登録Shortcutの呼び出し先 |
+| `note_magazine_add.html` | note登録Shortcutの呼び出し先 |
+| `README.md` | GitHubリポジトリの標準説明ファイル |
+
+移動する場合は、Shortcut・外部URL・アプリ内リンクの参照先を洗い出し、利用者側の変更も含めて事前に合意する。
+
+## 10. 今後の整理ルール
+
+1. 既存ファイルを移動する前に、リンク・相対パス・Workflow・Shortcut等の参照元を調べる。
+2. 原則として一度に一つのファイルを移動する。
+3. 移動先にファイルを作成し、内容を確認してから参照元を更新する。
+4. 更新後はGitHub上の最新SHAを使って確認し、動作確認を行う。
+5. 本番データ、IndexedDB、GitHub Actions、Shortcut、Atom連携を壊さないことを最優先とする。
+6. 構成整理だけではアプリのバージョン番号を変更しない。
+7. 古いファイルは即時削除せず、まず `archive/delete_pending/` に退避する。
+8. ルートの入口ファイルは、外部呼び出しへの影響を確認せず移動しない。
+9. この表は構成変更のたびに更新し、実際のGitHub構成と食い違わないようにする。
+
+## 11. 2026-11-05時点の整理状況
+
+- 現役HTML管理画面・ガイド・ツールの機能別配置：一段落
+- Atom本番スクリプトの移動：完了、移動後の本番Workflow実行成功
+- Atom診断スクリプト・診断Workflowの配置整理：完了、診断Workflowの実行確認は保留
+- 旧ファイル19件の退避：完了、削除は保留
+- Atom取得：スケジュール実行・手動実行ともに取得完了を確認。失敗2件は退会作者によるものと確認
+- アプリ現行基準版：v3.6.2【2026/11/05】
+
+この時点で、現役ファイルの構成整理はいったん一段落とする。
+
+</script>
+<script>
+(function(){
+const source=document.getElementById("source").textContent.trim();
+const root=document.getElementById("content");
+const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const inline=s=>esc(s).replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>");
+const lines=source.split(/\r?\n/);let i=0;
+while(i<lines.length){
+ let line=lines[i].trim();
+ if(!line){i++;continue;}
+ if(/^\|/.test(line)){
+  const rows=[];
+  while(i<lines.length && /^\|/.test(lines[i].trim())){
+   const cells=lines[i].trim().replace(/^\||\|$/g,"").split("|").map(x=>x.trim());
+   if(!cells.every(x=>/^:?-{3,}:?$/.test(x)))rows.push(cells);
+   i++;
+  }
+  if(rows.length){
+   const wrap=document.createElement("div");wrap.className="section table-wrap";
+   const table=document.createElement("table");
+   rows.forEach((row,ri)=>{const tr=document.createElement("tr");row.forEach(cell=>{const el=document.createElement(ri===0?"th":"td");el.innerHTML=inline(cell);tr.appendChild(el)});table.appendChild(tr)});
+   wrap.appendChild(table);root.appendChild(wrap);
+  }
+  continue;
+ }
+ const h=line.match(/^(#{1,3})\s+(.+)$/);
+ if(h){const el=document.createElement(h[1].length===1?"h1":"h2");el.innerHTML=inline(h[2]);root.appendChild(el);i++;continue;}
+ if(/^[-*]\s+/.test(line)||/^\d+\.\s+/.test(line)){
+  const ordered=/^\d+\./.test(line),list=document.createElement(ordered?"ol":"ul");
+  while(i<lines.length && (/^\s*[-*]\s+/.test(lines[i])||/^\s*\d+\.\s+/.test(lines[i]))){const li=document.createElement("li");li.innerHTML=inline(lines[i].replace(/^\s*(?:[-*]|\d+\.)\s+/,""));list.appendChild(li);i++;}
+  const wrap=document.createElement("div");wrap.className="section";wrap.appendChild(list);root.appendChild(wrap);continue;
+ }
+ const p=document.createElement("p");p.innerHTML=inline(line);root.appendChild(p);i++;
+}
+})();
+</script>
+</body></html>
