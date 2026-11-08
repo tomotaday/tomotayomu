@@ -85,7 +85,7 @@ async function diagnose(){
   for(const result of results){
    const box=document.createElement('div');box.style.marginTop='14px';
    const title=document.createElement('p');title.innerHTML='';title.textContent=result.name+' '+(result.missing?'（このブラウザでは未作成）':'｜version '+result.version);box.appendChild(title);
-   if(result.rows){const t=table(['ストア','keyPath','自動採番','インデックス','件数']);result.rows.forEach(r=>{const tr=document.createElement('tr');cell(tr,r.name);cell(tr,r.keyPath);cell(tr,r.indexes.join('\n')||'なし');cell(tr,r.count);t.appendChild(tr)});box.appendChild(t)}
+   if(result.rows){const t=table(['ストア','keyPath','自動採番','インデックス','件数']);result.rows.forEach(r=>{const tr=document.createElement('tr');cell(tr,r.name);cell(tr,r.keyPath);cell(tr,r.autoIncrement?'はい':'いいえ');cell(tr,r.indexes.join('\n')||'なし');cell(tr,r.count);t.appendChild(tr)});box.appendChild(t)}
    $('dbResult').appendChild(box);
   }
  }catch(e){$('dbStatus').textContent='IndexedDB調査エラー：'+(e.message||String(e))}
