@@ -88,7 +88,8 @@ function render(){
  for(const r of found.slice(0,30)){
   const badge=r.site==="narou"?"narou":r.site==="note"?"noteBadge":"kakuyomu";
   const card=document.createElement("article");card.className="card";
-  const statusText=r.status==="完結"?"🔵 完結":r.status==="連載中"?"🟢 連載中":r.status==="短編"?"🟣 短編":esc(r.status||"ステータス未設定");
+  const rawStatus=String(r.status||"");
+  const statusText=(rawStatus==="完結"||rawStatus==="完結済")?"🔵 完結":rawStatus==="連載中"?"🟢 連載中":rawStatus==="短編"?"🟣 短編":esc(rawStatus||"ステータス未設定");
   const date=r.updatedAt?dateLabel(r.updatedAt):"更新日なし";
   const shelfMark=shelfMarks[String(r.shelfId||"")]||"本棚不明";
   const short=r.site==="narou"&&String(r.siteData?.noveltype??"").trim()==="2";
