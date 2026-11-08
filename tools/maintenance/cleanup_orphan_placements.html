@@ -49,7 +49,7 @@ async function scan(){
  backup.disabled=true;saved.checked=false;saved.disabled=true;remove.disabled=true;backupDone=false;candidates=[];rows=[];list.replaceChildren();final.textContent="";status.textContent="読み取り中…";
  let db;
  try{db=await openDB();if(!db.objectStoreNames.contains("shelf_placement")||!db.objectStoreNames.contains("works_cache"))throw new Error("必要なストアがありません");
- const tx=db.transaction(["shelf_placement","works_cache"],"readonly"),placements=await req(tx.objectStore("shelf_placement").getAll()),keys=await req(tx.objectStore("works_cache").getAllKeys()),keySet=new Set(keys.map(String));
+ const tx=db.transaction(["shelf_placement","works_cache"],"readonly"),placementRequest=tx.objectStore("shelf_placement").getAll(),keyRequest=tx.objectStore("works_cache").getAllKeys();const [placements,keys]=await Promise.all([req(placementRequest),req(keyRequest)]),keySet=new Set(keys.map(String));
  rows=placements.filter(row=>row&&row.ncode!=null&&!keySet.has(String(row.ncode))).map(row=>({...row}));
  candidates=rows.map(row=>String(row.ncode)).sort();
  const table=document.createElement("table"),head=document.createElement("tr");["No.","Nコード","棚ID"].forEach(v=>{const th=document.createElement("th");th.textContent=v;head.appendChild(th)});table.appendChild(head);
