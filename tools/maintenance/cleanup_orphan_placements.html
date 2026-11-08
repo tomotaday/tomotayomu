@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f7f7fb">
+<title>ともたよむ｜孤立配置データ整理</title>
+<style>
+:root{color-scheme:light;--ink:#273044;--muted:#687386;--line:#dfe4ed;--paper:#fff;--bg:#f5f7fb;--accent:#526b9a;--danger:#a83232}
+*{box-sizing:border-box}body{margin:0;padding:18px;background:var(--bg);color:var(--ink);font:15px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}main{max-width:760px;margin:auto}h1{font-size:1.35rem}.panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px;margin:12px 0}button{border:0;border-radius:10px;background:var(--accent);color:white;padding:12px 15px;font-size:1rem;margin:5px 5px 5px 0}button:disabled{opacity:.45}button.danger{background:var(--danger)}.muted,.small{color:var(--muted)}.small{font-size:.86rem}.status{white-space:pre-wrap;overflow-wrap:anywhere}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:8px 5px;border-bottom:1px solid var(--line);overflow-wrap:anywhere}label{display:block;margin:14px 0}input{width:20px;height:20px;vertical-align:middle;margin-right:8px}
+</style>
+</head>
+<body><main>
+<p><a href="../../index.html">← ともたよむへ戻る</a></p>
+<h1>孤立した本棚配置データの整理</h1>
+<p class="muted">2026/11/08｜一時メンテナンス専用ページ</p>
+<section class="panel">
+<strong>対象と安全範囲</strong>
+<p>tomotaYomuDB の shelf_placement に存在し、works_cache に存在しないNコードの配置レコードだけを対象にします。</p>
+<ul><li>削除対象：孤立した shelf_placement レコード</li><li>変更しない：works_cache／authors／reading_position／shelf_names</li><li>Atom用DB・localStorage・GitHub上のファイルには触れません。</li></ul>
+<p class="small">最初に対象一覧を読み取り、JSON退避ファイルを保存してから削除します。削除直前にも作品本体の有無を再確認します。</p>
+</section>
+<section class="panel">
+<h2>① 対象を確認</h2>
+<button id="scan">対象を読み取る</button>
+<div id="status" class="status" role="status" aria-live="polite">まだ読み取っていません。</div>
+<div id="list"></div>
+</section>
+<section class="panel">
+<h2>② JSON退避</h2>
+<button id="backup" disabled>対象データをJSON保存</button>
+<label><input id="saved" type="checkbox" disabled>JSONファイルを「ファイル」などに保存したことを確認しました。</label>
+<p class="small">退避JSONには、対象Nコードと shelf_placement のレコード内容、作成日時を含めます。</p>
+</section>
+<section class="panel">
+<h2>③ 削除</h2>
+<button id="remove" class="danger" disabled>確認した孤立配置データを削除</button>
+<div id="final" class="status" role="status" aria-live="polite"></div>
+<p class="small">削除は shelf_placement のみです。実行後に再診断し、孤立配置データが0件になったことを確認します。</p>
+</section>
+</main>
+<script>
+(()=>{"use strict";
+const DB="tomotaYomuDB",status=document.getElementById("status"),list=document.getElementById("list"),backup=document.getElementById("backup"),saved=document.getElementById("saved"),remove=document.getElementById("remove"),final=document.getElementById("final");
+let candidates=[],rows=[],backupDone=false;
+function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB,1);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error("DBを開けません"));r.onupgradeneeded=()=>{r.transaction.abort();reject(new Error("既存DBがないため中止しました"));};});}
+function req(p){return new Promise((resolve,reject)=>{p.onsuccess=()=>resolve(p.result);p.onerror=()=>reject(p.error||new Error("読み取りに失敗しました"));});}
+async function scan(){
+ backup.disabled=true;saved.checked=false;saved.disabled=true;remove.disabled=true;backupDone=false;candidates=[];rows=[];list.replaceChildren();final.textContent="";status.textContent="読み取り中…";
+ let db;
+ try{db=await openDB();if(!db.objectStoreNames.contains("shelf_placement")||!db.objectStoreNames.contains("works_cache"))throw new Error("必要なストアがありません");
+ const tx=db.transaction(["shelf_placement","works_cache"],"readonly"),placements=await req(tx.objectStore("shelf_placement").getAll()),keys=await req(tx.objectStore("works_cache").getAllKeys()),keySet=new Set(keys.map(String));
+ rows=placements.filter(row=>row&&row.ncode!=null&&!keySet.has(String(row.ncode))).map(row=>({...row}));
+ candidates=rows.map(row=>String(row.ncode)).sort();
+ const table=document.createElement("table"),head=document.createElement("tr");["No.","Nコード","棚ID"].forEach(v=>{const th=document.createElement("th");th.textContent=v;head.appendChild(th)});table.appendChild(head);
+ rows.forEach((row,i)=>{const tr=document.createElement("tr");[i+1,row.ncode,row.shelf_id??"(不明)"].forEach(v=>{const td=document.createElement("td");td.textContent=String(v);tr.appendChild(td)});table.appendChild(tr)});list.appendChild(table);
+ status.textContent="読み取り完了："+candidates.length+"件。"+(candidates.length?"一覧を確認してJSON退避へ進んでください。":"削除対象はありません。");
+ backup.disabled=!candidates.length;
+ }catch(e){status.textContent="エラー："+e.message;}finally{db?.close();}
+}
+document.getElementById("scan").addEventListener("click",scan);
+backup.addEventListener("click",()=>{
+ if(!candidates.length||rows.length!==candidates.length)return;
+ const payload={schema_version:1,created_at:new Date().toISOString(),purpose:"孤立したshelf_placementレコードの削除前退避",database:DB,store:"shelf_placement",records:rows};
+ const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+ const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="tomotayomu-orphan-placement-backup-"+new Date().toISOString().replace(/[:.]/g,"-")+".json";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+ backupDone=true;saved.disabled=false;status.textContent="JSON保存操作を開始しました。端末に保存されたことを確認してチェックしてください。";
+});
+saved.addEventListener("change",()=>{remove.disabled=!(saved.checked&&backupDone&&candidates.length>0);});
+remove.addEventListener("click",async()=>{
+ if(!saved.checked||!backupDone||!candidates.length)return;
+ if(!confirm("JSON退避を確認しました。works_cacheに存在しない shelf_placement のみ削除します。実行しますか？"))return;
+ remove.disabled=true;backup.disabled=true;status.textContent="削除前の再確認中…";let db;
+ try{
+ db=await openDB();const tx=db.transaction(["shelf_placement","works_cache"],"readwrite"),p=tx.objectStore("shelf_placement"),w=tx.objectStore("works_cache");let deleted=0,skipped=0;
+ for(const ncode of candidates){const check=w.get(ncode);check.onsuccess=()=>{if(check.result===undefined){p.delete(ncode);deleted++;}else skipped++;};}
+ await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("削除トランザクション失敗"));tx.onabort=()=>reject(tx.error||new Error("削除が中断されました"));});
+ final.textContent="削除処理完了："+deleted+"件／対象外（作品本体が見つかったため保護）："+skipped+"件。";
+ }catch(e){final.textContent="削除エラー："+e.message+"。DBの状態を再診断してください。";}
+ finally{db?.close();await scan();}
+});
+})();
+</script></body></html>
