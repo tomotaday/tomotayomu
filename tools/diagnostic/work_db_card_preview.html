@@ -61,8 +61,7 @@ a{color:inherit;text-decoration:none;border-bottom:1px solid #aaa}
 "use strict";
 const DB_NAME="tomotaYomu_work_test_v1", STORE="works";
 let allRecords=[];
-const shelfMarks={"shelf01":"🟠読書中","shelf02":"🎈ま〜も","shelf03":"🎈さ〜そ","shelf04":"🎈や〜ん","shelf05":"🎈か〜こ","shelf06":"🎈あ〜お","shelf07":"🎈た〜と","shelf08":"🌀は〜ほ","shelf10":"⏰更新待ち","shelf14":"🌀な〜の","shelf_07a0b1f3f9c9":"🌀わ行","shelf_1cadde5522eb":"🗑️削除","shelf_cfcd536f3b56":"🌀ら行","shelf_ded1af671fd0":"退会"}
-const $=id=>document.getElementById(id);
+const shelfMarks={"shelf01":"📌","shelf02":"🌀ま行","shelf03":"🌀さ行","shelf04":"🌀や行","shelf05":"🌀か行","shelf06":"🌀あ行","shelf07":"🌀た行","shelf08":"🌀は行","shelf10":"⏰","shelf14":"🌀な行","shelf_07a0b1f3f9c9":"🌀わ行","shelf_1cadde5522eb":"🗑️","shelf_cfcd536f3b56":"🌀ら行","shelf_ded1af671fd0":"退会"}
 function openReadonly(){
  return new Promise((resolve,reject)=>{
   const req=indexedDB.open(DB_NAME,1);
@@ -107,6 +106,23 @@ function render(){
   card.querySelector(".synopsis").textContent=synopsis||"あらすじなし";
   card.querySelector(".managementBody").textContent=extra;
   card.querySelector(".openWork").href=r.url||"#";
+  if(r.site==="kakuyomu"){
+    const resume=card.querySelector(".kakuyomuReading");
+    const episodeId=String(r.bookmark?.episodeId||"").trim();
+    const total=Number(r.episodeCount)||0;
+    if(resume){
+      if(!episodeId){resume.textContent="続き📖記録なし / "+(total||"—")+"話";}
+      else{
+        fetch("./data/kakuyomu-toc/"+encodeURIComponent(String(r.workId))+".json",{cache:"no-store"})
+          .then(res=>{if(!res.ok)throw new Error("目次未取得");return res.json();})
+          .then(toc=>{
+            const found=Array.isArray(toc.episodes)?toc.episodes.find(ep=>String(ep.episode_id)===episodeId):null;
+            resume.textContent=found?"続き📖"+Number(found.number).toLocaleString("ja-JP")+"/"+(total||"—").toLocaleString("ja-JP")+"話":"続き📖話数未照合 / "+(total||"—")+"話";
+          })
+          .catch(()=>{resume.textContent="続き📖目次未取得 / "+(total||"—")+"話";});
+      }
+    }
+  }
   target.appendChild(card);
  }
  if(!found.length)target.textContent="該当する作品はありません。";
