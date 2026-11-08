@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ともたよむ｜新作品DBカード表示テスト</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:#f3f6fc;color:#102a5c;line-height:1.55}
+main{width:min(100%,760px);margin:auto;padding:18px 14px 40px}
+h1{font-size:24px;margin:0 0 6px}.note{font-size:13px;color:#596579;margin:0 0 16px}
+.panel{background:white;border:1px solid #cbd5e1;border-radius:14px;padding:14px;margin:12px 0}
+.warning{border-left:4px solid #d97706;background:#fffaf0}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+input,select,button{font:inherit;padding:10px;border:1px solid #aab7cc;border-radius:9px;background:white;color:inherit;min-width:0}
+button{background:#17458a;color:white;font-weight:700}
+#status{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;background:#eef2f8;border-radius:9px;padding:10px}
+.card{background:#f5f8ff;border:1px solid #153568;border-radius:18px;padding:15px;margin:12px 0;color:#102a5c}
+.meta{font-size:13px;color:#60666f;margin-bottom:8px}
+h2{font-size:18px;line-height:1.45;margin:0 0 8px}
+.author{display:flex;align-items:center;gap:7px;font-size:15px;color:#555;min-width:0}
+.authorName{flex:1;min-width:0;overflow-wrap:anywhere}
+.siteBadge{flex:none;min-width:60px;text-align:center;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:700}
+.narou{background:#ddf3e7;color:#278454}.noteBadge{background:#eee0fa;color:#7542a7}.kakuyomu{background:#dceeff;color:#2465a5}
+details{margin-top:10px;font-size:14px}summary{cursor:pointer}.synopsis{white-space:pre-wrap;color:#555;font-size:13px}
+.actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;font-size:14px}
+a{color:inherit;text-decoration:none;border-bottom:1px solid #aaa}
+.readState{display:inline-block;padding:5px 15px;border:1px solid #e1bd48;border-radius:12px;background:#fff0a6;color:#805400;font-weight:700}
+.readState.read{border-color:#c8c8c8;background:#e8e8e8;color:#333}
+.metrics{font-size:13px;color:#596579}
+</style>
+</head>
+<body>
+<main>
+<h1>新しい作品DB｜カード表示テスト</h1>
+<p class="note">テストDBから作品レコードを読み取り、作品カードに必要な情報を表示できるか確認します。</p>
+<div class="panel warning">
+<strong>安全確認</strong>
+<p>このページは <code>tomotaYomu_work_test_v1</code> を読み取り専用で開きます。作品データの追加・変更・削除は行いません。現行DB、Atom DB、メモDB、localStorageには触れません。</p>
+</div>
+<div class="panel">
+<strong>検索・絞り込み</strong>
+<div class="controls" style="margin-top:10px">
+<input id="query" placeholder="作品名・作者名・作品ID">
+<select id="site"><option value="all">すべてのサイト</option><option value="narou">なろう</option><option value="note">note</option><option value="kakuyomu">カクヨム</option></select>
+</div>
+<p id="summary" class="metrics">テストDBを読み込み中…</p>
+</div>
+<div id="cards"></div>
+<div class="panel"><strong>処理ログ</strong><p id="status">待機中</p></div>
+</main>
+<script>
+"use strict";
+const DB_NAME="tomotaYomu_work_test_v1", STORE="works";
+let allRecords=[];
+const $=id=>document.getElementById(id);
+function openReadonly(){
+ return new Promise((resolve,reject)=>{
+  const req=indexedDB.open(DB_NAME,1);
+  req.onsuccess=()=>resolve(req.result);
+  req.onerror=()=>reject(req.error||new Error("テストDBを開けません"));
+  req.onupgradeneeded=()=>{req.transaction.abort();reject(new Error("テストDBがありません。先に移行テストページでv3を保存してください。"));};
+ });
+}
+function readAll(db){
+ return new Promise((resolve,reject)=>{
+  const tx=db.transaction(STORE,"readonly"),req=tx.objectStore(STORE).getAll();
+  req.onsuccess=()=>resolve(req.result||[]);
+  req.onerror=()=>reject(req.error||new Error("作品レコードを読み込めません"));
+ });
+}
+function siteLabel(site){return site==="narou"?"なろう":site==="note"?"note":site==="kakuyomu"?"カクヨム":"その他"}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function dateLabel(v){if(!v)return "日付なし";return esc(String(v).replace("T"," ").slice(0,16));}
+function render(){
+ const q=$("query").value.trim().toLocaleLowerCase(),site=$("site").value;
+ const found=allRecords.filter(r=>(site==="all"||r.site===site)&&(!q||[r.title,r.authorName,r.id,r.workId].some(v=>String(v||"").toLocaleLowerCase().includes(q))));
+ $("summary").textContent="登録 "+allRecords.length.toLocaleString()+"件 ／ 該当 "+found.length.toLocaleString()+"件（最大30件表示）";
+ const target=$("cards");target.replaceChildren();
+ for(const r of found.slice(0,30)){
+  const badge=r.site==="narou"?"narou":r.site==="note"?"noteBadge":"kakuyomu";
+  const card=document.createElement("article");card.className="card";
+  const status=r.status?esc(r.status):"ステータス未設定";
+  const date=r.updatedAt?dateLabel(r.updatedAt):"更新日なし";
+  const short=r.site==="narou"&&String(r.siteData?.noveltype??"").trim()==="2";
+  let reading="";
+  if(short){reading='<span class="readState '+(r.reading?.isRead?"read":"")+'">'+(r.reading?.isRead?"読了":"未読")+'</span>';}
+  else if(r.site==="narou"){reading='<span>続き 📖 '+(r.reading?.position==null?"記録なし":esc(r.reading.position))+'/'+(r.episodeCount??"—")+'話</span>';}
+  else if(r.site==="kakuyomu"){reading='<span>しおり '+(r.reading?.position===0?"0":r.reading?.position??"未設定")+'</span>';}
+  else if(r.site==="note"){reading='<span>しおり '+(r.bookmark?.url?"保存済み":"未設定")+'</span>';}
+  const synopsis=String(r.synopsis||"");
+  card.innerHTML='<div class="meta">'+date+'　｜　'+status+'</div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="siteBadge '+badge+'">'+siteLabel(r.site)+'</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="openWork" target="_blank" rel="noopener">作品を開く</a>'+reading+'</div>';
+  card.querySelector("h2").textContent=r.title||"";
+  card.querySelector(".authorName").textContent=r.authorName||"";
+  card.querySelector(".synopsis").textContent=synopsis||"あらすじなし";
+  card.querySelector(".openWork").href=r.url||"#";
+  target.appendChild(card);
+ }
+ if(!found.length)target.textContent="該当する作品はありません。";
+}
+async function start(){
+ try{
+  const db=await openReadonly();
+  allRecords=await readAll(db);db.close();
+  if(!allRecords.length)throw new Error("テストDBに作品がありません。v3を先に保存してください。");
+  $("status").textContent="読み取り専用で読み込みました。\nDB: "+DB_NAME+"\n作品数: "+allRecords.length+"件\nデータ変更: なし";
+  render();
+ }catch(e){$("status").textContent="読み込み失敗: "+e.message;$("summary").textContent="テストDBを確認できません";}
+}
+$("query").addEventListener("input",render);$("site").addEventListener("change",render);start();
+</script>
+</body>
+</html>
