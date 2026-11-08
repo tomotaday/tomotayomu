@@ -165,7 +165,8 @@ async function restore(){
    const list=await indexedDB.databases();
    if(list.some(x=>x.name===testDBName))throw new Error('同名のテストDBが既に存在します。上書きしません。');
   }
-  const db=await openNewTestDB(testDBName,sourceDB.version);\n  testDBCreated=true;
+  const db=await openNewTestDB(testDBName,sourceDB.version);
+  testDBCreated=true;
   try{
    for(const name of REQUIRED_STORES){
     const records=sourceDB.stores[name].records;
