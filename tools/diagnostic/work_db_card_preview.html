@@ -97,6 +97,7 @@ function render(){
   const statusText=(rawStatus==="完結"||rawStatus==="完結済")?"🔵 完結":rawStatus==="連載中"?"🟢 連載中":rawStatus==="短編"?"🟣 短編":esc(rawStatus||"ステータス未設定");
   const date=r.updatedAt?dateLabel(r.updatedAt):"更新日なし";
   const shelfMark=shelfMarks[String(r.shelfId||"")]||"";
+  const displayShelfMark=r.site==="note"?(shelfMark||"未分類"):shelfMark;
   const isSearchExcluded=r.site==="narou"&&(String(r.siteData?.disclosure??r.siteData?.legacyFields?.disclosure??"").includes("検索除外"));
   const short=r.site==="narou"&&String(r.siteData?.noveltype??"").trim()==="2";
   const isR18=r.site==="narou"&&(r.siteData?.isR18===true||r.siteData?.legacyFields?.__r18===true||r.siteData?.authorType==="r18");
@@ -107,7 +108,7 @@ function render(){
   else if(r.site==="note"){reading='<a class="noteResume" target="_blank" rel="noopener">続き 📖 位置を確認中…</a>';}
   const synopsis=String(r.synopsis||"");
   const extra=r.site==="narou"?"Nコード："+r.workId+"\n作者ID："+(r.authorId??"未登録")+"\n本棚："+shelfMark+"\nR18："+(isR18?"はい":"いいえ")+"\nnoveltype："+(r.siteData?.noveltype??"不明")+"\nend："+(r.siteData?.end??"不明"):"作品ID："+r.workId+"\n作者ID："+(r.authorId??"未登録")+"\n本棚："+shelfMark;
-  card.innerHTML='<div class="meta"><span class="date">'+date+'</span><span>｜</span><span class="statusLabel">'+statusText+'</span><span>｜</span><span class="shelfLabel">'+esc(shelfMark)+'</span></div><h2></h2><div class="author">作者：<span class="authorName"></span>'+(isSearchExcluded?'<span class="excludedMark" aria-label="検索除外">🚫</span>':'')+'<span class="siteBadge '+badge+'">'+siteLabel(r.site)+'</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="openWork" target="_blank" rel="noopener">作品を開く</a>'+reading+'</div><details class="management"><summary>詳細を開く</summary><div class="managementBody"></div></details>';
+  card.innerHTML='<div class="meta"><span class="date">'+date+'</span><span>｜</span><span class="statusLabel">'+statusText+'</span><span>｜</span><span class="shelfLabel">'+esc(displayShelfMark)+'</span></div><h2></h2><div class="author">作者：<span class="authorName"></span>'+(isSearchExcluded?'<span class="excludedMark" aria-label="検索除外">🚫</span>':'')+'<span class="siteBadge '+badge+'">'+siteLabel(r.site)+'</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="openWork" target="_blank" rel="noopener">作品を開く</a>'+reading+'</div><details class="management"><summary>詳細を開く</summary><div class="managementBody"></div></details>';
   card.querySelector("h2").textContent=r.title||"";
   card.querySelector(".authorName").textContent=r.authorName||"";
   card.querySelector(".synopsis").textContent=synopsis||"あらすじなし";
