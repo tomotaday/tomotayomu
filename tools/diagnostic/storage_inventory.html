@@ -147,7 +147,8 @@ async function exportAllData(){
       tx.onerror=()=>reject(tx.error||new Error(storeName+' 読み取りエラー'));
      });
      if(result.records.length!==result.count)throw new Error(dbName+'/'+storeName+' 件数不一致');
-     validateJsonSafe(result.records,dbName+'/'+storeName);\n     stores[storeName]={...result.schema,count:result.count,records:result.records};
+     validateJsonSafe(result.records,dbName+'/'+storeName);
+     stores[storeName]={...result.schema,count:result.count,records:result.records};
     }
     databases.push({name:dbName,version:db.version,stores});
    }finally{db.close()}
