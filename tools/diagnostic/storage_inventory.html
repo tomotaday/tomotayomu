@@ -135,10 +135,13 @@ async function exportAllData(){
      const result=await new Promise((resolve,reject)=>{
       let tx;
       try{tx=db.transaction(storeName,'readonly')}catch(e){reject(e);return}
-      const store=tx.objectStore(storeName),getReq=store.getAll(),countReq=store.count(),keys=[];\n      const cursorReq=store.openKeyCursor();
+      const store=tx.objectStore(storeName),getReq=store.getAll(),countReq=store.count(),keys=[];
+      const cursorReq=store.openKeyCursor();
       const schema={keyPath:store.keyPath,autoIncrement:store.autoIncrement,indexes:Array.from(store.indexNames).map(indexName=>{const index=store.index(indexName);return {name:index.name,keyPath:index.keyPath,unique:index.unique,multiEntry:index.multiEntry}})};
-      let records,count,gotRecords=false,gotCount=false;
-      const finish=()=>{if(gotRecords&&gotCount)resolve({records,count,schema})};
+      let records,count,gotRecords=false,gotCount=false,gotKeys=false;
+      const finish=()=>{if(gotRecords&&gotCount&&gotKeys)resolve({records,count,keys,schema})};
+      cursorReq.onsuccess=()=>{const cursor=cursorReq.result;if(cursor){keys.push(cursor.primaryKey);cursor.continue()}else{gotKeys=true;finish()}};
+      cursorReq.onerror=()=>reject(cursorReq.error||new Error(storeName+' キー取得失敗'));
       getReq.onsuccess=()=>{records=getReq.result;gotRecords=true;finish()};
       countReq.onsuccess=()=>{count=countReq.result;gotCount=true;finish()};
       getReq.onerror=()=>reject(getReq.error||new Error(storeName+' getAll失敗'));
