@@ -113,6 +113,8 @@ function render(){
   card.querySelector(".synopsis").textContent=synopsis||"あらすじなし";
   if(r.site==="narou"){
     card.querySelector(".managementBody").innerHTML='<div class="detailCode">Nコード：'+esc(r.workId)+'</div><div class="detailActions"><button type="button" disabled>本棚を移動</button><button type="button" disabled>'+(isSearchExcluded?'🔎 検索除外を解除':'🔎 検索除外にする')+'</button><button type="button" disabled>削除</button></div>';
+  }else if(r.site==="kakuyomu"){
+    card.querySelector(".managementBody").innerHTML='<div class="detailCode">作品ID：'+esc(r.workId)+'</div><div class="detailActions"><button type="button" disabled>本棚を移動</button><button type="button" disabled>削除</button></div>';
   }else{
     card.querySelector(".managementBody").textContent=extra;
   }
