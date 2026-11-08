@@ -183,18 +183,43 @@ function render(){
   card.querySelector(".openWork").href=r.url||"#";
   if(r.site==="kakuyomu"){
     const resume=card.querySelector(".kakuyomuReading");
-    const episodeId=String(r.bookmark?.episodeId||r.bookmark?.siteData?.episodeId||r.siteData?.bookmarkEpisodeId||"").trim();
+    const episodeId=String(r.bookmark?.episodeId ?? r.bookmark?.siteData?.episodeId ?? r.siteData?.bookmarkEpisodeId ?? "").trim();
+    const bookmarkUrl=String(r.bookmark?.url ?? r.bookmark?.episodeUrl ?? r.siteData?.bookmarkEpisodeUrl ?? "").trim();
     const total=Number(r.episodeCount)||0;
     if(resume){
-      if(!episodeId){resume.textContent="続き📖記録なし / "+(total||"—")+"話";}
-      else{
-        fetch("./data/kakuyomu-toc/"+encodeURIComponent(String(r.workId))+".json",{cache:"no-store"})
+      // しおりURLは目次の取得成否にかかわらず常にリンク先として保持する。
+      if(bookmarkUrl){
+        const link=document.createElement("a");
+        link.className="kakuyomuResumeLink";
+        link.href=bookmarkUrl;
+        link.target="_blank";
+        link.rel="noopener noreferrer";
+        link.textContent="続き📖しおり位置を確認中… / "+(total?total.toLocaleString("ja-JP"):"—")+"話";
+        resume.replaceWith(link);
+      }else if(!episodeId){
+        resume.textContent="続き📖記録なし / "+(total?total.toLocaleString("ja-JP"):"—")+"話";
+      }else{
+        resume.textContent="続き📖しおりURLなし / "+(total?total.toLocaleString("ja-JP"):"—")+"話";
+      }
+    }
+    const link=card.querySelector(".kakuyomuResumeLink");
+    if(link){
+      if(!episodeId){
+        link.textContent="続き📖しおり位置未設定 / "+(total?total.toLocaleString("ja-JP"):"—")+"話";
+      }else{
+        // このHTMLは tools/diagnostic/ 配下。目次JSONはリポジトリ直下の data/ にある。
+        fetch("../../data/kakuyomu-toc/"+encodeURIComponent(String(r.workId))+".json",{cache:"no-store"})
           .then(res=>{if(!res.ok)throw new Error("目次未取得");return res.json();})
           .then(toc=>{
             const found=Array.isArray(toc.episodes)?toc.episodes.find(ep=>String(ep.episode_id)===episodeId):null;
-            resume.textContent=found?"続き📖"+Number(found.number).toLocaleString("ja-JP")+"/"+(total||"—").toLocaleString("ja-JP")+"話":"続き📖話数未照合 / "+(total||"—")+"話";
+            link.textContent=found
+              ?"続き📖"+Number(found.number).toLocaleString("ja-JP")+"/"+(total||Number(toc.public_episode_count)||"—").toLocaleString("ja-JP")+"話"
+              :"続き📖話数未照合 / "+(total?total.toLocaleString("ja-JP"):"—")+"話";
           })
-          .catch(()=>{resume.textContent="続き📖目次未取得 / "+(total||"—")+"話";});
+          .catch(()=>{
+            // 目次がなくても保存済みURLからしおり位置へ移動できる。
+            link.textContent="続き📖しおりへ / "+(total?total.toLocaleString("ja-JP"):"—")+"話";
+          });
       }
     }
   }
