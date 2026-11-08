@@ -92,7 +92,7 @@ function render(){
  const target=$("cards");target.replaceChildren();
  for(const r of found.slice(0,30)){
   const badge=r.site==="narou"?"narou":r.site==="note"?"noteBadge":"kakuyomu";
-  const card=document.createElement("article");card.className="card";
+  const card=document.createElement("article");card.className="card"+(r.site==="note"?" noteWorkCard":"");
   const rawStatus=String(r.status||"");
   const statusText=(rawStatus==="完結"||rawStatus==="完結済")?"🔵 完結":rawStatus==="連載中"?"🟢 連載中":rawStatus==="短編"?"🟣 短編":esc(rawStatus||"ステータス未設定");
   const date=r.updatedAt?dateLabel(r.updatedAt):"更新日なし";
@@ -104,7 +104,7 @@ function render(){
   if(short){reading='<span class="readState '+(r.reading?.isRead?"read":"")+'">'+(r.reading?.isRead?"読了":"未読")+'</span>';}
   else if(r.site==="narou"){reading='<span>続き 📖 '+(r.reading?.position==null?"記録なし":esc(r.reading.position))+'/'+(r.episodeCount??"—")+'話'+(isR18?' <span class="r18Mark">®️</span>':'')+'</span>';}
   else if(r.site==="kakuyomu"){reading='<span class="kakuyomuReading">続き📖話数を確認中… / '+(r.episodeCount??"—")+'話</span>';}
-  else if(r.site==="note"){reading='<span>しおり '+(r.bookmark?.url?"保存済み":"未設定")+'</span>';}
+  else if(r.site==="note"){reading='<a class="noteResume" target="_blank" rel="noopener">続き 📖 位置を確認中…</a>';}
   const synopsis=String(r.synopsis||"");
   const extra=r.site==="narou"?"Nコード："+r.workId+"\n作者ID："+(r.authorId??"未登録")+"\n本棚："+shelfMark+"\nR18："+(isR18?"はい":"いいえ")+"\nnoveltype："+(r.siteData?.noveltype??"不明")+"\nend："+(r.siteData?.end??"不明"):"作品ID："+r.workId+"\n作者ID："+(r.authorId??"未登録")+"\n本棚："+shelfMark;
   card.innerHTML='<div class="meta"><span class="date">'+date+'</span><span>｜</span><span class="statusLabel">'+statusText+'</span><span>｜</span><span class="shelfLabel">'+esc(shelfMark)+'</span></div><h2></h2><div class="author">作者：<span class="authorName"></span>'+(isSearchExcluded?'<span class="excludedMark" aria-label="検索除外">🚫</span>':'')+'<span class="siteBadge '+badge+'">'+siteLabel(r.site)+'</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="openWork" target="_blank" rel="noopener">作品を開く</a>'+reading+'</div><details class="management"><summary>詳細を開く</summary><div class="managementBody"></div></details>';
@@ -118,6 +118,18 @@ function render(){
   }else if(r.site==="note"){
     const bookmarkUrl=String(r.bookmark?.url||"");
     const indexFile=String(r.siteData?.indexFile||"");
+    const resume=card.querySelector(".noteResume");
+    if(resume){
+      resume.href=bookmarkUrl||r.url||"#";
+      if(indexFile){
+        fetch("../../"+indexFile,{cache:"no-store"}).then(res=>{if(!res.ok)throw new Error();return res.json();}).then(data=>{
+          const items=Array.isArray(data.items)?data.items:[];
+          const key=(bookmarkUrl.match(/\\/n\\/([a-z0-9]+)/i)||[])[1]||"";
+          const position=key?items.findIndex(entry=>String(entry.key||"")===key):-1;
+          resume.textContent=position>=0?"続き 📖 "+(position+1)+"/"+items.length+"話":"続き 📖 しおり未設定";
+        }).catch(()=>{resume.textContent="続き 📖 目次未取得";});
+      }else resume.textContent="続き 📖 しおり未設定";
+    }
     card.querySelector(".managementBody").innerHTML=
       '<details class="noteIndexDetails"><summary>目次（読み込み前）</summary><div class="noteIndexList" aria-live="polite"></div></details>'+
       '<div class="detailCode">マガジンID：'+esc(r.id)+'</div>'+
