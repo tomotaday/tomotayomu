@@ -103,6 +103,18 @@ async function diagnose(){
  }catch(e){$('lsStatus').textContent='localStorage調査エラー：'+(e.message||String(e))}
  button.disabled=false;
 }
+function validateJsonSafe(value,path,stack=new WeakSet()){
+ if(value===null||typeof value==='string'||typeof value==='boolean')return;
+ if(typeof value==='number'){if(!Number.isFinite(value))throw new Error(path+' にJSONで安全に保存できない数値があります');return;}
+ if(typeof value==='undefined'||typeof value==='bigint'||typeof value==='function'||typeof value==='symbol')throw new Error(path+' にJSONで保持できない値（'+typeof value+'）があります');
+ if(typeof value!=='object')throw new Error(path+' に未対応の値があります');
+ if(value instanceof Date||value instanceof Blob||value instanceof ArrayBuffer||ArrayBuffer.isView(value)||value instanceof Map||value instanceof Set||value instanceof RegExp)throw new Error(path+' にJSON化で形が変わるデータ型（'+Object.prototype.toString.call(value)+'）があります');
+ const proto=Object.getPrototypeOf(value);if(!Array.isArray(value)&&proto!==Object.prototype&&proto!==null)throw new Error(path+' に未対応のオブジェクト型があります');
+ if(stack.has(value))throw new Error(path+' に循環参照があります');
+ stack.add(value);
+ for(const key of Reflect.ownKeys(value)){if(typeof key==='symbol')throw new Error(path+' にシンボルキーがあります');validateJsonSafe(value[key],path+'.'+key,stack)}
+ stack.delete(value);
+}
 async function exportAllData(){
  const button=$('export'),status=$('exportStatus');
  button.disabled=true;status.textContent='取り出し中… DBと保存データを読み取っています。画面を閉じないでください。';
@@ -124,8 +136,9 @@ async function exportAllData(){
       let tx;
       try{tx=db.transaction(storeName,'readonly')}catch(e){reject(e);return}
       const store=tx.objectStore(storeName),getReq=store.getAll(),countReq=store.count();
+      const schema={keyPath:store.keyPath,autoIncrement:store.autoIncrement,indexes:Array.from(store.indexNames).map(indexName=>{const index=store.index(indexName);return {name:index.name,keyPath:index.keyPath,unique:index.unique,multiEntry:index.multiEntry}})};
       let records,count,gotRecords=false,gotCount=false;
-      const finish=()=>{if(gotRecords&&gotCount)resolve({records,count})};
+      const finish=()=>{if(gotRecords&&gotCount)resolve({records,count,schema})};
       getReq.onsuccess=()=>{records=getReq.result;gotRecords=true;finish()};
       countReq.onsuccess=()=>{count=countReq.result;gotCount=true;finish()};
       getReq.onerror=()=>reject(getReq.error||new Error(storeName+' getAll失敗'));
@@ -134,7 +147,7 @@ async function exportAllData(){
       tx.onerror=()=>reject(tx.error||new Error(storeName+' 読み取りエラー'));
      });
      if(result.records.length!==result.count)throw new Error(dbName+'/'+storeName+' 件数不一致');
-     stores[storeName]={count:result.count,records:result.records};
+     validateJsonSafe(result.records,dbName+'/'+storeName);\n     stores[storeName]={...result.schema,count:result.count,records:result.records};
     }
     databases.push({name:dbName,version:db.version,stores});
    }finally{db.close()}
@@ -143,7 +156,7 @@ async function exportAllData(){
   for(let i=0;i<localStorage.length;i++){
    const key=localStorage.key(i);if(key!==null)local[key]=localStorage.getItem(key);
   }
-  const payload={format:'tomotayomu-storage-backup',formatVersion:1,exportedAt,origin:location.origin,databases,localStorage:local};
+  const payload={format:'tomotayomu-storage-backup',formatVersion:2,exportedAt,origin:location.origin,databases,localStorage:local};
   const json=JSON.stringify(payload);
   if(!json)throw new Error('JSONデータを作成できませんでした');
   const check=JSON.parse(json);
