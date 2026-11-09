@@ -482,7 +482,7 @@ async function buildV3CardsFromIndexedDB(){
     card.dataset.authorName=String(item.author||"");
     card.dataset.current="";
     card.dataset.lastUpdated=String(item.updatedAt||"");
-    card.innerHTML='<div class="meta"><span class="kakuyomuLastUpdated">—</span> ｜ <span class="kakuyomuStatus"></span> ｜ <span class="kakuyomuShelfMark"></span></div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="siteBadge siteBadge-kakuyomu">カクヨム</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="kakuyomuResumeLink" rel="noopener" target="_blank">続き📖記録なし</a><a class="kakuyomuEditLink">内容を編集</a></div><details class="managementDetails"><summary>詳細を開く</summary><div class="managementBody"><div class="ncode kakuyomuIdLabel"></div><button type="button" class="moveShelfBtn">本棚を移動</button><button type="button" class="deleteKakuyomuBtn">削除</button></div></details>';
+    card.innerHTML='<div class="meta"><span class="kakuyomuLastUpdated">—</span> ｜ <span class="kakuyomuStatus"></span><span class="kakuyomuShelfSeparator"> ｜ </span><span class="kakuyomuShelfMark"></span></div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="siteBadge siteBadge-kakuyomu">カクヨム</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="kakuyomuResumeLink" rel="noopener" target="_blank">続き📖記録なし</a><a class="kakuyomuEditLink">内容を編集</a></div><details class="managementDetails"><summary>詳細を開く</summary><div class="managementBody"><div class="ncode kakuyomuIdLabel"></div><button type="button" class="moveShelfBtn">本棚を移動</button><button type="button" class="deleteKakuyomuBtn">削除</button></div></details>';
     card.querySelector("h2").textContent=String(item.title||"");
     card.querySelector(".authorName").textContent=String(item.author||"");
     card.querySelector(".synopsis").textContent=String(item.synopsis||"あらすじ未登録");
@@ -492,7 +492,10 @@ async function buildV3CardsFromIndexedDB(){
     card.querySelector(".kakuyomuStatus").textContent=kakuyomuStatusLabel;
     card.querySelector(".kakuyomuIdLabel").textContent="作品ID："+String(item.id||"");
     card.querySelector(".kakuyomuLastUpdated").textContent=String(item.updatedAt||"—");
-    card.querySelector(".kakuyomuShelfMark").textContent=String(sm.get(String(item.shelfId||""))?.shelf_name||"未分類");
+    const kakuyomuShelfLabel=String(sm.get(String(item.shelfId||""))?.shelf_name||"").trim();
+    card.querySelector(".kakuyomuShelfMark").textContent=kakuyomuShelfLabel;
+    card.querySelector(".kakuyomuShelfSeparator").hidden=!kakuyomuShelfLabel;
+    card.querySelector(".kakuyomuShelfMark").hidden=!kakuyomuShelfLabel;
     card.querySelector(".workLink").href=String(item.url||"https://kakuyomu.jp/");
     const total=Math.max(0,Number(item.episodeCount)||0),bookmark=Math.max(0,Math.min(total||Number.MAX_SAFE_INTEGER,Number(item.bookmarkEpisode)||0));
     const resume=card.querySelector(".kakuyomuResumeLink");
