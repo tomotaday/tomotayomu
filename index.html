@@ -607,7 +607,7 @@ async function buildV3CardsFromIndexedDB(){
     const kakuyomuStatusLabel=/^(完結済|完結)$/.test(normalizedKakuyomuStatus)?"🔵 完結":normalizedKakuyomuStatus==="連載中"?"🟢 連載中":normalizedKakuyomuStatus==="短編"?"🟣 短編":(rawKakuyomuStatus||"未設定");
     card.querySelector(".kakuyomuStatus").textContent=kakuyomuStatusLabel;
     card.querySelector(".kakuyomuIdLabel").textContent="作品ID："+String(item.id||"");
-    card.querySelector(".kakuyomuLastUpdated").textContent=String(item.updatedAt||"—");
+    card.querySelector(".kakuyomuLastUpdated").textContent=formatDate(item.updatedAt||"");
     const kakuyomuShelfLabel=String(sm.get(String(item.shelfId||""))?.shelf_name||"").trim();
     card.querySelector(".kakuyomuShelfMark").textContent=kakuyomuShelfLabel;
     card.querySelector(".kakuyomuShelfSeparator").hidden=!kakuyomuShelfLabel;
@@ -680,12 +680,7 @@ async function loadNoteIndex(magazineKey){
 function noteArticleKey(value){
   try{const u=new URL(String(value||""));if(u.hostname!=="note.com"&&!u.hostname.endsWith(".note.com"))return "";const m=u.pathname.match(/\/n\/([a-z0-9]+)/i);return m?m[1]:""}catch(e){return ""}
 }
-function formatNotePublishedAt(value){
-  if(!value)return "—";
-  const d=new Date(value);
-  if(Number.isNaN(d.getTime()))return "—";
-  return new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(d).replace(/\//g,"/");
-}
+function formatNotePublishedAt(value){ return formatDate(value); }
 async function refreshNotePublishedDates(){
   const items=readNoteItems();
   for(const item of items){
@@ -702,7 +697,7 @@ async function refreshNotePublishedDates(){
       if(card){
         if(publishedAt){
           const dateLabel=card.querySelector(".noteLastUpdated");
-          if(dateLabel)dateLabel.textContent=formatNotePublishedAt(publishedAt);
+          if(dateLabel)dateLabel.textContent=formatDate(publishedAt);
           const d=new Date(publishedAt);
           card.dataset.lastUpdated=Number.isNaN(d.getTime())?"":new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"}).format(d).replace("T"," ");
         }
