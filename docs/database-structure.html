@@ -27,7 +27,7 @@ h1{font-size:23px;line-height:1.35;margin:18px 0 5px}h2{font-size:19px;margin:30
 <tr><td>同上 v1</td><td>shelf_placement</td><td>keyPath等：実機DB診断で確認</td><td>旧棚配置。現行本体・本棚管理は新DB works.shelfIdを使用。旧データ保持。</td></tr>
 <tr><td>同上 v1</td><td>works_cache</td><td>keyPath等：実機DB診断で確認</td><td>旧なろう作品キャッシュ。現行本体の作品カード構築では参照しない。旧データ保持。</td></tr>
 <tr><td>同上 v1</td><td>authors</td><td>keyPath等：実機DB診断で確認</td><td>旧作者情報。現行作者管理・Atom作者一覧は新DB作品レコードを使用。旧DBストアは保持し、現行画面からは参照しない。</td></tr>
-<tr><td>同上 v1</td><td>reading_position</td><td>keyPath等：実機DB診断で確認</td><td>旧読書位置。新DB切替後の本体読書処理では参照しない。データは保持。</td></tr>
+<tr><td>同上 v1</td><td>reading_position</td><td>keyPath等：実機DB診断で確認</td><td>旧読書位置。現行本体は新DBを使用。作品・棚配置が存在しない孤立レコード3件（N1351MD:10話、N5420MC:42話、N8546MG:13話）が残存。削除せず保持。</td></tr>
 <tr><td>tomotaYomuAtomDB<br>v1</td><td>entries / meta</td><td>entryId / key</td><td>作者Atom取得結果・補助メタデータ。</td></tr>
 <tr><td>tomotaMemoDB<br>v1</td><td>items</td><td>keyPath: id<br>index: parentId（非unique）</td><td>ともためも。作品DBとは独立。</td></tr>
 <tr><td>tomotaYomu_rebuild</td><td>診断で確認</td><td>未確定</td><td>過去の再構築作業用。現行本体の参照は確認できていない。削除・変更しない。</td></tr>
@@ -51,7 +51,7 @@ h1{font-size:23px;line-height:1.35;margin:18px 0 5px}h2{font-size:19px;margin:30
 <tr><td>index.html 履歴</td><td>localStorage tomotaYomu_v330_reading_history</td><td>新DB works</td><td>3サイト共通。最大30件保存、最大10件表示</td></tr>
 <tr><td>index.html note / カクヨム作品</td><td>新DB works（site別）</td><td>各サイトlocalStorage</td><td>切替済み。localStorageは作品本体の正本ではない。</td></tr>
 <tr><td>app/shelf/shelf_manager.html</td><td>新DB works / shelves</td><td>旧DB shelf_names等、localStorage設定</td><td>切替済み。localStorageは混在棚表示順等のUI設定のみ。</td></tr>
-<tr><td>app/author/author.html</td><td>新DB works</td><td>旧DB authors・旧作者localStorage台帳</td><td>新DB単独運用へ切替済み。旧台帳参照・補完処理は切離し。旧データは保管。</td></tr>
+<tr><td>app/author/author.html</td><td>新DB works</td><td>新DB works</td><td>新DB単独運用。旧作者localStorage台帳の参照・補完処理は切離し。旧データは保管。</td></tr>
 <tr><td>app/kakuyomu/kakuyomu_edit.html</td><td>新DB works（site=kakuyomu）</td><td>同キー</td><td>移行待ち</td></tr>
 <tr><td>app/memo/tomota_memo.html</td><td>tomotaMemoDB/items</td><td>tomotaMemoDB/items</td><td>独立維持</td></tr>
 <tr><td>GitHub Actions</td><td>data/author-list.json等</td><td>data/atom/author-feeds.json、data/note-index-*.json、data/kakuyomu-toc/*.json</td><td>workflowと生成先の参照を維持</td></tr>
