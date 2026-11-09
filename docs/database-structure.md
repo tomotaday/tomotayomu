@@ -16,7 +16,7 @@
 | `tomotaYomuDB` | 1 | `shelf_names` | keyPath `shelf_id`（移行監査で確認） | 旧棚マスター。現行本体・通常管理画面からの参照は切離し済み。診断・保全用に保持 |
 | 同上 | 1 | `shelf_placement` | keyPath等はDB診断で確認 | 旧棚配置。現行本体・本棚管理は新DB works.shelfIdを使用。旧データ保持 |
 | 同上 | 1 | `works_cache` | keyPath等はDB診断で確認 | 旧なろう作品キャッシュ。現行本体の作品カード構築では参照しない。旧データ保持 |
-| 同上 | 1 | `authors` | keyPath等はDB診断で確認 | 旧作者情報。現行作者管理は新DB作品レコードを使用。旧作者localStorage台帳との互換処理は残存 |
+| 同上 | 1 | `authors` | keyPath等はDB診断で確認 | 旧作者情報。現行作者管理・Atom作者一覧は新DB作品レコードを使用。旧DBストアは保持し、現行画面からは参照しない |
 | 同上 | 1 | `reading_position` | keyPath等はDB診断で確認 | 旧読書位置ストア。新DB切替後の本体読書位置処理では参照しない。削除は未実施 |
 | `tomotaYomuAtomDB` | 1 | `entries` | keyPath `entryId` | 作者Atom取得結果 |
 | 同上 | 1 | `meta` | keyPath `key` | Atom取得の補助メタデータ |
@@ -79,7 +79,7 @@
 | `tomotaYomu_search_excluded_ncodes_v1` | なろう検索除外Nコード | 検索除外リストのUI状態として独立保存。作品メタデータは新DB |
 | `tomotaYomu_memo_shelf_label_v1` | ともためも棚の表示名・マーク | 表示設定として維持 |
 
-作者管理の旧キー：`tomotayomu_v214_works_master`、`tomotaYomu_authors`、`tomotaYomu_author_links`、`tomotaYomu_v215_author_registry`、`tomotaYomu_v215_author_done_ncodes`。作者管理画面が照合・不足補完に使用するため、まだ削除しない。
+作者管理の旧localStorage台帳（`tomotayomu_v214_works_master`、`tomotaYomu_authors`、`tomotaYomu_author_links`、`tomotaYomu_v215_author_registry`、`tomotaYomu_v215_author_done_ncodes`）は、読取専用診断で新DBへの補完候補0件・既存一致2,104件・不一致0件を確認。作者管理画面からの参照・補完処理は切離し済み。旧キー自体は削除せず保管中。
 
 ## 4. GitHub上のJSON・接続先
 
