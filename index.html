@@ -1025,7 +1025,7 @@ document.addEventListener("click",e=>{
   if(excludedBtn){const card=excludedBtn.closest(".card");if(!card)return;const n=String(card.dataset.ncode||"").toUpperCase();const excluded=getSearchExcludedNcodes().has(n);setSearchExcluded(n,!excluded);buildShelfFolders();syncSearchExcludedButtons();return;}
   const b=e.target.closest("[data-theme-choice]");
   if(b){applyDressup(b.dataset.themeChoice);return;}
-  const link=e.target.closest("a.workLink, a.resumeLink");
+  const link=e.target.closest("a.workLink, a.resumeLink, a.kakuyomuResumeLink");
   if(link){
     const card=link.closest(".card");
     if(card)recordReadingHistory(card);
