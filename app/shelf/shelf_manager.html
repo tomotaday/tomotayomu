@@ -38,15 +38,15 @@ button{border:1px solid #c8c0b5;border-radius:8px;background:transparent;padding
 <main>
 <h1>📚 本棚管理</h1>
 <div class="note">既存のIndexedDBを読み込み、本棚の構成・表示順を管理します。</div>
-<div class="source">データ源：tomotaYomuDB → shelf_names / shelf_placement / works_cache　｜　CSV再読込なし</div>
+<div class="source">データ源：tomotaYomuWorksDB → shelves / works　｜　CSV再読込なし</div>
 <div class="toolbar"><button id="addBtn" type="button">➕ 本棚を追加</button><button id="saveBtn" type="button">表示順を保存</button><button id="resetBtn" type="button">初期順に戻す</button></div>
 <div id="status">IndexedDBから棚情報を読み込み中…</div>
 <div id="shelfList"></div>
 <div class="hint">➕で本棚を追加できます。棚をタップすると中身を確認できます。☰ は並べ替え用です。棚名はその場で変更できます。📥登録先で作品登録ショートカットの保存先を指定します。登録先は棚名ではなく固定IDに紐づくため、名前変更後も引き継がれます。空棚には削除ボタンが表示されます。</div>
 </main>
 <script>
-const DB_NAME="tomotaYomuDB",DB_VERSION=1;
-const STORES={shelves:"shelf_names",placements:"shelf_placement",works:"works_cache"};
+const DB_NAME="tomotaYomuWorksDB";
+const STORES={shelves:"shelves",works:"works"};
 const DESIRED_ORDER=["読書中","あ〜お","か〜こ","さ〜そ","た〜と","な〜の","は〜ほ","ま〜も","や〜ん","更新待ち"];
 const MIXED_ORDER_KEY="tomotaYomu_mixed_shelf_order_v1";
 const WORK_ADD_TARGET_KEY="tomotaYomu_work_add_target_v1";
@@ -56,7 +56,7 @@ const SYSTEM_SHELVES=[{key:"system:search",name:"🔎 検索"},{key:"system:auth
 let db=null,shelves=[],placements=[],rows=[],dragRow=null,dragPointerId=null;
 let countMap=new Map();
 
-function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onsuccess=()=>{db=r.result;resolve(db)};r.onerror=()=>reject(r.error||new Error("IndexedDBを開けません"))})}
+function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME);r.onupgradeneeded=()=>{r.transaction.abort();reject(new Error("新DBの構造が想定外です。更新せず停止しました"))};r.onsuccess=()=>{db=r.result;if(db.version!==2||!db.objectStoreNames.contains("works")||!db.objectStoreNames.contains("shelves")){db.close();reject(new Error("新DBの構造が想定外です"));return}resolve(db)};r.onerror=()=>reject(r.error||new Error("新DBを開けません"))})}
 function readAll(name){return new Promise((resolve,reject)=>{const tx=db.transaction(name,"readonly"),st=tx.objectStore(name),out=[];const req=st.openCursor();req.onsuccess=()=>{const c=req.result;if(c){out.push(c.value);c.continue()}else resolve(out)};req.onerror=()=>reject(req.error||new Error(name+"読込失敗"))})}
 function shelfText(v){if(!v)return "";const direct=v.shelf_name??v.name??v.title??v.label??v.display_name;if(direct!=null&&String(direct).trim())return String(direct).trim();const hit=Object.values(v).find(x=>typeof x==="string"&&/読書中|未分類|あ〜お|か〜こ|さ〜そ|た〜と|な〜の|は〜ほ|ま〜も|や〜ん|更新待ち/.test(x));return String(hit??"").trim()}
 function core(raw){const s=String(raw||"").replace(/[🟠🔵🌀🎈📚⏰]/g,"").replace(/\s+/g,"");if(s.includes("読書中"))return"読書中";if(s.includes("未分類"))return"未分類";for(const k of DESIRED_ORDER.slice(1))if(s.includes(k)||s.includes(k.replace("〜","-")))return k;return""}
@@ -64,7 +64,7 @@ function label(c){if(c==="読書中")return"🟠読書中";if(c==="更新待ち"
 function getId(v){return String(v?.shelf_id??"").trim()}
 function placementShelf(v){return String(v?.shelf_id??v?.shelfId??"").trim()}
 function placementN(v){return String(v?.ncode??v?.Ncode??"").trim().toUpperCase()}
-function workN(v){return String(v?.ncode??"").trim().toUpperCase()}
+function workN(v){return String(v?.workId??v?.ncode??"").replace(/^narou:/i,"").trim().toUpperCase()}
 function workTitle(v){return String(v?.title??v?.novel_title??v?.name??"（タイトル未取得）").trim()}
 
 function buildIndexes(){
@@ -165,12 +165,10 @@ async function loadShelfWorks(id,body){
   body.querySelectorAll(".work,.more,.empty").forEach(x=>x.remove());
   const loading=document.createElement("div");loading.className="empty";loading.textContent="作品情報を読み込み中…";body.appendChild(loading);
   try{
-    const all=await readAll(STORES.works);const byN=new Map(all.map(w=>[workN(w),w]));
-    const ns=placements.filter(p=>placementShelf(p)===id).map(placementN).filter(Boolean);
-    const items=ns.map(n=>byN.get(n)).filter(Boolean);
+    const all=await readAll(STORES.works);const items=all.filter(w=>String(w.shelfId||"")===id);
     loading.remove();
     if(!items.length){const e=document.createElement("div");e.className="empty";e.textContent="所属作品の情報が見つかりません。";body.appendChild(e);return}
-    items.slice(0,30).forEach(w=>{const d=document.createElement("div");d.className="work";const t=document.createElement("div");t.className="workTitle";t.textContent=workTitle(w);const m=document.createElement("div");m.className="workMeta";m.textContent=workN(w);d.append(t,m);body.appendChild(d)});
+    items.slice(0,30).forEach(w=>{const d=document.createElement("div");d.className="work";const t=document.createElement("div");t.className="workTitle";t.textContent=String(w.title||workTitle(w));const m=document.createElement("div");m.className="workMeta";m.textContent=String(w.workId||workN(w));d.append(t,m);body.appendChild(d)});
     if(items.length>30){const m=document.createElement("div");m.className="more";m.textContent="ほか "+(items.length-30)+"作品";body.appendChild(m)}
   }catch(e){loading.textContent="作品情報の読み込み失敗："+e.message}
 }
@@ -213,10 +211,11 @@ async function init(){
     render();
     status.textContent="棚マスター反映済み："+shelves.length+"棚";
     status.textContent+="　作品数を取得中…";
-    placements=await readAll(STORES.placements);
+    const workRows=await readAll(STORES.works);
+    placements=workRows.map(w=>({ncode:workN(w),shelf_id:String(w.shelfId||"")}));
     buildIndexes();
     render();
-    status.textContent="本棚管理準備完了："+shelves.length+"棚 / "+placements.length+"配置";
+    status.textContent="新DB本棚管理準備完了："+shelves.length+"棚 / "+workRows.length+"作品";
   }catch(e){
     console.error(e);
     status.textContent="読み込み失敗："+e.message;
