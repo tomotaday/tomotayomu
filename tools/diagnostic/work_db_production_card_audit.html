@@ -103,7 +103,13 @@ function render(){
   const isR18=r.site==="narou"&&(r.siteData?.isR18===true||r.siteData?.legacyFields?.__r18===true||r.siteData?.authorType==="r18");
   let reading="";
   if(short){reading='<span class="readState '+(r.reading?.isRead?"read":"")+'">'+(r.reading?.isRead?"読了":"未読")+'</span>';}
-  else if(r.site==="narou"){reading='<span>続き 📖 '+(r.reading?.position==null?"記録なし":esc(r.reading.position))+'/'+(r.episodeCount??"—")+'話'+(isR18?' <span class="r18Mark">®️</span>':'')+'</span>';}
+  else if(r.site==="narou"){
+    const ncode=String(r.workId||"").toLowerCase();
+    const baseUrl=isR18?"https://novel18.syosetu.com/"+encodeURIComponent(ncode)+"/":"https://ncode.syosetu.com/"+encodeURIComponent(ncode)+"/";
+    const position=Number(r.reading?.position);
+    const resumeUrl=Number.isFinite(position)&&position>0?baseUrl+position+"/":baseUrl;
+    reading='<a class="narouResume" href="'+esc(resumeUrl)+'" target="_blank" rel="noopener">続き 📖 '+(r.reading?.position==null?"記録なし":esc(r.reading.position))+'/'+(r.episodeCount??"—")+'話'+(isR18?' <span class="r18Mark">®️</span>':'')+'</a>';
+  }
   else if(r.site==="kakuyomu"){reading='<span class="kakuyomuReading">続き📖話数を確認中… / '+(r.episodeCount??"—")+'話</span>';}
   else if(r.site==="note"){reading='<a class="noteResume" target="_blank" rel="noopener">続き 📖 位置を確認中…</a>';}
   const synopsis=String(r.synopsis||"");
