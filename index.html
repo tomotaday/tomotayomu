@@ -1457,14 +1457,14 @@ async function autoImportNoteMagazineFromShortcut(){
 }
 window.addEventListener("load",()=>{autoImportNoteMagazineFromShortcut().catch(error=>{console.error(error);const status=document.getElementById("apiStatus");if(status)status.textContent="note目次の自動登録／更新に失敗しました："+error.message})});
 
-document.addEventListener("click",e=>{
+document.addEventListener("click",async e=>{
   const deleteKakuyomu=e.target.closest(".deleteKakuyomuBtn");
   if(deleteKakuyomu){
     const card=deleteKakuyomu.closest(".kakuyomuWorkCard"),id=String(card?.dataset?.kakuyomuId||"");
     if(!id)return;
     if(!confirm("このカクヨム作品を本棚から削除しますか？"))return;
     await writeKakuyomuItems(readKakuyomuItems().filter(x=>String(x.id)!==id));
-    buildV3CardsFromIndexedDB().then(()=>{prepareReadingCards();renderGlobalBaseline();restoreLatestWorks();buildUpdateView();buildShelfFolders();});
+    await buildV3CardsFromIndexedDB();prepareReadingCards();renderGlobalBaseline();restoreLatestWorks();buildUpdateView();buildShelfFolders();
     const status=document.getElementById("apiStatus");if(status)status.textContent="カクヨム作品を削除しました。";
     return;
   }
@@ -1475,7 +1475,7 @@ document.addEventListener("click",e=>{
     const item=readNoteItems().find(x=>x.id===noteId);
     if(!item){alert("note作品データが見つかりません");return}
     await saveNoteItem({...item,status:String(card.querySelector(".noteStatusInput")?.value||"").trim(),synopsis:String(card.querySelector(".noteSynopsisInput")?.value||"").trim()});
-    buildV3CardsFromIndexedDB().then(()=>{prepareReadingCards();restoreLatestWorks();buildUpdateView();buildShelfFolders();});
+    await buildV3CardsFromIndexedDB();prepareReadingCards();restoreLatestWorks();buildUpdateView();buildShelfFolders();
     const status=document.getElementById("apiStatus");if(status)status.textContent="note作品情報を保存しました。";
     return;
   }
@@ -1491,7 +1491,7 @@ document.addEventListener("click",e=>{
       if(!item)throw new Error("note作品データが見つかりません");
       await saveNoteItem({...item,bookmarkUrl:url.href});
       document.getElementById("apiStatus").textContent="しおりURLを保存しました。";
-      buildV3CardsFromIndexedDB().then(()=>{prepareReadingCards();restoreLatestWorks();buildUpdateView();buildShelfFolders();});
+      await buildV3CardsFromIndexedDB();prepareReadingCards();restoreLatestWorks();buildUpdateView();buildShelfFolders();
     }catch(err){alert("しおりを保存できません："+err.message)}
     return;
   }
