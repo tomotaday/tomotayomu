@@ -59,14 +59,12 @@ summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;
 
 <script>
 const VERSION="3.1.0.13";
-const DB_NAME="tomotaYomuDB",DB_VERSION=1;
+const DB_NAME="tomotaYomuWorksDB";
 const LEGACY_MASTER_KEY="tomotayomu_v214_works_master";
-const LEGACY_AUTHORS_KEY="tomotaYomu_authors";
 const LEGACY_AUTHORS_KEY2="tomotaYomu_authors";
 const LEGACY_LINKS_KEY="tomotaYomu_author_links";
 const LEGACY_V215_AUTHOR_KEY="tomotaYomu_v215_author_registry";
 const LEGACY_V215_DONE_KEY="tomotaYomu_v215_author_done_ncodes";
-
 function esc(s){return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 function readJson(key,fallback){try{const v=JSON.parse(localStorage.getItem(key)||"");return v??fallback;}catch(e){return fallback;}}
 function legacyMaster(){return readJson(LEGACY_MASTER_KEY,{});}
@@ -103,56 +101,15 @@ async function fetchAuthor(info){
   return Array.isArray(data)?data.filter((x,i)=>i>0&&x&&x.ncode):[];
 }
 function openDB(){
-  return new Promise((resolve,reject)=>{
-    const r=indexedDB.open(DB_NAME,DB_VERSION);
-    r.onsuccess=()=>resolve(r.result);
-    r.onerror=()=>reject(r.error||new Error("IndexedDBを開けません"));
-  });
+ return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME);r.onupgradeneeded=()=>{r.transaction.abort();reject(new Error("新DBが未作成です"))};r.onsuccess=()=>{const db=r.result;if(db.version!==2||!db.objectStoreNames.contains("works")||!db.objectStoreNames.contains("shelves")){db.close();reject(new Error("新DB構造が想定外です"));return}resolve(db)};r.onerror=()=>reject(r.error||new Error("新DBを開けません"))});
 }
-function readAll(db,name){
-  return new Promise((resolve,reject)=>{
-    const st=db.transaction(name,"readonly").objectStore(name),out=[],r=st.openCursor();
-    r.onsuccess=()=>{const c=r.result;if(c){out.push(c.value);c.continue()}else resolve(out)};
-    r.onerror=()=>reject(r.error||new Error(name+"読込失敗"));
-  });
-}
-function putAuthorRow(tx,row){
-  const st=tx.objectStore("authors");
-  return st.keyPath==null?st.put(row,row.ncode):st.put(row);
-}
-async function getWorksAndAuthors(){
-  const db=await openDB();
-  const [works,authors]=await Promise.all([readAll(db,"works_cache"),readAll(db,"authors")]);
-  return {db,works,authors};
-}
-async function mergeAuthorLinksToIndexedDB(){
-  const legacyM=legacyMaster(), legacyA=legacyAuthors(), legacyL=legacyLinks();
-  const ids=Object.keys(legacyL);
-  if(!ids.length)return 0;
-  const {db,works,authors}=await getWorksAndAuthors();
-  const wm=new Map(works.map(w=>[ncode(w.ncode),w]));
-  const am=new Map(authors.map(w=>[ncode(w.ncode),w]));
-  const updates=[];
-  for(const nc of ids){
-    const n=ncode(nc),id=String(legacyL[nc]||"").trim(),a=legacyA[id];
-    if(!n||!id||!a)continue;
-    const w=wm.get(n)||legacyM[n]||{},old=am.get(n)||{};
-    const row={...old,ncode:n,writer:old.writer||w.writer||"",authorId:id,authorType:a.type==="r18"?"r18":"normal",authorName:a.authorName||w.writer||"",authorUrl:a.authorUrl||""};
-    updates.push(row);
-  }
-  if(!updates.length)return 0;
-  await new Promise((resolve,reject)=>{
-    const tx=db.transaction("authors","readwrite");
-    updates.forEach(row=>putAuthorRow(tx,row));
-    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("作者情報移行失敗"));tx.onabort=()=>reject(tx.error||new Error("作者情報移行中止"));
-  });
-  return updates.length;
-}
-async function readIndexed(){
-  const db=await openDB();
-  const [works,authors]=await Promise.all([readAll(db,"works_cache"),readAll(db,"authors")]);
-  return {db,works,authors};
-}
+function readAll(db,name){return new Promise((resolve,reject)=>{const st=db.transaction(name,"readonly").objectStore(name),out=[],r=st.openCursor();r.onsuccess=()=>{const c=r.result;if(c){out.push(c.value);c.continue()}else resolve(out)};r.onerror=()=>reject(r.error||new Error(name+"読込失敗"))})}
+function workCode(w){return ncode(w?.workId||w?.ncode||"").replace(/^NAROU:/,"")}
+function adaptWork(w){const legacy=w.siteData?.legacyFields||{};return {...w,ncode:workCode(w),writer:w.authorName||legacy.writer||"",__r18:w.siteData?.isR18===true||legacy.__r18===true,title:w.title||legacy.title||"",authorType:w.authorType||(w.siteData?.isR18===true?"r18":"normal")}}
+async function getWorksAndAuthors(){const db=await openDB(),raw=await readAll(db,"works"),works=raw.filter(w=>w.site==="narou").map(adaptWork);return {db,works,authors:works.filter(w=>String(w.authorId||"").trim())}}
+async function readIndexed(){return getWorksAndAuthors()}
+async function writeAuthorFields(authorId,patch){const db=await openDB(),raw=await readAll(db,"works"),targets=raw.filter(w=>w.site==="narou"&&String(w.authorId||"").trim()===String(authorId).trim());if(!targets.length){db.close();throw new Error("対象作者の作品紐付けが見つかりません。")}await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite"),st=tx.objectStore("works");targets.forEach(w=>st.put({...w,...patch}));tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("作者情報保存失敗"));tx.onabort=()=>reject(tx.error||new Error("作者情報保存中止"))});db.close()}
+async function mergeAuthorLinksToIndexedDB(){const legacyA=legacyAuthors(),legacyL=legacyLinks(),db=await openDB(),raw=await readAll(db,"works"),byCode=new Map(raw.filter(w=>w.site==="narou").map(w=>[workCode(w),w])),updates=[];for(const code of Object.keys(legacyL)){const n=ncode(code),id=String(legacyL[code]||"").trim(),a=legacyA[id],w=byCode.get(n);if(w&&id&&a&&!String(w.authorId||"").trim())updates.push({...w,authorId:id,authorType:a.type==="r18"?"r18":"normal",authorName:a.authorName||w.authorName||"",authorUrl:a.authorUrl||""})}if(updates.length)await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite"),st=tx.objectStore("works");updates.forEach(w=>st.put(w));tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("旧作者情報の移行失敗"));tx.onabort=()=>reject(tx.error||new Error("旧作者情報の移行中止"))});db.close();return updates.length}
 async function render(){
   const {works,authors}=await readIndexed();
   const rows=authors.filter(a=>a&&a.ncode);
