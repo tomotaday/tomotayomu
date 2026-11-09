@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ともたよむ｜新DB本棚・棚移動プレビュー</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;color-scheme:light}*{box-sizing:border-box}body{margin:0;background:#f3f6fc;color:#183153;line-height:1.6}main{width:min(100%,760px);margin:auto;padding:18px 14px 44px}h1{font-size:23px;margin:0 0 8px}h2{font-size:17px;margin:0 0 8px}.panel{background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:14px;margin:12px 0}.warning{border-left:5px solid #d97706;background:#fffaf0}.small{font-size:13px;color:#52647a}.controls{display:grid;grid-template-columns:1fr 1fr;gap:8px}input,select{font:inherit;padding:10px;border:1px solid #aab7cc;border-radius:9px;background:white;color:inherit;min-width:0;width:100%}.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.metric{background:#eef3fa;border-radius:10px;padding:10px}.metric b{display:block;font-size:20px}.shelfrow{display:flex;justify-content:space-between;gap:10px;padding:7px 2px;border-bottom:1px solid #dbe3ee}.work{background:#f5f8ff;border:1px solid #cbd5e1;border-radius:12px;padding:12px;margin:10px 0}.work h3{font-size:16px;margin:5px 0}.meta{font-size:12px;color:#64748b}.movebox{margin-top:10px;padding-top:9px;border-top:1px solid #dbe3ee}.status{font-size:13px;background:#eef3fa;border-radius:9px;padding:10px;margin-top:8px}.ok{color:#166534;font-weight:700}#log{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}
+</style></head><body><main>
+<h1>新DB本棚・棚移動プレビュー</h1>
+<p class="small">新DBの棚表示と移動先選択肢を、読み取り専用で確認するページです。</p>
+<section class="panel warning"><strong>安全モード</strong><ul>
+<li><code>tomotaYomuWorksDB</code> の <code>works</code> / <code>shelves</code> をreadonlyで読み取ります。</li>
+<li>棚移動の選択は画面上の仮選択だけです。保存ボタン・書き込み処理はありません。</li>
+<li>旧DB、localStorage、Atom DB、Memo DB、本体index.htmlは変更しません。</li>
+</ul></section>
+<section class="panel"><h2>1. DBの状態</h2><div id="summary">読み込み中…</div></section>
+<section class="panel"><h2>2. 新DBの棚一覧</h2><div id="shelves">読み込み中…</div></section>
+<section class="panel"><h2>3. 棚移動の選択肢プレビュー</h2>
+<p class="small">作品を検索して、移動先の候補を選べます。選択してもDBには保存されません。</p>
+<div class="controls"><input id="query" placeholder="作品名・作者名・作品IDで検索"><select id="site"><option value="all">全サイト</option><option value="narou">なろう</option><option value="note">note</option><option value="kakuyomu">カクヨム</option></select></div>
+<div id="hits" class="small">作品一覧を準備中…</div><div id="cards"></div></section>
+<section class="panel"><h2>4. 処理ログ</h2><div id="log" class="status">読み取り待機中</div></section>
+</main>
+<script>
+"use strict";
+const DB="tomotaYomuWorksDB",EXPECTED=3510;
+const $=id=>document.getElementById(id);let works=[],shelves=[];
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function siteName(v){return v==="narou"?"なろう":v==="note"?"note":v==="kakuyomu"?"カクヨム":"その他"}
+function shelfName(id){if(!id)return "未登録（棚ID空欄）";const s=shelves.find(x=>x.shelf_id===id);return s?s.shelf_name:"⚠️ 本棚不明"}
+function renderShelves(){
+ const counts=new Map(shelves.map(s=>[s.shelf_id,0]));let empty=0;
+ works.forEach(w=>{if(!w.shelfId)empty++;else if(counts.has(w.shelfId))counts.set(w.shelfId,counts.get(w.shelfId)+1)});
+ $("shelves").innerHTML=shelves.slice().sort((a,b)=>a.display_order-b.display_order).map(s=>'<div class="shelfrow"><span>'+esc(s.shelf_name)+'</span><strong>'+counts.get(s.shelf_id)+'作品</strong></div>').join("")+'<div class="shelfrow"><span>未登録（空欄）</span><strong>'+empty+'作品</strong></div>';
+}
+function renderWorks(){
+ const q=$("query").value.trim().toLocaleLowerCase("ja"),site=$("site").value;
+ const found=works.filter(w=>(site==="all"||w.site===site)&&(!q||[w.title,w.authorName,w.id,w.workId].some(v=>String(v||"").toLocaleLowerCase("ja").includes(q))));
+ $("hits").textContent="登録 "+works.length.toLocaleString()+"件 ／ 該当 "+found.length.toLocaleString()+"件（先頭20件を表示）";
+ $("cards").replaceChildren();
+ found.slice(0,20).forEach(w=>{
+  const current=String(w.shelfId||"");
+  const article=document.createElement("article");article.className="work";
+  const title=document.createElement("h3");title.textContent=w.title||"（作品名なし）";
+  const meta=document.createElement("div");meta.className="meta";meta.textContent=siteName(w.site)+" ｜ "+(w.authorName||"作者名なし")+" ｜ "+(w.workId||w.id||"IDなし");
+  const currentLine=document.createElement("div");currentLine.className="small";currentLine.textContent="現在の棚："+shelfName(current);
+  const box=document.createElement("div");box.className="movebox";
+  const label=document.createElement("label");label.textContent="移動先（仮選択）";
+  const select=document.createElement("select");select.setAttribute("aria-label","移動先の本棚");
+  shelves.slice().sort((a,b)=>a.display_order-b.display_order).forEach(s=>{const o=document.createElement("option");o.value=s.shelf_id;o.textContent=s.shelf_name;o.selected=s.shelf_id===current;select.appendChild(o)});
+  const blank=document.createElement("option");blank.value="";blank.textContent="本棚から外す（未登録）";blank.selected=current==="";select.appendChild(blank);
+  const state=document.createElement("div");state.className="status";state.textContent="選択中："+shelfName(current)+"。まだ保存されていません。";
+  select.addEventListener("change",()=>{state.textContent="仮選択："+shelfName(select.value)+"。DBには保存されていません。"});
+  box.append(label,select,state);article.append(meta,title,currentLine,box);$("cards").appendChild(article);
+ });
+}
+async function openDB(){
+ if(!indexedDB.databases)throw Error("DB一覧を確認できないブラウザです。安全のため停止しました。");
+ const list=await indexedDB.databases();if(!list.some(x=>x.name===DB))throw Error("新DBがありません。新規作成は行いません。");
+ return await new Promise((resolve,reject)=>{const q=indexedDB.open(DB);q.onupgradeneeded=()=>{q.transaction.abort();reject(Error("DBのバージョン変更が必要なため停止しました。"))};q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error);q.onblocked=()=>reject(Error("別タブがDBを使用中です"))});
+}
+function readStores(db){
+ return new Promise((resolve,reject)=>{if(db.version!==2||!db.objectStoreNames.contains("works")||!db.objectStoreNames.contains("shelves"))return reject(Error("DB versionまたはストア構造が想定外"));const tx=db.transaction(["works","shelves"],"readonly"),a=tx.objectStore("works").getAll(),b=tx.objectStore("shelves").getAll();let x,y;a.onsuccess=()=>x=a.result||[];b.onsuccess=()=>y=b.result||[];tx.oncomplete=()=>resolve({works:x,shelves:y});tx.onerror=()=>reject(tx.error)});
+}
+async function start(){
+ let db;
+ try{db=await openDB();const d=await readStores(db);works=d.works;shelves=d.shelves;
+ if(works.length!==EXPECTED||shelves.length!==14)throw Error("件数が想定外：works "+works.length+" / shelves "+shelves.length);
+ const ids=new Set(shelves.map(s=>s.shelf_id));const orphan=works.filter(w=>w.shelfId&& !ids.has(w.shelfId)).length;
+ if(orphan)throw Error("参照先不明の作品があります："+orphan+"件");
+ const empty=works.filter(w=>!w.shelfId).length;
+ $("summary").innerHTML='<span class="ok">読み取り成功</span><div class="metrics"><div class="metric">DB version<b>'+db.version+'</b></div><div class="metric">棚マスター<b>'+shelves.length+'件</b></div><div class="metric">作品<b>'+works.length.toLocaleString()+'件</b></div><div class="metric">棚ID空欄<b>'+empty.toLocaleString()+'件</b></div></div>';
+ renderShelves();renderWorks();$("query").addEventListener("input",renderWorks);$("site").addEventListener("change",renderWorks);
+ $("log").textContent="新DBをreadonlyで読み込みました。\n作品："+works.length+"件\n棚マスター："+shelves.length+"件\n参照先不明："+orphan+"件\n画面上の棚選択は仮選択のみ。書き込み処理はありません。";
+ }catch(e){$("summary").textContent="読み取り停止："+e.message;$("shelves").textContent="表示できません";$("hits").textContent="データ変更なし";$("log").textContent="停止："+e.message+"\nDBの作成・変更・削除は行っていません。"}
+ finally{if(db)db.close()}
+}
+start();
+</script></body></html>
