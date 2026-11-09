@@ -274,3 +274,10 @@
 - 移行項目：`shelf_id` / `shelf_name` / `display_order` / `work_add_target`。旧形式 `name` は移行対象外。旧DBの `name` は削除・変更していない。
 - 本体 `index.html` の読み書き先は未変更。旧DB・localStorage・Atom DB・Memo DBも変更していない。
 - **棚マスターの新DBへのコピーとページ内再読込検査は実機成功。独立読み取り監査は次工程。本体切替は未実施。**
+
+
+- 独立読み取り専用監査ページ `tools/diagnostic/shelf_master_audit.html` を追加。
+- 新DB version 2の `works` / `shelves` をreadonlyトランザクションで同時に読み取り、棚マスター14件の4項目・重複・旧 `name` の混入有無、作品3,510件の `shelfId` 空欄・不正値・参照先不明を監査する。
+- 棚ごとの作品所属件数も表示する。DBが存在しない場合やversion/ストア構造が異なる場合は新規作成・変更せず停止する。
+- ページ追加commit：`08b51cb9811311562fabc1a516b6c48f1f849d37`
+- **現在の状態：独立監査ページの作成のみ完了。Braveでの実行・結果確認は未実施。**
