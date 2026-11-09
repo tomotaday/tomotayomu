@@ -45,7 +45,7 @@ code{overflow-wrap:anywhere}
 
 <section class="panel">
 <h2>1. 移行JSONを選択</h2>
-<p class="small">以前保存した「tomotayomu-work-record-dry-run-v2.json」を選択してください。</p>
+<p class="small">ZIPを展開して取り出した「tomotayomu-work-record-dry-run-v3.json」を選択してください。</p>
 <input id="file" type="file" accept=".json,application/json">
 <div id="fileInfo" class="small">ファイル未選択</div>
 <div class="metrics" id="preview"></div>
@@ -85,7 +85,7 @@ function log(s){logBox.textContent=s;}
 function validate(data){
   if(!data||!Array.isArray(data.records))throw new Error("JSONに records 配列がありません。");
   const ids=new Set(),counts={narou:0,note:0,kakuyomu:0};
-  let blankAuthor=0,badBookmark=0;
+  let blankAuthor=0,badBookmark=0,badReading=0,shortRead=0,shortUnread=0,normalPositions=0;
   for(const w of data.records){
     if(!w||typeof w!=="object")throw new Error("作品レコード以外のデータがあります。");
     if(typeof w.id!=="string"||!w.id)throw new Error("作品IDが空のレコードがあります。");
@@ -94,7 +94,17 @@ function validate(data){
     if(!Object.prototype.hasOwnProperty.call(counts,w.site))throw new Error("想定外のサイト区分："+w.site);
     counts[w.site]++;
     if(!String(w.authorName||"").trim())blankAuthor++;
+    if(!w.reading||typeof w.reading!=="object"||Array.isArray(w.reading)||
+       !(w.reading.position===null||Number.isFinite(w.reading.position))||
+       !(w.reading.isRead===null||typeof w.reading.isRead==="boolean"))badReading++;
     if(w.bookmark!==undefined&&(!w.bookmark||typeof w.bookmark!=="object"||Array.isArray(w.bookmark)))badBookmark++;
+    if(w.site==="narou"&&String(w.siteData?.noveltype??"").trim()==="2"){
+      if(w.reading.position!==null||typeof w.reading.isRead!=="boolean")badReading++;
+      else if(w.reading.isRead)shortRead++; else shortUnread++;
+    }else if(w.site==="narou"){
+      if(w.reading.isRead!==null)badReading++;
+      if(Number.isFinite(w.reading.position))normalPositions++;
+    }else if(w.reading.isRead!==null)badReading++;
     if(w.site==="narou"&&!w.id.startsWith("narou:"))throw new Error("なろう作品ID形式が不正："+w.id);
     if(w.site==="note"&&!w.id.startsWith("note:"))throw new Error("note作品ID形式が不正："+w.id);
     if(w.site==="kakuyomu"&&!w.id.startsWith("kakuyomu:"))throw new Error("カクヨム作品ID形式が不正："+w.id);
@@ -103,7 +113,8 @@ function validate(data){
   for(const site of Object.keys(EXPECTED))if(counts[site]!==EXPECTED[site])throw new Error(site+"件数が想定と異なります："+counts[site]+"件");
   if(blankAuthor)throw new Error("作者名空欄が"+blankAuthor+"件あります。保存を中止します。");
   if(badBookmark)throw new Error("bookmark形式が不正なレコードがあります。");
-  return {counts,blankAuthor,duplicates:0};
+  if(badReading)throw new Error("reading形式が不正なレコードがあります："+badReading+"箇所");
+  return {counts,blankAuthor,duplicates:0,shortRead,shortUnread,normalPositions};
 }
 function openNewDB(){
   return new Promise((resolve,reject)=>{
@@ -136,7 +147,9 @@ fileInput.addEventListener("change",async()=>{
       ["合計",data.records.length.toLocaleString()+"件"],
       ["なろう",v.counts.narou.toLocaleString()+"件"],
       ["note",v.counts.note+"件"],
-      ["カクヨム",v.counts.kakuyomu+"件"]
+      ["カクヨム",v.counts.kakuyomu+"件"],
+      ["なろう短編・既読/未読",v.shortRead+" / "+v.shortUnread],
+      ["なろう通常・しおり",v.normalPositions+"件"]
     ].map(([k,val])=>'<div class="metric"><span>'+k+'</span><b>'+val+'</b></div>').join("");
     saveButton.disabled=false;
     log("JSON検査に合格しました。\n重複ID：0件\n作者名空欄：0件\n\nまだDBへの保存は行っていません。");
@@ -177,10 +190,12 @@ saveButton.addEventListener("click",async()=>{
     if(verified.count!==payload.records.length)throw new Error("保存件数不一致："+verified.count+"件");
     const ids=new Set(verified.records.map(w=>w.id));
     if(ids.size!==verified.count)throw new Error("保存後に重複IDを検出しました。");
-    const positions=verified.records.filter(w=>w.site==="narou"&&Number.isFinite(w.bookmark?.position)).length;
+    const positions=verified.records.filter(w=>w.site==="narou"&&Number.isFinite(w.reading?.position)).length;
     const kakuyomuBookmarks=verified.records.filter(w=>w.site==="kakuyomu"&&!!w.bookmark?.url).length;
-    resultBox.innerHTML='<div class="success panel"><strong>保存・再読込検査に成功</strong><p>作品 '+verified.count.toLocaleString()+'件</p><p>作者名空欄 0件 / 重複ID 0件</p><p>なろう読書位置あり '+positions+'件</p><p>カクヨムしおりURLあり '+kakuyomuBookmarks+'件</p></div>';
-    log("本番用新DBへの保存と再読込検査に成功しました。\nDB："+DB_NAME+"\nStore："+STORE+"\n保存件数："+verified.count+"件\nサイト別："+JSON.stringify(after.counts)+"\n作者名空欄：0件\n重複ID：0件\n\n旧DB・localStorage・ともたよむ本体の読み書き先は変更していません。");
+    const shortRead=verified.records.filter(w=>w.site==="narou"&&String(w.siteData?.noveltype??"").trim()==="2"&&w.reading?.isRead===true).length;
+    const shortUnread=verified.records.filter(w=>w.site==="narou"&&String(w.siteData?.noveltype??"").trim()==="2"&&w.reading?.isRead===false).length;
+    resultBox.innerHTML='<div class="success panel"><strong>保存・再読込検査に成功</strong><p>作品 '+verified.count.toLocaleString()+'件</p><p>作者名空欄 0件 / 重複ID 0件</p><p>なろう通常作品・読書位置あり '+positions+'件</p><p>なろう短編・既読 / 未読 '+shortRead+' / '+shortUnread+'件</p><p>カクヨムしおりURLあり '+kakuyomuBookmarks+'件</p></div>';
+    log("本番用新DBへの保存と再読込検査に成功しました。\nDB："+DB_NAME+"\nStore："+STORE+"\n保存件数："+verified.count+"件\nサイト別："+JSON.stringify(after.counts)+"\n作者名空欄：0件\n重複ID：0件\n短編既読："+shortRead+"件 / 未読："+shortUnread+"件\n通常作品しおり位置："+positions+"件\n\n旧DB・localStorage・ともたよむ本体の読み書き先は変更していません。");
   }catch(e){
     resultBox.textContent="保存・検査は完了していません。";
     log("処理中止："+e.message+"\n\n旧DB・localStorage・ともたよむ本体は変更していません。");
