@@ -263,3 +263,14 @@
 - 保存後にshelves全件を再読込して14件を再検査し、works件数3,510件の維持を確認する。旧DB・localStorage・Atom DB・Memo DB・本体index.htmlは操作しない。
 - ページ追加commit：`00904e89a42e58b5545abfab77c5decb4a826afc`
 - **現在の状態：ページ作成のみ完了。Braveでの実行・新DB version更新・shelvesへの保存はまだ未実施。**
+
+
+### 2026-11-09（棚マスター新DB移行・実機確認完了）
+
+- ユーザーがiPhone / Braveで `tools/diagnostic/shelf_master_migration.html` を実行。
+- 移行前検査：旧DB `tomotaYomuDB/shelf_names` 14件、ID・表記・表示順の重複なし。新DB `works` 3,510件を確認。新DB version 1、`shelves` 未作成。
+- ユーザー操作により新DBをversion 2へ更新し、`shelves` ストア（主キー `shelf_id`）を追加。棚マスター14件を保存。
+- 保存後の再読込検査：`shelves` 14件、`works` 3,510件（件数維持）、DB version 2。ユーザー提供スクリーンショットで「保存・再読込検査合格」を確認。
+- 移行項目：`shelf_id` / `shelf_name` / `display_order` / `work_add_target`。旧形式 `name` は移行対象外。旧DBの `name` は削除・変更していない。
+- 本体 `index.html` の読み書き先は未変更。旧DB・localStorage・Atom DB・Memo DBも変更していない。
+- **棚マスターの新DBへのコピーとページ内再読込検査は実機成功。独立読み取り監査は次工程。本体切替は未実施。**
