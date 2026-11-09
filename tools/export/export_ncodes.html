@@ -39,33 +39,20 @@ small{color:var(--muted)}a{color:inherit}
 <script>
 const $=id=>document.getElementById(id);
 let outputText="";
-function openDB(){
-  return new Promise((resolve,reject)=>{
-    const req=indexedDB.open("tomotaYomuDB",1);
-    req.onsuccess=()=>resolve(req.result);
-    req.onerror=()=>reject(req.error||new Error("本棚データベースを開けません"));
-    req.onupgradeneeded=()=>{req.transaction.abort();reject(new Error("本棚DBが存在しないため、空のDBは作成しませんでした。ともたよむ本体を先に開いてください。"));};
-  });
-}
-function readAll(db,storeName){
-  return new Promise((resolve,reject)=>{
-    if(!db.objectStoreNames.contains(storeName)){reject(new Error("保存領域 "+storeName+" が見つかりません"));return;}
-    const rows=[],req=db.transaction(storeName,"readonly").objectStore(storeName).openCursor();
-    req.onsuccess=()=>{const cursor=req.result;if(cursor){rows.push(cursor.value);cursor.continue()}else resolve(rows)};
-    req.onerror=()=>reject(req.error||new Error(storeName+"の読み込みに失敗しました"));
-  });
-}
+function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open("tomotaYomuWorksDB");req.onupgradeneeded=()=>{req.transaction.abort();reject(new Error("新DBが存在しません。本体を先に開いてください。"))};req.onsuccess=()=>{const db=req.result;if(db.version!==2||!db.objectStoreNames.contains("works")){db.close();reject(new Error("新DB構造が想定外です"))}else resolve(db)};req.onerror=()=>reject(req.error||new Error("新DBを開けません"))})}
+function readAll(db,storeName){return new Promise((resolve,reject)=>{const rows=[],req=db.transaction(storeName,"readonly").objectStore(storeName).openCursor();req.onsuccess=()=>{const cursor=req.result;if(cursor){rows.push(cursor.value);cursor.continue()}else resolve(rows)};req.onerror=()=>reject(req.error||new Error(storeName+"の読み込みに失敗しました"))})}
 $("readBtn").addEventListener("click",async()=>{
   const btn=$("readBtn");btn.disabled=true;$("status").textContent="読み取り専用で本棚を確認中…";
   try{
     const db=await openDB();
     let rows;
-    try{rows=await readAll(db,"works_cache")}finally{db.close()}
-    const codes=rows.map(row=>String(row?.ncode||"").trim().toUpperCase()).filter(Boolean);
+    try{rows=await readAll(db,"works")}finally{db.close()}
+    const codes=rows.filter(row=>row?.site==="narou").map(row=>String(row?.workId||"").trim().toUpperCase()).filter(Boolean);
     const uniqueCodes=[...new Set(codes)].sort((a,b)=>a.localeCompare(b));
-    const missing=rows.length-codes.length,duplicates=codes.length-uniqueCodes.length;
+    const narouTotal=rows.filter(row=>row?.site==="narou").length;
+    const missing=narouTotal-codes.length,duplicates=codes.length-uniqueCodes.length;
     outputText=uniqueCodes.join("\n");
-    $("total").textContent=rows.length.toLocaleString("ja-JP");
+    $("total").textContent=narouTotal.toLocaleString("ja-JP");
     $("unique").textContent=uniqueCodes.length.toLocaleString("ja-JP");
     $("missing").textContent=missing.toLocaleString("ja-JP");
     $("output").value=outputText;
