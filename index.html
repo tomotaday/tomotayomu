@@ -1148,25 +1148,23 @@ async function updateInfo(){
   }
 }
 async function moveWorkToShelf(ncode,newShelfId){
-  const db=await new Promise((ok,no)=>{
-    const r=indexedDB.open("tomotaYomuDB",1);
-    r.onsuccess=()=>ok(r.result);
-    r.onerror=()=>no(r.error);
-  });
-  const rows=await new Promise((ok,no)=>{
-    const a=[],r=db.transaction("shelf_placement","readonly").objectStore("shelf_placement").openCursor();
-    r.onsuccess=()=>{if(r.result){const v=r.result.value;if(String(v?.ncode||"").toUpperCase()===String(ncode).toUpperCase())a.push(v);r.result.continue()}else ok(a)};
-    r.onerror=()=>no(r.error);
-  });
-  if(!rows.length)throw new Error("本棚所属データが見つかりません");
-  const row={...rows[0],shelf_id:String(newShelfId||"").trim()};
-  await new Promise((ok,no)=>{
-    const tx=db.transaction("shelf_placement","readwrite"),st=tx.objectStore("shelf_placement");
-    st.put(row);
-    tx.oncomplete=ok;
-    tx.onerror=()=>no(tx.error);
-    tx.onabort=()=>no(tx.error||new Error("本棚移動を保存できませんでした"));
-  });
+  const key="narou:"+String(ncode||"").toUpperCase();
+  const db=await openExistingWorksDB();
+  try{
+    await new Promise((ok,no)=>{
+      const tx=db.transaction("works","readwrite"),store=tx.objectStore("works"),req=store.get(key);
+      req.onsuccess=()=>{
+        const record=req.result;
+        if(!record){tx.abort();no(new Error("新DBに作品がありません："+key));return}
+        record.shelfId=String(newShelfId||"").trim();
+        store.put(record);
+      };
+      req.onerror=()=>{tx.abort();no(req.error||new Error("作品情報を取得できません"))};
+      tx.oncomplete=ok;
+      tx.onerror=()=>no(tx.error||new Error("本棚移動の保存に失敗しました"));
+      tx.onabort=()=>no(tx.error||new Error("本棚移動を中止しました"));
+    });
+  }finally{db.close()}
 }
 function showShelfMoveDialog(card){
   const noteId=String(card?.dataset?.noteId||"");
@@ -1271,19 +1269,17 @@ document.getElementById("copyAuthorJsonBtn")?.addEventListener("click",async()=>
   const status=document.getElementById("apiStatus")||document.getElementById("authorAtomStatus");
   btn.disabled=true;
   try{
-    const db=await new Promise((resolve,reject)=>{
-      const req=indexedDB.open("tomotaYomuDB",1);
-      req.onsuccess=()=>resolve(req.result);
-      req.onerror=()=>reject(req.error||new Error("本棚DBを開けません"));
-      req.onupgradeneeded=()=>{req.transaction.abort();reject(new Error("先にともたよむ本体の本棚を読み込んでください"));};
-    });
-    const rows=await new Promise((resolve,reject)=>{
-      let store;try{store=db.transaction("authors","readonly").objectStore("authors");}
-      catch(e){reject(new Error("作者データが見つかりません"));return;}
-      const out=[],req=store.openCursor();
-      req.onsuccess=()=>{const c=req.result;if(c){out.push(c.value);c.continue();}else resolve(out);};
-      req.onerror=()=>reject(req.error||new Error("作者一覧を読み込めません"));
-    });
+    const db=await openExistingWorksDB();
+    let workRows;
+    try{
+      workRows=await new Promise((resolve,reject)=>{
+        const tx=db.transaction("works","readonly"),req=tx.objectStore("works").getAll();
+        req.onsuccess=()=>resolve((req.result||[]).filter(v=>v.site==="narou"));
+        req.onerror=()=>reject(req.error||new Error("新DB作品一覧を読み込めません"));
+        tx.onerror=()=>reject(tx.error||new Error("新DB作品読込に失敗しました"));
+      });
+    }finally{db.close()}
+    const rows=workRows.map(v=>({authorId:v.authorId,authorType:v.siteData?.isR18||v.siteData?.legacyFields?.__r18?"r18":"normal",authorName:v.authorName,writer:v.authorName,authorUrl:v.siteData?.authorUrl||""}));
     const byKey=new Map();
     for(const a of rows){
       if(!a||!String(a.authorId||"").trim())continue;
@@ -1292,7 +1288,7 @@ document.getElementById("copyAuthorJsonBtn")?.addEventListener("click",async()=>
     }
     const authors=[...byKey.values()].sort((a,b)=>a.author_type.localeCompare(b.author_type)||a.author_id.localeCompare(b.author_id,undefined,{numeric:true}));
     if(!authors.length)throw new Error("コピー対象の作者が0人です");
-    const payload={schema_version:1,exported_at:new Date().toISOString(),source:"tomotaYomuDB.authors",author_count:authors.length,authors};
+    const payload={schema_version:1,exported_at:new Date().toISOString(),source:"tomotaYomuWorksDB.works",author_count:authors.length,authors};
     await navigator.clipboard.writeText(JSON.stringify(payload));
     if(status)status.textContent="作者"+authors.length+"人分のJSONをコピーしました。続けて「② Atom更新」を押してください。";
   }catch(e){if(status)status.textContent="JSONコピー失敗："+e.message+"。クリップボードの許可を確認してください。";}
@@ -1362,18 +1358,8 @@ async function autoImportNoteMagazineFromShortcut(){
     return;
   }
   try{
-    const db=await new Promise((resolve,reject)=>{
-      const request=indexedDB.open("tomotaYomuDB",1);
-      request.onsuccess=()=>resolve(request.result);
-      request.onerror=()=>reject(request.error||new Error("本棚DBを開けません"));
-    });
-    const shelves=await new Promise((resolve,reject)=>{
-      const values=[],request=db.transaction("shelf_names","readonly").objectStore("shelf_names").openCursor();
-      request.onsuccess=()=>{if(request.result){values.push(request.result.value);request.result.continue()}else resolve(values)};
-      request.onerror=()=>reject(request.error||new Error("本棚一覧を読み取れません"));
-    });
-    const unclassified=shelves.find(v=>String(v.shelf_name??v.name??v.title??"").replace(/\s/g,"").includes("未分類"));
-    db.close();
+    const shelves=v3Shelves||[];
+    const unclassified=shelves.find(v=>String(v.shelf_name||"").replace(/\s/g,"").includes("未分類"));
     if(!unclassified)throw new Error("登録先の「未分類」棚が見つかりません");
     const current=readNoteItems().find(item=>String(item.id)===id);
     const item={
