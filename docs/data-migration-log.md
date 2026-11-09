@@ -1,6 +1,6 @@
 # ともたよむ データ統合・参照先移行記録
 
-最終更新：2026-11-08  
+最終更新：2026-11-09  
 対象バージョン：v3.7.0  
 対象リポジトリ：tomotaday/tomotayomu  
 目的：既存データを保持したまま、作品データを統合し、読み取り先・書き込み先を項目単位で段階的に移行する。
@@ -137,6 +137,51 @@
 - 変更前に記録し、実機確認後に結果を記録してから次へ進む。
 - 本記録の枠を作成。実装・データ変更はまだ行っていない。
 
+
+
+### 2026-11-09
+- 本番用の統合IndexedDB名を `tomotaYomuWorksDB` とすることをユーザー確認済み。
+- テスト専用DB `tomotaYomu_work_test_v1` とは別DBとし、本番切替先に流用しない。
+- 最初の切替対象をNarouの読書位置（しおり・短編の既読状態を含む）とする。
+- 切替前コードを確認し、以下の個別変更記録を追加。まだ本番コード・本番データは変更していない。
+
+### 1. 項目名：Narou 読書位置（しおり・短編既読状態）【変更前記録】
+
+- **対象データ：** Narou作品の読書位置。短編作品は未読=0／既読=1として扱う。
+- **変更目的：** 読書位置の正本を統合作品DBの作品レコードへ一本化する。
+- **変更前の読み取り先：**
+  - DB：localStorage（主読取）。IndexedDB `tomotaYomuDB` は読み取り元ではない。
+  - Store / localStorage key：`tomotaYomu_v211_reading`
+  - キー：大文字化したNコード
+  - 読み取り処理・ファイル：`index.html` の `readingMap()` / `readingFor(n)`
+- **変更後の読み取り先（予定）：**
+  - DB：`tomotaYomuWorksDB`
+  - Store / key：`works`
+  - キー：作品ID `narou:<Nコード>`
+  - 読み取り処理・ファイル：`index.html` の読書位置参照処理。作品レコードの `bookmark.position` を読む。
+- **変更前の書き込み先：**
+  - DB：localStorage `tomotaYomu_v211_reading` と IndexedDB `tomotaYomuDB` の `reading_position` の二重書き込み
+  - Store / localStorage key：上記2か所
+  - キー：Nコード
+  - 書き込み処理・ファイル：`index.html` の `setReading(n, episode)` / `saveReadingToIndexedDB(n, episode)`
+- **変更後の書き込み先（予定）：**
+  - DB：`tomotaYomuWorksDB`
+  - Store / key：`works`
+  - キー：作品ID `narou:<Nコード>`
+  - 書き込み処理・ファイル：`index.html` の読書位置保存処理。作品レコードの `bookmark.position` を更新する。
+- **移行対象件数・照合条件：** バックアップ監査時点の旧IndexedDB `reading_position` は414件。3件の孤立Nコード（N1351MD / N5420MC / N8546MG）は統合対象外として合意済み。統合対象は411件。localStorage側の数値414件と旧IndexedDB側414件は一致。Nコードを大文字化して `narou:<Nコード>` に照合する。短編の0/1状態も保持する。
+- **変更前コードのGitHubコミット / SHA：** 現行 `main/index.html` の取得時SHA `b8534fc60183f7ff91a46df7ba7962cd9969be35`。取得時点のコミットIDは未記録。
+- **変更後コードのGitHubコミット / SHA：** 未実施。
+- **戻し方：** 切替後に問題があれば、変更前 `index.html`（上記SHAの内容）へ戻す。旧localStorageキーおよび旧DB `reading_position` は削除せず保持しているため、旧読み書き処理へ戻せる。新DBのデータは検証完了まで削除しない。
+- **実機確認：**
+  - 読み取り：未実施
+  - 新規書き込み：未実施
+  - 既存データ更新：未実施
+  - 再読み込み後：未実施
+- **結果：** 変更前調査・記録のみ完了。本番切替は未実施。
+- **確認日：** 2026-11-09
+
+**注意：** 新DBの本番作成・411件の本番コピー・作品レコードのbookmark構造確定は、別途段階1〜3として先に実施・検証する。これらが完了するまで、index.htmlの読書位置参照先・保存先は変更しない。
 
 ## 7. 運用管理棚と独立データの保護（重要）
 
