@@ -199,3 +199,57 @@
 - `tomotaYomu_mixed_shelf_order_v1` は管理メニュー表示順であり、作品固有データとは別。運用管理棚自体の移行は最後という方針を維持する。
 
 この段階では上記キーの削除・書き換え・統合を行わない。
+
+
+---
+
+## 2026-11-09 v3.8.0 現行接続の追記（旧記述の更新）
+
+以下はv3.8.0のmainコードを再確認した現行状態。上記のバックアップ照合・過去調査時点の説明より、この節を優先する。
+
+### 新しい共通作品DB
+
+- DB：`tomotaYomuWorksDB` version 2
+- `works`：keyPath `id`。index `site` / `workId` / `authorId` / `shelfId`。
+- `shelves`：keyPath `shelf_id`。項目は `shelf_id` / `shelf_name` / `display_order` / `work_add_target`。
+- 初期移行時の確認件数：works 3,510件、shelves 14件。
+- 共通作品レコードは `id` / `site` / `workId` / `shelfId` / `reading` / `bookmark` / `siteData` 等を保持する。サイト固有情報は `siteData` に分け、読書進捗 `reading` とサイト固有しおり `bookmark` を混同しない。
+
+### v3.8.0で新DBへ切り替えた機能
+
+- なろう読書位置・短編既読状態：`works` の `reading.position` / `reading.isRead` を読み書きする。
+- 旧localStorage読書位置キーと旧DB `reading_position` は、本体の読書位置処理から切り離した。旧データ自体は削除していない。
+- note・カクヨムの作品情報やしおりは、現時点では引き続き各サイトのlocalStorageを利用する。
+- 棚マスターは新DBへ14件コピー済みだが、現行indexの本棚表示・棚移動は旧DB `tomotaYomuDB` の `shelf_names` / `shelf_placement` 等を参照している。新DB棚マスターへの本体切替は未実施。
+- 新DB `works.shelfId` への棚移動書き込みも未実施。旧DB側の棚配置を使用する。
+
+### 履歴
+
+- キー：`tomotaYomu_v330_reading_history`
+- なろう・note・カクヨムの3サイト共通で記録。
+- 最大30件を保存し、画面には直近10件を表示。
+- 同じ作品を再度開くと履歴の先頭へ移動する。
+- 作品の読書位置・サイトしおりとは別の閲覧イベント記録。
+
+### 現行画面との接続
+
+| 画面・処理 | 現行接続 |
+|---|---|
+| `index.html` 作品カード構築 | 旧DB `tomotaYomuDB` の `shelf_names` / `shelf_placement` / `works_cache` / `authors` |
+| `index.html` なろう読書状態 | 新DB `tomotaYomuWorksDB/works` |
+| `index.html` note作品 | localStorage `tomotaYomu_note_magazines_v1` |
+| `index.html` カクヨム作品 | localStorage `tomotaYomu_kakuyomu_works_v1` |
+| `index.html` 履歴 | localStorage `tomotaYomu_v330_reading_history` |
+| 作者Atom | 旧DB `authors` + 独立DB `tomotaYomuAtomDB`（`entries` / `meta`） |
+| ともためも | 独立DB `tomotaMemoDB/items` |
+| 本棚管理 | 旧DB `shelf_names` / `shelf_placement` / `works_cache` |
+
+詳細なDB構造・画面別接続先は `database-structure.html` を参照する。
+
+### 変更時の必須確認
+
+1. 変更する画面・機能の読み取り先と書き込み先を両方確認する。
+2. DB名・version・store・keyPath・indexを変更するときは、移行前後の件数・重複・再読込を照合する。
+3. 作品本体、棚マスター、棚配置、作者、しおり、履歴は同じ「作品関連」でも保存先・役割が異なる。まとめて切り替えない。
+4. 1機能ずつ新DBへ切り替え、Brave実機で表示・保存・再読み込みを確認する。
+5. 全機能の切替完了までは旧DB・旧localStorageを削除しない。
