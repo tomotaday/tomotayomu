@@ -80,13 +80,6 @@ async function run(){
   const diff=oldWorks.filter(w=>norm(w?.ncode)&&!existingIds.has(idFor(w.ncode)));
   const diffCodes=new Set(diff.map(w=>norm(w.ncode)));
   const placements=(oldData.shelf_placement||[]).filter(p=>diffCodes.has(norm(p?.ncode)));
-  // 作品差分に属する読書位置も同梱する。旧DBのキー形式が異なる場合に備え、
-  // Nコードらしき値を持つフィールドを複数候補から照合する。
-  const readingRows=oldData.reading_position||[];
-  const readingPositions=readingRows.filter(row=>{
-   const candidates=[row?.ncode,row?.workId,row?.novelId,row?.id,row?.key];
-   return candidates.some(value=>diffCodes.has(norm(value)));
-  });
   const authors=(oldData.authors||[]).filter(a=>diffCodes.has(norm(a?.ncode)));
   const shelfRows=oldData.shelf_names||[];
   const countsBySite={};
@@ -98,7 +91,6 @@ async function run(){
    comparison:{oldDatabase:OLD_DB,newDatabase:NEW_DB,oldWorkCount:oldWorks.length,newWorkCount:newWorks.length,newCountsBySite:countsBySite,diffCount:diff.length,expectedDiffCount:90,noPlacementCount:noPlacement,oldStores:oldNames,newStores:newNames},
    diffWorks:diff,
    relatedPlacements:placements,
-   relatedReadingPositions:readingPositions,
    relatedAuthors:authors,
    oldShelves:shelfRows,
    newShelves:newShelves,
