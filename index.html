@@ -273,8 +273,35 @@ const KAKUYOMU_ITEMS_KEY="tomotaYomu_kakuyomu_works_v1";
 let siteItemsCache={note:null,kakuyomu:null};
 function itemFromCanonical(w){
  const legacy=w.siteData?.legacyFields||{},bookmark=w.bookmark||{};
- const id=String(w.workId||w.id);
- return {...legacy,id,title:w.title||legacy.title||"",author:w.authorName||legacy.author||legacy.authorName||"",authorId:w.authorId||legacy.authorId||"",shelfId:String(w.shelfId||""),url:w.url||legacy.url||"",bookmarkUrl:bookmark.url||legacy.bookmarkUrl||"",bookmarkEpisodeId:bookmark.episodeId||legacy.bookmarkEpisodeId||"",bookmarkEpisodeUrl:bookmark.url||legacy.bookmarkEpisodeUrl||""};
+ const backupKey=w.site==="note"?"tomotaYomu_note_magazines_v1":"tomotaYomu_kakuyomu_works_v1";
+ let backup=[];
+ try{backup=JSON.parse(localStorage.getItem(backupKey)||"[]")||[]}catch(e){}
+ const rawId=String(w.workId||w.id||"");
+ const backupItem=backup.find(x=>{
+  const xId=String(x.id||"").replace(/^note-magazine:/,"").replace(/^note:/,"").replace(/^kakuyomu:/,"");
+  const id=rawId.replace(/^note-magazine:/,"").replace(/^note:/,"").replace(/^kakuyomu:/,"");
+  return xId===id;
+ })||{};
+ const merged={...backupItem,...legacy};
+ const item={
+  ...merged,
+  id:rawId,
+  title:w.title||merged.title||"",
+  author:w.authorName||merged.author||merged.authorName||"",
+  authorId:w.authorId||merged.authorId||"",
+  shelfId:String(w.shelfId??merged.shelfId??""),
+  url:w.url||merged.url||"",
+  updatedAt:w.updatedAt||merged.updatedAt||"",
+  lastPublishedAt:w.lastPublishedAt||merged.lastPublishedAt||"",
+  status:w.status||merged.status||"",
+  episodeCount:w.episodeCount??merged.episodeCount??"",
+  synopsis:w.synopsis||merged.synopsis||"",
+  bookmarkUrl:bookmark.url||merged.bookmarkUrl||"",
+  bookmarkEpisodeId:bookmark.episodeId||merged.bookmarkEpisodeId||"",
+  bookmarkEpisodeUrl:bookmark.url||merged.bookmarkEpisodeUrl||"",
+  bookmarkEpisode:bookmark.position??merged.bookmarkEpisode??0
+ };
+ return item;
 }
 function itemToCanonical(item,site){
  const id=String(item.id||"");
