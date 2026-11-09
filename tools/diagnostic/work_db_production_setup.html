@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ともたよむ｜本番作品DB初期構築</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:#f3f6fc;color:#183153;line-height:1.6}
+main{width:min(100%,720px);margin:auto;padding:20px 14px 44px}
+h1{font-size:23px;margin:0 0 8px}
+h2{font-size:17px;margin:0 0 8px}
+p{margin:7px 0}
+.panel{background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:15px;margin:13px 0}
+.warning{border-left:5px solid #d97706;background:#fffaf0}
+.success{border-left:5px solid #16a34a;background:#f0fdf4}
+button,input{font:inherit}
+button{width:100%;padding:13px 14px;border:0;border-radius:10px;background:#17458a;color:#fff;font-weight:700;margin-top:10px}
+button:disabled{opacity:.45}
+input[type=file]{width:100%;margin:10px 0}
+.small{font-size:13px;color:#52647a}
+.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:10px}
+.metric{background:#eef3fa;border-radius:10px;padding:10px}
+.metric b{display:block;font-size:20px}
+#log{white-space:pre-wrap;overflow-wrap:anywhere;background:#eef3fa;border-radius:10px;padding:12px;min-height:70px;font-size:13px}
+code{overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<main>
+<h1>ともたよむ｜本番作品DB 初期構築</h1>
+<p class="small">v3.7.0移行準備用。旧DBとアプリ本体には接続せず、新しいIndexedDBだけを作成・検査します。</p>
+
+<section class="panel warning">
+<strong>安全確認：本番DB用のページです</strong>
+<p>このページが操作するDBは <code>tomotaYomuWorksDB</code> のみです。</p>
+<ul>
+<li>旧DB <code>tomotaYomuDB</code> は読み書きしません。</li>
+<li>localStorage、Atom DB、Memo DB、GitHub Actions、ショートカットには触れません。</li>
+<li>既に新DBに1件以上データがある場合、上書き・削除せず処理を中止します。</li>
+<li>ともたよむ本体の読み書き先は変更しません。</li>
+</ul>
+</section>
+
+<section class="panel">
+<h2>1. 移行JSONを選択</h2>
+<p class="small">以前保存した「tomotayomu-work-record-dry-run-v2.json」を選択してください。</p>
+<input id="file" type="file" accept=".json,application/json">
+<div id="fileInfo" class="small">ファイル未選択</div>
+<div class="metrics" id="preview"></div>
+</section>
+
+<section class="panel">
+<h2>2. 新DBを作成して作品データを保存</h2>
+<p class="small">保存先：<code>tomotaYomuWorksDB</code> / <code>works</code>。初回のみ保存できます。2回目以降は既存データ保護のため中止します。</p>
+<button id="save" disabled>新DBを作成して3,510件を保存</button>
+</section>
+
+<section class="panel">
+<h2>3. 保存後の検査</h2>
+<div id="result" class="small">まだ実行していません。</div>
+</section>
+
+<section class="panel">
+<h2>処理ログ</h2>
+<div id="log">待機中です。</div>
+</section>
+</main>
+<script>
+"use strict";
+const DB_NAME="tomotaYomuWorksDB";
+const DB_VERSION=1;
+const STORE="works";
+const EXPECTED={narou:3506,note:2,kakuyomu:2};
+const fileInput=document.getElementById("file");
+const saveButton=document.getElementById("save");
+const fileInfo=document.getElementById("fileInfo");
+const preview=document.getElementById("preview");
+const resultBox=document.getElementById("result");
+const logBox=document.getElementById("log");
+let payload=null;
+
+function log(s){logBox.textContent=s;}
+function validate(data){
+  if(!data||!Array.isArray(data.records))throw new Error("JSONに records 配列がありません。");
+  const ids=new Set(),counts={narou:0,note:0,kakuyomu:0};
+  let blankAuthor=0,badBookmark=0;
+  for(const w of data.records){
+    if(!w||typeof w!=="object")throw new Error("作品レコード以外のデータがあります。");
+    if(typeof w.id!=="string"||!w.id)throw new Error("作品IDが空のレコードがあります。");
+    if(ids.has(w.id))throw new Error("作品IDが重複しています："+w.id);
+    ids.add(w.id);
+    if(!Object.prototype.hasOwnProperty.call(counts,w.site))throw new Error("想定外のサイト区分："+w.site);
+    counts[w.site]++;
+    if(!String(w.authorName||"").trim())blankAuthor++;
+    if(w.bookmark!==undefined&&(!w.bookmark||typeof w.bookmark!=="object"||Array.isArray(w.bookmark)))badBookmark++;
+    if(w.site==="narou"&&!w.id.startsWith("narou:"))throw new Error("なろう作品ID形式が不正："+w.id);
+    if(w.site==="note"&&!w.id.startsWith("note:"))throw new Error("note作品ID形式が不正："+w.id);
+    if(w.site==="kakuyomu"&&!w.id.startsWith("kakuyomu:"))throw new Error("カクヨム作品ID形式が不正："+w.id);
+  }
+  if(data.records.length!==3510)throw new Error("件数が想定と異なります："+data.records.length+"件（想定3,510件）");
+  for(const site of Object.keys(EXPECTED))if(counts[site]!==EXPECTED[site])throw new Error(site+"件数が想定と異なります："+counts[site]+"件");
+  if(blankAuthor)throw new Error("作者名空欄が"+blankAuthor+"件あります。保存を中止します。");
+  if(badBookmark)throw new Error("bookmark形式が不正なレコードがあります。");
+  return {counts,blankAuthor,duplicates:0};
+}
+function openNewDB(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open(DB_NAME,DB_VERSION);
+    req.onupgradeneeded=()=>{
+      const db=req.result;
+      if(!db.objectStoreNames.contains(STORE)){
+        const store=db.createObjectStore(STORE,{keyPath:"id"});
+        store.createIndex("site","site",{unique:false});
+        store.createIndex("workId","workId",{unique:false});
+        store.createIndex("authorId","authorId",{unique:false});
+        store.createIndex("shelfId","shelfId",{unique:false});
+      }
+    };
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error||new Error("新DBを開けませんでした。"));
+    req.onblocked=()=>reject(new Error("別タブが新DBを使用中です。ほかの移行ページを閉じてください。"));
+  });
+}
+fileInput.addEventListener("change",async()=>{
+  payload=null;saveButton.disabled=true;preview.innerHTML="";resultBox.textContent="まだ実行していません。";
+  const file=fileInput.files&&fileInput.files[0];
+  if(!file){fileInfo.textContent="ファイル未選択";return;}
+  try{
+    const data=JSON.parse(await file.text());
+    const v=validate(data);
+    payload=data;
+    fileInfo.textContent=file.name+" / JSON検査合格";
+    preview.innerHTML=[
+      ["合計",data.records.length.toLocaleString()+"件"],
+      ["なろう",v.counts.narou.toLocaleString()+"件"],
+      ["note",v.counts.note+"件"],
+      ["カクヨム",v.counts.kakuyomu+"件"]
+    ].map(([k,val])=>'<div class="metric"><span>'+k+'</span><b>'+val+'</b></div>').join("");
+    saveButton.disabled=false;
+    log("JSON検査に合格しました。\n重複ID：0件\n作者名空欄：0件\n\nまだDBへの保存は行っていません。");
+  }catch(e){fileInfo.textContent="JSON検査失敗";log("保存前検査エラー："+e.message);}
+});
+saveButton.addEventListener("click",async()=>{
+  if(!payload)return;
+  saveButton.disabled=true;
+  let db;
+  try{
+    const checked=validate(payload);
+    db=await openNewDB();
+    if(!db.objectStoreNames.contains(STORE))throw new Error("worksストアがありません。");
+    const currentCount=await new Promise((resolve,reject)=>{
+      const tx=db.transaction(STORE,"readonly");
+      const req=tx.objectStore(STORE).count();
+      req.onsuccess=()=>resolve(req.result);
+      req.onerror=()=>reject(req.error);
+      tx.onerror=()=>reject(tx.error);
+    });
+    if(currentCount!==0)throw new Error("新DBに既存データが"+currentCount+"件あります。上書きせず中止しました。");
+    await new Promise((resolve,reject)=>{
+      const tx=db.transaction(STORE,"readwrite");
+      const store=tx.objectStore(STORE);
+      for(const record of payload.records)store.add(record);
+      tx.oncomplete=resolve;
+      tx.onerror=()=>reject(tx.error||new Error("保存トランザクションに失敗しました。"));
+      tx.onabort=()=>reject(tx.error||new Error("保存が中断されました。"));
+    });
+    const verified=await new Promise((resolve,reject)=>{
+      const tx=db.transaction(STORE,"readonly");
+      const store=tx.objectStore(STORE);
+      const count=store.count(),all=store.getAll();
+      tx.oncomplete=()=>resolve({count:count.result,records:all.result});
+      tx.onerror=()=>reject(tx.error||new Error("保存後の読み取りに失敗しました。"));
+    });
+    const after=validate({records:verified.records});
+    if(verified.count!==payload.records.length)throw new Error("保存件数不一致："+verified.count+"件");
+    const ids=new Set(verified.records.map(w=>w.id));
+    if(ids.size!==verified.count)throw new Error("保存後に重複IDを検出しました。");
+    const positions=verified.records.filter(w=>w.site==="narou"&&Number.isFinite(w.bookmark?.position)).length;
+    const kakuyomuBookmarks=verified.records.filter(w=>w.site==="kakuyomu"&&!!w.bookmark?.url).length;
+    resultBox.innerHTML='<div class="success panel"><strong>保存・再読込検査に成功</strong><p>作品 '+verified.count.toLocaleString()+'件</p><p>作者名空欄 0件 / 重複ID 0件</p><p>なろう読書位置あり '+positions+'件</p><p>カクヨムしおりURLあり '+kakuyomuBookmarks+'件</p></div>';
+    log("本番用新DBへの保存と再読込検査に成功しました。\nDB："+DB_NAME+"\nStore："+STORE+"\n保存件数："+verified.count+"件\nサイト別："+JSON.stringify(after.counts)+"\n作者名空欄：0件\n重複ID：0件\n\n旧DB・localStorage・ともたよむ本体の読み書き先は変更していません。");
+  }catch(e){
+    resultBox.textContent="保存・検査は完了していません。";
+    log("処理中止："+e.message+"\n\n旧DB・localStorage・ともたよむ本体は変更していません。");
+  }finally{if(db)db.close();saveButton.disabled=!payload;}
+});
+</script>
+</body>
+</html>
