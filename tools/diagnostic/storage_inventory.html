@@ -176,7 +176,7 @@ async function exportAllData(){
   const blob=new Blob([json],{type:'application/json;charset=utf-8'});
   const url=URL.createObjectURL(blob),a=document.createElement('a');
   const stamp=exportedAt.replace(/[:.]/g,'-');
-  a.href=url;a.download='tomotayomu-backup-'+stamp+'.json';
+  a.href=url;a.download='ty-backup-'+stamp+'.json';
   document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),60000);
   const total=checks.reduce((n,x)=>n+x.count,0);
