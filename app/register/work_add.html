@@ -56,7 +56,7 @@ label{display:block;font-weight:700;margin:12px 0 4px}input,textarea{display:blo
 </main>
 <script>
 const VERSION="3.2.0";
-const DB_NAME="tomotaYomuDB",DB_VERSION=1;
+const DB_NAME="tomotaYomuWorksDB";
 const API_URL="https://api.syosetu.com/novelapi/api/";
 const R18_API_URL="https://api.syosetu.com/novel18api/api/";
 const LEGACY_TARGET_SHELF_NAME="🏝️とりあえず";
@@ -102,59 +102,19 @@ async function fetchWork(api,ncode){
   if(last)throw last;
   throw new Error("作品情報が見つかりません："+ncode);
 }
-function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error("IndexedDBを開けません"));})}
-function readAll(db,name){return new Promise((resolve,reject)=>{const tx=db.transaction(name,"readonly"),st=tx.objectStore(name),out=[];const r=st.openCursor();r.onsuccess=()=>{const c=r.result;if(c){out.push(c.value);c.continue()}else resolve(out)};r.onerror=()=>reject(r.error||new Error(name+"読込失敗"));})}
-function putRow(tx,store,row,key){
-  const st=tx.objectStore(store);
-  return st.keyPath==null?st.put(row,key):st.put(row);
-}
+function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME);r.onupgradeneeded=()=>{r.transaction.abort();reject(new Error("新DBが未作成です"))};r.onsuccess=()=>{const db=r.result;if(db.version!==2||!db.objectStoreNames.contains("works")||!db.objectStoreNames.contains("shelves")){db.close();reject(new Error("新DB構造が想定外です"));return}resolve(db)};r.onerror=()=>reject(r.error||new Error("IndexedDBを開けません"))})}
+function readAll(db,name){return new Promise((resolve,reject)=>{const out=[],r=db.transaction(name,"readonly").objectStore(name).openCursor();r.onsuccess=()=>{const c=r.result;if(c){out.push(c.value);c.continue()}else resolve(out)};r.onerror=()=>reject(r.error||new Error(name+"読込失敗"))})}
 async function saveWork(work,rawUrl,manualAuthorId=""){
-  const db=await openDB();
-  const shelves=await readAll(db,"shelf_names");
-  // 登録先は棚名ではなく、棚マスターに保存された固定の指定で判断する。
-  // 初回移行時だけ旧名称を使い、見つかった棚を登録先として記憶する。
-  const unclassifiedTarget=localStorage.getItem(WORK_ADD_TARGET_KEY)===UNCLASSIFIED_TARGET;
-  const shelf=unclassifiedTarget?null:(shelves.find(v=>v?.work_add_target===true)
-    || shelves.find(v=>String(v?.shelf_name??v?.name??v?.title??"").trim()===LEGACY_TARGET_SHELF_NAME));
+ const db=await openDB();
+ try{
+  const shelves=await readAll(db,"shelves"),unclassifiedTarget=localStorage.getItem(WORK_ADD_TARGET_KEY)===UNCLASSIFIED_TARGET,shelf=unclassifiedTarget?null:shelves.find(v=>v?.work_add_target===true);
   if(!unclassifiedTarget&&!shelf?.shelf_id)throw new Error("作品登録先の本棚が指定されていません。本棚管理で「📥登録先」を選んでください。");
-  const ncode=String(work.ncode||"").toUpperCase();
-  const placements=await readAll(db,"shelf_placement");
-  const authors=await readAll(db,"authors");
-  const existing=placements.find(v=>String(v?.ncode??"").toUpperCase()===ncode);
-  const isR18=apiUrlFor(rawUrl,ncode)===R18_API_URL;
-  const writer=String(work.writer||"").trim();
-  const authorIds=[...new Set(authors
-    .filter(a=>a&&a.authorId&&((a.authorType==="r18")===isR18)&&String(a.authorName||a.writer||"").trim()===writer)
-    .map(a=>String(a.authorId).trim())
-    .filter(Boolean))];
-  const matchedAuthorId=authorIds.length===1?authorIds[0]:"";
-  const matchedAuthor=matchedAuthorId?authors.find(a=>String(a?.authorId||"").trim()===matchedAuthorId&&((a?.authorType==="r18")===isR18))||{}:{};
-  // 既存作品情報の読込を先に完了させる。readwriteトランザクション開始後に await すると、
-  // 待機中にトランザクションが終了し、objectStore() が失敗するため。
-  const oldWork=await new Promise((resolve,reject)=>{
-    const readTx=db.transaction("works_cache","readonly");
-    const req=readTx.objectStore("works_cache").get(ncode);
-    req.onsuccess=()=>resolve(req.result||{});
-    req.onerror=()=>reject(req.error||new Error("既存作品情報の読込失敗"));
-  });
-  const saved={...oldWork,...work,ncode,userid:manualAuthorId?String(manualAuthorId).trim():(oldWork.userid??work.userid??0),__r18:isR18};
-  const tx=db.transaction(["works_cache","shelf_placement","authors","shelf_names"],"readwrite");
-  putRow(tx,"works_cache",saved,ncode);
-  // 旧名称で初回検出した棚も、固定の登録先として保存しておく。
-  for(const item of shelves){
-    const updatedShelf={...item,work_add_target:!unclassifiedTarget&&String(item?.shelf_id)===String(shelf?.shelf_id??"")};
-    putRow(tx,"shelf_names",updatedShelf,item.shelf_id);
-  }
-  const placement={...(existing||{}),ncode,shelf_id:existing?String(existing.shelf_id??""):(unclassifiedTarget?"":String(shelf.shelf_id))};
-  putRow(tx,"shelf_placement",placement,ncode);
-  const chosenAuthorId=String(manualAuthorId||matchedAuthorId||"").trim();
-  if(chosenAuthorId){
-    const prior=authors.find(a=>String(a?.ncode||"").toUpperCase()===ncode)||{};
-    const authorRow={...prior,ncode,writer,authorId:chosenAuthorId,authorType:isR18?"r18":"normal",authorName:String(prior.authorName||matchedAuthor.authorName||writer),authorUrl:String(prior.authorUrl||matchedAuthor.authorUrl||"")};
-    putRow(tx,"authors",authorRow,ncode);
-  }
-  await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存失敗"));tx.onabort=()=>reject(tx.error||new Error("保存中止"));});
-  return {shelfName:unclassifiedTarget?"未分類（一般本棚に配置しない）":String(shelf.shelf_name??shelf.name??shelf.title??"本棚"),existing:!!existing,work:saved,authorId:matchedAuthorId};
+  const ncode=String(work.ncode||"").toUpperCase(),id="narou:"+ncode,isR18=apiUrlFor(rawUrl,ncode)===R18_API_URL,rows=await readAll(db,"works"),existing=rows.find(v=>v.id===id),writer=String(work.writer||"").trim();
+  const candidates=[...new Set(rows.filter(v=>v.site==="narou"&&v.authorId&&((v.authorType==="r18")===isR18)&&String(v.authorName||"").trim()===writer).map(v=>String(v.authorId).trim()).filter(Boolean))],matchedAuthorId=candidates.length===1?candidates[0]:"",matched=matchedAuthorId?rows.find(v=>v.site==="narou"&&String(v.authorId)===matchedAuthorId&&((v.authorType==="r18")===isR18))||{}:{};
+  const saved={...(existing||{}),id,site:"narou",workId:ncode,title:String(work.title||existing?.title||""),authorName:writer||existing?.authorName||"",authorId:String(manualAuthorId||matchedAuthorId||existing?.authorId||""),authorType:isR18?"r18":"normal",authorUrl:existing?.authorUrl||matched.authorUrl||"",authorManageName:existing?.authorManageName||matched.authorManageName||"",authorKana:existing?.authorKana||matched.authorKana||"",authorKanaChecked:Boolean(existing?.authorKanaChecked||matched.authorKanaChecked),shelfId:existing?String(existing.shelfId||""):(unclassifiedTarget?"":String(shelf.shelf_id)),reading:existing?.reading||{position:null,isRead:null},bookmark:existing?.bookmark??null,siteData:{...(existing?.siteData||{}),isR18,sourceUrl:rawUrl,legacyFields:{...(existing?.siteData?.legacyFields||{}),...work}}};
+  await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite");tx.objectStore("works").put(saved);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存失敗"));tx.onabort=()=>reject(tx.error||new Error("保存中止"))});
+  return {shelfName:unclassifiedTarget?"未分類（一般本棚に配置しない）":String(shelf.shelf_name||"本棚"),existing:!!existing,work:saved,authorId:matchedAuthorId};
+ }finally{db.close()}
 }
 
 function setManualStatus(text,cls=""){const e=document.getElementById("manualStatus");e.textContent=text;e.className="status "+cls}
@@ -279,7 +239,7 @@ async function saveManualWork(){
   const disclosure=String(document.getElementById("manualDisclosure").value||"").trim();
   if(!ncode)throw new Error("Nコードを入力してください。");
   const dbCheck=await openDB();
-  const already=await new Promise((resolve,reject)=>{const req=dbCheck.transaction("works_cache","readonly").objectStore("works_cache").get(ncode);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error)});
+  const already=await new Promise((resolve,reject)=>{const req=dbCheck.transaction("works","readonly").objectStore("works").get("narou:"+ncode);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error)});
   dbCheck.close();
   if(already)throw new Error("このNコードは既に登録されています。変更登録フォームから編集してください。");
   if(!title)throw new Error("作品タイトルを入力してください。");
