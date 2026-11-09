@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ともたよむ｜棚マスター独立監査</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;color-scheme:light}*{box-sizing:border-box}body{margin:0;background:#f3f6fc;color:#183153;line-height:1.65}main{width:min(100%,720px);margin:auto;padding:20px 14px 44px}h1{font-size:23px;margin:0 0 8px}h2{font-size:17px;margin:0 0 8px}.panel{background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:15px;margin:13px 0}.safe{border-left:5px solid #16a34a;background:#f0fdf4}.small{font-size:13px;color:#52647a}.ok{color:#166534;font-weight:700}.ng{color:#b91c1c;font-weight:700}.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:10px}.metric{background:#eef3fa;border-radius:10px;padding:10px;overflow-wrap:anywhere}.metric b{display:block;font-size:21px}table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;padding:7px 5px;border-bottom:1px solid #dbe3ee;overflow-wrap:anywhere}#log{white-space:pre-wrap;overflow-wrap:anywhere;background:#eef3fa;border-radius:10px;padding:12px;font-size:13px;min-height:80px}code{overflow-wrap:anywhere}
+</style></head><body><main>
+<h1>ともたよむ｜棚マスター独立監査</h1><p class="small">本番統合DBの棚マスターと作品の棚所属を、別ページから読み取り専用で点検します。</p>
+<section class="panel safe"><strong>読み取り専用・安全確認</strong><ul>
+<li>対象DB：<code>tomotaYomuWorksDB</code> の <code>shelves</code> / <code>works</code>。</li>
+<li>readonlyトランザクションのみ。追加・更新・削除は行いません。</li>
+<li>DBが存在しない場合は新規作成せず停止します。</li>
+<li>旧DB、localStorage、Atom DB、Memo DB、本体index.htmlには触れません。</li></ul></section>
+<section class="panel"><h2>1. 総合判定</h2><div id="summary">監査中…</div><div id="metrics" class="metrics"></div></section>
+<section class="panel"><h2>2. 棚マスター14件</h2><div id="shelfTable" class="small">読み込み中…</div></section>
+<section class="panel"><h2>3. 作品の棚所属照合</h2><div id="workDetails" class="small">読み込み中…</div></section>
+<section class="panel"><h2>4. 処理ログ</h2><div id="log">待機中</div></section>
+</main>
+<script>
+"use strict";
+const DB="tomotaYomuWorksDB",EXPECTED_WORKS=3510,EXPECTED_SHELVES=14;
+const $=id=>document.getElementById(id);
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function metric(k,v){return '<div class="metric"><span>'+k+'</span><b>'+v+'</b></div>'}
+async function openExisting(){
+ if(!indexedDB.databases)throw Error("既存DB一覧を確認できないため、安全のため停止しました。");
+ const list=await indexedDB.databases();if(!list.some(x=>x.name===DB))throw Error("本番統合DBが見つかりません。新規作成は行いません。");
+ return await new Promise((resolve,reject)=>{const q=indexedDB.open(DB);q.onupgradeneeded=()=>{q.transaction.abort();reject(Error("DBバージョン変更が必要な状態です。変更せず停止しました。"))};q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error||Error("DBを開けません"));q.onblocked=()=>reject(Error("別タブがDBを使用中です"))});
+}
+function readBoth(db){
+ return new Promise((resolve,reject)=>{
+  if(db.version!==2) return reject(Error("DB versionが2ではありません："+db.version));
+  if(!db.objectStoreNames.contains("works")||!db.objectStoreNames.contains("shelves"))return reject(Error("必要なストアがありません"));
+  const tx=db.transaction(["works","shelves"],"readonly"),wq=tx.objectStore("works").getAll(),sq=tx.objectStore("shelves").getAll();
+  let works,shelves;wq.onsuccess=()=>works=wq.result||[];sq.onsuccess=()=>shelves=sq.result||[];
+  wq.onerror=()=>reject(wq.error);sq.onerror=()=>reject(sq.error);
+  tx.oncomplete=()=>resolve({works,shelves});tx.onerror=()=>reject(tx.error||Error("読み取り失敗"));
+ });
+}
+function audit(data){
+ const issues=[],shelfIds=new Set(),shelfNames=new Set(),orders=new Set(),counts=new Map();
+ if(data.shelves.length!==EXPECTED_SHELVES)issues.push("棚マスター件数が14件ではありません："+data.shelves.length);
+ for(const s of data.shelves){
+  if(!s||typeof s.shelf_id!=="string"||!s.shelf_id)issues.push("shelf_id不正");
+  else if(shelfIds.has(s.shelf_id))issues.push("shelf_id重複："+s.shelf_id);else shelfIds.add(s.shelf_id);
+  if(typeof s.shelf_name!=="string"||!s.shelf_name)issues.push("shelf_name不正："+(s?.shelf_id||"不明"));
+  else if(shelfNames.has(s.shelf_name))issues.push("shelf_name重複："+s.shelf_name);else shelfNames.add(s.shelf_name);
+  if(!Number.isFinite(s.display_order))issues.push("display_order不正："+s.shelf_id);
+  else if(orders.has(s.display_order))issues.push("display_order重複："+s.display_order);else orders.add(s.display_order);
+  if(typeof s.work_add_target!=="boolean")issues.push("work_add_target不正："+s.shelf_id);
+  if(Object.prototype.hasOwnProperty.call(s,"name"))issues.push("移行対象外のname項目が存在："+s.shelf_id);
+  counts.set(s.shelf_id,0);
+ }
+ if(data.works.length!==EXPECTED_WORKS)issues.push("works件数が3,510件ではありません："+data.works.length);
+ let empty=0,invalid=0,orphan=0;
+ for(const w of data.works){
+  if(!w||typeof w.shelfId!=="string"){invalid++;continue}
+  if(w.shelfId===""){empty++;continue}
+  if(!shelfIds.has(w.shelfId)){orphan++;continue}
+  counts.set(w.shelfId,(counts.get(w.shelfId)||0)+1);
+ }
+ if(invalid)issues.push("shelfIdが文字列でない作品："+invalid+"件");
+ if(orphan)issues.push("棚マスターに存在しないshelfId："+orphan+"件");
+ return {issues,counts,empty,invalid,orphan};
+}
+async function start(){
+ let db;
+ try{
+  db=await openExisting();const data=await readBoth(db);const a=audit(data);
+  $("summary").innerHTML=a.issues.length?'<span class="ng">確認事項あり：'+a.issues.length+'件</span>':'<span class="ok">独立監査 合格</span>';
+  $("metrics").innerHTML=[
+   metric("DB version",db.version),metric("棚マスター",data.shelves.length+"件"),metric("作品",data.works.length.toLocaleString()+"件"),
+   metric("棚ID空欄",a.empty.toLocaleString()+"件"),metric("棚ID不正",a.invalid+"件"),metric("参照先不明",a.orphan+"件")
+  ].join("");
+  const ordered=[...data.shelves].sort((x,y)=>x.display_order-y.display_order);
+  $("shelfTable").innerHTML='<table><thead><tr><th>順</th><th>棚表記</th><th>追加先</th><th>作品数</th></tr></thead><tbody>'+
+   ordered.map(s=>'<tr><td>'+esc(s.display_order)+'</td><td>'+esc(s.shelf_name)+'</td><td>'+(s.work_add_target?'指定あり':'指定なし')+'</td><td>'+((a.counts.get(s.shelf_id)||0).toLocaleString())+'</td></tr>').join("")+'</tbody></table>';
+  $("workDetails").innerHTML='棚ID空欄：'+a.empty.toLocaleString()+'件<br>棚IDの形式不正：'+a.invalid+'件<br>棚マスターに存在しない棚ID：'+a.orphan+'件<br>棚マスターの4項目：'+(a.issues.some(x=>x.includes("不正")||x.includes("重複"))?"要確認":"確認済み");
+  $("log").textContent="独立した読み取り専用監査を実行しました。\nDB："+DB+" version "+db.version+"\nworks："+data.works.length+"件\nshelves："+data.shelves.length+"件\n棚ID空欄："+a.empty+"件\n不正shelfId："+a.invalid+"件\n参照先不明："+a.orphan+"件\n"+(a.issues.length?"確認事項：\n・"+a.issues.join("\n・"):"検査結果：全項目合格")+
+   "\n\nデータ変更：なし。旧DB・localStorage・Atom DB・Memo DB・本体index.htmlは変更していません。";
+ }catch(e){$("summary").innerHTML='<span class="ng">監査を完了できません</span>';$("shelfTable").textContent="読み取り結果なし";$("workDetails").textContent="データ変更なし";$("log").textContent="停止理由："+e.message+"\nDBの新規作成・変更・削除は行っていません。"}
+ finally{if(db)db.close()}
+}
+start();
+</script></body></html>
