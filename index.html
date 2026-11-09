@@ -273,16 +273,8 @@ const KAKUYOMU_ITEMS_KEY="tomotaYomu_kakuyomu_works_v1";
 let siteItemsCache={note:null,kakuyomu:null};
 function itemFromCanonical(w){
  const legacy=w.siteData?.legacyFields||{},bookmark=w.bookmark||{};
- const backupKey=w.site==="note"?"tomotaYomu_note_magazines_v1":"tomotaYomu_kakuyomu_works_v1";
- let backup=[];
- try{backup=JSON.parse(localStorage.getItem(backupKey)||"[]")||[]}catch(e){}
  const rawId=String(w.workId||w.id||"");
- const backupItem=backup.find(x=>{
-  const xId=String(x.id||"").replace(/^note-magazine:/,"").replace(/^note:/,"").replace(/^kakuyomu:/,"");
-  const id=rawId.replace(/^note-magazine:/,"").replace(/^note:/,"").replace(/^kakuyomu:/,"");
-  return xId===id;
- })||{};
- const merged={...backupItem,...legacy};
+ const merged={...legacy};
  const item={
   ...merged,
   id:rawId,
@@ -350,16 +342,16 @@ function persistSiteItems(site,items){
    });
   }finally{db.close()}
  });
- siteItemsWriteQueue=task.catch(error=>{console.error(site+"新DB保存失敗",error);const status=document.getElementById("apiStatus");if(status)status.textContent=site+"作品の新DB保存に失敗しました："+error.message});
+ siteItemsWriteQueue=task;
  return task;
 }
 function readKakuyomuItems(){return Array.isArray(siteItemsCache.kakuyomu)?siteItemsCache.kakuyomu:[]}
-function writeKakuyomuItems(items){persistSiteItems("kakuyomu",items)}
-function saveKakuyomuItem(updated){const items=readKakuyomuItems(),i=items.findIndex(x=>String(x.id)===String(updated.id));if(i<0)items.push(updated);else items[i]={...items[i],...updated};writeKakuyomuItems(items)}
+function writeKakuyomuItems(items){return persistSiteItems("kakuyomu",items)}
+function saveKakuyomuItem(updated){const items=readKakuyomuItems(),i=items.findIndex(x=>String(x.id)===String(updated.id));if(i<0)items.push(updated);else items[i]={...items[i],...updated};return writeKakuyomuItems(items)}
 const NOTE_INITIAL_ITEM={id:"note-magazine:m8a34f89ccce0",title:"ツガイのセカイ",author:"ちかい",authorId:"campana",url:"https://note.com/campana/m/m8a34f89ccce0",bookmarkUrl:"https://note.com/campana/m/m8a34f89ccce0",shelfId:"",createdAt:"2026-10-19"};
 function readNoteItems(){return Array.isArray(siteItemsCache.note)?siteItemsCache.note:[]}
-function writeNoteItems(items){persistSiteItems("note",items)}
-function saveNoteItem(updated){const items=readNoteItems(),i=items.findIndex(x=>x.id===updated.id);if(i<0)items.push(updated);else items[i]={...items[i],...updated};writeNoteItems(items)}
+function writeNoteItems(items){return persistSiteItems("note",items)}
+function saveNoteItem(updated){const items=readNoteItems(),i=items.findIndex(x=>x.id===updated.id);if(i<0)items.push(updated);else items[i]={...items[i],...updated};return writeNoteItems(items)}
 let v3Shelves=[];
 let v3ShelfText=null;
 async function buildV3CardsFromIndexedDB(){
@@ -430,7 +422,7 @@ async function buildV3CardsFromIndexedDB(){
       if((receivedUrl.hostname==="kakuyomu.jp"||receivedUrl.hostname==="www.kakuyomu.jp")&&episodeMatch){
         const target=kakuyomuItems.find(x=>String(x.id)===episodeMatch[1]);
         if(target){
-          saveKakuyomuItem({...target,bookmarkEpisodeId:episodeMatch[2],bookmarkEpisodeUrl:receivedUrl.href});
+          await saveKakuyomuItem({...target,bookmarkEpisodeId:episodeMatch[2],bookmarkEpisodeUrl:receivedUrl.href});
           kakuyomuItems=readKakuyomuItems();
           kakuyomuBookmarkSaved=true;
           const receiveBox=document.getElementById("noteReceiveStatus");
@@ -452,7 +444,7 @@ async function buildV3CardsFromIndexedDB(){
   if(!receivedKakuyomuUrl&&/^\\d+$/.test(receivedKakuyomuId)&&/^\\d+$/.test(receivedEpisodeId)){
     const target=kakuyomuItems.find(x=>String(x.id)===receivedKakuyomuId);
     if(target){
-      saveKakuyomuItem({...target,bookmarkEpisodeId:receivedEpisodeId,bookmarkEpisodeUrl:"https://kakuyomu.jp/works/"+receivedKakuyomuId+"/episodes/"+receivedEpisodeId});
+      await saveKakuyomuItem({...target,bookmarkEpisodeId:receivedEpisodeId,bookmarkEpisodeUrl:"https://kakuyomu.jp/works/"+receivedKakuyomuId+"/episodes/"+receivedEpisodeId});
       kakuyomuItems=readKakuyomuItems();
       kakuyomuBookmarkSaved=true;
       const receiveBox=document.getElementById("noteReceiveStatus");
@@ -1306,11 +1298,11 @@ function showShelfMoveDialog(card){
       if(noteId){
         const item=readNoteItems().find(x=>x.id===noteId);
         if(!item)throw new Error("note作品データが見つかりません");
-        saveNoteItem({...item,shelfId:newId});
+        await saveNoteItem({...item,shelfId:newId});
       }else if(kakuyomuId){
         const item=readKakuyomuItems().find(x=>String(x.id)===kakuyomuId);
         if(!item)throw new Error("カクヨム作品データが見つかりません");
-        saveKakuyomuItem({...item,shelfId:newId});
+        await saveKakuyomuItem({...item,shelfId:newId});
       }else{
         await moveWorkToShelf(n,newId);
       }
@@ -1454,7 +1446,7 @@ async function autoImportNoteMagazineFromShortcut(){
       createdAt:current?.createdAt||new Date().toISOString().slice(0,10),
       lastPublishedAt:String(data.items[data.items.length-1]?.publish_at||current?.lastPublishedAt||"")
     };
-    saveNoteItem(item);
+    await saveNoteItem(item);
     await buildV3CardsFromIndexedDB();
     prepareReadingCards();renderGlobalBaseline();restoreLatestWorks();buildUpdateView();buildShelfFolders();
     if(status)status.textContent=(current?"noteマガジンの目次を更新しました：":"noteマガジンを本棚に登録しました：")+item.title+"（目次 "+data.items.length+"件）";
@@ -1471,7 +1463,7 @@ document.addEventListener("click",e=>{
     const card=deleteKakuyomu.closest(".kakuyomuWorkCard"),id=String(card?.dataset?.kakuyomuId||"");
     if(!id)return;
     if(!confirm("このカクヨム作品を本棚から削除しますか？"))return;
-    writeKakuyomuItems(readKakuyomuItems().filter(x=>String(x.id)!==id));
+    await writeKakuyomuItems(readKakuyomuItems().filter(x=>String(x.id)!==id));
     buildV3CardsFromIndexedDB().then(()=>{prepareReadingCards();renderGlobalBaseline();restoreLatestWorks();buildUpdateView();buildShelfFolders();});
     const status=document.getElementById("apiStatus");if(status)status.textContent="カクヨム作品を削除しました。";
     return;
@@ -1482,7 +1474,7 @@ document.addEventListener("click",e=>{
     if(!card||!noteId)return;
     const item=readNoteItems().find(x=>x.id===noteId);
     if(!item){alert("note作品データが見つかりません");return}
-    saveNoteItem({...item,status:String(card.querySelector(".noteStatusInput")?.value||"").trim(),synopsis:String(card.querySelector(".noteSynopsisInput")?.value||"").trim()});
+    await saveNoteItem({...item,status:String(card.querySelector(".noteStatusInput")?.value||"").trim(),synopsis:String(card.querySelector(".noteSynopsisInput")?.value||"").trim()});
     buildV3CardsFromIndexedDB().then(()=>{prepareReadingCards();restoreLatestWorks();buildUpdateView();buildShelfFolders();});
     const status=document.getElementById("apiStatus");if(status)status.textContent="note作品情報を保存しました。";
     return;
@@ -1497,7 +1489,7 @@ document.addEventListener("click",e=>{
       if(url.protocol!=="https:"||(url.hostname!=="note.com"&&!url.hostname.endsWith(".note.com")))throw new Error("noteのURLを入力してください");
       const item=readNoteItems().find(x=>x.id===noteId);
       if(!item)throw new Error("note作品データが見つかりません");
-      saveNoteItem({...item,bookmarkUrl:url.href});
+      await saveNoteItem({...item,bookmarkUrl:url.href});
       document.getElementById("apiStatus").textContent="しおりURLを保存しました。";
       buildV3CardsFromIndexedDB().then(()=>{prepareReadingCards();restoreLatestWorks();buildUpdateView();buildShelfFolders();});
     }catch(err){alert("しおりを保存できません："+err.message)}
