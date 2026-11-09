@@ -312,3 +312,14 @@
 - 新DB `shelves` の `work_add_target` は棚マスターの既存項目として保持する。登録先未指定状態は、登録先フラグがどの棚にも立っていない状態として扱う。未分類専用の棚IDは新設せず、作品の `shelfId` 空欄で表現する。
 - 旧localStorageの `tomotaYomu_work_add_target_v1` と旧DBの設定は、切替・移行完了まで変更・削除しない。
 - **本項は仕様合意の記録のみ。登録ページ・本体 `index.html`・DBデータの変更は未実施。**
+
+### 2026-11-09（3サイトの現行登録処理調査）
+
+- `register.html`（なろう通常登録）：旧DB `shelf_names` の `work_add_target===true` を参照。localStorage `tomotaYomu_work_add_target_v1` が `system:unclassified` の場合は未分類。どちらも該当しない場合はエラーになる。
+- `kakuyomu_add.html`：旧DB `shelf_names` の登録先フラグを初期選択に使用。localStorageの未分類指定があれば未分類を初期選択。登録画面で棚を選択でき、保存先はlocalStorageのカクヨム作品データ。
+- `note_magazine_add.html`：新規登録時は未分類棚を検索して初期配置。既存マガジンは既存 `shelfId` を維持。登録先指定キー・登録先フラグは参照していない。保存先はlocalStorageのnoteマガジンデータ。
+- `app/register/work_add.html`（検索除外作品の手動登録）：なろう通常登録と同じ登録先指定キー・旧棚フラグを参照し、旧DBへ保存する。検索除外作品の更新処理を追加しない既定方針は維持する。
+- 3サイトで現在の初期配置ロジックが異なることを確認。統一後は「登録先棚が指定されていればその棚、指定がなければ未分類（`shelfId` 空欄）」を共通ルールとする。
+- noteの既存マガジンの棚所属維持、カクヨムの登録画面で選択可能な動作、なろうの重複登録防止を、移行後も壊さないこと。
+- 検索除外作品の手動登録ページは通常登録3サイトの統一対象とは分けて扱い、現時点では変更しない。必要になった段階で新DB移行方針に沿って別途検討する。
+- **調査のみ。登録ページ・本体 `index.html`・DB・localStorageの変更は未実施。**
