@@ -292,8 +292,8 @@ async function buildV3CardsFromIndexedDB(){
     r.onsuccess=()=>ok(r.result||[]);
     r.onerror=()=>no(r.error);
   });
-  const [shelfRows,placements,works,authors,positions]=await Promise.all([
-    readAll("shelf_names"),readAll("shelf_placement"),readAll("works_cache"),readAll("authors"),readAll("reading_position")
+  const [shelfRows,placements,works,authors]=await Promise.all([
+    readAll("shelf_names"),readAll("shelf_placement"),readAll("works_cache"),readAll("authors")
   ]);
   v3Shelves=shelfRows;
   if(localStorage.getItem(NOTE_ITEMS_KEY)===null){
@@ -405,13 +405,6 @@ async function buildV3CardsFromIndexedDB(){
     return String(raw||"").trim();
   };
   // 本棚IDの復元・自動書き換えは行わない。無効なIDは「本棚不明」として表示する。
-
-  const readMap=readingMap();
-  positions.forEach(v=>{
-    const n=String(v.ncode||"").toUpperCase();
-    if(/^N[0-9A-Z]+$/.test(n)&&Number.isFinite(Number(v.episode)))readMap[n]=Number(v.episode);
-  });
-  saveJSON(READ_KEY,readMap);
 
   const source=document.getElementById("shelf");
   source.hidden=true;
