@@ -137,4 +137,21 @@ main{width:min(100%,780px);margin:auto;padding:22px 16px 52px}h1{font-size:24px;
 <p>一方で、今回の試験はアプリ全体の完全復旧試験ではない。また、作品メタデータがIndexedDBとlocalStorageに二重保存され、localStorage側に新しい情報が存在することが分かった。</p>
 <p><strong>当面はバックアップ機能を現状維持し、保存領域の構造は慎重に調査・検討する。確認が終わる前にデータ移行・削除を行わない。</strong></p>
 <p class="small">記録日：2026/11/08｜対象：ともたよむ v3.7.0 時点のバックアップ・復元検証</p>
+
+<section class="card warn">
+<strong>2026/11/10 追記：旧DBの最新状態とバックアップ時点の差</strong>
+<p>11/08のバックアップは復元・全件照合に成功したが、11/09の旧DB・新DB読み取り専用照合で確認した旧DB件数とは差がある。</p>
+<table>
+<tr><th>旧DBストア</th><th>11/08バックアップ</th><th>11/09照合時</th></tr>
+<tr><td><code>works_cache</code></td><td>3,506</td><td>3,596</td></tr>
+<tr><td><code>authors</code></td><td>2,410</td><td>2,412</td></tr>
+<tr><td><code>reading_position</code></td><td>414</td><td>414</td></tr>
+<tr><td><code>shelf_names</code></td><td>14</td><td>14</td></tr>
+<tr><td><code>shelf_placement</code></td><td>3,506</td><td>3,596</td></tr>
+</table>
+<p>したがって、11/08バックアップは当時のデータを復元できた証拠ではあるが、11/09時点の旧DBを完全に保全するバックアップではない。旧DBの削除・初期化・ストア削除は行わず、引退判断の前に <code>tools/diagnostic/storage_inventory.html</code> から最新の全保存領域バックアップを作成する。</p>
+<p>新しいバックアップでは、旧DBの5ストアがそれぞれ3,596 / 3,596 / 2,412 / 414 / 14件であることを確認し、ファイルを端末外にも保存する。バックアップJSONの検査・復元テストは本番DBと別のテストDBで行う。</p>
+<p class="small">この追記は、11/08のバックアップ成功記録を取り消すものではない。バックアップの対象時点と、その後の旧DB件数差を明確にするための補足である。</p>
+</section>
+
 </main></body></html>
