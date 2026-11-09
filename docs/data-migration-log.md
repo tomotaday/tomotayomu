@@ -296,3 +296,8 @@
 - テスト対象はユーザーがサイト・作品を選択。旧DB、localStorage、Atom DB、Memo DB、本体index.htmlには触れない。
 - ページ追加commit：`cf5a3f1ad2254b88a19a303d1b915759d15353e0`
 - **現在の状態：書込テストページ作成のみ完了。実機テストは未実施。本体の棚移動処理は未変更。**
+
+
+- ユーザーが `work_db_shelf_write_test.html` の実機テスト成功を確認（2026-11-09）。一時書込・再読込・元データ復元のテストが通過。
+- これにより、新DB `works` の `shelfId` をreadwrite transactionで更新し、読戻し照合できることを確認。テスト後の元の棚IDへの復元も成功。
+- 本体 `index.html` の棚移動処理は引き続き未変更。
