@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ともたよむ｜棚マスター移行</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;color-scheme:light}*{box-sizing:border-box}body{margin:0;background:#f3f6fc;color:#183153;line-height:1.6}main{width:min(100%,720px);margin:auto;padding:20px 14px 44px}h1{font-size:23px;margin:0 0 8px}h2{font-size:17px;margin:0 0 8px}.panel{background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:15px;margin:13px 0}.warn{border-left:5px solid #d97706;background:#fffaf0}.small{font-size:13px;color:#52647a}button{width:100%;padding:13px;border:0;border-radius:10px;background:#17458a;color:#fff;font:inherit;font-weight:700;margin-top:10px}button:disabled{opacity:.45}#log{white-space:pre-wrap;overflow-wrap:anywhere;background:#eef3fa;border-radius:10px;padding:12px;min-height:80px;font-size:13px}table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;padding:7px 4px;border-bottom:1px solid #dbe3ee;overflow-wrap:anywhere}code{overflow-wrap:anywhere}
+</style></head><body><main>
+<h1>ともたよむ｜棚マスター移行</h1><p class="small">旧DBの棚マスター14件を、新DBの独立ストアへコピーする専用ページです。</p>
+<section class="panel warn"><strong>安全確認</strong><ul>
+<li>旧DB <code>tomotaYomuDB</code> / <code>shelf_names</code> は読み取り専用。</li>
+<li>新DB <code>tomotaYomuWorksDB</code> をversion 1から2へ更新し、<code>shelves</code> を追加。</li>
+<li>既存の <code>works</code> 3,510件は読み取りのみ。変更・削除しない。</li>
+<li>localStorage、Atom DB、Memo DB、ショートカット、本体index.htmlには触れない。</li>
+<li><code>name</code> は移行しない。旧DBの値も削除しない。</li></ul></section>
+<section class="panel"><h2>1. 移行前検査</h2><div id="pre">検査中…</div><div id="list"></div></section>
+<section class="panel"><h2>2. コピー実行</h2><p class="small">検査合格後に有効になります。既存棚データがあれば上書きせず停止します。</p><button id="go" disabled>棚マスター14件を新DBへ保存</button></section>
+<section class="panel"><h2>3. 保存後検査</h2><div id="result">未実行</div></section>
+<section class="panel"><h2>処理ログ</h2><div id="log">待機中</div></section></main>
+<script>
+"use strict";
+const OLD="tomotaYomuDB",NEW="tomotaYomuWorksDB",OLD_STORE="shelf_names",WORKS="works",SHELVES="shelves",COUNT=3510;
+const $=id=>document.getElementById(id);let rows=null,workCount=0,ready=false;
+function say(s){$("log").textContent=s}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+async function openExisting(name){
+ const list=await indexedDB.databases();
+ if(!list.some(x=>x.name===name))throw Error("既存DBが見つかりません："+name);
+ return await new Promise((resolve,reject)=>{const q=indexedDB.open(name);q.onupgradeneeded=()=>{q.transaction.abort();reject(Error("DBの新規作成・更新を防止しました："+name))};q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error);q.onblocked=()=>reject(Error("別タブがDBを使用中です："+name))});
+}
+function readAll(db,storeName){
+ return new Promise((resolve,reject)=>{if(!db.objectStoreNames.contains(storeName))return reject(Error("ストアがありません："+storeName));const tx=db.transaction(storeName,"readonly"),st=tx.objectStore(storeName),q=st.getAll();q.onsuccess=()=>resolve({rows:q.result||[],keyPath:st.keyPath});q.onerror=()=>reject(q.error);tx.onerror=()=>reject(tx.error)});
+}
+function validate(input){
+ if(input.length!==14)throw Error("棚マスター件数が14件ではありません："+input.length);
+ const ids=new Set(),labels=new Set(),orders=new Set();
+ const clean=input.map(r=>{
+  if(!r||typeof r.shelf_id!=="string"||!r.shelf_id.trim())throw Error("shelf_id不正");
+  if(ids.has(r.shelf_id))throw Error("shelf_id重複："+r.shelf_id);ids.add(r.shelf_id);
+  if(typeof r.shelf_name!=="string"||!r.shelf_name.trim())throw Error("shelf_name不正："+r.shelf_id);
+  if(labels.has(r.shelf_name))throw Error("shelf_name重複："+r.shelf_name);labels.add(r.shelf_name);
+  if(!Number.isFinite(r.display_order))throw Error("display_order不正："+r.shelf_id);
+  if(orders.has(r.display_order))throw Error("display_order重複："+r.display_order);orders.add(r.display_order);
+  if(typeof r.work_add_target!=="boolean")throw Error("work_add_target不正："+r.shelf_id);
+  return {shelf_id:r.shelf_id,shelf_name:r.shelf_name,display_order:r.display_order,work_add_target:r.work_add_target};
+ }).sort((a,b)=>a.display_order-b.display_order);
+ return clean;
+}
+async function preflight(){
+ let a,b;$("go").disabled=true;ready=false;
+ try{
+  a=await openExisting(OLD);const old=await readAll(a,OLD_STORE);if(old.keyPath!=="shelf_id")throw Error("旧棚マスターの主キーが想定外");rows=validate(old.rows);a.close();a=null;
+  b=await openExisting(NEW);if(![1,2].includes(b.version))throw Error("新DB versionが想定外："+b.version);
+  if(!b.objectStoreNames.contains(WORKS))throw Error("新DBにworksがありません");
+  if(b.version===1&&b.objectStoreNames.contains(SHELVES))throw Error("version1にshelvesが存在します");
+  if(b.version===2&&!b.objectStoreNames.contains(SHELVES))throw Error("version2にshelvesがありません");
+  const w=await readAll(b,WORKS);workCount=w.rows.length;if(workCount!==COUNT)throw Error("works件数が想定外："+workCount);
+  if(b.objectStoreNames.contains(SHELVES)){const s=await readAll(b,SHELVES);if(s.rows.length)throw Error("新DB shelvesに既存データ"+s.rows.length+"件。上書きしません");}
+  $("pre").innerHTML='<strong style="color:#166534">検査合格</strong><br>旧棚マスター14件／ID・表記・表示順の重複なし<br>新DB works '+workCount+'件を確認<br>新DB version '+b.version;
+  $("list").innerHTML='<table><thead><tr><th>順</th><th>shelf_id</th><th>shelf_name</th><th>追加先</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+x.display_order+'</td><td>'+esc(x.shelf_id)+'</td><td>'+esc(x.shelf_name)+'</td><td>'+(x.work_add_target?'指定あり':'指定なし')+'</td></tr>').join("")+'</tbody></table>';
+  ready=true;$("go").disabled=false;say("移行前検査合格。\n旧DB shelf_names：14件（readonly）\n新DB works："+workCount+"件（readonly）\n棚ストア："+(b.objectStoreNames.contains(SHELVES)?"空で存在":"未作成")+"\nまだ保存していません。");
+ }catch(e){$("pre").textContent="検査停止："+e.message;$("list").textContent="データ変更なし";say("停止："+e.message+"\nDBのデータは変更していません。")}finally{if(a)a.close();if(b)b.close()}
+}
+function upgrade(){
+ return new Promise((resolve,reject)=>{const q=indexedDB.open(NEW,2);q.onupgradeneeded=()=>{const db=q.result;if(!db.objectStoreNames.contains(WORKS)||db.objectStoreNames.contains(SHELVES)){q.transaction.abort();reject(Error("DB構造が想定外。更新を中止"));return}db.createObjectStore(SHELVES,{keyPath:"shelf_id"})};q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error);q.onblocked=()=>reject(Error("別タブが新DBを使用中です。閉じてから再試行してください"))})
+}
+$("go").addEventListener("click",async()=>{
+ if(!ready||!rows)return;$("go").disabled=true;let db;
+ try{
+  db=await upgrade();if(db.version!==2||!db.objectStoreNames.contains(WORKS)||!db.objectStoreNames.contains(SHELVES))throw Error("新DB構造確認失敗");
+  const before=await new Promise((resolve,reject)=>{const tx=db.transaction([WORKS,SHELVES],"readonly"),w=tx.objectStore(WORKS).count(),s=tx.objectStore(SHELVES).count();tx.oncomplete=()=>resolve({w:w.result,s:s.result});tx.onerror=()=>reject(tx.error)});
+  if(before.w!==COUNT||before.w!==workCount||before.s!==0)throw Error("保存直前件数が不一致。works="+before.w+" shelves="+before.s);
+  await new Promise((resolve,reject)=>{const tx=db.transaction(SHELVES,"readwrite"),st=tx.objectStore(SHELVES);rows.forEach(x=>st.add(x));tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||Error("保存中断"))});
+  const after=await new Promise((resolve,reject)=>{const tx=db.transaction([WORKS,SHELVES],"readonly"),w=tx.objectStore(WORKS).count(),s=tx.objectStore(SHELVES).getAll();tx.oncomplete=()=>resolve({w:w.result,s:s.result});tx.onerror=()=>reject(tx.error)});
+  const checked=validate(after.s);if(after.w!==COUNT||checked.length!==14)throw Error("保存後検査不一致");
+  $("result").innerHTML='<strong style="color:#166534">保存・再読込検査合格</strong><br>shelves：14件<br>works：'+after.w+'件（件数維持）<br>DB version：2';
+  say("棚マスター保存・再読込検査成功。\nDB："+NEW+" version 2\nStore："+SHELVES+"\n棚マスター：14件\nworks："+after.w+"件（件数維持）\n移行項目：shelf_id / shelf_name / display_order / work_add_target\nname：移行対象外\n旧DB・localStorage・Atom DB・Memo DB・本体index.htmlは変更していません。");
+  ready=false;
+ }catch(e){$("result").textContent="保存後検査未完了";say("処理停止："+e.message+"\n旧DBとworksのデータは変更していません。")}
+ finally{if(db)db.close()}
+});
+preflight();
+</script></body></html>
