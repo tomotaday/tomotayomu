@@ -448,7 +448,7 @@ async function buildV3CardsFromIndexedDB(){
     card.dataset.shelf=String(sm.get(String(item.shelfId||""))?.shelf_name||"");
     card.dataset.authorName=String(item.author||"");
     card.dataset.current="";
-    card.innerHTML='<div class="meta"><span class="noteLastUpdated">—</span> ｜ <span class="noteStatus"></span> ｜ <span class="noteShelfMark"></span></div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="siteBadge siteBadge-note" aria-label="noteマガジン">note</span></div><details class="noteSynopsisDetails"><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続き 📖 位置を確認中…</a></div><details class="managementDetails"><summary>詳細を開く</summary><div class="managementBody"><details class="noteIndexDetails"><summary>目次（読み込み前）</summary><div class="noteIndexList" aria-live="polite"></div></details><div class="ncode noteIdLabel"></div><button type="button" class="moveShelfBtn">本棚を移動</button><label style="display:block;width:100%">作品状態<input class="noteStatusInput" type="text" placeholder="完結 / 連載中 / 短編" style="display:block;width:100%;margin-top:5px;padding:8px;border:1px solid #aaa195;border-radius:8px;background:var(--card);color:var(--ink)"></label><label style="display:block;width:100%;margin-top:8px">あらすじ<textarea class="noteSynopsisInput" rows="5" placeholder="あらすじを入力・貼り付け" style="display:block;width:100%;box-sizing:border-box;margin-top:5px;padding:8px;border:1px solid #aaa195;border-radius:8px;background:var(--card);color:var(--ink)"></textarea></label><button type="button" class="saveNoteInfo">作品情報を保存</button><label class="noteBookmarkLabel" style="width:100%;margin-top:8px">しおりURL<input class="noteBookmarkInput" type="url" inputmode="url" placeholder="https://note.com/..." style="display:block;width:100%;margin-top:5px;padding:8px;border:1px solid #aaa195;border-radius:8px;background:var(--card);color:var(--ink)"></label><button type="button" class="saveNoteBookmark">しおりを保存</button></div></details>';
+    card.innerHTML='<div class="meta"><span class="noteLastUpdated">—</span> ｜ <span class="noteStatus"></span><span class="noteShelfSeparator"> ｜ </span><span class="noteShelfMark"></span></div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="siteBadge siteBadge-note" aria-label="noteマガジン">note</span></div><details class="noteSynopsisDetails"><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続き 📖 位置を確認中…</a></div><details class="managementDetails"><summary>詳細を開く</summary><div class="managementBody"><details class="noteIndexDetails"><summary>目次（読み込み前）</summary><div class="noteIndexList" aria-live="polite"></div></details><div class="ncode noteIdLabel"></div><button type="button" class="moveShelfBtn">本棚を移動</button><label style="display:block;width:100%">作品状態<input class="noteStatusInput" type="text" placeholder="完結 / 連載中 / 短編" style="display:block;width:100%;margin-top:5px;padding:8px;border:1px solid #aaa195;border-radius:8px;background:var(--card);color:var(--ink)"></label><label style="display:block;width:100%;margin-top:8px">あらすじ<textarea class="noteSynopsisInput" rows="5" placeholder="あらすじを入力・貼り付け" style="display:block;width:100%;box-sizing:border-box;margin-top:5px;padding:8px;border:1px solid #aaa195;border-radius:8px;background:var(--card);color:var(--ink)"></textarea></label><button type="button" class="saveNoteInfo">作品情報を保存</button><label class="noteBookmarkLabel" style="width:100%;margin-top:8px">しおりURL<input class="noteBookmarkInput" type="url" inputmode="url" placeholder="https://note.com/..." style="display:block;width:100%;margin-top:5px;padding:8px;border:1px solid #aaa195;border-radius:8px;background:var(--card);color:var(--ink)"></label><button type="button" class="saveNoteBookmark">しおりを保存</button></div></details>';
     card.querySelector("h2").textContent=String(item.title||"");
     card.querySelector(".authorName").textContent=String(item.author||"");
     card.querySelector(".noteIdLabel").textContent="マガジンID："+String(item.id||"");
@@ -463,7 +463,9 @@ async function buildV3CardsFromIndexedDB(){
     const noteDate=new Date(item.lastPublishedAt||"");
     card.dataset.lastUpdated=Number.isNaN(noteDate.getTime())?"":new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"}).format(noteDate).replace("T"," ");
     const noteShelfLabel=String(sm.get(String(item.shelfId||""))?.shelf_name||"").trim();
-    card.querySelector(".noteShelfMark").textContent=noteShelfLabel?shelfLabel(noteShelfLabel):"未分類";
+    card.querySelector(".noteShelfMark").textContent=noteShelfLabel?shelfLabel(noteShelfLabel):"";
+    card.querySelector(".noteShelfSeparator").hidden=!noteShelfLabel;
+    card.querySelector(".noteShelfMark").hidden=!noteShelfLabel;
     card.querySelector(".workLink").href=String(item.url||"https://note.com/");
     card.querySelector(".resumeLink").href=String(item.bookmarkUrl||item.url||"https://note.com/");
     card.querySelector(".noteBookmarkInput").value=String(item.bookmarkUrl||item.url||"");
@@ -1156,9 +1158,9 @@ function showShelfMoveDialog(card){
   unclassified.selected=currentId==="";
   select.appendChild(unclassified);
 
-  const body=card.querySelector(".managementBody");
-  if(!body)return;
-  body.appendChild(panel);
+  const moveButton=card.querySelector(".moveShelfBtn");
+  if(!moveButton)return;
+  moveButton.insertAdjacentElement("afterend",panel);
 
   panel.querySelector(".shelfMoveCancel").addEventListener("click",()=>panel.remove());
   panel.querySelector(".shelfMoveSave").addEventListener("click",async()=>{
