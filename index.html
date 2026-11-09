@@ -272,9 +272,9 @@ const NOTE_ITEMS_KEY="tomotaYomu_note_magazines_v1";
 const KAKUYOMU_ITEMS_KEY="tomotaYomu_kakuyomu_works_v1";
 let siteItemsCache={note:null,kakuyomu:null};
 function itemFromCanonical(w){
- const legacy=w.siteData?.legacyFields||{};
- const site=w.site;
- return {...legacy,id:site==="note"?String(w.workId||w.id.replace(/^note:/,"")):String(w.workId||w.id.replace(/^kakuyomu:/,"")),title:w.title||legacy.title||"",author:w.authorName||legacy.author||"",authorId:w.authorId||legacy.authorId||"",shelfId:String(w.shelfId||""),url:w.url||legacy.url||"",bookmarkUrl:w.bookmark?.url||legacy.bookmarkUrl||"",...(w.bookmark||{}),...(legacy)};
+ const legacy=w.siteData?.legacyFields||{},bookmark=w.bookmark||{};
+ const id=String(w.workId||w.id);
+ return {...legacy,id,title:w.title||legacy.title||"",author:w.authorName||legacy.author||legacy.authorName||"",authorId:w.authorId||legacy.authorId||"",shelfId:String(w.shelfId||""),url:w.url||legacy.url||"",bookmarkUrl:bookmark.url||legacy.bookmarkUrl||"",bookmarkEpisodeId:bookmark.episodeId||legacy.bookmarkEpisodeId||"",bookmarkEpisodeUrl:bookmark.url||legacy.bookmarkEpisodeUrl||""};
 }
 function itemToCanonical(item,site){
  const id=String(item.id||"");
