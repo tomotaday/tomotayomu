@@ -11,12 +11,12 @@
 
 | DB名 | version | Object Store | 主キー・構造 | 現在の役割 |
 |---|---:|---|---|---|
-| `tomotaYomuWorksDB` | 2 | `works` | keyPath `id`。index: `site`, `workId`, `authorId`, `shelfId`（非unique） | 新しい共通作品DB。3,510作品を保持。なろう読書位置の読み書き先 |
-| 同上 | 2 | `shelves` | keyPath `shelf_id` | 新しい共通棚マスター。棚名・表示順・登録先指定 |
-| `tomotaYomuDB` | 1 | `shelf_names` | keyPath `shelf_id`（移行監査で確認） | 旧棚マスター。現行本体・管理画面の参照が残る |
-| 同上 | 1 | `shelf_placement` | keyPath等はDB診断で確認 | 旧作品の棚配置。本体の棚表示・移動が参照 |
-| 同上 | 1 | `works_cache` | keyPath等はDB診断で確認 | 旧なろう作品キャッシュ。本体の作品カード構築が参照 |
-| 同上 | 1 | `authors` | keyPath等はDB診断で確認 | 作者情報。作者管理・Atom作者一覧等が参照 |
+| `tomotaYomuWorksDB` | 2 | `works` | keyPath `id`。index: `site`, `workId`, `authorId`, `shelfId`（非unique） | 正本の共通作品DB。2026-11-09時点で3,600作品（なろう3,596 / note2 / カクヨム2） |
+| 同上 | 2 | `shelves` | keyPath `shelf_id` | 正本の共通棚マスター。14棚 |
+| `tomotaYomuDB` | 1 | `shelf_names` | keyPath `shelf_id`（移行監査で確認） | 旧棚マスター。現行本体・通常管理画面からの参照は切離し済み。診断・保全用に保持 |
+| 同上 | 1 | `shelf_placement` | keyPath等はDB診断で確認 | 旧棚配置。現行本体・本棚管理は新DB works.shelfIdを使用。旧データ保持 |
+| 同上 | 1 | `works_cache` | keyPath等はDB診断で確認 | 旧なろう作品キャッシュ。現行本体の作品カード構築では参照しない。旧データ保持 |
+| 同上 | 1 | `authors` | keyPath等はDB診断で確認 | 旧作者情報。現行作者管理は新DB作品レコードを使用。旧作者localStorage台帳との互換処理は残存 |
 | 同上 | 1 | `reading_position` | keyPath等はDB診断で確認 | 旧読書位置ストア。新DB切替後の本体読書位置処理では参照しない。削除は未実施 |
 | `tomotaYomuAtomDB` | 1 | `entries` | keyPath `entryId` | 作者Atom取得結果 |
 | 同上 | 1 | `meta` | keyPath `key` | Atom取得の補助メタデータ |
@@ -43,22 +43,22 @@
 | `display_order` | 表示順 |
 | `work_add_target` | 新規登録先の指定 |
 
-本番DBはversion 2。works 3,510件、shelves 14件を初期移行時に確認。以後の最新件数は実機診断で確認する。
+本番DBはversion 2。works 3,600件、shelves 14件を2026-11-09時点で確認。以後の最新件数は実機診断で確認する。
 
 ## 2. 接続一覧（画面・処理 → 保存先）
 
 | 画面・処理 | 読み取り先 | 書き込み先 | 状態・注意 |
 |---|---|---|---|
-| ルート `index.html` の作品カード構築 | 旧DB `shelf_names`, `shelf_placement`, `works_cache`, `authors`。note / カクヨムはlocalStorage | note / カクヨムのしおり・情報を各localStorageへ保存 | 作品全体の新DB一本化は未完了 |
+| ルート `index.html` の作品カード構築 | 新DB `works` / `shelves` | 新DB `works`（読書位置・しおり・サイト情報等） | 新DBを正本として読込。note・カクヨムも切替済み |
 | `index.html` なろう読書位置 | 新DB `works` の `reading` | 新DB `works` の `reading` | 移行項目1。旧localStorage読書キー・旧 `reading_position` は本体の読書処理から切離し済み。旧データは保持 |
-| `index.html` 棚移動 | 旧DB `shelf_placement` | 旧DB `shelf_placement` | 新DB `works.shelfId` への本体切替は未実施 |
+| `index.html` 棚移動 | 新DB `works.shelfId` / `shelves` | 新DB `works.shelfId` | 切替済み |
 | `index.html` 作者Atom表示・取込 | 旧DB `authors`、Atom DB `entries` / `meta`、公開JSON | Atom DB `entries` / `meta` | Atom DBは独立保持 |
 | `index.html` 履歴 | localStorage `tomotaYomu_v330_reading_history` | 同キー | 3サイト共通。最大30件保存、画面表示最大10件 |
-| `index.html` note作品 | localStorage `tomotaYomu_note_magazines_v1` | 同キー | 新DB作品レコードへの本体切替は未実施 |
-| `index.html` カクヨム作品 | localStorage `tomotaYomu_kakuyomu_works_v1` | 同キー | 新DB作品レコードへの本体切替は未実施 |
-| `app/shelf/shelf_manager.html` | 旧DB `shelf_names`, `shelf_placement`, `works_cache` | 旧DB `shelf_names` 等、localStorageの表示順・登録先設定 | 新DB棚マスターへの切替は未実施 |
-| `app/author/author.html` | 旧DB `authors` 等 | 旧DB `authors` | 作者管理の移行は未実施 |
-| `app/kakuyomu/kakuyomu_edit.html` | localStorage `tomotaYomu_kakuyomu_works_v1` | 同キー | カクヨム編集画面 |
+| `index.html` note作品 | 新DB `works`（site=note） | 新DB `works` | 切替済み。localStorageは作品本体の正本ではない |
+| `index.html` カクヨム作品 | 新DB `works`（site=kakuyomu） | 新DB `works` | 切替済み。localStorageは作品本体の正本ではない |
+| `app/shelf/shelf_manager.html` | 新DB `works` / `shelves` | 新DB `works.shelfId` / `shelves` | 切替済み。localStorageは混在棚表示順等のUI設定のみ |
+| `app/author/author.html` | 新DB `works`＋旧作者localStorage台帳の照合 | 新DB `works` の作者フィールド | 主処理は新DB。旧作者台帳の不足情報補完・照合を残す。旧キーは保持 |
+| `app/kakuyomu/kakuyomu_edit.html` | 新DB `works`（site=kakuyomu） | 新DB `works` | 切替済み |
 | `app/memo/tomota_memo.html` | Memo DB `items` | Memo DB `items` | 作品DBとは独立 |
 | `register.html` / `kakuyomu_add.html` / `note_magazine_add.html` | 旧DB・各サイトlocalStorage等 | 現行コード上はサイト別保存経路 | 新DBへの登録一本化は未実施。登録処理を変更する際は別途接続確認 |
 | `tools/diagnostic/diagnostic_db.html` | 旧DB全ストア | なし | 読み取り専用 |
@@ -69,7 +69,7 @@
 
 | キー | 用途 | 扱い |
 |---|---|---|
-| `tomotaYomu_note_magazines_v1` | noteマガジン情報・しおり | 新DB移行待ち |
+| `tomotaYomu_note_magazines_v1` | noteマガジン情報・しおり | 移行元の残存データ。現行本体の正本ではない。削除は実機確認後 |
 | `tomotaYomu_kakuyomu_works_v1` | カクヨム作品情報・しおり | 新DB移行待ち |
 | `tomotaYomu_v330_reading_history` | 3サイト共通の閲覧履歴 | 現行独立保存。最大30件 |
 | `tomotaYomu_atom_display_days` | 作者更新の表示期間 | 表示設定として維持 |
@@ -77,7 +77,7 @@
 | `tomotaYomu_search_excluded_ncodes_v1` | なろう検索除外Nコード | 将来の移行候補。現行独立保存 |
 | `tomotaYomu_memo_shelf_label_v1` | ともためも棚の表示名・マーク | 表示設定として維持 |
 
-※上記以外にも旧キー・診断用キーが存在する。削除前に現行コード参照を確認する。
+作者管理の旧キー：`tomotayomu_v214_works_master`、`tomotaYomu_authors`、`tomotaYomu_author_links`、`tomotaYomu_v215_author_registry`、`tomotaYomu_v215_author_done_ncodes`。作者管理画面が照合・不足補完に使用するため、まだ削除しない。
 
 ## 4. GitHub上のJSON・接続先
 
@@ -93,7 +93,7 @@
 1. 新DB `tomotaYomuWorksDB` はversion 2。worksとshelvesを保持する。
 2. なろう読書位置は新DBへ切替済み。Brave実機で読書位置・短編既読状態・再読込保持を確認する。
 3. note / カクヨムの作品本体、しおり、目次はサイト別保存経路が残る。共通作品DBへの切替は今後1項目ずつ実施する。
-4. 棚移動・本棚管理・作者管理は旧DB接続が残る。新DBへ切り替える前に画面単位で読み書き双方を検証する。
+4. 棚移動・本棚管理は新DBへ切替済み。作者管理は新DBを正本とするが、旧作者localStorage台帳との照合・不足補完が残る。旧作者台帳は照合結果の実機確認まで保持する。
 5. Atom DB・Memo DB・履歴・表示設定は作品DBと別目的の保存先。安易に統合しない。
 6. 旧DB・旧localStorageは、全接続先の移行と実機確認が終わるまで削除しない。
 7. DB名・ストア名・keyPath・index・接続画面を変更したら、この資料と `data-store-usage-inventory.md`、`data-migration-log.md` を同じ作業で更新する。
