@@ -253,3 +253,19 @@
 3. 作品本体、棚マスター、棚配置、作者、しおり、履歴は同じ「作品関連」でも保存先・役割が異なる。まとめて切り替えない。
 4. 1機能ずつ新DBへ切り替え、Brave実機で表示・保存・再読み込みを確認する。
 5. 全機能の切替完了までは旧DB・旧localStorageを削除しない。
+
+
+---
+
+## 2026-11-10 現行接続の再監査（旧記述より本節を優先）
+
+本節は、2026-11-10時点の現行コードを確認した結果。上記の過去時点の棚卸し・移行前記録は履歴として残し、現行接続の判断には本節を優先する。
+
+- `index.html` の本棚・作品カード・棚移動・読書位置・Atom作者一覧は、新DB `tomotaYomuWorksDB` を正本として使用。Atom取得結果は独立した `tomotaYomuAtomDB` に保持。
+- 作者管理 `app/author/author.html` は新DB `works` のみを読み書きする。旧作者localStorage台帳の参照・補完処理は現行ファイルから切離し済み。旧キーはブラウザ内に残存している可能性があるため、削除せず保管。
+- 本棚管理 `app/shelf/shelf_manager.html`、なろう・note・カクヨムの登録・編集ページは新DB `works` / `shelves` を使用。localStorageに残る登録先・表示順・色・文字設定等はUI設定であり、作品・棚データの正本ではない。
+- 旧DB `tomotaYomuDB` を参照する現行ページは、診断・保全目的の `tools/diagnostic/diagnostic_db.html`、`tools/diagnostic/old_db_migration_audit.html`、保存領域一覧の `tools/diagnostic/storage_inventory.html`、および明示操作型メンテナンス `tools/maintenance/cleanup_orphan_placements.html`。通常の本棚・登録・作者管理処理からは参照しない。
+- `tools/maintenance/cleanup_orphan_placements.html` は旧 `shelf_placement` を削除する機能を持つ。現時点では実行しない。診断ページも旧DBを削除しない。
+- 旧DBの読み取り専用照合（2026-11-10実機結果）：`works_cache` 3,596件すべて新DBに存在、`shelf_placement` 3,596件すべて新DBの作品・棚IDと一致、`authors` 2,412件すべて作者ID一致、`shelf_names` 14件すべて新DB棚ID一致。
+- 旧 `reading_position` は414件。411件は新DBに対応。残る3件（N1351MD episode 10、N5420MC episode 42、N8546MG episode 13）は旧 `works_cache` と旧 `shelf_placement` の双方に存在しない孤立読書位置。新DBへの作品追加対象とはしない。旧DB内の3レコードは保全のため残す。
+- したがって、旧DBは現行アプリの通常処理から切離し済みだが、診断・保全・孤立読書位置の記録として保管中。旧DB削除は未実施・未承認。
