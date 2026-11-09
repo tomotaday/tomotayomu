@@ -1,9 +1,9 @@
 # ともたよむ リポジトリ構成表
 
-最終確認日：2026-11-05
+最終確認日：2026-11-09
 対象リポジトリ：tomotaday/tomotayomu
 対象ブランチ：main
-現行アプリ基準版：v3.6.2【2026/11/05】
+現行アプリ基準版：v3.8.0【2026/11/09】
 正本：ルートの `index.html`
 
 この資料は、2026年11月5日時点で確認したファイル配置と役割をまとめたもの。
@@ -48,6 +48,7 @@
 | `docs/guides/` | `narou_register_guide.html` | なろう登録ガイド |
 | `docs/guides/` | `note_magazine_guide.html` | noteマガジン登録ガイド |
 | `docs/` | `repository-structure.md` | 本ファイル。リポジトリ構成表 |
+| `docs/` | `database-structure.md` / `database-structure.html` | DB構成表・接続一覧 |
 
 ## 4. data（アプリ参照データ）
 
@@ -91,7 +92,10 @@ Workflowを変更・移動する場合は、参照するスクリプトのパス
 
 | パス | 主なファイル | 役割 |
 |---|---|---|
-| `tools/diagnostic/` | `diagnostic_db.html` | IndexedDB診断（読み取り専用） |
+| `tools/diagnostic/` | `diagnostic_db.html`, `storage_inventory.html` | 旧DB・保存領域の読み取り専用診断 |
+| `tools/diagnostic/` | `work_db_*.html`, `shelf_master_*.html` | 新DB監査・プレビュー・移行検証 |
+| `tools/diagnostic/` | `ncode_*.html`, `restore_*.html` | Nコード・復元関連の診断 |
+| `tools/maintenance/` | `cleanup_orphan_placements.html` | 孤立配置データ整理（明示操作） |
 | `tools/export/` | `export_ncodes.html` | Nコード出力 |
 
 ## 8. archive/delete_pending（削除保留ファイル）
@@ -143,6 +147,16 @@ Workflowを変更・移動する場合は、参照するスクリプトのパス
 - Atom診断スクリプト・診断Workflowの配置整理：完了、診断Workflowの実行確認は保留
 - 旧ファイル19件の退避：完了、削除は保留
 - Atom取得：スケジュール実行・手動実行ともに取得完了を確認。失敗2件は退会作者によるものと確認
-- アプリ現行基準版：v3.6.2【2026/11/05】
+- アプリ現行基準版：v3.8.0【2026/11/09】
 
 この時点で、現役ファイルの構成整理はいったん一段落とする。
+
+
+## 12. 2026-11-09（v3.8.0）更新
+
+- 新DBへの段階移行を開始。`tomotaYomuWorksDB` version 2（`works` / `shelves`）を追加。
+- なろう読書位置の読み書きを新DB `works.reading` へ切替。旧読書位置データは削除せず保持。
+- note・カクヨムを含む3サイト共通の履歴を実装。最大30件保存、最大10件表示。
+- 資料室に `database-structure.html` / `database-structure.md`（DB構成表・接続一覧）を追加。
+- 本ページとDB構成表は、GitHub mainの実ファイル・現行コード接続を基準に更新。
+- 作者更新表示期間スライダーの初期化タイミングを修正。動的に管理メニューを構築した後にイベントを接続する。
