@@ -411,7 +411,7 @@ document.getElementById("launchAtomUpdate").addEventListener("click",()=>{
       await render();
       if(kanaResult.target && kanaResult.missing){
         document.getElementById("notice").textContent="⚠️ 全年齢ふりがな：取得できなかった作者 "+kanaResult.missing+"人が未登録のままです。";
-      }else{
+      }else if(!legacyAuthorCount&&!legacyLinkCount&&!legacyV215AuthorCount&&!legacyV215DoneCount&&!legacyMasterCount){
         document.getElementById("notice").hidden=true;
       }
     }catch(e){
