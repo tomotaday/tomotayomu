@@ -407,7 +407,7 @@ async function buildV3CardsFromIndexedDB(){
   if(!noteItems.length){
     const unclassified=shelfRows.find(v=>String(v.shelf_name??"").replace(/\s/g,"").includes("未分類"));
     noteItems=[{...NOTE_INITIAL_ITEM,shelfId:String(unclassified?.shelf_id||"")}];
-    writeNoteItems(noteItems);
+    await writeNoteItems(noteItems);
   }
   let kakuyomuItems=readKakuyomuItems();
   const kakuyomuParams=new URLSearchParams(location.search);
@@ -473,7 +473,7 @@ async function buildV3CardsFromIndexedDB(){
         }catch(e){return false}
       });
       if(target){
-        saveNoteItem({...target,bookmarkUrl:received.href});
+        await saveNoteItem({...target,bookmarkUrl:received.href});
         localStorage.removeItem("tomotaYomu_pending_note_bookmark_v1");
         noteItems=readNoteItems();
         const receiveBox=document.getElementById("noteReceiveStatus");
@@ -684,7 +684,7 @@ async function refreshNotePublishedDates(){
       const publishedAt=String(indexItems.length?indexItems[indexItems.length-1].publish_at||"":"");
       const current=readNoteItems().find(x=>x.id===item.id);
       if(!current)continue;
-      if(publishedAt&&current.lastPublishedAt!==publishedAt)saveNoteItem({...current,lastPublishedAt:publishedAt});
+      if(publishedAt&&current.lastPublishedAt!==publishedAt)await saveNoteItem({...current,lastPublishedAt:publishedAt});
       const card=document.querySelector('.noteWorkCard[data-note-id="'+CSS.escape(String(item.id))+'"]');
       if(card){
         if(publishedAt){
@@ -723,7 +723,7 @@ document.addEventListener("toggle",async event=>{
     const bookmark=noteArticleKey(item?.bookmarkUrl);
     const lastPublishedAt=String(items.length?items[items.length-1].publish_at||"": "");
     if(item&&lastPublishedAt&&item.lastPublishedAt!==lastPublishedAt){
-      saveNoteItem({...item,lastPublishedAt});
+      await saveNoteItem({...item,lastPublishedAt});
       const dateLabel=card.querySelector(".noteLastUpdated");
       if(dateLabel)dateLabel.textContent=formatNotePublishedAt(lastPublishedAt);
     }
