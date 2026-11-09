@@ -200,30 +200,14 @@ async function render(){
   bindKanaButtons();
 }
 async function saveAuthorManageName(authorId,name){
-  const id=String(authorId||"").trim(),value=String(name||"").trim();
-  if(!id||!value)throw new Error("作者管理名を入力してください。");
-  const db=await openDB();
-  const authors=await readAll(db,"authors");
-  const rows=authors.filter(a=>a&&String(a.authorId||"").trim()===id);
-  if(!rows.length)throw new Error("対象作者の作品紐付けが見つかりません。");
-  await new Promise((resolve,reject)=>{
-    const tx=db.transaction("authors","readwrite"),st=tx.objectStore("authors");
-    rows.forEach(row=>st.put({...row,authorManageName:value}));
-    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("作者管理名保存失敗"));tx.onabort=()=>reject(tx.error||new Error("作者管理名保存中止"));
-  });
+ const id=String(authorId||"").trim(),value=String(name||"").trim();
+ if(!id||!value)throw new Error("作者管理名を入力してください。");
+ await writeAuthorFields(id,{authorManageName:value});
 }
 async function saveAuthorKana(authorId,kana){
-  const id=String(authorId||"").trim(),value=kanaToHiragana(kana);
-  if(!id)return;
-  const db=await openDB();
-  const authors=await readAll(db,"authors");
-  const rows=authors.filter(a=>a&&String(a.authorId||"").trim()===id);
-  if(!rows.length)throw new Error("対象作者の作品紐付けが見つかりません。");
-  await new Promise((resolve,reject)=>{
-    const tx=db.transaction("authors","readwrite"),st=tx.objectStore("authors");
-    rows.forEach(row=>st.put({...row,authorKana:value,authorKanaFirst:value.charAt(0),authorKanaChecked:true}));
-    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("ふりがな保存失敗"));tx.onabort=()=>reject(tx.error||new Error("ふりがな保存中止"));
-  });
+ const id=String(authorId||"").trim(),value=kanaToHiragana(kana);
+ if(!id)return;
+ await writeAuthorFields(id,{authorKana:value,authorKanaFirst:value.charAt(0),authorKanaChecked:true});
 }
 function bindKanaButtons(){
   document.querySelectorAll(".manageNameSave").forEach(btn=>{
@@ -352,18 +336,11 @@ function renderList(id,arr,linkedSet){
   }).join("");
 }
 async function saveAuthorToIndexedDB(info,apiWorks,hits,authorName){
-  const {db,works,authors}=await readIndexed();
-  const wm=new Map(works.map(w=>[ncode(w.ncode),w]));
-  const am=new Map(authors.map(a=>[ncode(a.ncode),a]));
-  const rows=hits.map(n=>{
-    const w=wm.get(n)||{},old=am.get(n)||{};
-    return {...old,ncode:n,writer:old.writer||w.writer||"",authorId:info.id,authorType:info.type,authorName,authorUrl:String(info.url||""),authorKanaChecked:Boolean(old.authorKanaChecked)};
-  });
-  await new Promise((resolve,reject)=>{
-    const tx=db.transaction("authors","readwrite");
-    rows.forEach(row=>putAuthorRow(tx,row));
-    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("作者情報保存失敗"));tx.onabort=()=>reject(tx.error||new Error("作者情報保存中止"));
-  });
+ const db=await openDB(),raw=await readAll(db,"works"),hitSet=new Set(hits);
+ const updates=raw.filter(w=>w.site==="narou"&&hitSet.has(workCode(w))).map(w=>({...w,authorId:info.id,authorType:info.type,authorName:authorName||w.authorName||"",authorUrl:String(info.url||""),authorKanaChecked:Boolean(w.authorKanaChecked)}));
+ if(!updates.length){db.close();throw new Error("新DBに照合対象作品がありません。")}
+ await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite"),st=tx.objectStore("works");updates.forEach(w=>st.put(w));tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("作者情報保存失敗"));tx.onabort=()=>reject(tx.error||new Error("作者情報保存中止"))});
+ db.close();
 }
 async function processAuthor(authorUrl){
   const info=parseAuthor(authorUrl);
@@ -419,15 +396,12 @@ async function loadGitHubAuthorCount(){
   }
 }
 async function buildAuthorsJson(){
-  const db=await openDB(),rows=await readAll(db,"authors"),byKey=new Map();
-  for(const a of rows){
-    if(!a||!String(a.authorId||"").trim())continue;
-    const id=String(a.authorId).trim(),type=a.authorType==="r18"?"r18":"normal";
-    byKey.set(type+":"+id,{author_id:id,author_type:type});
-  }
-  const authors=[...byKey.values()].sort((a,b)=>a.author_type.localeCompare(b.author_type)||a.author_id.localeCompare(b.author_id,undefined,{numeric:true}));
-  if(!authors.length)throw new Error("出力対象の作者が0人です。");
-  return {schema_version:1,exported_at:new Date().toISOString(),source:"tomotaYomuDB.authors",author_count:authors.length,authors};
+ const db=await openDB(),rows=await readAll(db,"works");db.close();
+ const byKey=new Map();
+ for(const a of rows){if(a.site!=="narou"||!String(a.authorId||"").trim())continue;const id=String(a.authorId).trim(),type=a.authorType==="r18"?"r18":"normal";byKey.set(type+":"+id,{author_id:id,author_type:type})}
+ const authors=[...byKey.values()].sort((a,b)=>a.author_type.localeCompare(b.author_type)||a.author_id.localeCompare(b.author_id,undefined,{numeric:true}));
+ if(!authors.length)throw new Error("出力対象の作者が0人です。");
+ return {schema_version:1,exported_at:new Date().toISOString(),source:"tomotaYomuWorksDB.works",author_count:authors.length,authors};
 }
 async function copyAuthorsJson(){
   const btn=document.getElementById("copyAuthors"),status=document.getElementById("syncStatus");
