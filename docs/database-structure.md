@@ -17,7 +17,7 @@
 | 同上 | 1 | `shelf_placement` | keyPath等はDB診断で確認 | 旧棚配置。現行本体・本棚管理は新DB works.shelfIdを使用。旧データ保持 |
 | 同上 | 1 | `works_cache` | keyPath等はDB診断で確認 | 旧なろう作品キャッシュ。現行本体の作品カード構築では参照しない。旧データ保持 |
 | 同上 | 1 | `authors` | keyPath等はDB診断で確認 | 旧作者情報。現行作者管理・Atom作者一覧は新DB作品レコードを使用。旧DBストアは保持し、現行画面からは参照しない |
-| 同上 | 1 | `reading_position` | keyPath等はDB診断で確認 | 旧読書位置ストア。新DB切替後の本体読書位置処理では参照しない。削除は未実施 |
+| 同上 | 1 | `reading_position` | keyPath `ncode` | 旧読書位置ストア。新DB切替後の本体読書位置処理では参照しない。旧DB内の作品・棚配置に存在しない孤立レコードが3件（N1351MD:10話、N5420MC:42話、N8546MG:13話）。削除は未実施 |
 | `tomotaYomuAtomDB` | 1 | `entries` | keyPath `entryId` | 作者Atom取得結果 |
 | 同上 | 1 | `meta` | keyPath `key` | Atom取得の補助メタデータ |
 | `tomotaMemoDB` | 1 | `items` | keyPath `id`。index: `parentId`（非unique） | ともためも |
@@ -57,7 +57,7 @@
 | `index.html` note作品 | 新DB `works`（site=note） | 新DB `works` | 切替済み。localStorageは作品本体の正本ではない |
 | `index.html` カクヨム作品 | 新DB `works`（site=kakuyomu） | 新DB `works` | 切替済み。localStorageは作品本体の正本ではない |
 | `app/shelf/shelf_manager.html` | 新DB `works` / `shelves` | 新DB `works.shelfId` / `shelves` | 切替済み。localStorageは混在棚表示順等のUI設定のみ |
-| `app/author/author.html` | 新DB `works`＋旧作者localStorage台帳の照合 | 新DB `works` の作者フィールド | 主処理は新DB。旧作者台帳の不足情報補完・照合を残す。旧キーは保持 |
+| `app/author/author.html` | 新DB `works` | 新DB `works` の作者フィールド | 新DB単独運用へ切替済み。旧作者localStorage台帳の参照・補完処理は切離し。旧キーは保管 |
 | `app/kakuyomu/kakuyomu_edit.html` | 新DB `works`（site=kakuyomu） | 新DB `works` | 切替済み |
 | `app/memo/tomota_memo.html` | Memo DB `items` | Memo DB `items` | 作品DBとは独立 |
 | `register.html` / `app/register/work_add.html` / `kakuyomu_add.html` / `note_magazine_add.html` | 新DB `shelves` / `works` | 新DB `works` | なろう・カクヨム・noteの登録先は新DB。UIの登録先選択などはlocalStorage設定を利用 |
@@ -95,7 +95,7 @@
 1. 新DB `tomotaYomuWorksDB` はversion 2。worksとshelvesを保持する。
 2. なろう読書位置は新DBへ切替済み。Brave実機で読書位置・短編既読状態・再読込保持を確認する。
 3. note / カクヨムの作品本体、しおり、目次はサイト別保存経路が残る。共通作品DBへの切替は今後1項目ずつ実施する。
-4. 棚移動・本棚管理は新DBへ切替済み。作者管理は新DBを正本とするが、旧作者localStorage台帳との照合・不足補完が残る。旧作者台帳は照合結果の実機確認まで保持する。
+4. 棚移動・本棚管理・作者管理は新DBへ切替済み。作者管理の旧localStorage台帳参照・補完処理は切離し済み。旧キーは削除せず保管する。旧DBの読書位置には作品・棚配置が存在しない孤立レコード3件が残るため、旧DB本体は引き続き保持する。
 5. Atom DB・Memo DB・履歴・表示設定は作品DBと別目的の保存先。安易に統合しない。
 6. 旧DB・旧localStorageは、全接続先の移行と実機確認が終わるまで削除しない。
 7. DB名・ストア名・keyPath・index・接続画面を変更したら、この資料と `data-store-usage-inventory.md`、`data-migration-log.md` を同じ作業で更新する。
