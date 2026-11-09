@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ともたよむ｜旧DB・新DB差分抽出</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;color-scheme:light}
+*{box-sizing:border-box}body{margin:0;background:#f3f6fc;color:#183153;line-height:1.6}
+main{width:min(100%,720px);margin:auto;padding:20px 14px 44px}h1{font-size:22px;margin:0 0 8px}
+.panel{background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:15px;margin:13px 0}
+.warning{border-left:5px solid #d97706;background:#fffaf0}.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:10px}
+.metric{background:#eef3fa;border-radius:10px;padding:10px}.metric b{display:block;font-size:22px}
+button{width:100%;padding:13px;border:0;border-radius:10px;background:#17458a;color:#fff;font:inherit;font-weight:700;margin-top:10px}
+button:disabled{opacity:.45}#log{white-space:pre-wrap;overflow-wrap:anywhere;background:#eef3fa;border-radius:10px;padding:12px;min-height:70px;font-size:13px}
+.small{font-size:13px;color:#52647a}
+</style>
+</head>
+<body><main>
+<h1>旧DB・新DB 差分抽出</h1>
+<p class="small">ともたよむの旧DBにだけ存在する作品を抽出し、移行用データを作成します。</p>
+<section class="panel warning">
+<strong>安全確認：読み取り専用</strong>
+<ul>
+<li>旧DB <code>tomotaYomuDB</code> と新DB <code>tomotaYomuWorksDB</code> を読み取ります。</li>
+<li>両DBへの追加・更新・削除は行いません。</li>
+<li>localStorage、Atom DB、メモDB、GitHub Actions、ショートカットには触れません。</li>
+<li>抽出JSONには、差分作品・関連作者・旧本棚マスター・配置情報を含めます。</li>
+</ul>
+</section>
+<section class="panel">
+<strong>差分を調べる</strong>
+<p class="small">同じNコードを同一作品として照合します。新DBの既存作品は差分に含めません。</p>
+<button id="run">旧DB・新DBを照合する</button>
+<div id="metrics" class="metrics"></div>
+</section>
+<section class="panel">
+<strong>移行用データを書き出す</strong>
+<p class="small">照合結果をJSONファイルに保存します。ファイルをこのチャットに添付してください。ししょーが新DB形式への変換と重複・欠損検査を行います。</p>
+<button id="export" disabled>差分データJSONを書き出す</button>
+</section>
+<section class="panel"><strong>処理ログ</strong><div id="log">まだ実行していません。</div></section>
+</main>
+<script>
+"use strict";
+const OLD_DB="tomotaYomuDB",NEW_DB="tomotaYomuWorksDB";
+const $=id=>document.getElementById(id);
+let packageData=null;
+function log(s){$("log").textContent=s}
+function openReadonly(name){
+ return new Promise((resolve,reject)=>{
+  const req=indexedDB.open(name);
+  req.onupgradeneeded=()=>{req.transaction.abort();reject(new Error(name+" が見つからないか、DBバージョンが不正です。DBは作成・変更していません。"))};
+  req.onsuccess=()=>resolve(req.result);
+  req.onerror=()=>reject(req.error||new Error(name+" を開けません"));
+  req.onblocked=()=>reject(new Error(name+" が別タブで使用中です。ほかのタブを閉じて再実行してください。"));
+ });
+}
+function readAll(db,storeName){
+ return new Promise((resolve,reject)=>{
+  if(!db.objectStoreNames.contains(storeName)){resolve([]);return}
+  const tx=db.transaction(storeName,"readonly"),req=tx.objectStore(storeName).getAll();
+  req.onsuccess=()=>resolve(req.result||[]);
+  req.onerror=()=>reject(req.error||new Error(storeName+" の読み込みに失敗"));
+ });
+}
+function norm(v){return String(v??"").trim().toUpperCase()}
+function idFor(n){return "narou:"+norm(n)}
+async function run(){
+ $("run").disabled=true;$("export").disabled=true;packageData=null;$("metrics").replaceChildren();
+ let oldDb,newDb;
+ try{
+  oldDb=await openReadonly(OLD_DB);newDb=await openReadonly(NEW_DB);
+  const oldNames=[...oldDb.objectStoreNames],newNames=[...newDb.objectStoreNames];
+  const oldData={};
+  for(const name of oldNames)oldData[name]=await readAll(oldDb,name);
+  const newWorks=await readAll(newDb,"works"),newShelves=await readAll(newDb,"shelves");
+  const existingIds=new Set(newWorks.map(w=>String(w?.id??"")));
+  const oldWorks=oldData.works_cache||[];
+  const diff=oldWorks.filter(w=>norm(w?.ncode)&&!existingIds.has(idFor(w.ncode)));
+  const diffCodes=new Set(diff.map(w=>norm(w.ncode)));
+  const placements=(oldData.shelf_placement||[]).filter(p=>diffCodes.has(norm(p?.ncode)));
+  const authors=(oldData.authors||[]).filter(a=>diffCodes.has(norm(a?.ncode)));
+  const shelfRows=oldData.shelf_names||[];
+  const countsBySite={};
+  for(const w of newWorks)countsBySite[w.site]=(countsBySite[w.site]||0)+1;
+  const noPlacement=diff.filter(w=>!placements.some(p=>norm(p.ncode)===norm(w.ncode))).length;
+  packageData={
+   exportType:"tomotayomu-legacy-diff-v1",
+   createdAt:new Date().toISOString(),
+   comparison:{oldDatabase:OLD_DB,newDatabase:NEW_DB,oldWorkCount:oldWorks.length,newWorkCount:newWorks.length,newCountsBySite:countsBySite,diffCount:diff.length,expectedDiffCount:90,noPlacementCount:noPlacement,oldStores:oldNames,newStores:newNames},
+   diffWorks:diff,
+   relatedPlacements:placements,
+   relatedAuthors:authors,
+   oldShelves:shelfRows,
+   newShelves:newShelves,
+   noteLocalStorage:localStorage.getItem("tomotaYomu_note_magazines_v1")||null,
+   kakuyomuLocalStorage:localStorage.getItem("tomotaYomu_kakuyomu_works_v1")||null
+  };
+  const metrics=[
+   ["旧DB作品",oldWorks.length+"件"],["新DB作品",newWorks.length+"件"],
+   ["旧DBだけの作品",diff.length+"件"],["配置情報なし",noPlacement+"件"]
+  ];
+  for(const [label,value] of metrics){const div=document.createElement("div");div.className="metric";const span=document.createElement("span");span.textContent=label;const b=document.createElement("b");b.textContent=value;div.append(span,b);$("metrics").append(div)}
+  $("export").disabled=false;
+  log("照合完了（読み取り専用）\n旧DB作品："+oldWorks.length+"件\n新DB作品："+newWorks.length+"件\n旧DBにだけある作品："+diff.length+"件\n関連する本棚配置："+placements.length+"件\n関連する作者情報："+authors.length+"件\n旧本棚マスター："+shelfRows.length+"件\n新本棚マスター："+newShelves.length+"件\n\n期待値90件："+(diff.length===90?"一致":"不一致。実際の差分件数を優先") +"\n\nDBへの書き込み・削除は行っていません。");
+ }catch(e){log("処理中止： "+e.message)}
+ finally{if(oldDb)oldDb.close();if(newDb)newDb.close();$("run").disabled=false}
+}
+$("run").addEventListener("click",run);
+$("export").addEventListener("click",()=>{
+ if(!packageData)return;
+ const blob=new Blob([JSON.stringify(packageData,null,2)],{type:"application/json"});
+ const url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download="tomotayomu-legacy-diff-"+new Date().toISOString().slice(0,10)+".json";
+ document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ log($("log").textContent+"\n\n差分JSONを書き出しました。ファイルをこのチャットに添付してください。");
+});
+</script></body></html>
