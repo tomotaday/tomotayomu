@@ -295,11 +295,16 @@ async function loadSiteItemsFromWorksDB(){
 }
 function persistSiteItems(site,items){
  siteItemsCache[site]=items;
- const dbPromise=openExistingWorksDB();
- dbPromise.then(db=>{
-  const existing=items.map(item=>itemToCanonical(item,site));
-  return new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite"),st=tx.objectStore("works");existing.forEach(w=>st.put(w));tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("サイト作品保存失敗"));tx.onabort=()=>reject(tx.error||new Error("サイト作品保存中止"))}).finally(()=>db.close());
- }).catch(e=>{console.error(site+"新DB保存失敗",e);const status=document.getElementById("apiStatus");if(status)status.textContent=site+"作品の新DB保存に失敗しました："+e.message});
+ openExistingWorksDB().then(db=>new Promise((resolve,reject)=>{
+  const tx=db.transaction("works","readwrite"),st=tx.objectStore("works"),get=st.getAll();
+  get.onsuccess=()=>{
+   const keep=new Set(items.map(item=>site==="note"?(String(item.id).startsWith("note:")?String(item.id):"note:"+String(item.id)):(String(item.id).startsWith("kakuyomu:")?String(item.id):"kakuyomu:"+String(item.id))));
+   (get.result||[]).filter(w=>w.site===site&&!keep.has(w.id)).forEach(w=>st.delete(w.id));
+   items.forEach(item=>st.put(itemToCanonical(item,site)));
+  };
+  get.onerror=()=>{try{tx.abort()}catch(e){};reject(get.error||new Error("既存サイト作品の確認失敗"))};
+  tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("サイト作品保存失敗"));tx.onabort=()=>reject(tx.error||new Error("サイト作品保存中止"));
+ })).then(()=>{}).catch(e=>{console.error(site+"新DB保存失敗",e);const status=document.getElementById("apiStatus");if(status)status.textContent=site+"作品の新DB保存に失敗しました："+e.message}).finally(()=>{});
 }
 function readKakuyomuItems(){return Array.isArray(siteItemsCache.kakuyomu)?siteItemsCache.kakuyomu:[]}
 function writeKakuyomuItems(items){persistSiteItems("kakuyomu",items)}
