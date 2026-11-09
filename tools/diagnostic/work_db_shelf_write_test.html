@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ともたよむ｜新DB棚書込テスト</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;color-scheme:light}*{box-sizing:border-box}body{margin:0;background:#f3f6fc;color:#183153;line-height:1.6}main{width:min(100%,760px);margin:auto;padding:18px 14px 44px}h1{font-size:23px;margin:0 0 8px}h2{font-size:17px;margin:0 0 8px}.panel{background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:14px;margin:12px 0}.warning{border-left:5px solid #d97706;background:#fffaf0}.safe{border-left:5px solid #16a34a;background:#f0fdf4}.small{font-size:13px;color:#52647a}input,select,button{font:inherit;width:100%;padding:11px;border:1px solid #aab7cc;border-radius:10px;background:white;color:inherit;margin:5px 0}button{background:#17458a;color:white;border:0;font-weight:700}button:disabled{opacity:.45}.result{background:#eef3fa;padding:11px;border-radius:10px;margin-top:8px;white-space:pre-wrap;overflow-wrap:anywhere}.hit{padding:10px;border:1px solid #cbd5e1;border-radius:10px;margin:8px 0;background:#f8faff}.hit button{background:#e5edf9;color:#183153;border:1px solid #aab7cc}.ok{color:#166534;font-weight:700}.ng{color:#b91c1c;font-weight:700}
+</style></head><body><main>
+<h1>新DB棚ID・書込テスト</h1><p class="small">新DB worksへの更新要求が正常に動くかを検査します。実際の保存状態はテスト終了時に元へ戻します。</p>
+<section class="panel warning"><strong>重要：自動復元テスト</strong><ul>
+<li>対象は新DB <code>tomotaYomuWorksDB</code> の <code>works</code> ストアのみ。</li>
+<li>選択した作品1件の <code>shelfId</code> を一時変更し、同じreadwriteトランザクション内で再読込確認後、元のレコードを復元します。</li>
+<li>最終確認で元の <code>shelfId</code> に戻ったことを確認します。</li>
+<li>トランザクションが失敗した場合は中断し、変更をコミットさせません。</li>
+<li>旧DB、localStorage、Atom DB、Memo DB、本体index.htmlには触れません。</li></ul></section>
+<section class="panel"><h2>1. 新DB確認</h2><div id="dbstate" class="result">確認中…</div></section>
+<section class="panel"><h2>2. テスト作品を選ぶ</h2><label for="site">サイト</label><select id="site"><option value="narou">なろう</option><option value="note">note</option><option value="kakuyomu">カクヨム</option></select>
+<label for="query">作品名・作者名・作品IDで検索</label><input id="query" placeholder="検索語を入力">
+<div id="hits" class="small">作品一覧を読み込み中…</div></section>
+<section class="panel"><h2>3. 一時的な移動先</h2><div id="selected" class="result">作品未選択</div><label for="target">テスト用の棚ID</label><select id="target" disabled></select>
+<button id="run" disabled>一時書込 → 再読込 → 元に自動復元</button><div id="result" class="result">テスト未実行</div></section>
+<section class="panel"><h2>4. 処理ログ</h2><div id="log" class="result">待機中</div></section>
+</main>
+<script>
+"use strict";
+const DB="tomotaYomuWorksDB",EXPECTED=3510,EXPECTED_SHELVES=14;
+const $=id=>document.getElementById(id);let db=null,works=[],shelves=[],chosen=null,busy=false;
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function siteName(v){return v==="narou"?"なろう":v==="note"?"note":v==="kakuyomu"?"カクヨム":v}
+function shelfName(id){if(id==="")return "未登録（棚ID空欄）";return shelves.find(s=>s.shelf_id===id)?.shelf_name||"不明："+id}
+async function openDB(){
+ if(!indexedDB.databases)throw Error("DB一覧を確認できません。安全のため停止。");
+ const all=await indexedDB.databases();if(!all.some(x=>x.name===DB))throw Error("新DBがありません。新規作成しません。");
+ return await new Promise((resolve,reject)=>{const q=indexedDB.open(DB);q.onupgradeneeded=()=>{q.transaction.abort();reject(Error("DB更新が必要なため停止しました。"))};q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error);q.onblocked=()=>reject(Error("別タブがDBを使用中です"))});
+}
+function readAll(){
+ return new Promise((resolve,reject)=>{if(db.version!==2||!db.objectStoreNames.contains("works")||!db.objectStoreNames.contains("shelves"))return reject(Error("DB構造が想定外"));const tx=db.transaction(["works","shelves"],"readonly"),a=tx.objectStore("works").getAll(),b=tx.objectStore("shelves").getAll();let x,y;a.onsuccess=()=>x=a.result||[];b.onsuccess=()=>y=b.result||[];tx.oncomplete=()=>resolve({works:x,shelves:y});tx.onerror=()=>reject(tx.error)});
+}
+function renderHits(){
+ const site=$("site").value,q=$("query").value.trim().toLocaleLowerCase("ja");
+ const found=works.filter(w=>w.site===site&&(!q||[w.title,w.authorName,w.id,w.workId].some(v=>String(v||"").toLocaleLowerCase("ja").includes(q))));
+ $("hits").textContent=found.length+"件該当（先頭30件）";
+ const wrap=document.createElement("div");
+ found.slice(0,30).forEach(w=>{const div=document.createElement("div");div.className="hit";const p=document.createElement("div");p.textContent=(w.title||"作品名なし")+"｜"+(w.authorName||"作者名なし")+"｜"+(w.workId||w.id);const m=document.createElement("div");m.className="small";m.textContent="現在："+shelfName(String(w.shelfId||""));const b=document.createElement("button");b.textContent="この作品をテスト対象にする";b.addEventListener("click",()=>selectWork(w));div.append(p,m,b);wrap.append(div)});
+ $("hits").appendChild(wrap);
+}
+function selectWork(w){
+ chosen=w;$("selected").textContent=(w.title||"作品名なし")+"\n"+siteName(w.site)+"｜"+(w.authorName||"作者名なし")+"\nID："+w.id+"\n現在の棚："+shelfName(String(w.shelfId||""));
+ const sel=$("target");sel.replaceChildren();
+ shelves.slice().sort((a,b)=>a.display_order-b.display_order).forEach(s=>{const o=document.createElement("option");o.value=s.shelf_id;o.textContent=s.shelf_name+"（"+s.shelf_id+"）";if(s.shelf_id!==String(w.shelfId||"")&&!sel.value){}sel.append(o)});
+ const blank=document.createElement("option");blank.value="";blank.textContent="未登録（棚ID空欄）";sel.append(blank);
+ const other=[...sel.options].find(o=>o.value!==String(w.shelfId||""));if(other)sel.value=other.value;
+ $("target").disabled=false;$("run").disabled=!other;$("result").textContent="テスト未実行";
+}
+function runAtomicTest(recordId,targetId){
+ return new Promise((resolve,reject)=>{
+  const tx=db.transaction("works","readwrite"),store=tx.objectStore("works");
+  if(store.keyPath!=="id"){tx.abort();reject(Error("worksの主キーが想定外："+store.keyPath));return}
+  let original=null,phase="get-original",failure=null;
+  const get=store.get(recordId);
+  get.onsuccess=()=>{
+   original=get.result;
+   if(!original){failure=Error("対象作品がDBに見つかりません");tx.abort();return}
+   if(String(original.shelfId||"")===targetId){failure=Error("テスト先が現在の棚と同じです。別の棚を選んでください");tx.abort();return}
+   const temp={...original,shelfId:targetId};
+   phase="put-temporary";
+   const put=store.put(temp);
+   put.onsuccess=()=>{
+    phase="verify-temporary";
+    const check=store.get(recordId);
+    check.onsuccess=()=>{
+     if(!check.result||String(check.result.shelfId||"")!==targetId){failure=Error("一時書込の再読込値が一致しません");tx.abort();return}
+     phase="restore-original";
+     const restore=store.put(original);
+     restore.onsuccess=()=>{
+      phase="verify-restored";
+      const finalRead=store.get(recordId);
+      finalRead.onsuccess=()=>{
+       if(!finalRead.result||String(finalRead.result.shelfId||"")!==String(original.shelfId||"")){failure=Error("元の棚IDへの復元確認に失敗");tx.abort();return}
+       if(finalRead.result.id!==original.id||finalRead.result.title!==original.title){failure=Error("復元後の基本項目照合に失敗");tx.abort();return}
+      };
+      finalRead.onerror=()=>{failure=finalRead.error;tx.abort()};
+     };
+     restore.onerror=()=>{failure=restore.error;tx.abort()};
+    };
+    check.onerror=()=>{failure=check.error;tx.abort()};
+   };
+   put.onerror=()=>{failure=put.error;tx.abort()};
+  };
+  get.onerror=()=>{failure=get.error;tx.abort()};
+  tx.oncomplete=()=>resolve({originalShelfId:String(original.shelfId||""),targetId,phase});
+  tx.onabort=()=>reject(failure||tx.error||Error("トランザクションが中断されました"));
+  tx.onerror=()=>{failure=failure||tx.error};
+ });
+}
+$("run").addEventListener("click",async()=>{
+ if(!chosen||busy)return;const target=String($("target").value||"");busy=true;$("run").disabled=true;
+ $("result").textContent="一時書込と自動復元を実行中…";
+ try{
+  const result=await runAtomicTest(chosen.id,target);
+  const after=await new Promise((resolve,reject)=>{const tx=db.transaction("works","readonly"),q=tx.objectStore("works").get(chosen.id);q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error);tx.onerror=()=>reject(tx.error)});
+  if(!after||String(after.shelfId||"")!==result.originalShelfId)throw Error("トランザクション後の最終状態が元に戻っていません");
+  $("result").innerHTML='<span class="ok">書込要求・再読込・自動復元すべて成功</span><br>一時棚：'+esc(shelfName(result.targetId))+'<br>復元棚：'+esc(shelfName(result.originalShelfId))+'<br>最終状態：元の棚IDを確認';
+  $("log").textContent="テスト成功。\n作品："+chosen.title+"\nサイト："+siteName(chosen.site)+"\n一時的に設定したshelfId："+result.targetId+"\n同一readwrite transaction内で再読込確認後、元のレコードを復元。\ntransaction完了後のreadonly再確認も成功。\nDBに残る変更：なし。";
+ }catch(e){$("result").textContent="テスト失敗："+e.message;$("log").textContent="停止："+e.message+"\nデータの最終状態を必ず再確認してください。ページを閉じず、ししょーへ結果を知らせてください。"}
+ finally{busy=false;$("run").disabled=false}
+});
+$("site").addEventListener("change",renderHits);$("query").addEventListener("input",renderHits);
+(async()=>{try{db=await openDB();const d=await readAll();works=d.works;shelves=d.shelves;if(works.length!==EXPECTED||shelves.length!==EXPECTED_SHELVES)throw Error("件数不一致：works "+works.length+" / shelves "+shelves.length);$("dbstate").textContent="DB version 2｜works "+works.length+"件｜shelves "+shelves.length+"件｜主キー "+(db.transaction("works","readonly").objectStore("works").keyPath);renderHits();$("log").textContent="準備完了。まだ書込テストは実行していません。";}catch(e){$("dbstate").textContent="停止："+e.message;$("run").disabled=true;$("log").textContent="データ変更なし。"}})();
+</script></body></html>
