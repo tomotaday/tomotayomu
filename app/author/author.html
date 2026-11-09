@@ -291,6 +291,12 @@ async function handleIncoming(){
     history.replaceState({},document.title,location.pathname);await render();
   }catch(e){notice.textContent="⚠️ 作者登録失敗｜"+e.message+"｜データは変更していません。"}
 }
+function formatJapanDateTime(value){
+  if(!value)return "不明";
+  const date=new Date(value);
+  if(Number.isNaN(date.getTime()))return String(value);
+  return new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}).format(date);
+}
 async function loadGitHubAuthorCount(){
   const status=document.getElementById("syncStatus");
   try{
@@ -303,7 +309,7 @@ async function loadGitHubAuthorCount(){
     document.getElementById("githubAuthorCount").textContent=remote+"人";
     document.getElementById("localAuthorCount").textContent=local+"人";
     document.getElementById("authorDiffCount").textContent=(local-remote>=0?"+":"")+(local-remote)+"人";
-    status.textContent="GitHub保存済み一覧："+remote+"人｜最終送付データ："+String(data.exported_at||"不明");
+    status.textContent="GitHub保存済み一覧："+remote+"人｜最終送付データ："+formatJapanDateTime(data.exported_at);
     status.dataset.remoteCount=String(remote);
   }catch(e){
     document.getElementById("githubAuthorCount").textContent="確認不可";
