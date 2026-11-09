@@ -308,9 +308,18 @@ function itemToCanonical(item,site){
  const canonicalId=site==="note"?(id.startsWith("note:")?id:"note:"+id):(id.startsWith("kakuyomu:")?id:"kakuyomu:"+id);
  const prior=siteItemsCache[site]?.find(x=>String(x.id)===id)||{};
  const legacy={...prior,...item};
- const bookmark=site==="note"?{url:String(item.bookmarkUrl||"")}:
-  {url:String(item.bookmarkEpisodeUrl||""),episodeId:String(item.bookmarkEpisodeId||"")};
- return {id:canonicalId,site,workId:id,title:String(item.title||""),authorName:String(item.author||item.authorName||""),authorId:String(item.authorId||""),shelfId:String(item.shelfId||""),reading:{position:null,isRead:null},bookmark,siteData:{legacyFields:legacy,sourceUrl:String(item.url||""),isR18:false}};
+ const bookmark=site==="note"?{url:String(item.bookmarkUrl||""),episodeId:""}:
+  {url:String(item.bookmarkEpisodeUrl||""),episodeId:String(item.bookmarkEpisodeId||""),position:Number(item.bookmarkEpisode)||0};
+ return {
+  id:canonicalId,site,workId:id,title:String(item.title||""),
+  authorName:String(item.author||item.authorName||""),authorId:String(item.authorId||""),
+  shelfId:String(item.shelfId||""),url:String(item.url||""),
+  updatedAt:String(item.updatedAt||""),lastPublishedAt:String(item.lastPublishedAt||""),
+  status:String(item.status||""),episodeCount:item.episodeCount===""?null:(Number(item.episodeCount)||0),
+  synopsis:String(item.synopsis||""),
+  reading:{position:null,isRead:null},bookmark,
+  siteData:{...(siteItemsCache[site]?.find(x=>String(x.id)===id)?.siteData||{}),legacyFields:legacy,sourceUrl:String(item.url||""),isR18:false}
+ };
 }
 let siteItemsWriteQueue=Promise.resolve();
 async function loadSiteItemsFromWorksDB(){
@@ -320,6 +329,8 @@ async function loadSiteItemsFromWorksDB(){
   const rows=await new Promise((resolve,reject)=>{const tx=db.transaction("works","readonly"),req=tx.objectStore("works").getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error||new Error("note・カクヨム読込失敗"));tx.onerror=()=>reject(tx.error||new Error("note・カクヨム読込失敗"))});
   siteItemsCache.note=rows.filter(w=>w.site==="note").map(itemFromCanonical);
   siteItemsCache.kakuyomu=rows.filter(w=>w.site==="kakuyomu").map(itemFromCanonical);
+  const repaired=[...siteItemsCache.note.map(x=>itemToCanonical(x,"note")),...siteItemsCache.kakuyomu.map(x=>itemToCanonical(x,"kakuyomu"))];
+  if(repaired.length){await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite"),st=tx.objectStore("works");repaired.forEach(w=>st.put(w));tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("note・カクヨム項目補完失敗"));tx.onabort=()=>reject(tx.error||new Error("note・カクヨム項目補完中止"))})}
  }finally{db.close()}
 }
 function persistSiteItems(site,items){
