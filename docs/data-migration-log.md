@@ -374,3 +374,17 @@
 - 3ページとも保存先・保存形式が異なる。共通化対象は「新規登録時の初期 `shelfId` 決定」と「新DB `works` への正規レコード保存」。サイト固有の取得・解析・重複確認・補助データは個別処理として残す。
 - 実装前に、新DB `works` の各サイトの正規レコード形式と、旧DB/localStorageからの補助情報（なろう作者情報、カクヨムの詳細情報、note目次情報等）の保持先・既存表示との接続を確定する。現段階で補助データを削除・移動しない。
 - **コード再調査のみ。登録ページ・本体 `index.html`・DB・localStorageの変更は未実施。**
+
+
+### 2026-11-09（移行項目1：Narou読書位置の新DB切替コード）
+
+- 対象：Narouの読書位置（通常作品のしおり位置・短編の既読状態）。
+- 変更前記録は本ログの「Narou 読書位置（しおり・短編既読状態）【変更前記録】」を参照。
+- `index.html` の読書状態読み込み先を `tomotaYomuWorksDB/works` の `reading.position` / `reading.isRead` へ切替。
+- 読書状態の保存先も同じ作品レコードへ切替。通常作品は `reading.position`、短編は `reading.isRead` を更新し、サイト固有しおりの `bookmark` は変更しない。
+- 旧localStorage `tomotaYomu_v211_reading` と旧DB `reading_position` への書き込みを停止。旧データ自体は削除・変更せず保持。
+- 新DBが存在しない・version/ストア構造が想定外の場合は旧データへフォールバックせず停止する。
+- GitHub commit：`d729d44431711ca59dd2933e87becec25e9b8ba8`
+- 変更前 index SHA：`b8534fc60183f7ff91a46df7ba7962cd9969be35`
+- 変更後 index blob SHA：`2b4135d9a1e332edd69dde3daa01de561e076dd0`
+- **現在の状態：コード切替済み。Brave実機での表示・読書位置更新・短編既読切替・再読み込み後の保持を確認待ち。確認完了までは次の移行項目へ進まない。**
