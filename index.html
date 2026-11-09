@@ -890,16 +890,38 @@ function initSearch(){
   input.addEventListener("input",run);
   input.addEventListener("search",run);
 }
+function historyIdentityFromCard(card){
+ if(!card)return null;
+ const noteId=String(card.dataset.noteId||"").trim();
+ if(noteId)return {site:"note",workId:noteId};
+ const kakuyomuId=String(card.dataset.kakuyomuId||"").trim();
+ if(kakuyomuId)return {site:"kakuyomu",workId:kakuyomuId};
+ const ncode=String(card.dataset.ncode||"").trim().toUpperCase();
+ if(/^N[0-9A-Z]+$/.test(ncode))return {site:"narou",workId:ncode,ncode};
+ return null;
+}
+function historyIdentityFromEntry(item){
+ if(!item)return null;
+ const site=String(item.site||"").trim();
+ const workId=String(item.workId||item.ncode||"").trim();
+ if(site&&workId)return {site,workId};
+ const ncode=String(item.ncode||"").trim().toUpperCase();
+ return /^N[0-9A-Z]+$/.test(ncode)?{site:"narou",workId:ncode,ncode}:null;
+}
+function historyIdentityKey(identity){return identity?identity.site+":"+identity.workId:""}
 function renderReadingHistoryShelf(root,cards){
- const history=loadJSON(READING_HISTORY_KEY,[]).filter(v=>v&&v.ncode).sort((a,b)=>Number(b.viewedAt||0)-Number(a.viewedAt||0)).slice(0,5);
+ const history=loadJSON(READING_HISTORY_KEY,[]).map(item=>({...item,...(historyIdentityFromEntry(item)||{})})).filter(item=>item.site&&item.workId).sort((a,b)=>Number(b.viewedAt||0)-Number(a.viewedAt||0)).slice(0,10);
  const d=document.createElement("details");d.className="folderDetails";d.dataset.shelfKey="system:history";const sm=document.createElement("summary");sm.textContent="🗄️ 履歴 "+history.length;const wrap=document.createElement("div");wrap.className="folderCards";
- if(!history.length){const empty=document.createElement("div");empty.className="searchHint";empty.textContent="作品を開くと、ここに最近見た作品が最大5件表示されます。";wrap.appendChild(empty)}
- else{history.forEach(item=>{const card=cards.get(String(item.ncode).toUpperCase());if(card)wrap.appendChild(card.cloneNode(true))});if(!wrap.children.length){const empty=document.createElement("div");empty.className="searchHint";empty.textContent="履歴の作品情報を確認できませんでした。";wrap.appendChild(empty)}}
+ if(!history.length){const empty=document.createElement("div");empty.className="searchHint";empty.textContent="作品を開くと、ここに最近見た作品が最大10件表示されます。";wrap.appendChild(empty)}
+ else{history.forEach(item=>{const card=cards.get(historyIdentityKey(item));if(card)wrap.appendChild(card.cloneNode(true))});if(!wrap.children.length){const empty=document.createElement("div");empty.className="searchHint";empty.textContent="履歴の作品情報を確認できませんでした。";wrap.appendChild(empty)}}
  d.append(sm,wrap);return d;
 }
-function recordReadingHistory(ncode){
- const n=String(ncode||"").toUpperCase();if(!/^N[0-9A-Z]+$/.test(n))return;
- const history=loadJSON(READING_HISTORY_KEY,[]).filter(v=>v&&String(v.ncode||"").toUpperCase()!==n);history.unshift({ncode:n,viewedAt:Date.now()});saveJSON(READING_HISTORY_KEY,history.slice(0,30));buildShelfFolders();
+function recordReadingHistory(card){
+ const identity=historyIdentityFromCard(card);if(!identity)return;
+ const key=historyIdentityKey(identity);
+ const history=loadJSON(READING_HISTORY_KEY,[]).filter(item=>historyIdentityKey(historyIdentityFromEntry(item))!==key);
+ history.unshift({...identity,viewedAt:Date.now()});
+ saveJSON(READING_HISTORY_KEY,history.slice(0,30));buildShelfFolders();
 }
 const SEARCH_EXCLUDED_KEY="tomotaYomu_search_excluded_ncodes_v1";
 function getSearchExcludedNcodes(){
@@ -924,7 +946,7 @@ function buildShelfFolders(){
  const openKeys=new Set([...root.querySelectorAll("details[open]")].map(x=>x.dataset.shelfKey).filter(Boolean));
  const search=document.querySelector(".searchDetails"),author=document.getElementById("authorFeedDetails"),works=[...document.querySelectorAll(".updateDetails")].find(x=>x.id!=="authorFeedDetails");
  root.innerHTML="";
- const cards=[...source.querySelectorAll(":scope > .card")],historyCards=new Map(cards.map(card=>[String(card.dataset.ncode||"").toUpperCase(),card]));
+ const cards=[...source.querySelectorAll(":scope > .card")],historyCards=new Map(cards.map(card=>[historyIdentityKey(historyIdentityFromCard(card)),card]).filter(([key])=>key));
  const shelves=v3Shelves.map(v=>({id:String(v.shelf_id||"").trim(),name:String(v3ShelfText(v)||"").trim(),sort:Number.isFinite(Number(v.display_order))?Number(v.display_order):999999})).filter(v=>v.id&&v.name).sort((a,b)=>a.sort-b.sort),known=new Set(shelves.map(x=>x.id));
  const shelfMembers=new Map(shelves.map(x=>[x.id,[]])),unknownShelfCards=[],unclassified=[];
  cards.forEach(card=>{
@@ -1006,7 +1028,7 @@ document.addEventListener("click",e=>{
   const link=e.target.closest("a.workLink, a.resumeLink");
   if(link){
     const card=link.closest(".card");
-    if(card)recordReadingHistory(card.dataset.ncode);
+    if(card)recordReadingHistory(card);
   }
 });
 
