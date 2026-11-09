@@ -21,12 +21,12 @@ h1{font-size:23px;line-height:1.35;margin:18px 0 5px}h2{font-size:19px;margin:30
 <div class="section warning"><strong>注意：</strong>コードで確認できた構造と、ブラウザ実機の診断が必要な項目を分けて記載する。未確認のkeyPathは推測しない。旧DB・旧localStorageは全機能の移行と実機確認が終わるまで削除しない。</div>
 <h2>1. IndexedDB一覧</h2>
 <div class="section table-wrap"><table><thead><tr><th>DB / version</th><th>Object Store</th><th>主キー・構造</th><th>役割・接続</th></tr></thead><tbody>
-<tr><td>tomotaYomuWorksDB<br>v2</td><td>works</td><td>keyPath: id<br>index: site / workId / authorId / shelfId（非unique）</td><td>共通作品DB。3,510件で初期構築。なろう読書位置の読み書き先。</td></tr>
+<tr><td>tomotaYomuWorksDB<br>v2</td><td>works</td><td>keyPath: id<br>index: site / workId / authorId / shelfId（非unique）</td><td>正本の共通作品DB。2026-11-09時点で3,600件（なろう3,596 / note2 / カクヨム2）。</td></tr>
 <tr><td>同上 v2</td><td>shelves</td><td>keyPath: shelf_id</td><td>共通棚マスター。shelf_name / display_order / work_add_target。</td></tr>
-<tr><td>tomotaYomuDB<br>v1</td><td>shelf_names</td><td>keyPath: shelf_id（移行監査で確認）</td><td>旧棚マスター。現行本体・本棚管理の参照が残る。</td></tr>
-<tr><td>同上 v1</td><td>shelf_placement</td><td>keyPath等：実機DB診断で確認</td><td>旧作品の棚配置。本体の棚表示・移動が参照。</td></tr>
-<tr><td>同上 v1</td><td>works_cache</td><td>keyPath等：実機DB診断で確認</td><td>旧なろう作品キャッシュ。本体の作品カード構築が参照。</td></tr>
-<tr><td>同上 v1</td><td>authors</td><td>keyPath等：実機DB診断で確認</td><td>作者情報。作者管理・Atom作者一覧等が参照。</td></tr>
+<tr><td>tomotaYomuDB<br>v1</td><td>shelf_names</td><td>keyPath: shelf_id（移行監査で確認）</td><td>旧棚マスター。現行本体・通常管理画面からの参照は切離し済み。診断・保全用に保持。</td></tr>
+<tr><td>同上 v1</td><td>shelf_placement</td><td>keyPath等：実機DB診断で確認</td><td>旧棚配置。現行本体・本棚管理は新DB works.shelfIdを使用。旧データ保持。</td></tr>
+<tr><td>同上 v1</td><td>works_cache</td><td>keyPath等：実機DB診断で確認</td><td>旧なろう作品キャッシュ。現行本体の作品カード構築では参照しない。旧データ保持。</td></tr>
+<tr><td>同上 v1</td><td>authors</td><td>keyPath等：実機DB診断で確認</td><td>旧作者情報。現行作者管理は新DB作品レコードを使用。旧作者localStorage台帳との互換処理は残存。</td></tr>
 <tr><td>同上 v1</td><td>reading_position</td><td>keyPath等：実機DB診断で確認</td><td>旧読書位置。新DB切替後の本体読書処理では参照しない。データは保持。</td></tr>
 <tr><td>tomotaYomuAtomDB<br>v1</td><td>entries / meta</td><td>entryId / key</td><td>作者Atom取得結果・補助メタデータ。</td></tr>
 <tr><td>tomotaMemoDB<br>v1</td><td>items</td><td>keyPath: id<br>index: parentId（非unique）</td><td>ともためも。作品DBとは独立。</td></tr>
@@ -44,15 +44,15 @@ h1{font-size:23px;line-height:1.35;margin:18px 0 5px}h2{font-size:19px;margin:30
 </ul></div>
 <h2>3. 画面・処理の接続一覧</h2>
 <div class="section table-wrap"><table><thead><tr><th>画面・処理</th><th>読み取り</th><th>書き込み</th><th>移行状態</th></tr></thead><tbody>
-<tr><td>index.html 作品カード構築</td><td>旧DB shelf_names / shelf_placement / works_cache / authors。note・カクヨムはlocalStorage</td><td>note・カクヨム情報を各localStorage</td><td>作品全体の新DB一本化は未完了</td></tr>
+<tr><td>index.html 作品カード構築</td><td>新DB works / shelves</td><td>新DB works（読書位置・しおり・サイト情報等）</td><td>新DBを正本として読込。note・カクヨムも切替済み。</td></tr>
 <tr><td>index.html なろう読書位置</td><td>新DB works.reading</td><td>新DB works.reading</td><td>切替済み。旧読書キー・旧reading_positionは読書処理から切離し</td></tr>
-<tr><td>index.html 棚移動</td><td>旧DB shelf_placement</td><td>旧DB shelf_placement</td><td>新DB works.shelfIdへの切替は未実施</td></tr>
-<tr><td>index.html 作者Atom</td><td>旧DB authors、Atom DB entries/meta、公開JSON</td><td>Atom DB entries/meta</td><td>Atom DB独立維持</td></tr>
-<tr><td>index.html 履歴</td><td>localStorage tomotaYomu_v330_reading_history</td><td>同キー</td><td>3サイト共通。最大30件保存、最大10件表示</td></tr>
-<tr><td>index.html note / カクヨム作品</td><td>各サイトlocalStorage</td><td>各サイトlocalStorage</td><td>新DB切替待ち</td></tr>
-<tr><td>app/shelf/shelf_manager.html</td><td>旧DB shelf_names / shelf_placement / works_cache</td><td>旧DB shelf_names等、localStorage設定</td><td>新DB棚マスターへの切替待ち</td></tr>
-<tr><td>app/author/author.html</td><td>旧DB authors等</td><td>旧DB authors</td><td>移行待ち</td></tr>
-<tr><td>app/kakuyomu/kakuyomu_edit.html</td><td>localStorage kakuyomu_works</td><td>同キー</td><td>移行待ち</td></tr>
+<tr><td>index.html 棚移動</td><td>新DB works.shelfId / shelves</td><td>旧DB shelf_placement</td><td>切替済み。</td></tr>
+<tr><td>index.html 作者Atom</td><td>新DB worksの作者フィールド、Atom DB entries/meta、公開JSON</td><td>Atom DB entries/meta</td><td>Atom DB独立維持</td></tr>
+<tr><td>index.html 履歴</td><td>localStorage tomotaYomu_v330_reading_history</td><td>新DB works</td><td>3サイト共通。最大30件保存、最大10件表示</td></tr>
+<tr><td>index.html note / カクヨム作品</td><td>新DB works（site別）</td><td>各サイトlocalStorage</td><td>切替済み。localStorageは作品本体の正本ではない。</td></tr>
+<tr><td>app/shelf/shelf_manager.html</td><td>新DB works / shelves</td><td>旧DB shelf_names等、localStorage設定</td><td>切替済み。localStorageは混在棚表示順等のUI設定のみ。</td></tr>
+<tr><td>app/author/author.html</td><td>新DB works＋旧作者localStorage台帳の照合</td><td>旧DB authors</td><td>主処理は新DB。旧作者台帳の不足情報補完・照合を残す。旧キーは保持。</td></tr>
+<tr><td>app/kakuyomu/kakuyomu_edit.html</td><td>新DB works（site=kakuyomu）</td><td>同キー</td><td>移行待ち</td></tr>
 <tr><td>app/memo/tomota_memo.html</td><td>tomotaMemoDB/items</td><td>tomotaMemoDB/items</td><td>独立維持</td></tr>
 <tr><td>GitHub Actions</td><td>data/author-list.json等</td><td>data/atom/author-feeds.json、data/note-index-*.json、data/kakuyomu-toc/*.json</td><td>workflowと生成先の参照を維持</td></tr>
 </tbody></table></div>
