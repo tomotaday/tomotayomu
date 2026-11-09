@@ -17,7 +17,7 @@ h1{font-size:23px;line-height:1.35;margin:18px 0 5px}h2{font-size:19px;margin:30
 <a class="back" href="../index.html">← ともたよむ本棚へ戻る</a>
 <h1>DB構成表・接続一覧</h1>
 <p class="lead">DB・Object Store・localStorageと、画面／処理の接続先をまとめた資料。次回の修正前に、どの機能がどこを読んで書くかを確認する。</p>
-<p class="meta">最終確認日：2026-11-09｜アプリ基準版：v3.8.0｜対象：GitHub main</p>
+<p class="meta">最終確認日：2026-11-10｜アプリ基準版：v3.8.0｜対象：GitHub main</p>
 <div class="section warning"><strong>注意：</strong>コードで確認できた構造と、ブラウザ実機の診断が必要な項目を分けて記載する。未確認のkeyPathは推測しない。旧DB・旧localStorageは全機能の移行と実機確認が終わるまで削除しない。</div>
 <h2>1. IndexedDB一覧</h2>
 <div class="section table-wrap"><table><thead><tr><th>DB / version</th><th>Object Store</th><th>主キー・構造</th><th>役割・接続</th></tr></thead><tbody>
@@ -56,7 +56,7 @@ h1{font-size:23px;line-height:1.35;margin:18px 0 5px}h2{font-size:19px;margin:30
 <tr><td>app/memo/tomota_memo.html</td><td>tomotaMemoDB/items</td><td>tomotaMemoDB/items</td><td>独立維持</td></tr>
 <tr><td>GitHub Actions</td><td>data/author-list.json等</td><td>data/atom/author-feeds.json、data/note-index-*.json、data/kakuyomu-toc/*.json</td><td>workflowと生成先の参照を維持</td></tr>
 </tbody></table></div>
-<h2>4. localStorage主要キー</h2>
+<h2>4. localStorage主要キー</h2><p>作品本体・棚・しおりの正本は新DB。以下は移行元の残存データ、表示設定、UI状態、一時受け渡しなどであり、用途を確認せず一括削除しない。</p>
 <div class="section table-wrap"><table><thead><tr><th>キー</th><th>用途</th><th>扱い</th></tr></thead><tbody>
 <tr><td>tomotaYomu_note_magazines_v1</td><td>noteマガジン情報・しおり</td><td>新DB移行待ち</td></tr>
 <tr><td>tomotaYomu_kakuyomu_works_v1</td><td>カクヨム作品情報・しおり</td><td>新DB移行待ち</td></tr>
