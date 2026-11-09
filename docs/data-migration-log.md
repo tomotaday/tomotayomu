@@ -388,3 +388,6 @@
 - 変更前 index SHA：`b8534fc60183f7ff91a46df7ba7962cd9969be35`
 - 変更後 index blob SHA：`2b4135d9a1e332edd69dde3daa01de561e076dd0`
 - **現在の状態：コード切替済み。Brave実機での表示・読書位置更新・短編既読切替・再読み込み後の保持を確認待ち。確認完了までは次の移行項目へ進まない。**
+
+- 追加修正commit：`bd263d33a63c22681633c10babec69225604474d`。本棚再構築処理内に残っていた旧DB `reading_position` の読み込み・localStorageへの書き戻しも除去。移行済み読書位置について、旧DB/localStorageを参照・更新しない状態に整理した。
+- **最終コードSHA：`dd9730059af18832b6f9b9b15d0b01c1cbeb515c`。**
