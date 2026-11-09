@@ -254,3 +254,12 @@
 - 新DB `tomotaYomuWorksDB` に独立ストア `shelves` を追加する方針。作品ストア `works` の既存3,510件と旧DBは変更しない。
 - **この記録時点では、新DBのバージョン変更・ストア追加・データコピーは未実施。専用ページ作成前の仕様確定のみ。**
 - 次工程：既存DBの `works` を保持したままDBバージョンを上げて `shelves` を追加する専用ページを作成。旧DB `shelf_names` は読み取りのみ。保存前後に14件・キー・値・重複を検査し、既存作品3,510件が維持されることを確認する。
+
+
+- 棚マスター専用移行ページ `tools/diagnostic/shelf_master_migration.html` を追加。
+- ページは旧DB `tomotaYomuDB/shelf_names` をreadonlyで読み取り、4項目のみを新DB `tomotaYomuWorksDB/shelves` にコピーする設計。
+- 新DBはversion 1から2へ更新し、既存 `works` ストアを保持したまま `shelves`（主キー `shelf_id`）を追加する。
+- 実行前に旧棚マスター14件、ID・shelf_name・display_orderの重複、work_add_target型、新DB works 3,510件、shelves未作成または空を検査。既存shelvesデータがあれば停止。
+- 保存後にshelves全件を再読込して14件を再検査し、works件数3,510件の維持を確認する。旧DB・localStorage・Atom DB・Memo DB・本体index.htmlは操作しない。
+- ページ追加commit：`00904e89a42e58b5545abfab77c5decb4a826afc`
+- **現在の状態：ページ作成のみ完了。Braveでの実行・新DB version更新・shelvesへの保存はまだ未実施。**
