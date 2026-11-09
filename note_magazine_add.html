@@ -48,16 +48,13 @@ a{color:#24548b}
 </section>
 </main>
 <script>
-const NOTE_ITEMS_KEY="tomotaYomu_note_magazines_v1";
-const DB_NAME="tomotaYomuDB", DB_VERSION=1;
+const DB_NAME="tomotaYomuWorksDB";
 const $=id=>document.getElementById(id);
 let magazineData=null, magazineUrl="", magazineKey="", authorId="", existingItem=null, loadToken=0;
 
 function setStatus(message,kind=""){const e=$("status");e.textContent=message;e.className="status "+kind}
-function readNoteItems(){try{const v=JSON.parse(localStorage.getItem(NOTE_ITEMS_KEY)||"null");return Array.isArray(v)?v:[]}catch(e){return []}}
-function writeNoteItems(items){localStorage.setItem(NOTE_ITEMS_KEY,JSON.stringify(items))}
-function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error("本棚データベースを開けません"));})}
-function readAll(db,name){return new Promise((resolve,reject)=>{if(!db.objectStoreNames.contains(name)){resolve([]);return}const out=[],r=db.transaction(name,"readonly").objectStore(name).openCursor();r.onsuccess=()=>{if(r.result){out.push(r.result.value);r.result.continue()}else resolve(out)};r.onerror=()=>reject(r.error||new Error(name+"の読み込みに失敗しました"));})}
+function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME);r.onupgradeneeded=()=>{r.transaction.abort();reject(new Error("新DBが未作成です"))};r.onsuccess=()=>{const db=r.result;if(db.version!==2||!db.objectStoreNames.contains("works")||!db.objectStoreNames.contains("shelves")){db.close();reject(new Error("新DB構造が想定外です"));return}resolve(db)};r.onerror=()=>reject(r.error||new Error("新DBを開けません"))})}
+function readAll(db,name){return new Promise((resolve,reject)=>{const out=[],r=db.transaction(name,"readonly").objectStore(name).openCursor();r.onsuccess=()=>{if(r.result){out.push(r.result.value);r.result.continue()}else resolve(out)};r.onerror=()=>reject(r.error||new Error(name+"読込失敗"))})}
 function validMagazineUrl(raw){
   let u;try{u=new URL(raw)}catch(e){throw new Error("共有されたURLを読み取れません。noteマガジンのページから共有してください。")}
   const m=u.pathname.match(/^\/([a-zA-Z0-9_-]+)\/m\/([a-zA-Z0-9]+)\/?$/);
@@ -111,45 +108,23 @@ async function showDetails(){
 }
 $("magazineTitle").addEventListener("input",()=>{$("register").disabled=!magazineData||!String($("magazineTitle").value||"").trim()});
 $("register").addEventListener("click",async()=>{
-  const btn=$("register");btn.disabled=true;
-  try{
-    const title=String($("magazineTitle").value||"").trim();
-    const author=String($("magazineAuthor").value||"").trim();
-    if(!title)throw new Error("本棚に表示するマガジン名を入力してください。");
-    const items=readNoteItems();
-    const old=items.find(x=>String(x.id)==="note-magazine:"+magazineKey)||null;
-    let shelfId=String(old?.shelfId||"");
-    if(!shelfId){
-      const db=await openDB();
-      try{
-        const shelves=await readAll(db,"shelf_names");
-        const unclassified=shelves.find(v=>String(v?.shelf_name??v?.name??v?.title??"").replace(/\s/g,"").includes("未分類"));
-        shelfId=String(unclassified?.shelf_id||"");
-      }finally{db.close()}
-    }
-    const updated={
-      ...(old||{}),
-      id:"note-magazine:"+magazineKey,
-      title,author,
-      authorId,
-      url:magazineUrl,
-      bookmarkUrl:String(old?.bookmarkUrl||magazineUrl),
-      shelfId,
-      createdAt:String(old?.createdAt||new Date().toISOString().slice(0,10)),
-      lastIndexFetchedAt:String(magazineData.fetchedAt||""),
-      indexItemCount:Number(magazineData.totalItems||magazineData.items.length||0),
-      indexFile:"data/note-index-"+magazineKey+".json"
-    };
-    const index=items.findIndex(x=>String(x.id)===updated.id);
-    if(index<0)items.push(updated);else items[index]={...items[index],...updated};
-    writeNoteItems(items);
-    existingItem=updated;
-    setStatus((index<0?"✅ 本棚への登録が完了しました。":"✅ 登録済みマガジンの情報を更新しました。")+"\n本棚を開き直すと反映されます。","success");
-    btn.textContent="登録完了";
-  }catch(e){
-    setStatus("登録できませんでした："+e.message,"error");
-    btn.disabled=false;
-  }
+ const btn=$("register");btn.disabled=true;let db;
+ try{
+  const title=String($("magazineTitle").value||"").trim(),author=String($("magazineAuthor").value||"").trim();
+  if(!title)throw new Error("本棚に表示するマガジン名を入力してください。");
+  db=await openDB();
+  const rows=await readAll(db,"works"),canonicalId="note:"+magazineKey;
+  const old=rows.find(x=>x.id===canonicalId||x.site==="note"&&String(x.workId)===magazineKey)||null;
+  let shelfId=String(old?.shelfId||"");
+  if(!shelfId){const shelves=await readAll(db,"shelves");const unclassified=shelves.find(v=>String(v?.shelf_name||"").replace(/\s/g,"").includes("未分類"));shelfId=String(unclassified?.shelf_id||"")}
+  const legacy={...(old?.siteData?.legacyFields||{}),id:magazineKey,title,author,authorId,shelfId,url:magazineUrl,bookmarkUrl:old?.bookmark?.url||old?.siteData?.legacyFields?.bookmarkUrl||magazineUrl,bookmarkEpisodeId:"",bookmarkEpisodeUrl:old?.bookmark?.url||magazineUrl,createdAt:String(old?.siteData?.legacyFields?.createdAt||new Date().toISOString().slice(0,10)),lastIndexFetchedAt:String(magazineData.fetchedAt||""),indexItemCount:Number(magazineData.totalItems||magazineData.items.length||0),indexFile:"data/note-index-"+magazineKey+".json",lastPublishedAt:String(magazineData.items[magazineData.items.length-1]?.publish_at||old?.lastPublishedAt||"")};
+  const updated={...(old||{}),id:canonicalId,site:"note",workId:magazineKey,title,authorName:author,authorId,shelfId,url:magazineUrl,lastPublishedAt:legacy.lastPublishedAt,status:old?.status||legacy.status||"",reading:old?.reading||{position:null,isRead:null},bookmark:{...(old?.bookmark||{}),url:legacy.bookmarkUrl},siteData:{...(old?.siteData||{}),sourceUrl:magazineUrl,isR18:false,legacyFields:legacy}};
+  await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite");tx.objectStore("works").put(updated);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存失敗"));tx.onabort=()=>reject(tx.error||new Error("保存中止"))});
+  existingItem=updated;
+  setStatus("✅ 新DBへの登録・更新が完了しました。\n本棚を開き直すと反映されます。","success");
+  btn.textContent="登録完了";
+ }catch(e){setStatus("登録できませんでした："+e.message,"error");btn.disabled=false}
+ finally{if(db)db.close()}
 });
 (async()=>{
   try{
