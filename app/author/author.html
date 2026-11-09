@@ -223,67 +223,26 @@ function kanaGroup(v){
   return "🔤 読み仮名未登録";
 }
 async function fetchNormalKanas(){
-  const {db,authors}=await readIndexed();
-  const groups=new Map();
-  authors.forEach(a=>{
-    if(!a||String(a.authorType||"")!=="normal")return;
-    const id=String(a.authorId||"").trim();
-    if(!/^\d+$/.test(id))return;
-    if(!groups.has(id))groups.set(id,{id,rows:[],kana:String(a.authorKana||"").trim(),checked:Boolean(a.authorKanaChecked)});
-    const g=groups.get(id);
-    g.rows.push(a);
-    if(!g.kana&&a.authorKana)g.kana=String(a.authorKana).trim();
-    if(a.authorKanaChecked)g.checked=true;
-  });
-
-  // ふりがなが保存済み、またはAPI確認済みなら再取得しない。
-  const targets=[...groups.values()].filter(g=>!g.kana&&!g.checked);
-  if(!targets.length)return {target:0,updated:0,missing:0};
-
-  let updated=0,missing=0;
-  const errors=[];
-  for(let i=0;i<targets.length;i++){
-    const g=targets[i];
-    document.getElementById("notice").textContent="全年齢作者のふりがなを取得中… "+(i+1)+"/"+targets.length;
-    try{
-      const api="https://api.syosetu.com/userapi/api/?out=jsonp&of=u-n-y-1&lim=1&userid="+encodeURIComponent(g.id);
-      let data;
-      try{
-        data=await jsonp(api);
-      }catch(firstError){
-        // 一時的なJSONP失敗だけ1回再試行する。
-        await new Promise(r=>setTimeout(r,300));
-        data=await jsonp(api+"&_cb="+Date.now());
-      }
-      const row=Array.isArray(data)?data.find(x=>x&&String(x.userid||"")===g.id):null;
-      const kana=kanaToHiragana(row?.yomikata||"");
-
-      await new Promise((resolve,reject)=>{
-        const tx=db.transaction("authors","readwrite"),st=tx.objectStore("authors");
-        g.rows.forEach(a=>{
-          st.put({...a,authorKana:kana,authorKanaFirst:kana.charAt(0),authorKanaChecked:true});
-        });
-        tx.oncomplete=resolve;
-        tx.onerror=()=>reject(tx.error||new Error("ふりがな保存失敗"));
-        tx.onabort=()=>reject(tx.error||new Error("ふりがな保存中止"));
-      });
-
-      if(kana)updated++;
-      else missing++;
-    }catch(e){
-      // API通信そのものに失敗した場合だけ未確認として残し、次回再試行する。
-      errors.push(g.id+":"+e.message);
-      missing++;
-    }
-    await new Promise(r=>setTimeout(r,120));
-  }
-
-  if(errors.length){
-    throw new Error("API取得に失敗した作者 "+errors.length+"人："+errors.slice(0,3).join(" / "));
-  }
-  return {target:targets.length,updated,missing};
+ const db=await openDB(),raw=await readAll(db,"works"),authors=raw.filter(w=>w.site==="narou"&&String(w.authorId||"").trim()&&w.authorType!=="r18");
+ const groups=new Map();
+ authors.forEach(w=>{const id=String(w.authorId||"").trim();if(!/^\d+$/.test(id))return;if(!groups.has(id))groups.set(id,{id,rows:[],kana:String(w.authorKana||"").trim(),checked:Boolean(w.authorKanaChecked)});const g=groups.get(id);g.rows.push(w);if(!g.kana&&w.authorKana)g.kana=String(w.authorKana).trim();if(w.authorKanaChecked)g.checked=true});
+ const targets=[...groups.values()].filter(g=>!g.kana&&!g.checked);
+ if(!targets.length){db.close();return {target:0,updated:0,missing:0}}
+ let updated=0,missing=0;const errors=[];
+ for(let i=0;i<targets.length;i++){
+  const g=targets[i];document.getElementById("notice").textContent="全年齢作者のふりがなを取得中… "+(i+1)+"/"+targets.length;
+  try{
+   const api="https://api.syosetu.com/userapi/api/?out=jsonp&of=u-n-y-1&lim=1&userid="+encodeURIComponent(g.id);let data;
+   try{data=await jsonp(api)}catch(firstError){await new Promise(r=>setTimeout(r,300));data=await jsonp(api+"&_cb="+Date.now())}
+   const row=Array.isArray(data)?data.find(x=>x&&String(x.userid||"")===g.id):null,kana=kanaToHiragana(row?.yomikata||"");
+   await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite"),st=tx.objectStore("works");g.rows.forEach(w=>st.put({...w,authorKana:kana,authorKanaFirst:kana.charAt(0),authorKanaChecked:true}));tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("ふりがな保存失敗"));tx.onabort=()=>reject(tx.error||new Error("ふりがな保存中止"))});
+   if(kana)updated++;else missing++;
+  }catch(e){errors.push(g.id+":"+e.message);missing++}
+  await new Promise(r=>setTimeout(r,120));
+ }
+ db.close();if(errors.length)throw new Error("API取得に失敗した作者 "+errors.length+"人："+errors.slice(0,3).join(" / "));
+ return {target:targets.length,updated,missing};
 }
-
 function renderList(id,arr,linkedSet){
   const box=document.getElementById(id), works0=arr.filter(w=>!linkedSet.has(ncode(w.ncode)));
   if(!works0.length){box.innerHTML='<div class="notice">🎉 未登録作品はありません。</div>';return;}
