@@ -60,16 +60,7 @@ summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;
 <script>
 const VERSION="3.1.0.13";
 const DB_NAME="tomotaYomuWorksDB";
-const LEGACY_MASTER_KEY="tomotayomu_v214_works_master";
-const LEGACY_AUTHORS_KEY2="tomotaYomu_authors";
-const LEGACY_LINKS_KEY="tomotaYomu_author_links";
-const LEGACY_V215_AUTHOR_KEY="tomotaYomu_v215_author_registry";
-const LEGACY_V215_DONE_KEY="tomotaYomu_v215_author_done_ncodes";
 function esc(s){return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
-function readJson(key,fallback){try{const v=JSON.parse(localStorage.getItem(key)||"");return v??fallback;}catch(e){return fallback;}}
-function legacyMaster(){return readJson(LEGACY_MASTER_KEY,{});}
-function legacyAuthors(){return readJson(LEGACY_AUTHORS_KEY2,{});}
-function legacyLinks(){return readJson(LEGACY_LINKS_KEY,{});}
 function ncode(v){return String(v||"").trim().toUpperCase();}
 function parseAuthor(url){
   const s=String(url||"").trim();
@@ -109,34 +100,6 @@ function adaptWork(w){const legacy=w.siteData?.legacyFields||{};return {...w,nco
 async function getWorksAndAuthors(){const db=await openDB(),raw=await readAll(db,"works"),works=raw.filter(w=>w.site==="narou").map(adaptWork);return {db,works,authors:works.filter(w=>String(w.authorId||"").trim())}}
 async function readIndexed(){return getWorksAndAuthors()}
 async function writeAuthorFields(authorId,patch){const db=await openDB(),raw=await readAll(db,"works"),targets=raw.filter(w=>w.site==="narou"&&String(w.authorId||"").trim()===String(authorId).trim());if(!targets.length){db.close();throw new Error("対象作者の作品紐付けが見つかりません。")}await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite"),st=tx.objectStore("works");targets.forEach(w=>st.put({...w,...patch}));tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("作者情報保存失敗"));tx.onabort=()=>reject(tx.error||new Error("作者情報保存中止"))});db.close()}
-async function mergeAuthorLinksToIndexedDB(){
- const legacyA=legacyAuthors(),legacyL=legacyLinks(),db=await openDB();
- let raw;
- try{raw=await readAll(db,"works")}catch(error){db.close();throw error}
- const byCode=new Map(raw.filter(w=>w.site==="narou").map(w=>[workCode(w),w]));
- const updates=[];let missingWork=0,missingAuthor=0,conflicts=0,alreadyMatched=0;
- for(const code of Object.keys(legacyL)){
-  const n=ncode(code),id=String(legacyL[code]||"").trim(),author=legacyA[id],w=byCode.get(n);
-  if(!n||!id)continue;
-  if(!w){missingWork++;continue}
-  if(!author){missingAuthor++;continue}
-  const current=String(w.authorId||"").trim();
-  if(current){
-   if(current===id)alreadyMatched++;
-   else conflicts++;
-   continue;
-  }
-  updates.push({...w,authorId:id,authorType:author.type==="r18"?"r18":"normal",authorName:author.authorName||w.authorName||"",authorUrl:author.authorUrl||""});
- }
- try{
-  if(updates.length)await new Promise((resolve,reject)=>{
-   const tx=db.transaction("works","readwrite"),st=tx.objectStore("works");
-   updates.forEach(w=>st.put(w));
-   tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("旧作者情報の移行失敗"));tx.onabort=()=>reject(tx.error||new Error("旧作者情報の移行中止"));
-  });
- }finally{db.close()}
- return {migrated:updates.length,missingWork,missingAuthor,conflicts,alreadyMatched,legacyLinks:Object.keys(legacyL).length};
-}
 async function render(){
   const {works,authors}=await readIndexed();
   const rows=authors.filter(a=>a&&a.ncode);
@@ -390,28 +353,14 @@ document.getElementById("launchAtomUpdate").addEventListener("click",()=>{
 
 (async()=>{
   try{
-    const legacyA=legacyAuthors(),legacyL=legacyLinks(),legacyM=legacyMaster();
-    const legacyV215A=readJson(LEGACY_V215_AUTHOR_KEY,{});
-    const legacyV215Done=readJson(LEGACY_V215_DONE_KEY,[]);
-    const legacyAuthorCount=Object.keys(legacyA).length,legacyLinkCount=Object.keys(legacyL).length,legacyMasterCount=Object.keys(legacyM).length;
-    const legacyV215AuthorCount=Object.keys(legacyV215A).length,legacyV215DoneCount=Array.isArray(legacyV215Done)?legacyV215Done.length:0;
-    const migration=await mergeAuthorLinksToIndexedDB();
     await render();
-    const notice=document.getElementById("notice");
-    if(migration.migrated||migration.missingWork||migration.missingAuthor||migration.conflicts){
-      notice.textContent="旧作者台帳の照合結果｜新DBへ補完："+migration.migrated+"作品｜既に一致："+migration.alreadyMatched+"｜旧台帳側の作品未登録："+migration.missingWork+"｜旧作者情報なし："+migration.missingAuthor+"｜作者ID不一致："+migration.conflicts+"｜旧作者："+legacyAuthorCount+"｜旧紐付け："+legacyLinkCount;
-    }else if(legacyAuthorCount||legacyLinkCount){
-      notice.textContent="旧作者台帳との照合完了｜追加補完なし｜既に一致："+migration.alreadyMatched+"｜旧作者："+legacyAuthorCount+"｜旧紐付け："+legacyLinkCount+"｜旧台帳は保管中";
-    }else{
-      notice.textContent="旧作者台帳：作者0｜紐付け0｜旧v2.1.5作者："+legacyV215AuthorCount+"｜処理済みNコード："+legacyV215DoneCount+"｜旧作品マスター："+legacyMasterCount;
-    }
     await handleIncoming();
     try{
       const kanaResult=await fetchNormalKanas();
       await render();
       if(kanaResult.target && kanaResult.missing){
         document.getElementById("notice").textContent="⚠️ 全年齢ふりがな：取得できなかった作者 "+kanaResult.missing+"人が未登録のままです。";
-      }else if(!legacyAuthorCount&&!legacyLinkCount&&!legacyV215AuthorCount&&!legacyV215DoneCount&&!legacyMasterCount){
+      }else if(!kanaResult.target){
         document.getElementById("notice").hidden=true;
       }
     }catch(e){
@@ -420,7 +369,7 @@ document.getElementById("launchAtomUpdate").addEventListener("click",()=>{
   }catch(e){
     document.getElementById("notice").textContent="⚠️ 作者管理のIndexedDB読込失敗｜"+e.message;
   }
-})();
+})();;
 </script>
 </body>
 </html>
