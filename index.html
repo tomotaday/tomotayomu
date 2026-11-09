@@ -710,47 +710,98 @@ function restoreReadingFromQuery(){
   return true;
 }
 
+let worksReadingMap=Object.create(null);
+let worksReadingReady=false;
+
+async function openExistingWorksDB(){
+  if(!indexedDB.databases)throw new Error("ブラウザがIndexedDB一覧に対応していません");
+  const list=await indexedDB.databases();
+  if(!list.some(x=>x.name==="tomotaYomuWorksDB"))throw new Error("新DB tomotaYomuWorksDB が見つかりません");
+  return await new Promise((resolve,reject)=>{
+    const req=indexedDB.open("tomotaYomuWorksDB");
+    req.onupgradeneeded=()=>{req.transaction.abort();reject(new Error("新DBの更新が必要なため停止しました"))};
+    req.onsuccess=()=>{const db=req.result;if(db.version!==2||!db.objectStoreNames.contains("works")){db.close();reject(new Error("新DBの構造が想定外です"));return}resolve(db)};
+    req.onerror=()=>reject(req.error||new Error("新DBを開けません"));
+    req.onblocked=()=>reject(new Error("新DBを別タブが使用中です"));
+  });
+}
+async function loadReadingFromWorksDB(){
+  const db=await openExistingWorksDB();
+  try{
+    const rows=await new Promise((resolve,reject)=>{
+      const tx=db.transaction("works","readonly"),req=tx.objectStore("works").getAll();
+      req.onsuccess=()=>resolve(req.result||[]);
+      req.onerror=()=>reject(req.error||new Error("新DBの読書状態を読み込めません"));
+      tx.onerror=()=>reject(tx.error||new Error("新DBの読書状態読込に失敗しました"));
+    });
+    const next=Object.create(null);
+    rows.forEach(w=>{
+      if(w.site!=="narou")return;
+      const n=String(w.workId||"").toUpperCase();
+      if(!n)return;
+      const reading=w.reading||{};
+      if(reading.isRead===true)next[n]=1;
+      else if(reading.isRead===false)next[n]=0;
+      else if(Number.isFinite(reading.position))next[n]=reading.position;
+      else next[n]=null;
+    });
+    worksReadingMap=next;
+    worksReadingReady=true;
+    return rows.length;
+  }finally{db.close()}
+}
 function prepareReadingCards(){
+  if(!worksReadingReady)throw new Error("新DBの読書状態が未読込です");
   const m=readingMap();
-  let changed=false;
   document.querySelectorAll("#shelf .card").forEach(card=>{
     if(card.dataset.noteId)return;
     const n=String(card.dataset.ncode||"").toUpperCase();
     if(!n)return;
-    if(!(n in m)){
-      const v=card.dataset.current;
-      m[n]=(v!=="" && /^\\d+$/.test(v)) ? Number(v) : null;
-      changed=true;
-    }
-    const raw=m[n];
-    const current=Number.isFinite(Number(raw)) ? Number(raw) : null;
+    const raw=Object.prototype.hasOwnProperty.call(m,n)?m[n]:null;
+    const current=raw===null||raw===undefined||!Number.isFinite(Number(raw))?null:Number(raw);
     const total=Number(card.dataset.totalEpisodes||0);
     const workUrl=card.querySelector(".workLink")?.href||"";
     const isShortStory=String(card.dataset.noveltype||"").trim()==="2";
-    card.dataset.current=current==null ? "" : String(current);
+    card.dataset.current=current==null?"":String(current);
     renderResumeLink(card,current,total,workUrl,isShortStory);
   });
-  if(changed)saveJSON(READ_KEY,m);
 }
-
-function readingMap(){ return loadJSON(READ_KEY,{}); }
-function readingFor(n){ const r=readingMap()[String(n).toUpperCase()]; return Number.isFinite(Number(r)) ? Number(r) : null; }
-function setReading(n,episode){ const key=String(n).toUpperCase(), value=Number(episode); const m=readingMap(); m[key]=value; saveJSON(READ_KEY,m); saveReadingToIndexedDB(key,value); }
-function saveReadingToIndexedDB(n,episode){ try{ const r=indexedDB.open("tomotaYomuDB",1); r.onsuccess=()=>{ const d=r.result; if(!d.objectStoreNames.contains("reading_position"))return; const t=d.transaction("reading_position","readwrite"); t.objectStore("reading_position").put({ncode:n,episode:Number(episode)}); }; }catch(e){ console.warn("reading_position保存失敗",e); } }
-function seedReadingCache(){
-  const m=readingMap(); let changed=false;
-  document.querySelectorAll("#shelf .card").forEach(card=>{
-    if(card.dataset.noteId)return;
-    const n=String(card.dataset.ncode||"").toUpperCase();
-    if(!n)return;
-    if(!(n in m)){
-      const v=card.dataset.current;
-      if(v!=="" && /^\d+$/.test(v)) m[n]=Number(v); else m[n]=null;
-      changed=true;
-    }
+function readingMap(){return worksReadingMap;}
+function readingFor(n){
+  const key=String(n).toUpperCase();
+  if(!Object.prototype.hasOwnProperty.call(worksReadingMap,key))return null;
+  const value=worksReadingMap[key];
+  return Number.isFinite(Number(value))?Number(value):null;
+}
+function setReading(n,episode){
+  const key=String(n).toUpperCase(),value=Number(episode);
+  const card=[...document.querySelectorAll("#shelf .card")].find(el=>String(el.dataset.ncode||"").toUpperCase()===key);
+  const previous=worksReadingMap[key];
+  const isShortStory=String(card?.dataset?.noveltype||"").trim()==="2";
+  worksReadingMap[key]=value;
+  openExistingWorksDB().then(db=>new Promise((resolve,reject)=>{
+    const tx=db.transaction("works","readwrite"),store=tx.objectStore("works"),req=store.get("narou:"+key);
+    req.onsuccess=()=>{
+      const record=req.result;
+      if(!record){tx.abort();reject(new Error("新DBに作品がありません："+key));return}
+      record.reading=record.reading||{position:null,isRead:null};
+      if(isShortStory){record.reading.position=null;record.reading.isRead=value>=1}
+      else{record.reading.position=value;record.reading.isRead=null}
+      store.put(record);
+    };
+    req.onerror=()=>{tx.abort();reject(req.error||new Error("読書状態の取得に失敗しました"))};
+    tx.oncomplete=resolve;
+    tx.onerror=()=>reject(tx.error||new Error("読書状態の保存に失敗しました"));
+    tx.onabort=()=>reject(tx.error||new Error("読書状態の保存を中止しました"));
+  }).finally(()=>db.close())).catch(error=>{
+    worksReadingMap[key]=previous??null;
+    console.error("新DB読書状態保存失敗",error);
+    const status=document.getElementById("apiStatus");
+    if(status)status.textContent="しおりの保存に失敗しました："+error.message;
   });
-  if(changed)saveJSON(READ_KEY,m);
 }
+function seedReadingCache(){}
+
 function renderResumeLink(card,current,total,workUrl,isShortStory){
   const n=String(card.dataset.ncode||"").toUpperCase();
   const r18=isR18Work({ncode:n,__r18:card.dataset.r18==="1"});
@@ -1000,7 +1051,6 @@ async function updateInfo(){
   const btn=document.getElementById("updateBtn"),status=document.getElementById("apiStatus");
   btn.disabled=true;
   try{
-    seedReadingCache();
     const oldBaseline=getGlobalBaseline();
     const newBaseline=new Date().toISOString();
     const start=Math.floor(new Date(oldBaseline).getTime()/1000);
@@ -1342,7 +1392,7 @@ document.addEventListener("click",e=>{
     return;
   }
 });
-window.addEventListener("load",async()=>{ try{ const s=document.getElementById("apiStatus"); if(s)s.textContent="本棚情報反映中"; await buildV3CardsFromIndexedDB(); await refreshNotePublishedDates(); try{localStorage.removeItem("tomotaYomu_work_edit_overrides_v1");}catch(e){console.warn("旧作品編集表示データの削除をスキップ",e);} restoreReadingFromQuery(); prepareReadingCards(); renderGlobalBaseline(); restoreLatestWorks(); buildUpdateView(); buildShelfFolders(); syncSearchExcludedButtons(); }catch(e){ console.warn("v3 IndexedDB本棚再構築失敗",e); const s=document.getElementById("apiStatus"); if(s)s.textContent="v3 IndexedDB接続失敗："+e.message; } });
+window.addEventListener("load",async()=>{ try{ const s=document.getElementById("apiStatus"); if(s)s.textContent="本棚情報反映中"; await buildV3CardsFromIndexedDB(); await loadReadingFromWorksDB(); await refreshNotePublishedDates(); try{localStorage.removeItem("tomotaYomu_work_edit_overrides_v1");}catch(e){console.warn("旧作品編集表示データの削除をスキップ",e);} restoreReadingFromQuery(); prepareReadingCards(); renderGlobalBaseline(); restoreLatestWorks(); buildUpdateView(); buildShelfFolders(); syncSearchExcludedButtons(); }catch(e){ console.warn("v3 IndexedDB本棚再構築失敗",e); const s=document.getElementById("apiStatus"); if(s)s.textContent="v3 IndexedDB接続失敗："+e.message; } });
 
 /* 作者Atomフィード：本棚DBと独立した保存領域 */
 const ATOM_DB_NAME="tomotaYomuAtomDB", ATOM_DB_VERSION=1;
