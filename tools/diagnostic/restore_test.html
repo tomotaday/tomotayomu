@@ -147,13 +147,18 @@ function createDatabase(testName,source){
   req.onblocked=()=>{if(!settled){settled=true;reject(Error(testName+' の作成が別画面によりブロックされました'))}};
  });
 }
-function writeRecords(db,storeName,records){
+function writeRecords(db,storeName,storeBackup){
  return new Promise((resolve,reject)=>{
   let tx;
   try{tx=db.transaction(storeName,'readwrite')}catch(e){reject(e);return}
-  const store=tx.objectStore(storeName);
-  try{for(let i=0;i<records.length;i+=250)for(const record of records.slice(i,i+250))store.put(record)}
-  catch(e){try{tx.abort()}catch(_){}reject(e);return}
+  const store=tx.objectStore(storeName),records=storeBackup.records,keys=storeBackup.keys;
+  try{
+   if(store.keyPath===null&&keys.length!==records.length)throw Error(storeName+' の主キー数がレコード数と一致しません。');
+   for(let i=0;i<records.length;i++){
+    if(store.keyPath===null)store.put(records[i],keys[i]);
+    else store.put(records[i]);
+   }
+  }catch(e){try{tx.abort()}catch(_){}reject(e);return}
   tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||Error(storeName+' 書き込み失敗'));tx.onabort=()=>reject(tx.error||Error(storeName+' 書き込み中断'));
  });
 }
@@ -161,8 +166,13 @@ function readStore(db,storeName){
  return new Promise((resolve,reject)=>{
   let tx;
   try{tx=db.transaction(storeName,'readonly')}catch(e){reject(e);return}
-  const req=tx.objectStore(storeName).getAll();
-  req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||Error(storeName+' 読み取り失敗'));
+  const store=tx.objectStore(storeName),recordsReq=store.getAll(),keysReq=store.getAllKeys();
+  let records,keys,gotRecords=false,gotKeys=false;
+  const finish=()=>{if(gotRecords&&gotKeys)resolve({records,keys})};
+  recordsReq.onsuccess=()=>{records=recordsReq.result;gotRecords=true;finish()};
+  keysReq.onsuccess=()=>{keys=keysReq.result;gotKeys=true;finish()};
+  recordsReq.onerror=()=>reject(recordsReq.error||Error(storeName+' レコード読み取り失敗'));
+  keysReq.onerror=()=>reject(keysReq.error||Error(storeName+' 主キー読み取り失敗'));
   tx.onabort=()=>reject(tx.error||Error(storeName+' 読み取り中断'));
  });
 }
@@ -205,7 +215,7 @@ $('restoreBtn').addEventListener('click',async()=>{
    createdDBs.push(testName);dbMap.set(source.name,currentDB);
    for(const [storeName,s] of Object.entries(source.stores)){
     $('restoreStatus').textContent='復元中：'+source.name+'/'+storeName+'（'+s.count.toLocaleString()+'件）';
-    await writeRecords(currentDB,storeName,s.records);
+    await writeRecords(currentDB,storeName,s);
    }
    currentDB.close();currentDB=null;
   }
@@ -222,7 +232,8 @@ $('restoreBtn').addEventListener('click',async()=>{
     if(stable(actualStores)!==stable(expectedStores))throw Error(source.name+' のストア構成不一致');
     for(const [storeName,s] of Object.entries(source.stores)){
      const actual=await readStore(db,storeName);
-     if(actual.length!==s.count||stable(actual)!==stable(s.records))throw Error(source.name+'/'+storeName+' の全レコード照合に失敗しました。');
+     if(actual.records.length!==s.count||stable(actual.records)!==stable(s.records))throw Error(source.name+'/'+storeName+' の全レコード照合に失敗しました。');
+     if(actual.keys.length!==s.count||stable(actual.keys)!==stable(s.keys))throw Error(source.name+'/'+storeName+' の主キー照合に失敗しました。');
      const tx=db.transaction(storeName,'readonly'),store=tx.objectStore(storeName);
      if(stable(store.keyPath)!==stable(s.keyPath)||store.autoIncrement!==s.autoIncrement)throw Error(source.name+'/'+storeName+' のストア構造不一致');
      const actualIndexes=Array.from(store.indexNames).map(name=>{const ix=store.index(name);return {name:ix.name,keyPath:ix.keyPath,unique:ix.unique,multiEntry:ix.multiEntry}}).sort((a,b)=>a.name.localeCompare(b.name));
