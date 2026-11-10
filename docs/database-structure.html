@@ -83,4 +83,16 @@ h1{font-size:23px;line-height:1.35;margin:18px 0 5px}h2{font-size:19px;margin:30
 <li><a href="../tools/diagnostic/work_db_production_card_audit.html">新DB作品カード監査</a></li>
 </ul></div>
 <p class="source">元資料：<a href="database-structure.md">database-structure.md</a></p>
+
+<h2>7. 2026-11-10 追加確認：判定センター・ショートカット連携</h2>
+<div class="section"><h3>判定センター</h3><ul>
+<li><code>tools/diagnostic/ncode_extract.html</code> は <code>tomotaYomuWorksDB</code> v2 の <code>works</code> を参照する構造へ変更済み。</li>
+<li>iPhone / Braveで、なろう作品3,596件の抽出成功を確認。形式不正0件、重複Nコード0件。</li>
+<li>新DB接続への切替は完了。ただしAPI一括・全件判定、Atom取得失敗作者の確認等の独自機能は別途確認対象。</li>
+</ul><h3>iPhoneショートカットとの接続（未確認）</h3>
+<div class="table-wrap"><table><thead><tr><th>ショートカット</th><th>呼び出し先・保存先</th><th>状態</th></tr></thead><tbody>
+<tr><td>なろうの作者登録</td><td>URL・受け渡し形式・保存先は未調査</td><td><strong>実行時エラーあり。原因未特定。最優先で調査</strong></td></tr>
+<tr><td>その他の現役ショートカット</td><td>個別の呼び出し先・保存先は未照合</td><td>未確認。正常扱いしない</td></tr>
+</tbody></table></div>
+<ul><li>各Shortcutについて、呼び出し先URL／ページ、入力データ、保存先DB・Store、GitHub Actions等の後続処理、実機結果を確認してから接続一覧を確定する。</li><li>エラー原因が判明する前に、登録ページ・Shortcut・本番DBを推測で変更しない。</li></ul></div>
 </main></body></html>
