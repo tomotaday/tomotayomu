@@ -25,10 +25,10 @@ strong.num{font-size:1.5rem}
 <main>
 <p style="margin:0 0 14px"><a href="../../index.html" style="display:inline-block;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--accent);text-decoration:none;font-weight:600">← ともたよむに戻る</a></p>
 <h1>ともたよむ｜判定センター</h1>
-<p class="lead">本棚DBからNコードを抽出し、通常API→R18 APIの順で照会します。診断専用・読み取り中心のページです。</p>
+<p class="lead">新DBからNコードを抽出し、通常API→R18 APIの順で照会します。診断専用・読み取り中心のページです。</p>
 <section class="panel">
-<p><strong>対象DB：</strong>tomotaYomuDB（既存DBのみ）</p>
-<p class="small">shelf_placement と works_cache を読み取ります。追加・変更・削除・API照会は行いません。DBが存在しない場合も新規作成しません。</p>
+<p><strong>対象DB：</strong>tomotaYomuWorksDB v2（既存DBのみ）</p>
+<p class="small">works ストアからなろう作品を読み取ります。追加・変更・削除は行いません。DBが存在しない場合も新規作成しません。</p>
 <button id="run" type="button">本棚からNコードを抽出</button>
 </section>
 <section class="panel">
@@ -87,22 +87,35 @@ strong.num{font-size:1.5rem}
 <script>
 (() => {
 "use strict";
-const DB_NAME = "tomotaYomuDB";
-const DB_VERSION = 1;
+const DB_NAME = "tomotaYomuWorksDB";
+const DB_VERSION = 2;
 const SEARCH_EXCLUDED_KEY = "tomotaYomu_search_excluded_ncodes_v1";
 const API = { normal: "https://api.syosetu.com/novelapi/api/", r18: "https://api.syosetu.com/novel18api/api/" };
 const $ = id => document.getElementById(id);
 
-function openExistingDB() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error("本棚DBを開けませんでした。"));
-    request.onblocked = () => reject(new Error("DBが別の画面で使用中です。ほかのともたよむ画面を閉じて再試行してください。"));
+async function openExistingDB() {
+  if (!indexedDB.databases) throw new Error("既存DBの有無を確認できないブラウザです。安全のため停止しました。");
+  const databases = await indexedDB.databases();
+  if (!databases.some(item => item.name === DB_NAME)) {
+    throw new Error("新DBが見つかりません。DBの新規作成は行いません。");
+  }
+  return await new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME);
     request.onupgradeneeded = () => {
       request.transaction.abort();
-      reject(new Error("本棚DBが存在しないため、新規作成せずに中止しました。ともたよむ本体を先に開いてください。"));
+      reject(new Error("DBのバージョン変更が必要なため停止しました。"));
     };
+    request.onsuccess = () => {
+      const db = request.result;
+      if (db.version !== DB_VERSION || !db.objectStoreNames.contains("works")) {
+        db.close();
+        reject(new Error("新DBのバージョンまたはworksストアが想定外です。"));
+        return;
+      }
+      resolve(db);
+    };
+    request.onerror = () => reject(request.error || new Error("新DBを開けませんでした。"));
+    request.onblocked = () => reject(new Error("DBが別の画面で使用中です。ほかのともたよむ画面を閉じて再試行してください。"));
   });
 }
 
@@ -138,42 +151,29 @@ async function extract() {
   let db;
   try {
     db = await openExistingDB();
-    const names = Array.from(db.objectStoreNames);
-    if (!names.includes("shelf_placement") || !names.includes("works_cache")) {
-      throw new Error("必要なストア（shelf_placement / works_cache）が見つかりません。DB構造を確認してください。");
+    if (!db.objectStoreNames.contains("works")) {
+      throw new Error("必要なストア（works）が見つかりません。DB構造を確認してください。");
     }
-    const [placements, works] = await Promise.all([
-      readAll(db, "shelf_placement"),
-      readAll(db, "works_cache")
-    ]);
-
-    const placementCodes = placements
-      .map(row => String(row && row.ncode || "").trim().toUpperCase())
-      .filter(Boolean);
-    const validCodes = placementCodes.filter(code => /^N[0-9A-Z]+$/.test(code));
+    const allWorks = await readAll(db, "works");
+    const narouWorks = allWorks.filter(row => row && row.site === "narou");
+    const rawCodes = narouWorks.map(row => String(row.workId || "").trim().toUpperCase());
+    const validCodes = rawCodes.filter(code => /^N[0-9A-Z]+$/.test(code));
     const uniqueCodes = [...new Set(validCodes)].sort();
-    const invalidRows = placements.length - placementCodes.length + placementCodes.filter(code => !/^N[0-9A-Z]+$/.test(code)).length;
-
-    const workCodes = new Set(works.map(row => String(row && row.ncode || "").trim().toUpperCase()).filter(code => /^N[0-9A-Z]+$/.test(code)));
-    const targetCodes = uniqueCodes.filter(code => workCodes.has(code));
-    const noWorkCache = uniqueCodes.filter(code => !workCodes.has(code));
-    const workOnlyCodes = [...workCodes].filter(code => !new Set(uniqueCodes).has(code));
+    const invalidRows = rawCodes.filter(code => !/^N[0-9A-Z]+$/.test(code)).length;
+    const duplicateRows = validCodes.length - uniqueCodes.length;
+    const targetCodes = uniqueCodes;
 
     $("status").textContent =
       "抽出完了。データの変更は行っていません。\n" +
       "DB：" + db.name + "（version " + db.version + "）\n" +
       "確認日時：" + new Date().toLocaleString("ja-JP");
     const lines = [
-      ["shelf_placement レコード", placements.length],
-      ["Nコードあり", placementCodes.length],
+      ["worksストア全作品", allWorks.length],
+      ["なろう作品", narouWorks.length],
+      ["有効なNコード", validCodes.length],
       ["形式不正・Nコードなし", invalidRows],
-      ["有効なNコード（重複除去前）", validCodes.length],
-      ["配置側ユニークNコード", uniqueCodes.length],
-      ["works_cache レコード", works.length],
-      ["works_cache内ユニークNコード", workCodes.size],
-      ["照会対象Nコード（両方に存在）", targetCodes.length],
-      ["配置あり・作品本体なし（対象外）", noWorkCache.length],
-      ["作品本体あり・配置なし", workOnlyCodes.length]
+      ["重複Nコード", duplicateRows],
+      ["照会対象ユニークNコード", targetCodes.length]
     ];
     const list = document.createElement("ul");
     for (const [label, value] of lines) {
@@ -397,9 +397,14 @@ function authorPageUrl(author) {
     ? "https://xmypage.syosetu.com/" + encodeURIComponent(author.author_id) + "/"
     : "https://mypage.syosetu.com/" + encodeURIComponent(author.author_id) + "/";
 }
+function isCanonicalR18(work) {
+  return work?.siteData?.isR18 === true ||
+    work?.siteData?.legacyFields?.__r18 === true ||
+    work?.siteData?.authorType === "r18";
+}
 function workPageUrl(work) {
-  const host = work.__r18 ? "https://novel18.syosetu.com/" : "https://ncode.syosetu.com/";
-  return host + String(work.ncode || "").toLowerCase() + "/";
+  const host = isCanonicalR18(work) ? "https://novel18.syosetu.com/" : "https://ncode.syosetu.com/";
+  return host + String(work.workId || "").toLowerCase() + "/";
 }
 function getFullCheckResults() {
   try {
@@ -489,14 +494,12 @@ async function loadAuthorWorks(author) {
   let db;
   try {
     db = await openExistingDB();
-    const [authors, works] = await Promise.all([
-      readAll(db, "authors"), readAll(db, "works_cache")
-    ]);
-    const workMap = new Map(works.map(w => [String(w.ncode || "").toUpperCase(), w]));
-    const linked = authors.filter(a =>
-      String(a.authorId || "").trim() === String(author.author_id) &&
-      (a.authorType === "r18" ? "r18" : "normal") === author.author_type
-    ).map(a => workMap.get(String(a.ncode || "").toUpperCase())).filter(Boolean);
+    const works = await readAll(db, "works");
+    const linked = works.filter(work =>
+      work.site === "narou" &&
+      String(work.authorId || "").trim() === String(author.author_id) &&
+      (isCanonicalR18(work) ? "r18" : "normal") === author.author_type
+    );
     const excludedRaw = localStorage.getItem(SEARCH_EXCLUDED_KEY);
     const excluded = new Set((excludedRaw ? JSON.parse(excludedRaw) : []).map(x => String(x).toUpperCase()));
     const results = getFullCheckResults();
@@ -507,7 +510,7 @@ async function loadAuthorWorks(author) {
       return;
     }
     for (const work of linked) {
-      const ncode = String(work.ncode || "").toUpperCase();
+      const ncode = String(work.workId || "").toUpperCase();
       const card = document.createElement("div");
       card.className = "panel";
       const title = document.createElement("strong");
@@ -515,7 +518,7 @@ async function loadAuthorWorks(author) {
       card.appendChild(title);
       const meta = document.createElement("p");
       meta.className = "small";
-      meta.textContent = ncode + " ／ " + (work.writer || author.author_id);
+      meta.textContent = ncode + " ／ " + (work.authorName || author.author_id);
       card.appendChild(meta);
       let label = excluded.has(ncode) ? "検索除外（本体登録済み）" :
         workAudit[ncode]?.deletedAt ? "削除確認済（未実施）" :
