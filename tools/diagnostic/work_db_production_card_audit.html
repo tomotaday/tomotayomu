@@ -67,12 +67,24 @@ const DB_NAME="tomotaYomuWorksDB", STORE="works";
 let allRecords=[];
 const $=id=>document.getElementById(id);
 const shelfMarks={"shelf01":"📌","shelf02":"🌀ま行","shelf03":"🌀さ行","shelf04":"🌀や行","shelf05":"🌀か行","shelf06":"🌀あ行","shelf07":"🌀た行","shelf08":"🌀は行","shelf10":"⏰","shelf14":"🌀な行","shelf_07a0b1f3f9c9":"🌀わ行","shelf_1cadde5522eb":"🗑️","shelf_cfcd536f3b56":"🌀ら行","shelf_ded1af671fd0":"退会"}
-function openReadonly(){
- return new Promise((resolve,reject)=>{
-  const req=indexedDB.open(DB_NAME,1);
-  req.onsuccess=()=>resolve(req.result);
-  req.onerror=()=>reject(req.error||new Error("テストDBを開けません"));
-  req.onupgradeneeded=()=>{req.transaction.abort();reject(new Error("本番作品DBがありません。初期構築ページで保存してください。"));};
+async function openReadonly(){
+ if(!indexedDB.databases)throw new Error("既存DBの有無を確認できないブラウザです。安全のため停止しました。");
+ const list=await indexedDB.databases();
+ if(!list.some(item=>item.name===DB_NAME))throw new Error("本番作品DBが見つかりません。DBの新規作成は行いません。");
+ return await new Promise((resolve,reject)=>{
+  const req=indexedDB.open(DB_NAME);
+  req.onupgradeneeded=()=>{req.transaction.abort();reject(new Error("DBのバージョン変更が必要なため停止しました。"));};
+  req.onsuccess=()=>{
+   const db=req.result;
+   if(db.version!==2||!db.objectStoreNames.contains(STORE)){
+    db.close();
+    reject(new Error("本番作品DBのバージョンまたはストア構造が想定外です。"));
+    return;
+   }
+   resolve(db);
+  };
+  req.onerror=()=>reject(req.error||new Error("本番作品DBを開けません"));
+  req.onblocked=()=>reject(new Error("別タブがDBを使用中です"));
  });
 }
 function readAll(db){
