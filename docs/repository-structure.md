@@ -160,3 +160,16 @@ Workflowを変更・移動する場合は、参照するスクリプトのパス
 - 資料室に `database-structure.html` / `database-structure.md`（DB構成表・接続一覧）を追加。
 - 本ページとDB構成表は、GitHub mainの実ファイル・現行コード接続を基準に更新。
 - 作者更新表示期間スライダーの初期化タイミングを修正。動的に管理メニューを構築した後にイベントを接続する。
+
+## 13. 2026-11-10 追加確認：診断ページ整理とShortcut入口の保護
+
+- 2026-11-10時点で、役目を終えたHTMLを累計16ファイル削除。削除前SHA照合、削除後404確認を実施した記録がある。削除対象はHTMLのみで、本番DB・localStorage・Atom DB・Memo DBは変更していない。
+- `tools/diagnostic/ncode_extract.html` は新DB `tomotaYomuWorksDB` v2からなろう作品3,596件を抽出できることをiPhone / Braveで確認済み。独自の診断機能は残す。
+- 残存診断・保守ページの最終整理は未完了。ファイルごとに最新SHA、DB接続先、version、読み書きの有無、用途を確認してから判断する。
+
+### Shortcutから呼び出される入口ファイル
+
+- `register.html`、`kakuyomu_add.html`、`note_magazine_add.html` は外部URL／Shortcutから呼び出される可能性があるため、移動・改名・削除前に必ず参照元を確認する。
+- iPhoneショートカットとの整合性確認は未実施。なろうの作者登録ショートカットでエラーが発生しているが、原因は未特定。他のショートカットも未確認。
+- ShortcutのURL、入力形式、保存先、後続処理を照合するまで、入口ファイルの移動・改名・処理変更を行わない。
+
