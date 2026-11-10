@@ -8,7 +8,7 @@
 <style>
 :root{color-scheme:light;--ink:#263247;--muted:#66738a;--line:#dce3ee;--paper:#fff;--bg:#f4f6fa;--accent:#526b9a;--good:#276749}
 *{box-sizing:border-box}body{margin:0;padding:18px 14px 40px;background:var(--bg);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
-main{max-width:760px;margin:0 auto}h1{font-size:1.35rem;margin:0 0 5px}h2{font-size:1.05rem;margin:0 0 9px}.lead,.muted,.small{color:var(--muted)}.lead{margin:0 0 16px}.small{font-size:.85rem}
+main{max-width:780px;margin:0 auto}h1{font-size:1.35rem;margin:0 0 5px}h2{font-size:1.05rem;margin:0 0 9px}.lead,.muted,.small{color:var(--muted)}.lead{margin:0 0 16px}.small{font-size:.85rem}
 .panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:15px;margin:13px 0}
 button{display:inline-block;border:0;border-radius:10px;background:var(--accent);color:white;padding:11px 15px;font-size:1rem;font-weight:600}
 button:disabled{opacity:.45}input[type=file]{display:block;width:100%;margin:10px 0 14px;font-size:.95rem}
@@ -20,51 +20,46 @@ table{width:100%;border-collapse:collapse;font-size:.88rem}th,td{text-align:left
 </head>
 <body><main>
 <h1>ともたよむ｜バックアップ復元テスト v3</h1>
-<p class="lead">本番の本棚には触れず、バックアップから独立したテスト用データベースを作成し、全レコードを照合します。</p>
+<p class="lead">バックアップ v3 に含まれる全IndexedDBとlocalStorageを、専用のテスト領域へ復元して照合します。</p>
 <section class="panel">
 <h2>① バックアップJSONを選択</h2>
-<p class="small">v3形式のバックアップファイルを選択してください。</p>
+<p class="small">保存領域調査・バックアップ v3 で作成したJSONを選択してください。</p>
 <input id="backupFile" type="file" accept=".json,application/json">
 <button id="inspectBtn" type="button" disabled>ファイルを検査する</button>
 <div id="fileStatus" class="status">ファイル未選択</div><div id="summary"></div>
 </section>
 <section class="panel">
-<h2>② テスト用DBへ復元</h2>
-<div class="notice">本番DB、Atom DB、メモDB、再構築DB、localStorageは変更しません。本棚DBの5ストアだけを別名のDBへ復元します。</div>
-<p class="small">復元先は操作時に新しい名前で作成します。既存DBの存在確認ができないSafariでは、安全のため復元を中止します。</p>
-<button id="restoreBtn" type="button" disabled>テストDBへ復元する</button>
+<h2>② テスト領域へ復元</h2>
+<div class="notice">本番IndexedDB・本番localStorageのキーは変更しません。バックアップ内のDBは専用名に置き換え、localStorageも専用接頭辞のキーに復元します。</div>
+<p class="small">復元先は今回専用の新規領域です。既存の同名DB・キーが見つかった場合は上書きせず中止します。データ量によっては端末の空き容量が必要です。</p>
+<button id="restoreBtn" type="button" disabled>全データをテスト復元する</button>
 <div id="restoreStatus" class="status">検査完了後に復元できます。</div>
 </section>
 <section class="panel">
 <h2>③ 復元結果</h2>
 <div id="verifyStatus" class="status">まだ復元していません。</div><div id="verifyResult"></div>
-<button id="deleteBtn" class="danger" type="button" hidden>今回作成したテストDBを削除</button>
+<button id="deleteBtn" class="danger" type="button" hidden>今回作成したテスト領域を削除</button>
 </section>
 <section class="panel">
 <h2>安全上の約束</h2>
 <ul class="small">
-<li>本番DB名「tomotaYomuDB」は開きません。バックアップJSON内の名称確認だけを行います。</li>
-<li>localStorage、Cookie、GitHub Actions、ショートカットには触れません。</li>
-<li>ファイル検査だけではDBを作りません。</li>
-<li>復元先DB名は専用のテスト名です。既存DBを上書きしません。</li>
-<li>復元後は5ストアの件数と全レコード内容を照合します。</li>
-<li>テストDBは自動削除しません。削除ボタンを押した場合のみ、このページが作成したDBだけを削除します。</li>
+<li>バックアップ内のDB名はそのまま使わず、すべて専用のテストDB名に置き換えます。</li>
+<li>各DBのバージョン、ストア、keyPath、自動採番、インデックスを再現します。</li>
+<li>全レコードを復元し、件数と全内容を読み戻して照合します。</li>
+<li>localStorageは専用接頭辞を付けた一時キーに保存し、値を照合します。本来のキーは読み取りのみです。</li>
+<li>失敗時も、作成済みのテスト領域は削除ボタンで片付けられます。</li>
+<li>このページは本番DB・本番localStorage・Cookie・GitHub Actions・ショートカットを変更しません。</li>
+<li>テスト領域は自動削除しません。削除ボタンを押した場合のみ、今回作成した領域を削除します。</li>
 </ul>
 </section>
 </main>
 <script>
 (()=>{'use strict';
 const $=id=>document.getElementById(id);
-const EXPECTED_DB='tomotaYomuDB';
-const EXPECTED={
- authors:{keyPath:'ncode',autoIncrement:false},
- reading_position:{keyPath:'ncode',autoIncrement:false},
- shelf_names:{keyPath:'shelf_id',autoIncrement:false},
- shelf_placement:{keyPath:'ncode',autoIncrement:false},
- works_cache:{keyPath:'ncode',autoIncrement:false}
-};
-const REQUIRED=Object.keys(EXPECTED);
-let parsedBackup=null,sourceDB=null,testDBName=null,testDBCreated=false,busy=false;
+const PREFIX='tomotaYomu_restore_test_';
+const LS_PREFIX='__tomotayomu_restore_test__';
+let parsedBackup=null,sourceDatabases=[],sourceLocalStorage=null;
+let createdDBs=[],createdKeys=[],testToken=null,busy=false;
 function stable(v){
  if(Array.isArray(v))return '['+v.map(stable).join(',')+']';
  if(v&&typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}';
@@ -72,30 +67,47 @@ function stable(v){
 }
 function validateBackup(data){
  if(!data||data.format!=='tomotayomu-storage-backup'||data.formatVersion!==3)throw Error('バックアップ形式がv3ではありません。');
- if(data.origin!=='https://tomotaday.github.io')throw Error('バックアップの作成元が想定と異なります。');
- if(!Array.isArray(data.databases))throw Error('databases配列がありません。');
- const db=data.databases.find(x=>x.name===EXPECTED_DB);
- if(!db||!db.stores)throw Error('本棚DBがバックアップにありません。');
- const names=Object.keys(db.stores).sort();
- if(stable(names)!==stable(REQUIRED.slice().sort()))throw Error('本棚DBのストア構成が想定と異なります。');
- for(const [name,expected] of Object.entries(EXPECTED)){
-  const s=db.stores[name];
-  if(s.keyPath!==expected.keyPath||s.autoIncrement!==expected.autoIncrement)throw Error(name+' のDB構造が想定と異なります。');
-  if(!Array.isArray(s.indexes)||s.indexes.length!==0)throw Error(name+' に想定外のインデックスがあります。');
-  if(!Array.isArray(s.records)||s.count!==s.records.length)throw Error(name+' の件数とレコード数が一致しません。');
-  if(!Array.isArray(s.keys)||s.keys.length!==s.count)throw Error(name+' のキー件数が一致しません。');
-  for(const rec of s.records)if(!rec||typeof rec!=='object'||!(expected.keyPath in rec))throw Error(name+' に主キーのないレコードがあります。');
+ if(data.origin!==location.origin)throw Error('バックアップの作成元が現在のサイトと異なります。');
+ if(!Array.isArray(data.databases)||!data.databases.length)throw Error('databases配列がないか、DBがありません。');
+ if(!data.localStorage||typeof data.localStorage!=='object'||Array.isArray(data.localStorage))throw Error('localStorageデータがありません。');
+ const dbNames=new Set();
+ let totalStores=0,totalRecords=0;
+ for(const db of data.databases){
+  if(!db||typeof db.name!=='string'||!db.name||dbNames.has(db.name))throw Error('DB名が不正、または重複しています。');
+  dbNames.add(db.name);
+  if(!Number.isInteger(db.version)||db.version<1)throw Error(db.name+' のDBバージョンが不正です。');
+  if(!db.stores||typeof db.stores!=='object'||Array.isArray(db.stores))throw Error(db.name+' のstoresが不正です。');
+  const storeNames=Object.keys(db.stores);
+  if(!storeNames.length)throw Error(db.name+' にストアがありません。');
+  for(const storeName of storeNames){
+   const s=db.stores[storeName];
+   if(!s||!Array.isArray(s.records)||!Array.isArray(s.keys)||!Array.isArray(s.indexes))throw Error(db.name+'/'+storeName+' の構造が不正です。');
+   if(s.count!==s.records.length||s.count!==s.keys.length)throw Error(db.name+'/'+storeName+' の件数・records・keysが一致しません。');
+   if(typeof s.autoIncrement!=='boolean')throw Error(db.name+'/'+storeName+' のautoIncrementが不正です。');
+   if(s.keyPath!==null&&typeof s.keyPath!=='string'&&!Array.isArray(s.keyPath))throw Error(db.name+'/'+storeName+' のkeyPathが不正です。');
+   const indexNames=new Set();
+   for(const ix of s.indexes){
+    if(!ix||typeof ix.name!=='string'||!ix.name||indexNames.has(ix.name))throw Error(db.name+'/'+storeName+' のインデックス名が不正または重複しています。');
+    indexNames.add(ix.name);
+    if(ix.keyPath!==null&&typeof ix.keyPath!=='string'&&!Array.isArray(ix.keyPath))throw Error(db.name+'/'+storeName+'/'+ix.name+' のindex keyPathが不正です。');
+    if(typeof ix.unique!=='boolean'||typeof ix.multiEntry!=='boolean')throw Error(db.name+'/'+storeName+'/'+ix.name+' のインデックス設定が不正です。');
+   }
+   totalStores++;totalRecords+=s.count;
+  }
  }
- return db;
+ for(const [key,value] of Object.entries(data.localStorage)){
+  if(typeof key!=='string'||typeof value!=='string')throw Error('localStorageに文字列以外のキーまたは値があります。');
+ }
+ return {totalStores,totalRecords,dbCount:data.databases.length,localCount:Object.keys(data.localStorage).length};
 }
-function table(headers,rows){
+function makeTable(headers,rows){
  const t=document.createElement('table'),h=document.createElement('tr');
  headers.forEach(x=>{const e=document.createElement('th');e.textContent=x;h.appendChild(e)});t.appendChild(h);
  rows.forEach(row=>{const tr=document.createElement('tr');row.forEach(x=>{const e=document.createElement('td');e.textContent=String(x);tr.appendChild(e)});t.appendChild(tr)});
  return t;
 }
 $('backupFile').addEventListener('change',()=>{
- parsedBackup=null;sourceDB=null;$('restoreBtn').disabled=true;$('summary').replaceChildren();
+ parsedBackup=null;sourceDatabases=[];sourceLocalStorage=null;$('restoreBtn').disabled=true;$('summary').replaceChildren();
  $('fileStatus').textContent='ファイル選択済み。検査ボタンを押してください。';
  $('inspectBtn').disabled=!$('backupFile').files.length;
 });
@@ -103,96 +115,170 @@ $('inspectBtn').addEventListener('click',async()=>{
  const file=$('backupFile').files&&$('backupFile').files[0];if(!file)return;
  $('inspectBtn').disabled=true;$('fileStatus').textContent='読み込み・検査中…';
  try{
-  const data=JSON.parse(await file.text()),db=validateBackup(data);
-  parsedBackup=data;sourceDB=db;
-  const total=REQUIRED.reduce((n,k)=>n+db.stores[k].count,0);
-  $('summary').replaceChildren(table(['ストア','件数','keyPath'],REQUIRED.map(k=>[k,db.stores[k].count.toLocaleString(),db.stores[k].keyPath])));
-  $('fileStatus').textContent='検査成功：'+file.name+'\n出力日時：'+data.exportedAt+'\n本棚DB：'+total.toLocaleString()+'件／5ストア';
-  $('restoreBtn').disabled=false;$('restoreStatus').textContent='復元先は復元操作時に新規作成します。';
- }catch(e){$('fileStatus').textContent='検査失敗：'+(e.message||String(e));parsedBackup=null;sourceDB=null}
+  const data=JSON.parse(await file.text()),stats=validateBackup(data);
+  parsedBackup=data;sourceDatabases=data.databases;sourceLocalStorage=data.localStorage;
+  const rows=data.databases.map(db=>[db.name,'v'+db.version,Object.keys(db.stores).length,Object.values(db.stores).reduce((n,s)=>n+s.count,0).toLocaleString()]);
+  $('summary').replaceChildren(makeTable(['バックアップDB','版','ストア数','レコード数'],rows));
+  $('fileStatus').textContent='検査成功：'+file.name+'\\n出力日時：'+data.exportedAt+'\\nDB：'+stats.dbCount+'個／ストア：'+stats.totalStores+'個／IndexedDB：'+stats.totalRecords.toLocaleString()+'件／localStorage：'+stats.localCount+'キー';
+  $('restoreBtn').disabled=false;$('restoreStatus').textContent='全DBとlocalStorageを専用領域へ復元できます。';
+ }catch(e){$('fileStatus').textContent='検査失敗：'+(e.message||String(e));parsedBackup=null;sourceDatabases=[];sourceLocalStorage=null}
  finally{$('inspectBtn').disabled=false}
 });
-function createTestDB(name,version){
+function createDatabase(testName,source){
  return new Promise((resolve,reject)=>{
-  let upgraded=false;
-  const req=indexedDB.open(name,version);
+  let upgraded=false,settled=false;
+  const req=indexedDB.open(testName,source.version);
   req.onupgradeneeded=()=>{
    upgraded=true;
    try{
     const db=req.result;
-    for(const storeName of REQUIRED){
-     const s=sourceDB.stores[storeName];
-     db.createObjectStore(storeName,{keyPath:s.keyPath,autoIncrement:s.autoIncrement});
+    for(const [storeName,s] of Object.entries(source.stores)){
+     const store=db.createObjectStore(storeName,{keyPath:s.keyPath,autoIncrement:s.autoIncrement});
+     for(const ix of s.indexes)store.createIndex(ix.name,ix.keyPath,{unique:ix.unique,multiEntry:ix.multiEntry});
     }
    }catch(e){try{req.transaction.abort()}catch(_){}}
   };
-  req.onsuccess=()=>{if(!upgraded){req.result.close();reject(Error('同名DBが既に存在します。上書きしません。'))}else resolve(req.result)};
-  req.onerror=()=>reject(req.error||Error('テストDB作成失敗'));
-  req.onblocked=()=>reject(Error('DB作成が別画面によりブロックされました'));
+  req.onsuccess=()=>{
+   if(settled){req.result.close();return;}
+   if(!upgraded){req.result.close();settled=true;reject(Error('同名テストDBが既に存在します。上書きしません。'))}
+   else{settled=true;resolve(req.result)}
+  };
+  req.onerror=()=>{if(!settled){settled=true;reject(req.error||Error(testName+' の作成に失敗しました'))}};
+  req.onblocked=()=>{if(!settled){settled=true;reject(Error(testName+' の作成が別画面によりブロックされました'))}};
  });
 }
-function writeBatch(db,name,records){
+function writeRecords(db,storeName,records){
  return new Promise((resolve,reject)=>{
-  const tx=db.transaction(name,'readwrite'),store=tx.objectStore(name);
-  try{for(const record of records)store.put(record)}catch(e){try{tx.abort()}catch(_){}reject(e);return}
-  tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||Error(name+' 書き込み失敗'));tx.onabort=()=>reject(tx.error||Error(name+' 書き込み中断'));
+  let tx;
+  try{tx=db.transaction(storeName,'readwrite')}catch(e){reject(e);return}
+  const store=tx.objectStore(storeName);
+  try{for(let i=0;i<records.length;i+=250)for(const record of records.slice(i,i+250))store.put(record)}
+  catch(e){try{tx.abort()}catch(_){}reject(e);return}
+  tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||Error(storeName+' 書き込み失敗'));tx.onabort=()=>reject(tx.error||Error(storeName+' 書き込み中断'));
  });
 }
-function readAll(db,name){
+function readStore(db,storeName){
  return new Promise((resolve,reject)=>{
-  const tx=db.transaction(name,'readonly'),req=tx.objectStore(name).getAll();
-  req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||Error(name+' 読み取り失敗'));
-  tx.onabort=()=>reject(tx.error||Error(name+' 読み取り中断'));
+  let tx;
+  try{tx=db.transaction(storeName,'readonly')}catch(e){reject(e);return}
+  const req=tx.objectStore(storeName).getAll();
+  req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||Error(storeName+' 読み取り失敗'));
+  tx.onabort=()=>reject(tx.error||Error(storeName+' 読み取り中断'));
  });
+}
+async function writeLocalStorage(data){
+ for(const [key,value] of Object.entries(data)){
+  const testKey=LS_PREFIX+testToken+'__'+key;
+  if(localStorage.getItem(testKey)!==null)throw Error('同名のテスト用localStorageキーが既に存在します。');
+  localStorage.setItem(testKey,value);createdKeys.push(testKey);
+ }
+}
+async function verifyLocalStorage(data){
+ const rows=[];
+ for(const [key,value] of Object.entries(data)){
+  const testKey=LS_PREFIX+testToken+'__'+key,actual=localStorage.getItem(testKey);
+  if(actual!==value)throw Error('localStorageの照合に失敗しました：'+key);
+  rows.push([key,'一致']);
+ }
+ return rows;
 }
 $('restoreBtn').addEventListener('click',async()=>{
- if(!sourceDB||busy||testDBCreated)return;
- if(!confirm('本番DBではなく、専用のテストDBを新規作成して復元します。続けますか？'))return;
+ if(!parsedBackup||busy||createdDBs.length||createdKeys.length)return;
+ if(!confirm('バックアップ内の全IndexedDBとlocalStorageを、今回専用のテスト領域へ復元します。\\n本番の保存データは変更しません。続けますか？'))return;
  busy=true;$('restoreBtn').disabled=true;$('deleteBtn').hidden=true;
- const stamp=new Date().toISOString().replace(/[^0-9]/g,'').slice(0,17);
- testDBName='tomotaYomu_restore_test_'+stamp;
- let db=null;
+ testToken=new Date().toISOString().replace(/[^0-9]/g,'').slice(0,17);
+ const dbMap=new Map();let currentDB=null;
  try{
-  if(typeof indexedDB.databases!=='function')throw Error('このSafariではDBの存在確認機能が使えません。安全のため復元を中止しました。');
-  const known=await indexedDB.databases();
-  if(known.some(x=>x.name===testDBName))throw Error('同名のテストDBが既に存在します。上書きしません。');
-  $('restoreStatus').textContent='専用テストDBを新規作成しています…';
-  db=await createTestDB(testDBName,sourceDB.version);testDBCreated=true;
-  for(const name of REQUIRED){
-   const records=sourceDB.stores[name].records;
-   for(let i=0;i<records.length;i+=200)await writeBatch(db,name,records.slice(i,i+200));
-   $('restoreStatus').textContent=name+'：'+records.length.toLocaleString()+'件の復元完了';
+  if(typeof indexedDB.databases!=='function')throw Error('このブラウザではDBの存在確認機能が使えません。安全のため復元を中止しました。');
+  const known=await indexedDB.databases(),knownNames=new Set(known.map(x=>x.name));
+  const planned=sourceDatabases.map(db=>PREFIX+testToken+'__'+db.name);
+  if(planned.some(name=>knownNames.has(name)))throw Error('同名のテストDBが既に存在します。上書きしません。');
+  for(const name of Object.keys(sourceLocalStorage)){
+   const testKey=LS_PREFIX+testToken+'__'+name;
+   if(localStorage.getItem(testKey)!==null)throw Error('同名のテスト用localStorageキーが既に存在します。');
   }
-  $('restoreStatus').textContent='書き込み完了。全レコードを読み戻して照合しています…';
-  const results=[];
-  for(const name of REQUIRED){
-   const expected=sourceDB.stores[name].records,actual=await readAll(db,name);
-   const same=actual.length===expected.length&&stable(actual)===stable(expected);
-   results.push([name,expected.length,actual.length,same?'一致':'不一致']);
-   if(!same)throw Error(name+' の復元後照合に失敗しました。');
+  let dbIndex=0;
+  for(const source of sourceDatabases){
+   const testName=planned[dbIndex++];
+   $('restoreStatus').textContent='DB作成中：'+source.name;
+   currentDB=await createDatabase(testName,source);
+   createdDBs.push(testName);dbMap.set(source.name,currentDB);
+   for(const [storeName,s] of Object.entries(source.stores)){
+    $('restoreStatus').textContent='復元中：'+source.name+'/'+storeName+'（'+s.count.toLocaleString()+'件）';
+    await writeRecords(currentDB,storeName,s.records);
+   }
+   currentDB.close();currentDB=null;
   }
-  $('verifyStatus').textContent='成功：5ストアすべての件数・全レコード内容がバックアップと一致しました。\nテストDB名：'+testDBName;
-  $('verifyStatus').className='status good';$('verifyResult').replaceChildren(table(['ストア','バックアップ','復元後','照合'],results));
-  $('restoreStatus').textContent='復元・照合が完了しました。テストDBは保持しています。';$('deleteBtn').hidden=false;
+  $('restoreStatus').textContent='全DBの復元完了。レコードを読み戻して照合しています…';
+  const dbRows=[];
+  for(const source of sourceDatabases){
+   const db=await new Promise((resolve,reject)=>{
+    const req=indexedDB.open(PREFIX+testToken+'__'+source.name);
+    req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||Error(source.name+' 再オープン失敗'));
+   });
+   try{
+    if(db.version!==source.version)throw Error(source.name+' のDBバージョン不一致');
+    const actualStores=Array.from(db.objectStoreNames).sort(),expectedStores=Object.keys(source.stores).sort();
+    if(stable(actualStores)!==stable(expectedStores))throw Error(source.name+' のストア構成不一致');
+    for(const [storeName,s] of Object.entries(source.stores)){
+     const actual=await readStore(db,storeName);
+     if(actual.length!==s.count||stable(actual)!==stable(s.records))throw Error(source.name+'/'+storeName+' の全レコード照合に失敗しました。');
+     const tx=db.transaction(storeName,'readonly'),store=tx.objectStore(storeName);
+     if(stable(store.keyPath)!==stable(s.keyPath)||store.autoIncrement!==s.autoIncrement)throw Error(source.name+'/'+storeName+' のストア構造不一致');
+     const actualIndexes=Array.from(store.indexNames).map(name=>{const ix=store.index(name);return {name:ix.name,keyPath:ix.keyPath,unique:ix.unique,multiEntry:ix.multiEntry}}).sort((a,b)=>a.name.localeCompare(b.name));
+     const expectedIndexes=s.indexes.slice().sort((a,b)=>a.name.localeCompare(b.name));
+     if(stable(actualIndexes)!==stable(expectedIndexes))throw Error(source.name+'/'+storeName+' のインデックス照合に失敗しました。');
+     dbRows.push([source.name,storeName,s.count.toLocaleString(),'一致']);
+    }
+   }finally{db.close()}
+  }
+  $('restoreStatus').textContent='localStorageのテスト用キーを復元・照合しています…';
+  await writeLocalStorage(sourceLocalStorage);
+  const lsRows=await verifyLocalStorage(sourceLocalStorage);
+  $('verifyStatus').textContent='成功：全IndexedDB・全ストア・全レコード・全インデックス、およびlocalStorageの全キー・値が一致しました。\\nテスト識別子：'+testToken+'\\n本番領域への変更：なし';
+  $('verifyStatus').className='status good';
+  const result=document.createElement('div');
+  result.appendChild(makeTable(['テストDB','ストア','レコード','照合'],dbRows));
+  const lsTitle=document.createElement('p');lsTitle.textContent='localStorage：'+lsRows.length+'キーすべて一致';result.appendChild(lsTitle);
+  $('verifyResult').replaceChildren(result);
+  $('restoreStatus').textContent='復元・全件照合が完了しました。テスト領域は保持しています。';
+  $('deleteBtn').hidden=false;
  }catch(e){
+  if(currentDB){try{currentDB.close()}catch(_){}}
   $('restoreStatus').textContent='復元テスト失敗：'+(e.message||String(e));
-  $('verifyStatus').textContent=(testDBCreated?'途中まで作成されたテストDBが残っている可能性があります。':'テストDBは作成されていません。')+'\n'+(testDBName||'');
-  $('verifyStatus').className='status bad';if(testDBCreated)$('deleteBtn').hidden=false;
- }finally{if(db)db.close();busy=false;$('restoreBtn').disabled=true}
+  $('verifyStatus').textContent='テスト領域が一部作成されている可能性があります。\\n作成済みDB：'+createdDBs.length+'個／localStorageキー：'+createdKeys.length+'個\\nテスト識別子：'+testToken;
+  $('verifyStatus').className='status bad';
+  if(createdDBs.length||createdKeys.length)$('deleteBtn').hidden=false;
+ }finally{busy=false;$('restoreBtn').disabled=true}
 });
 $('deleteBtn').addEventListener('click',async()=>{
- if(!testDBCreated||!testDBName)return;
- if(!confirm('今回このページが作成したテストDBだけを削除します。\n'+testDBName+'\n本番DBは削除しません。続けますか？'))return;
- $('deleteBtn').disabled=true;
- try{
-  await new Promise((resolve,reject)=>{
-   const req=indexedDB.deleteDatabase(testDBName);req.onsuccess=resolve;
-   req.onerror=()=>reject(req.error||Error('削除失敗'));req.onblocked=()=>reject(Error('別画面で使用中のため削除できません'));
-  });
-  $('verifyStatus').textContent='テストDBを削除しました：'+testDBName;$('verifyResult').replaceChildren();
-  $('deleteBtn').hidden=true;testDBCreated=false;testDBName=null;
- }catch(e){$('verifyStatus').textContent='削除できませんでした：'+(e.message||String(e))}
- finally{$('deleteBtn').disabled=false}
+ if((!createdDBs.length&&!createdKeys.length)||!testToken||busy)return;
+ if(!confirm('今回このページが作成したテストDBとテスト用localStorageキーだけを削除します。\\n本番データは削除しません。続けますか？'))return;
+ busy=true;$('deleteBtn').disabled=true;
+ const errors=[];
+ for(const name of createdDBs.slice()){
+  try{
+   await new Promise((resolve,reject)=>{
+    const req=indexedDB.deleteDatabase(name);req.onsuccess=resolve;
+    req.onerror=()=>reject(req.error||Error(name+' 削除失敗'));req.onblocked=()=>reject(Error(name+' は別画面で使用中のため削除できません'));
+   });
+   createdDBs=createdDBs.filter(x=>x!==name);
+  }catch(e){errors.push(e.message||String(e))}
+ }
+ for(const key of createdKeys.slice()){
+  try{localStorage.removeItem(key);createdKeys=createdKeys.filter(x=>x!==key)}
+  catch(e){errors.push(key+'：'+(e.message||String(e)))}
+ }
+ if(errors.length){
+  $('verifyStatus').textContent='一部を削除できませんでした。\\n'+errors.join('\\n')+'\\n残り：DB '+createdDBs.length+'個／キー '+createdKeys.length+'個';
+  $('verifyStatus').className='status bad';$('deleteBtn').hidden=false;
+ }else{
+  $('verifyStatus').textContent='今回作成したテストDB '+createdDBs.length+'個、localStorageキー '+createdKeys.length+'個を削除しました。';
+  $('verifyStatus').className='status good';$('verifyResult').replaceChildren();$('deleteBtn').hidden=true;
+  createdDBs=[];createdKeys=[];testToken=null;
+  $('restoreStatus').textContent='テスト領域を削除しました。別のテストを行う場合は、バックアップを再検査してください。';
+ }
+ busy=false;$('deleteBtn').disabled=false;
 });
 })();
 </script></body></html>
