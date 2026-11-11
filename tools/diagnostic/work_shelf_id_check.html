@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f7f7fb">
+<title>ともたよむ｜作品shelfId確認</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;color:#26344b}
+*{box-sizing:border-box}body{margin:0;background:#f4f6fb;padding:18px;line-height:1.6}
+main{max-width:680px;margin:auto}h1{font-size:22px}.panel{background:#fff;border:1px solid #d6deea;border-radius:14px;padding:15px;margin:12px 0}
+.small{font-size:13px;color:#657187}input,button{font:inherit;padding:11px;border-radius:9px;border:1px solid #aab7ca}input{width:100%;margin:8px 0}button{background:#234d86;color:white;font-weight:700;width:100%}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#eef2f8;border-radius:9px;padding:12px;font-size:13px}
+</style>
+</head>
+<body><main>
+<p><a href="../../index.html">← ともたよむへ戻る</a></p>
+<h1>作品の登録先確認（読み取り専用）</h1>
+<section class="panel">
+<strong>安全確認</strong>
+<p class="small">既存の tomotaYomuWorksDB v2 の works ストアを読み取るだけです。追加・変更・削除、localStorageへのアクセス、他DBへの接続は行いません。DBが存在しない場合は新規作成せず停止します。</p>
+<label for="ncode">なろう Nコード</label>
+<input id="ncode" value="N5373FW" autocomplete="off" spellcheck="false">
+<button id="run" type="button">作品のshelfIdを確認</button>
+</section>
+<section class="panel"><strong>確認結果</strong><pre id="result">まだ確認していません。</pre></section>
+<script>
+"use strict";
+const DB_NAME="tomotaYomuWorksDB";
+const $=id=>document.getElementById(id);
+async function openExistingDB(){
+ if(typeof indexedDB.databases!=="function")throw new Error("既存DBの有無を確認できないブラウザです。安全のため停止しました。");
+ const list=await indexedDB.databases();
+ if(!list.some(x=>x.name===DB_NAME))throw new Error("本番作品DBが見つかりません。DBの新規作成は行いません。");
+ return await new Promise((resolve,reject)=>{
+  const req=indexedDB.open(DB_NAME);
+  req.onupgradeneeded=()=>{try{req.transaction.abort()}catch(e){};reject(new Error("DBのバージョン変更が必要なため停止しました。"))};
+  req.onsuccess=()=>{const db=req.result;if(db.version!==2||!db.objectStoreNames.contains("works")){db.close();reject(new Error("DBのバージョンまたはworksストアが想定外です。"));return}resolve(db)};
+  req.onerror=()=>reject(req.error||new Error("DBを開けません"));
+  req.onblocked=()=>reject(new Error("別タブがDBを使用中です。"));
+ });
+}
+async function inspect(){
+ const button=$("run");button.disabled=true;$("result").textContent="読み取り中…";
+ let db;
+ try{
+  const code=$("ncode").value.trim().toUpperCase().replace(/[^A-Z0-9]/g,"");
+  if(!/^N[0-9]{4}[A-Z]{2}$/.test(code))throw new Error("Nコードの形式を確認してください。例：N5373FW");
+  db=await openExistingDB();
+  const record=await new Promise((resolve,reject)=>{
+   const req=db.transaction("works","readonly").objectStore("works").get("narou:"+code);
+   req.onsuccess=()=>resolve(req.result||null);
+   req.onerror=()=>reject(req.error||new Error("作品レコードの読み取りに失敗しました。"));
+  });
+  if(!record){$("result").textContent="該当作品は新DBに見つかりませんでした。\n検索ID：narou:"+code+"\nデータ変更：なし";return}
+  const shelfId=record.shelfId==null?"(shelfIdプロパティなし)":String(record.shelfId);
+  $("result").textContent=[
+   "作品： "+String(record.title||"(タイトルなし)"),
+   "Nコード： "+code,
+   "レコードID： "+String(record.id||""),
+   "shelfId： "+JSON.stringify(shelfId),
+   "判定： "+(shelfId===""?"未分類（空文字）":shelfId==="(shelfIdプロパティなし)"?"要確認":"通常棚IDが設定されています"),
+   "データ変更： なし"
+  ].join("\n");
+ }catch(e){$("result").textContent="確認できませんでした。\n"+(e.message||String(e))+"\nデータ変更：なし"}
+ finally{if(db)db.close();button.disabled=false}
+}
+$("run").addEventListener("click",inspect);
+</script></main></body></html>
