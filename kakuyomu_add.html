@@ -62,7 +62,7 @@ button:disabled{opacity:.55}
 <label for="episodeCount">総話数</label><input id="episodeCount" inputmode="numeric" placeholder="例：1132">
 <label for="characterCount">文字数</label><input id="characterCount" inputmode="numeric" placeholder="例：3966011">
 <label for="updatedAt">最終更新日</label><input id="updatedAt" placeholder="例：2026年9月30日">
-<label for="shelfId">登録する本棚</label><select id="shelfId"><option value="">本棚を読み込み中…</option></select>
+<label>新規登録先（本棚管理の設定）</label><div id="targetShelf" class="fieldHint">登録先を読み込み中…</div>
 <div id="preview" class="preview" hidden></div>
 <div class="step">STEP 5</div>
 <button id="saveButton" type="button">確認した内容を本棚に登録する</button>
@@ -72,9 +72,6 @@ button:disabled{opacity:.55}
 <script>
 "use strict";
 const DB_NAME="tomotaYomuWorksDB";
-const WORK_ADD_TARGET_KEY="tomotaYomu_work_add_target_v1";
-const UNCLASSIFIED_TARGET="system:unclassified";
-const UNCLASSIFIED_OPTION="__UNCLASSIFIED__";
 const $=id=>document.getElementById(id);
 function message(id,text,error=false){$(id).textContent=text;$(id).style.color=error?"#9b3d32":""}
 function getWorkId(url){
@@ -162,16 +159,10 @@ async function loadShelves(){
   let db;
   try{
     db=await openDB();
-    const rows=await new Promise((resolve,reject)=>{const out=[],r=db.transaction("shelves","readonly").objectStore("shelves").openCursor();r.onsuccess=()=>{if(r.result){out.push(r.result.value);r.result.continue()}else resolve(out)};r.onerror=()=>reject(r.error)});
-    const select=$("shelfId");select.innerHTML="";
-    const unclassified=document.createElement("option");unclassified.value=UNCLASSIFIED_OPTION;unclassified.textContent="未分類（一般本棚に登録しない）";select.appendChild(unclassified);
+    const rows=await readAll(db,"shelves");
     const target=rows.find(x=>x&&x.work_add_target===true);
-    rows.sort((a,b)=>Number(a.display_order??a.order??0)-Number(b.display_order??b.order??0));
-    for(const row of rows){const id=String(row.shelf_id??"");if(!id)continue;const opt=document.createElement("option");opt.value=id;opt.textContent=String(row.shelf_name??row.name??row.title??id);select.appendChild(opt)}
-    if(localStorage.getItem(WORK_ADD_TARGET_KEY)===UNCLASSIFIED_TARGET)select.value=UNCLASSIFIED_OPTION;
-    else if(target)select.value=String(target.shelf_id??"");
-    else select.value=UNCLASSIFIED_OPTION;
-  }catch(e){$("shelfId").innerHTML='<option value="">📥登録先を設定してください</option>';message("saveStatus","登録先を読み込めませんでした："+e.message,true)}
+    $("targetShelf").textContent=target?String(target.shelf_name||"選択中の本棚")+"（本棚管理で変更）":"未分類（通常棚に登録先チェックなし）";
+  }catch(e){$("targetShelf").textContent="登録先を読み込めませんでした："+e.message;message("saveStatus","登録先を読み込めません："+e.message,true)}
   finally{if(db)db.close()}
 }
 $("parseButton").addEventListener("click",()=>{
@@ -187,17 +178,17 @@ $("workUrl").addEventListener("input",()=>{$("workId").value=getWorkId($("workUr
 $("saveButton").addEventListener("click",async()=>{
  const btn=$("saveButton");btn.disabled=true;let db;
  try{
-  const url=$("workUrl").value.trim(),id=$("workId").value.trim()||getWorkId(url),title=$("workTitle").value.trim(),author=$("authorName").value.trim(),selectedShelfId=$("shelfId").value,shelfId=selectedShelfId===UNCLASSIFIED_OPTION?"":selectedShelfId;
+  const url=$("workUrl").value.trim(),id=$("workId").value.trim()||getWorkId(url),title=$("workTitle").value.trim(),author=$("authorName").value.trim();
   if(!/^https:\/\/kakuyomu\.jp\/works\/\d+/.test(url)||!id)throw new Error("カクヨムの作品URLを確認してください。");
   if(id!==getWorkId(url))throw new Error("作品IDと作品URLが一致しません。");
   if(!title||!author)throw new Error("作品タイトルと作者名は必須です。");
-  if(!selectedShelfId)throw new Error("登録先を選択してください。");
   db=await openDB();
+  const shelves=await readAll(db,"shelves"),targetShelf=shelves.find(x=>x&&x.work_add_target===true)||null,shelfId=String(targetShelf?.shelf_id||"");
   const existing=await new Promise((resolve,reject)=>{const req=db.transaction("works","readonly").objectStore("works").get("kakuyomu:"+id);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error)});
   if(existing)throw new Error("このカクヨム作品は既に新DBに登録されています。");
   const item={id:"kakuyomu:"+id,site:"kakuyomu",workId:id,title,authorName:author,authorId:$("authorHandle").value.trim(),url,shelfId,updatedAt:extractDate($("updatedAt").value),status:$("workStatus").value.trim(),episodeCount:normalizeCount($("episodeCount").value),reading:{position:null,isRead:null},bookmark:{url:"",episodeId:"",position:0},siteData:{synopsis:$("synopsis").value.trim(),tags:$("tags").value.split(/[\n,、]+/).map(x=>x.trim()).filter(Boolean),characterCount:normalizeCount($("characterCount").value),legacyFields:{id,title,author,authorHandle:$("authorHandle").value.trim(),url,synopsis:$("synopsis").value.trim(),tags:$("tags").value.split(/[\n,、]+/).map(x=>x.trim()).filter(Boolean),status:$("workStatus").value.trim(),episodeCount:normalizeCount($("episodeCount").value),characterCount:normalizeCount($("characterCount").value),updatedAt:extractDate($("updatedAt").value),shelfId,site:"kakuyomu",createdAt:new Date().toISOString()}}};
   await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite");tx.objectStore("works").add(item);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存失敗"));tx.onabort=()=>reject(tx.error||new Error("保存中止"))});
-  message("saveStatus","✅ 新DBへ作品を登録しました。\n"+title+"\n登録先："+(shelfId?$("shelfId").selectedOptions[0].textContent:"未分類（一般本棚に配置しない）")+"\n作品ID："+id+"\n本棚へ戻ります…");
+  message("saveStatus","✅ 新DBへ作品を登録しました。\n"+title+"\n登録先："+(shelfId?String(targetShelf.shelf_name||"指定本棚"):"未分類")+"\n作品ID："+id+"\n本棚へ戻ります…");
   setTimeout(()=>{location.href="index.html";},900);
  }catch(e){message("saveStatus","⚠️ 登録できませんでした："+e.message,true)}
  finally{if(db)db.close();btn.disabled=false}
