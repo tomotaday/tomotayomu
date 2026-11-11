@@ -151,3 +151,5 @@
 - 作品数3,600件の固定判定が index.html にあり、3,601件で本棚読込を停止させていたため、固定件数判定のみ撤廃。commit d9f6ebc084f2f0390a994ab83264daa997428b8b。
 - DB存在・version・ストア構造の検証、および新DB読込失敗時に旧DBへ切り替えない方針は維持。
 - 実機での本棚再読み込み・3,601件表示確認は未実施。追加登録テストは本棚表示の確認後に再開する。
+
+- 追加確認：N5373FWは本棚カードに表示されたが、最終更新日・あらすじ・総話数が空欄。原因は新規なろう登録がAPI情報を siteData.legacyFields に保存する一方、トップ画面のカード変換が作品レコード直下の updatedAt / synopsis / episodeCount だけを参照していたこと。index.html のカード変換に legacyFields.general_lastup / story / general_all_no へのフォールバックを追加。commit 1bf1ac142a75dd6a9d59eabacc70e7358cc85328。実機表示確認は未実施。
