@@ -374,7 +374,7 @@ async function buildV3CardsFromIndexedDB(){
       })
     ]);
   }finally{worksDB.close()}
-  if(canonicalWorks.length!==3600)throw new Error("新DB作品数が想定外です："+canonicalWorks.length+"件（期待：3600件）。旧DBへは切り替えません。");
+  // 作品数は固定しない。新DBの読込成功とDB構造の検証を安全条件とする。
   await loadSiteItemsFromWorksDB();
   const shelfRows=canonicalShelves.map(v=>({shelf_id:String(v.shelf_id||""),shelf_name:String(v.shelf_name||""),display_order:Number(v.display_order)||0}));
   const narouWorks=canonicalWorks.filter(v=>v.site==="narou");
