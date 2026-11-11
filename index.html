@@ -389,7 +389,7 @@ async function buildV3CardsFromIndexedDB(){
     story:v.synopsis||v.siteData?.legacyFields?.story||"",
     general_lastup:v.updatedAt||v.siteData?.legacyFields?.general_lastup||"",
     general_all_no:v.episodeCount??v.siteData?.legacyFields?.general_all_no??"",
-    end:v.siteData?.end??v.siteData?.legacyFields?.end??(v.status==="完結"?"1":v.status==="連載中"?"0":""),
+    end:v.siteData?.end??v.siteData?.legacyFields?.end??(v.status==="完結"?"0":v.status==="連載中"?"1":""),
     noveltype:v.siteData?.noveltype??"",
     novel_type:v.siteData?.noveltype??"",
     __r18:v.siteData?.legacyFields?.__r18===true||v.siteData?.isR18===true
@@ -742,8 +742,8 @@ function formatDate(v) { if (!v) return "—"; const raw=String(v).trim(); if (/
 function nowUnix(){ return Math.floor(Date.now()/1000); }
 function setStatus(w) {
   if (String(w.noveltype ?? "").trim() === "2") return "🟣 短編";
-  if (String(w.end) === "1") return "🔵 完結";
-  if (String(w.end) === "0") return "🟢 連載中";
+  if (String(w.end) === "0") return "🔵 完結";
+  if (String(w.end) === "1") return "🟢 連載中";
   return "状態不明";
 }
 function formatSiteStatus(value,site){
