@@ -60,7 +60,7 @@
 | `app/author/author.html` | 新DB `works` | 新DB `works` の作者フィールド | 新DB単独運用へ切替済み。旧作者localStorage台帳の参照・補完処理は切離し。旧キーは保管 |
 | `app/kakuyomu/kakuyomu_edit.html` | 新DB `works`（site=kakuyomu） | 新DB `works` | 切替済み |
 | `app/memo/tomota_memo.html` | Memo DB `items` | Memo DB `items` | 作品DBとは独立 |
-| `register.html` / `app/register/work_add.html` / `kakuyomu_add.html` / `note_magazine_add.html` | 新DB `shelves` / `works` | 新DB `works` | なろう・カクヨム・noteの登録先は新DB。UIの登録先選択などはlocalStorage設定を利用 |
+| `register.html` / `app/register/work_add.html` / `kakuyomu_add.html` / `note_magazine_add.html` | 新DB `shelves` / `works` | 新DB `works` | 3サイト共通で通常棚の `work_add_target` を参照。通常棚にチェックがなければ未分類（空白 `shelfId`）。未分類専用の登録先キーは使用しない |
 | `tools/diagnostic/diagnostic_db.html` | 旧DB全ストア | なし | 読み取り専用 |
 | `tools/diagnostic/work_db_production_audit.html` 等 | 新DB `works` / `shelves` | なし | 読み取り専用監査・プレビュー用 |
 | GitHub Actions | `data/author-list.json` 等 | `data/atom/author-feeds.json`, `data/note-index-*.json`, `data/kakuyomu-toc/*.json` | ワークフローと生成ファイルの接続を維持 |
