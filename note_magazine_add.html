@@ -115,8 +115,9 @@ $("register").addEventListener("click",async()=>{
   db=await openDB();
   const rows=await readAll(db,"works"),canonicalId="note:"+magazineKey;
   const old=rows.find(x=>x.id===canonicalId||x.site==="note"&&String(x.workId)===magazineKey)||null;
-  let shelfId=String(old?.shelfId||"");
-  if(!shelfId){const shelves=await readAll(db,"shelves");const unclassified=shelves.find(v=>String(v?.shelf_name||"").replace(/\s/g,"").includes("未分類"));shelfId=String(unclassified?.shelf_id||"")}
+  let shelfId;
+  if(old){shelfId=String(old.shelfId||"");}
+  else{const shelves=await readAll(db,"shelves");const target=shelves.find(v=>v&&v.work_add_target===true);shelfId=String(target?.shelf_id||"");}
   const legacy={...(old?.siteData?.legacyFields||{}),id:magazineKey,title,author,authorId,shelfId,url:magazineUrl,bookmarkUrl:old?.bookmark?.url||old?.siteData?.legacyFields?.bookmarkUrl||magazineUrl,bookmarkEpisodeId:"",bookmarkEpisodeUrl:old?.bookmark?.url||magazineUrl,createdAt:String(old?.siteData?.legacyFields?.createdAt||new Date().toISOString().slice(0,10)),lastIndexFetchedAt:String(magazineData.fetchedAt||""),indexItemCount:Number(magazineData.totalItems||magazineData.items.length||0),indexFile:"data/note-index-"+magazineKey+".json",lastPublishedAt:String(magazineData.items[magazineData.items.length-1]?.publish_at||old?.lastPublishedAt||"")};
   const updated={...(old||{}),id:canonicalId,site:"note",workId:magazineKey,title,authorName:author,authorId,shelfId,url:magazineUrl,lastPublishedAt:legacy.lastPublishedAt,status:old?.status||legacy.status||"",reading:old?.reading||{position:null,isRead:null},bookmark:{...(old?.bookmark||{}),url:legacy.bookmarkUrl},siteData:{...(old?.siteData||{}),sourceUrl:magazineUrl,isR18:false,legacyFields:legacy}};
   await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite");tx.objectStore("works").put(updated);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存失敗"));tx.onabort=()=>reject(tx.error||new Error("保存中止"))});
