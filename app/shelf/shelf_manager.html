@@ -112,16 +112,18 @@ async function addShelf(){
 async function setWorkAddTarget(id,name){
   if(!id)return;
   try{
+    const current=shelves.find(v=>getId(v)===id);
+    const clearTarget=!!current&&current.work_add_target===true;
     const tx=db.transaction(STORES.shelves,"readwrite");
     const st=tx.objectStore(STORES.shelves);
-    const updated=shelves.map(v=>({...v,work_add_target:getId(v)===id}));
+    const updated=shelves.map(v=>({...v,work_add_target:clearTarget?false:getId(v)===id}));
     updated.forEach(v=>st.put(v));
     await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error("登録先変更中止"))});
     shelves=updated;
     const byId=new Map(updated.map(v=>[getId(v),v]));
     rows=rows.map(r=>({...r,shelf:byId.get(getId(r.shelf))||r.shelf}));
     render();
-    document.getElementById("status").textContent="作品登録先を「"+name+"」に設定しました。棚名を変更しても、この設定は棚IDについていきます。";
+    document.getElementById("status").textContent=clearTarget?"通常棚の登録先を解除しました。未分類が新規登録先になります。":"作品登録先を「"+name+"」に設定しました。棚名を変更しても、この設定は棚IDについていきます。";
   }catch(e){
     document.getElementById("status").textContent="作品登録先の設定失敗："+e.message;
   }
