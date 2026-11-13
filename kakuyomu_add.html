@@ -179,13 +179,13 @@ $("saveButton").addEventListener("click",()=>{
  try{
   const url=$("workUrl").value.trim(),id=$("workId").value.trim()||getWorkId(url);
   const title=$("workTitle").value.trim(),author=$("authorName").value.trim();
-  if(!/^https:\\/\\/kakuyomu\\.jp\\/works\\/\\d+(?:[/?#]|$)/i.test(url)||!id)throw new Error("カクヨムの作品URLを確認してください。");
+  if(!/^https:\/\/kakuyomu\.jp\/works\/\d+(?:[/?#]|$)/i.test(url)||!id)throw new Error("カクヨムの作品URLを確認してください。");
   if(id!==getWorkId(url))throw new Error("作品IDと作品URLが一致しません。");
   if(!title||!author)throw new Error("作品タイトルと作者名は必須です。");
   const draft={
    workId:id,url,title,author,handle:$("authorHandle").value.trim(),
    synopsis:$("synopsis").value.trim(),
-   tags:$("tags").value.split(/[\\n,、]+/).map(x=>x.trim()).filter(Boolean),
+   tags:$("tags").value.split(/[\n,、]+/).map(x=>x.trim()).filter(Boolean),
    status:$("workStatus").value.trim(),
    characterCount:normalizeCount($("characterCount").value),
    updatedAt:extractDate($("updatedAt").value)
