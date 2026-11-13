@@ -139,6 +139,7 @@
 - [判定センター運用ガイド](guides/diagnostic_center_guide.html)
 - [なろう登録・更新・復旧ガイド](guides/narou_register_guide.html)
 - [カクヨムガイド](guides/kakuyomu_guide.html)
+- [ともたよむ20：資料室整備・写真PDF移管・DB整理／復元計画](tomotayomu20-records-and-handover.md)
 - [カクヨム目次・作品登録の自動化調査記録](kakuyomu-toc-registration-investigation.md)
 - [noteマガジンガイド](guides/note_magazine_guide.html)
 
@@ -167,3 +168,11 @@
 - 自動化案として別のカクヨム登録ShortcutからWorkflowを起動する方式を検討中。ただしAtom更新ShortcutのAPI送信内容・認証情報の保管場所・安全性を確認してから方式を確定する。PAT等の秘密情報をGitHub Pagesへ埋め込まない。
 - 現時点で今回の調査に伴う本番コード・DB・既存Shortcutの変更は行っていない。
 - 次の作業はAtom更新ShortcutのAPI送信部分を確認すること。その後、カクヨムの保存先（IndexedDB/localStorage）に関するコード・資料間の記述差も照合する。
+
+
+## 2026-11-13 追記：ともたよむ20の資料室整備・写真PDF移管・復元計画
+
+- ともたよむ20でカクヨム自動登録の話題に入る前に扱った、資料室の正本分担、写真PDF01〜12の移管・削除条件、新DB移行照合、HTML整理、復元テスト再設計、Shortcut未確認事項を専用記録へ集約した。
+- 詳細：[ともたよむ20：資料室整備・写真PDF移管・DB整理／復元計画](tomotayomu20-records-and-handover.md)。
+- 写真PDF01〜12は削除方針だが、各PDFの内容と移管先の照合が終わるまでは削除しない。今回、PDF自体の削除は行っていない。
+- 復元テストはDB整理・保全対象確定後の最終工程。本番DBへ書き込まず、専用テスト領域でDBごとに実施する。実機復元成功とは扱わない。
