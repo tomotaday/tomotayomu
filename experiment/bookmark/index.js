@@ -23,29 +23,31 @@ function validateBookmarkUrl(work, raw) {
 
   const hostname = parsed.hostname.toLowerCase();
   const parts = parsed.pathname.split("/").filter(Boolean);
-
   const narouHost = hostname === "syosetu.com" || hostname.endsWith(".syosetu.com");
   const narouPath = parts.length >= 1 && parts.length <= 2
     && /^[a-z0-9]+$/i.test(parts[0])
     && (parts.length === 1 || /^\d+$/.test(parts[1]));
-
   const kakuyomuPath = hostname === "kakuyomu.jp"
-    && parts.length === 4
-    && parts[0] === "works"
-    && parts[2] === "episodes";
-
+    && parts.length === 4 && parts[0] === "works" && parts[2] === "episodes";
   const notePath = hostname === "note.com"
-    && parts.length === 2
-    && /^n[a-z0-9]+$/i.test(parts[1]);
+    && parts.length === 2 && /^n[a-z0-9]+$/i.test(parts[1]);
 
   const valid = work.workKey.startsWith("narou:")
     ? narouHost && narouPath
     : work.workKey.startsWith("kakuyomu:")
       ? kakuyomuPath
       : notePath;
-
   if (!valid) throw new Error("サイトとURLの形式が一致しません");
-  return parsed.href;
+  return parsed;
+}
+
+function extractNarouPosition(parsedUrl) {
+  const parts = parsedUrl.pathname.split("/").filter(Boolean);
+  if (parts.length === 2 && /^\d+$/.test(parts[1])) {
+    const position = Number(parts[1]);
+    return Number.isSafeInteger(position) && position > 0 ? position : null;
+  }
+  return null;
 }
 
 async function refreshRecords() {
@@ -65,6 +67,7 @@ async function render() {
     const fields = el("div", "field");
     let url = null;
     let position = null;
+    let positionHint = null;
     let readToggle = null;
 
     if (work.kind === "short") {
@@ -79,14 +82,31 @@ async function render() {
       url.type = "url";
       url.placeholder = "https://...";
       url.setAttribute("aria-label", work.title + " のしおりURL");
-      const posLabel = el("label", "", "読書位置");
-      position = el("input");
-      position.type = "number";
-      position.min = "1";
-      position.step = "1";
-      position.placeholder = "話数・記事順（不明なら空欄）";
-      position.setAttribute("aria-label", work.title + " の読書位置");
-      fields.append(urlLabel, url, posLabel, position);
+      fields.append(urlLabel, url);
+      if (work.workKey.startsWith("narou:")) {
+        positionHint = el("div", "muted", "URLを入力すると、末尾の話数を自動判定します。");
+        fields.append(positionHint);
+        url.addEventListener("input", () => {
+          try {
+            const parsed = validateBookmarkUrl(work, url.value.trim());
+            const detected = extractNarouPosition(parsed);
+            positionHint.textContent = detected === null
+              ? "URLから話数を取得できません（話数を含むエピソードURLを入力してください）。"
+              : "URLから " + detected + " 話を取得しました。";
+          } catch {
+            positionHint.textContent = "有効ななろうのエピソードURLを入力してください。";
+          }
+        });
+      } else {
+        const posLabel = el("label", "", "読書位置（実験用・手入力）");
+        position = el("input");
+        position.type = "number";
+        position.min = "1";
+        position.step = "1";
+        position.placeholder = "話数・記事順（不明なら空欄）";
+        position.setAttribute("aria-label", work.title + " の読書位置");
+        fields.append(posLabel, position);
+      }
     }
 
     const actions = el("div", "actions");
@@ -108,16 +128,24 @@ async function render() {
             updatedAt: new Date().toISOString()
           };
         } else {
-          const savedUrl = validateBookmarkUrl(work, url.value.trim());
-          const raw = position.value.trim();
-          const value = raw === "" ? null : Number(raw);
-          if (value !== null && (!Number.isSafeInteger(value) || value < 1)) {
-            throw new Error("位置は1以上の整数、または空欄にしてください");
+          const parsedUrl = validateBookmarkUrl(work, url.value.trim());
+          let value;
+          if (work.workKey.startsWith("narou:")) {
+            value = extractNarouPosition(parsedUrl);
+            if (value === null) {
+              throw new Error("URLから話数を取得できません。話数が含まれるエピソードURLを入力してください。");
+            }
+          } else {
+            const raw = position.value.trim();
+            value = raw === "" ? null : Number(raw);
+            if (value !== null && (!Number.isSafeInteger(value) || value < 1)) {
+              throw new Error("位置は1以上の整数、または空欄にしてください");
+            }
           }
           record = {
             workKey: work.workKey,
             site: work.workKey.split(":")[0],
-            bookmark: { url: savedUrl, position: value },
+            bookmark: { url: parsedUrl.href, position: value },
             isRead: null,
             updatedAt: new Date().toISOString()
           };
@@ -125,7 +153,7 @@ async function render() {
         await BookmarkLabDB.saveBookmark(record);
         output.textContent = work.kind === "short"
           ? (record.isRead ? "既読として保存済み" : "未読として保存済み")
-          : "しおり保存済み：" + (record.bookmark.position ?? "位置不明");
+          : "しおり保存済み：" + (record.bookmark.position == null ? "位置不明" : record.bookmark.position + " 話");
         status.textContent = work.title + " の実験データを保存しました。";
         await refreshRecords();
       } catch (error) {
@@ -143,7 +171,8 @@ async function render() {
           output.textContent = record.isRead ? "既読" : "未読";
         } else {
           if (record.bookmark?.url) url.value = record.bookmark.url;
-          if (record.bookmark?.position != null) position.value = String(record.bookmark.position);
+          if (position && record.bookmark?.position != null) position.value = String(record.bookmark.position);
+          if (positionHint && record.bookmark?.position != null) positionHint.textContent = "保存済み位置：" + record.bookmark.position + " 話";
           output.textContent = record.bookmark ? JSON.stringify(record.bookmark) : "しおり未登録";
         }
         status.textContent = work.title + " の保存内容を読み込みました。";
