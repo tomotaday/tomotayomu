@@ -41,6 +41,34 @@ function validateBookmarkUrl(work, raw) {
   return parsed;
 }
 
+function extractKakuyomuIds(parsedUrl) {
+  const parts = parsedUrl.pathname.split("/").filter(Boolean);
+  if (parts.length !== 4 || parts[0] !== "works" || parts[2] !== "episodes") {
+    throw new Error("カクヨムの各話URLではありません");
+  }
+  return { workId: parts[1], episodeId: parts[3] };
+}
+
+function findKakuyomuPosition(rawToc, ids) {
+  let toc;
+  try { toc = JSON.parse(rawToc); } catch { throw new Error("目次JSONを正しく読み込めません"); }
+  if (String(toc.work_id) !== String(ids.workId)) {
+    throw new Error("目次データの作品IDとURLの作品IDが一致しません");
+  }
+  if (!Array.isArray(toc.episodes)) {
+    throw new Error("目次JSONにepisodes配列がありません");
+  }
+  const matches = toc.episodes.filter(ep => String(ep.episode_id) === String(ids.episodeId));
+  if (matches.length !== 1) {
+    throw new Error(matches.length === 0 ? "目次内に該当エピソードがありません" : "同じエピソードIDが複数あります");
+  }
+  const number = Number(matches[0].number);
+  if (!Number.isSafeInteger(number) || number < 1) {
+    throw new Error("目次データのnumberが不正です");
+  }
+  return number;
+}
+
 function extractNarouPosition(parsedUrl) {
   const parts = parsedUrl.pathname.split("/").filter(Boolean);
   if (parts.length === 2 && /^\d+$/.test(parts[1])) {
@@ -97,6 +125,14 @@ async function render() {
             positionHint.textContent = "有効ななろうのエピソードURLを入力してください。";
           }
         });
+      } else if (work.workKey.startsWith("kakuyomu:")) {
+        const tocLabel = el("label", "", "目次データ（本番と同じ抽出済みJSON）");
+        tocInput = el("textarea");
+        tocInput.rows = 5;
+        tocInput.placeholder = '{"work_id":"作品ID","episodes":[{"number":1,"episode_id":"エピソードID"}]}';
+        tocInput.setAttribute("aria-label", "カクヨム目次JSON");
+        positionHint = el("div", "muted", "各話URLと、この作品の目次JSONを照合して話数を取得します。");
+        fields.append(tocLabel, tocInput, positionHint);
       } else {
         const posLabel = el("label", "", "読書位置（実験用・手入力）");
         position = el("input");
@@ -135,6 +171,10 @@ async function render() {
             if (value === null) {
               throw new Error("URLから話数を取得できません。話数が含まれるエピソードURLを入力してください。");
             }
+          } else if (work.workKey.startsWith("kakuyomu:")) {
+            const ids = extractKakuyomuIds(parsedUrl);
+            value = findKakuyomuPosition(tocInput.value.trim(), ids);
+            positionHint.textContent = "目次照合成功：" + value + " 話（episodeId: " + ids.episodeId + "）";
           } else {
             const raw = position.value.trim();
             value = raw === "" ? null : Number(raw);
