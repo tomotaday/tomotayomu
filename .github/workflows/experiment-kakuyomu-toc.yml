@@ -34,11 +34,11 @@ jobs:
           from urllib.parse import urlparse
 
           raw_input = os.environ["WORK_URL"].strip()
-          if re.fullmatch(r"\\d+", raw_input):
+          if re.fullmatch(r"\d+", raw_input):
               work_id = raw_input
           else:
               parsed = urlparse(raw_input)
-              match_id = re.fullmatch(r"/works/(\\d+)/?", parsed.path)
+              match_id = re.fullmatch(r"/works/(\d+)/?", parsed.path)
               if parsed.scheme not in ("http", "https") or parsed.hostname not in ("kakuyomu.jp", "www.kakuyomu.jp") or not match_id:
                   raise SystemExit("カクヨム作品URL（https://kakuyomu.jp/works/作品ID）を入力してください")
               work_id = match_id.group(1)
@@ -52,7 +52,7 @@ jobs:
               html = response.read().decode("utf-8", errors="replace")
 
           match = re.search(
-              r"<script[^>]+id=[\\"']__NEXT_DATA__[\\"'][^>]*>(.*?)</script>",
+              r"<script[^>]+id=[\"']__NEXT_DATA__[\"'][^>]*>(.*?)</script>",
               html,
               re.S
           )
@@ -134,7 +134,7 @@ jobs:
           }
           if episode_url:
               parsed_episode = urlparse(episode_url)
-              episode_match = re.fullmatch(r"/works/(\\d+)/episodes/(\\d+)/?", parsed_episode.path)
+              episode_match = re.fullmatch(r"/works/(\d+)/episodes/(\d+)/?", parsed_episode.path)
               if (
                   parsed_episode.scheme not in ("http", "https")
                   or parsed_episode.hostname not in ("kakuyomu.jp", "www.kakuyomu.jp")
