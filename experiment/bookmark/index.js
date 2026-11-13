@@ -24,8 +24,8 @@ function validateBookmarkUrl(work, raw) {
   const valid = work.workKey.startsWith("narou:")
     ? (host === "syosetu.com" || host.endsWith(".syosetu.com")) && /^\\/[a-z0-9]+\\/(?:\\d+\\/?)?$/i.test(parsed.pathname)
     : work.workKey.startsWith("kakuyomu:")
-      ? host === "kakuyomu.jp" && /^\\/works\\/[^/]+\\/episodes\\/[^/]+\\/?$/.test(parsed.pathname)
-      : host === "note.com" && /^\\/[^/]+\\/n[a-z0-9]+\\/?$/i.test(parsed.pathname);
+      ? host === "kakuyomu.jp" && /^\/works\/[^/]+\/episodes\/[^/]+\/?$/.test(parsed.pathname)
+      : host === "note.com" && /^\/[^/]+\/n[a-z0-9]+\/?$/i.test(parsed.pathname);
   if (!valid) throw new Error("サイトとURLの形式が一致しません");
   return parsed.href;
 }
