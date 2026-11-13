@@ -26,7 +26,7 @@ button:disabled{opacity:.55}
 <main>
 <p><a href="index.html">← ともたよむ本棚へ戻る</a></p>
 <h1>📚 カクヨム作品登録</h1>
-<div class="note">カクヨム作品情報ページからコピーしたテキストを貼り付け、内容を確認して登録します。登録すると、ともたよむの本棚に作品カードが追加されます。</div>
+<div class="note">カクヨム作品情報ページからコピーしたテキストを貼り付け、内容を確認します。正式な総話数はGitHub Actionsで取得・検証した目次から確定します。</div>
 
 <section class="card">
 <div class="step">STEP 1</div>
@@ -59,7 +59,7 @@ button:disabled{opacity:.55}
 <label for="synopsis">あらすじ</label><textarea id="synopsis" rows="5"></textarea>
 <label for="tags">タグ</label><textarea id="tags" rows="2" placeholder="タグを改行または読点で区切って入力"></textarea>
 <label for="workStatus">作品状態</label><input id="workStatus" placeholder="完結済・連載中など">
-<label for="episodeCount">総話数</label><input id="episodeCount" inputmode="numeric" placeholder="例：1132">
+<label for="episodeCount">ページ表示の話数（参考値・登録には不使用）</label><input id="episodeCount" inputmode="numeric" placeholder="目次取得値を正式な総話数として使用">
 <label for="characterCount">文字数</label><input id="characterCount" inputmode="numeric" placeholder="例：3966011">
 <label for="updatedAt">最終更新日</label><input id="updatedAt" placeholder="例：2026年9月30日">
 <label>新規登録先（本棚管理の設定）</label><div id="targetShelf" class="fieldHint">登録先を読み込み中…</div>
@@ -190,10 +190,13 @@ $("saveButton").addEventListener("click",()=>{
    characterCount:normalizeCount($("characterCount").value),
    updatedAt:extractDate($("updatedAt").value)
   };
+  const requestId=new URLSearchParams(location.search).get("request_id")||"";
+  if(!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(requestId))
+    throw new Error("目次取得リクエストが確認できません。専用ショートカットから開いてください。");
   sessionStorage.setItem("tomotaYomuKakuyomuDraft_v1",JSON.stringify(draft));
-  message("saveStatus","作品情報を引き渡します。目次取得結果を照合するページへ移動します。");
+  message("saveStatus","作品情報を引き渡します。今回の目次取得結果を照合するページへ移動します。");
   $("saveButton").disabled=true;
-  location.href="app/kakuyomu/kakuyomu_write.html";
+  location.href="app/kakuyomu/kakuyomu_write.html?request_id="+encodeURIComponent(requestId)+"&work_id="+encodeURIComponent(id);
  }catch(e){message("saveStatus","⚠️ 次へ進めません："+e.message,true)}
 });
 // 新DBへの書き込みは kakuyomu_write.html に集約する。
