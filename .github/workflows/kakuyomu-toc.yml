@@ -6,21 +6,33 @@ on:
       work_url:
         description: "カクヨム作品URL（作品IDだけでも可）"
         required: true
-        default: "https://kakuyomu.jp/works/1177354054891965415"
+      request_id:
+        description: "呼び出し元が発行した一意のUUID"
+        required: true
 
 permissions:
   contents: write
 
+concurrency:
+  group: kakuyomu-toc-${{ inputs.request_id }}
+  cancel-in-progress: false
+
 jobs:
   fetch-toc:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: main
 
-      - name: Fetch work page and extract episode order
+      - name: Fetch and validate TOC
+        id: extract
+        continue-on-error: true
         env:
           WORK_URL: ${{ inputs.work_url }}
+          REQUEST_ID: ${{ inputs.request_id }}
         run: |
           python - <<'PY'
           import csv
@@ -30,164 +42,176 @@ jobs:
           import urllib.request
           from urllib.parse import urlparse
 
-          raw_input = os.environ["WORK_URL"].strip()
-          if re.fullmatch(r"\d+", raw_input):
-              work_id = raw_input
-          else:
-              parsed = urlparse(raw_input)
-              match_id = re.fullmatch(r"/works/(\d+)/?", parsed.path)
-              if parsed.scheme not in ("http", "https") or parsed.hostname not in ("kakuyomu.jp", "www.kakuyomu.jp") or not match_id:
-                  raise SystemExit("カクヨム作品URL（https://kakuyomu.jp/works/作品ID）を入力してください")
-              work_id = match_id.group(1)
+          request_id = os.environ["REQUEST_ID"].strip()
+          result_dir = "data/kakuyomu-toc-requests"
+          os.makedirs(result_dir, exist_ok=True)
+          result_path = os.path.join(result_dir, request_id + ".json")
 
-          url = f"https://kakuyomu.jp/works/{work_id}"
-          req = urllib.request.Request(
-              url,
-              headers={"User-Agent": "Mozilla/5.0 (compatible; TomotaYomuTOCTest/1.0)"}
-          )
-          with urllib.request.urlopen(req, timeout=30) as response:
-              html = response.read().decode("utf-8", errors="replace")
+          def save_result(data):
+              with open(result_path, "w", encoding="utf-8") as f:
+                  json.dump(data, f, ensure_ascii=False, indent=2)
+                  f.write("\\n")
 
-          match = re.search(
-              r"<script[^>]+id=[\"']__NEXT_DATA__[\"'][^>]*>(.*?)</script>",
-              html,
-              re.S
-          )
-          if not match:
-              raise SystemExit("__NEXT_DATA__ が見つかりません。ページ構造変更の可能性があります。")
+          try:
+              if not re.fullmatch(r"[0-9a-fA-F-]{32,36}", request_id):
+                  raise ValueError("request_idはUUID形式で指定してください")
 
-          next_data = json.loads(match.group(1))
-          page_props = next_data.get("props", {}).get("pageProps", {})
-          apollo = page_props.get("__APOLLO_STATE__")
-          if not isinstance(apollo, dict):
-              raise SystemExit("__APOLLO_STATE__ が見つかりません。")
+              raw_input = os.environ["WORK_URL"].strip()
+              if re.fullmatch(r"\\d+", raw_input):
+                  work_id = raw_input
+              else:
+                  parsed = urlparse(raw_input)
+                  match_id = re.fullmatch(r"/works/(\\d+)/?", parsed.path)
+                  if parsed.scheme not in ("http", "https") or parsed.hostname not in ("kakuyomu.jp", "www.kakuyomu.jp") or not match_id:
+                      raise ValueError("カクヨム作品URL（https://kakuyomu.jp/works/作品ID）を入力してください")
+                  work_id = match_id.group(1)
 
-          work = apollo.get(f"Work:{work_id}")
-          if not isinstance(work, dict):
-              raise SystemExit(f"Work:{work_id} が見つかりません。")
+              url = f"https://kakuyomu.jp/works/{work_id}"
+              req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; TomotaYomuTOC/1.0)"})
+              with urllib.request.urlopen(req, timeout=30) as response:
+                  html = response.read().decode("utf-8", errors="replace")
 
-          toc = work.get("tableOfContentsV2") or work.get("tableOfContents") or []
-          if not isinstance(toc, list) or not toc:
-              raise SystemExit("目次データが見つかりません。")
+              match = re.search(r"<script[^>]+id=[\"']__NEXT_DATA__[\"]'[^>]*>(.*?)</script>", html, re.S)
+              if not match:
+                  raise ValueError("__NEXT_DATA__ が見つかりません。ページ構造変更の可能性があります。")
 
-          def resolve(value):
-              if isinstance(value, dict) and "__ref" in value:
-                  return apollo.get(value["__ref"])
-              return value if isinstance(value, dict) else None
+              next_data = json.loads(match.group(1))
+              page_props = next_data.get("props", {}).get("pageProps", {})
+              apollo = page_props.get("__APOLLO_STATE__")
+              if not isinstance(apollo, dict):
+                  raise ValueError("__APOLLO_STATE__ が見つかりません。")
+              work = apollo.get(f"Work:{work_id}")
+              if not isinstance(work, dict):
+                  raise ValueError(f"Work:{work_id} が見つかりません。")
 
-          episodes = []
-          seen = set()
+              toc = work.get("tableOfContentsV2") or work.get("tableOfContents") or []
+              if not isinstance(toc, list) or not toc:
+                  raise ValueError("目次データが見つかりません。")
 
-          def walk_toc(items):
-              for item_ref in items or []:
-                  item = resolve(item_ref)
-                  if not item:
-                      continue
+              def resolve(value):
+                  if isinstance(value, dict) and "__ref" in value:
+                      return apollo.get(value["__ref"])
+                  return value if isinstance(value, dict) else None
 
-                  # Chapter/TOC node: episodeUnions holds ordered episode refs.
-                  unions = item.get("episodeUnions")
-                  if isinstance(unions, list):
-                      for episode_ref in unions:
-                          episode = resolve(episode_ref)
-                          if not episode:
-                              continue
-                          episode_id = str(episode.get("id") or "")
-                          typename = episode.get("__typename", "")
-                          if not episode_id or typename == "EmptyEpisode" or episode_id in seen:
-                              continue
-                          seen.add(episode_id)
-                          episodes.append({
-                              "number": len(episodes) + 1,
-                              "episode_id": episode_id,
-                              "title": episode.get("title") or "",
-                              "published_at": episode.get("publishedAt") or "",
-                              "url": f"https://kakuyomu.jp/works/{work_id}/episodes/{episode_id}"
-                          })
+              episodes, seen = [], set()
+              def walk_toc(items):
+                  for item_ref in items or []:
+                      item = resolve(item_ref)
+                      if not item:
+                          continue
+                      unions = item.get("episodeUnions")
+                      if isinstance(unions, list):
+                          for episode_ref in unions:
+                              episode = resolve(episode_ref)
+                              if not episode:
+                                  continue
+                              episode_id = str(episode.get("id") or "")
+                              if not episode_id or episode.get("__typename") == "EmptyEpisode" or episode_id in seen:
+                                  continue
+                              seen.add(episode_id)
+                              episodes.append({
+                                  "number": len(episodes) + 1,
+                                  "episode_id": episode_id,
+                                  "title": episode.get("title") or "",
+                                  "published_at": episode.get("publishedAt") or "",
+                                  "url": f"https://kakuyomu.jp/works/{work_id}/episodes/{episode_id}"
+                              })
+                      nested = item.get("tableOfContents") or item.get("children")
+                      if isinstance(nested, list):
+                          walk_toc(nested)
 
-                  # Some TOC versions nest further TOC nodes.
-                  nested = item.get("tableOfContents") or item.get("children")
-                  if isinstance(nested, list):
-                      walk_toc(nested)
+              walk_toc(toc)
+              if not episodes:
+                  raise ValueError("目次からエピソードを抽出できませんでした。")
 
-          walk_toc(toc)
+              expected = work.get("publicEpisodeCount")
+              if expected is None or int(expected) != len(episodes):
+                  raise ValueError(f"公表話数と抽出件数が一致しません。公表={expected} 抽出={len(episodes)}")
 
-          if not episodes:
-              raise SystemExit("目次からエピソードを抽出できませんでした。")
+              known_work = "1177354054891965415"
+              known_first_ten = [
+                  "16816927860524242968", "1177354054891965429", "1177354054891965448",
+                  "1177354054891965464", "1177354054891965484", "1177354054898104784",
+                  "16816927860263910947", "16816927860263970990", "16816927860264015134",
+                  "16816927860264077825"
+              ]
+              if work_id == known_work and [x["episode_id"] for x in episodes[:10]] != known_first_ten:
+                  raise ValueError("検証用作品の先頭10話ID・順序が一致しません。")
 
-          expected = work.get("publicEpisodeCount")
-          print(f"作品: {work.get('title', '')}")
-          print(f"作品ID: {work_id}")
-          print(f"サイト公表話数: {expected}")
-          print(f"抽出話数: {len(episodes)}")
-          print("先頭10件:")
-          for row in episodes[:10]:
-              print(f'{row["number"]}: {row["episode_id"]} {row["title"]}')
-
-          with open("kakuyomu_toc.json", "w", encoding="utf-8") as f:
-              json.dump({
+              toc_data = {
                   "work_id": work_id,
                   "title": work.get("title", ""),
-                  "public_episode_count": expected,
+                  "public_episode_count": int(expected),
                   "extracted_count": len(episodes),
                   "episodes": episodes
-              }, f, ensure_ascii=False, indent=2)
+              }
+              os.makedirs("data/kakuyomu-toc", exist_ok=True)
+              with open(f"data/kakuyomu-toc/{work_id}.json", "w", encoding="utf-8") as f:
+                  json.dump(toc_data, f, ensure_ascii=False, indent=2)
+                  f.write("\\n")
+              with open("kakuyomu_toc.csv", "w", encoding="utf-8-sig", newline="") as f:
+                  writer = csv.DictWriter(f, fieldnames=["number", "episode_id", "title", "published_at", "url"])
+                  writer.writeheader()
+                  writer.writerows(episodes)
 
-          with open("kakuyomu_toc.csv", "w", encoding="utf-8-sig", newline="") as f:
-              writer = csv.DictWriter(f, fieldnames=["number", "episode_id", "title", "published_at", "url"])
-              writer.writeheader()
-              writer.writerows(episodes)
-
-          # Compare the first 10 known IDs only for the dedicated reference work.
-          known_reference_work_id = "1177354054891965415"
-          known_first_ten = [
-              "16816927860524242968",
-              "1177354054891965429",
-              "1177354054891965448",
-              "1177354054891965464",
-              "1177354054891965484",
-              "1177354054898104784",
-              "16816927860263910947",
-              "16816927860263970990",
-              "16816927860264015134",
-              "16816927860264077825",
-          ]
-          actual_first_ten = [row["episode_id"] for row in episodes[:10]]
-          if work_id == known_reference_work_id and actual_first_ten != known_first_ten:
-              raise SystemExit(
-                  "先頭10話のID・順序が検証値と一致しません。"
-                  f" expected={known_first_ten} actual={actual_first_ten}"
-              )
-
-          if expected is not None and int(expected) != len(episodes):
-              raise SystemExit(
-                  "公表話数と抽出件数が一致しません。JSON保存を中止します。"
-                  f" 公表={expected} 抽出={len(episodes)}"
-              )
+              save_result({
+                  "request_id": request_id,
+                  "status": "success",
+                  "work_id": work_id,
+                  "title": toc_data["title"],
+                  "public_episode_count": int(expected),
+                  "extracted_count": len(episodes),
+                  "toc_path": f"data/kakuyomu-toc/{work_id}.json"
+              })
+              print(f"SUCCESS: {work_id} / {len(episodes)}話")
+          except Exception as exc:
+              save_result({
+                  "request_id": request_id,
+                  "status": "failure",
+                  "error": str(exc)
+              })
+              print(f"ERROR: {exc}")
+              raise SystemExit(1)
           PY
 
-      - name: Upload TOC result
+      - name: Upload diagnostic artifact
+        if: always() && steps.extract.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: kakuyomu-toc
-          path: |
-            kakuyomu_toc.json
-            kakuyomu_toc.csv
+          name: kakuyomu-toc-${{ inputs.request_id }}
+          path: kakuyomu_toc.csv
           if-no-files-found: error
           retention-days: 7
 
-      - name: Save TOC JSON to repository
+      - name: Publish request result
+        if: always()
         env:
-          WORK_URL: ${{ inputs.work_url }}
+          REQUEST_ID: ${{ inputs.request_id }}
         run: |
-          WORK_ID="$(python -c 'import json; print(json.load(open("kakuyomu_toc.json", encoding="utf-8"))["work_id"])')"
-          mkdir -p data/kakuyomu-toc
-          mv kakuyomu_toc.json "data/kakuyomu-toc/${WORK_ID}.json"
+          set -e
+          RESULT="data/kakuyomu-toc-requests/${REQUEST_ID}.json"
+          test -s "$RESULT"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "data/kakuyomu-toc/${WORK_ID}.json"
+          git add "$RESULT" data/kakuyomu-toc/*.json
           if git diff --cached --quiet; then
-            echo "目次JSONに変更はありません。"
-          else
-            git commit -m "カクヨム目次更新: ${WORK_ID}"
-            git push
+            echo "No repository changes."
+            exit 0
           fi
+          git commit -m "カクヨム目次取得結果: ${REQUEST_ID}"
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              echo "Result published."
+              exit 0
+            fi
+          done
+          echo "Failed to publish result after retries."
+          exit 1
+
+      - name: Mark extraction failure
+        if: steps.extract.outcome == 'failure'
+        run: |
+          echo "カクヨム目次の取得・検証に失敗しました。結果JSONを確認してください。"
+          exit 1
