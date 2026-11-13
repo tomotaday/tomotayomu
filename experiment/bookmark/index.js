@@ -20,12 +20,30 @@ function validateBookmarkUrl(work, raw) {
   let parsed;
   try { parsed = new URL(raw); } catch { throw new Error("有効なURLを入力してください"); }
   if (parsed.protocol !== "https:") throw new Error("URLはhttpsで始まる必要があります");
-  const host = parsed.hostname.toLowerCase();
+
+  const hostname = parsed.hostname.toLowerCase();
+  const parts = parsed.pathname.split("/").filter(Boolean);
+
+  const narouHost = hostname === "syosetu.com" || hostname.endsWith(".syosetu.com");
+  const narouPath = parts.length >= 1 && parts.length <= 2
+    && /^[a-z0-9]+$/i.test(parts[0])
+    && (parts.length === 1 || /^\d+$/.test(parts[1]));
+
+  const kakuyomuPath = hostname === "kakuyomu.jp"
+    && parts.length === 4
+    && parts[0] === "works"
+    && parts[2] === "episodes";
+
+  const notePath = hostname === "note.com"
+    && parts.length === 2
+    && /^n[a-z0-9]+$/i.test(parts[1]);
+
   const valid = work.workKey.startsWith("narou:")
-    ? (host === "syosetu.com" || host.endsWith(".syosetu.com")) && /^\\/[a-z0-9]+\\/(?:\\d+\\/?)?$/i.test(parsed.pathname)
+    ? narouHost && narouPath
     : work.workKey.startsWith("kakuyomu:")
-      ? host === "kakuyomu.jp" && /^\/works\/[^/]+\/episodes\/[^/]+\/?$/.test(parsed.pathname)
-      : host === "note.com" && /^\/[^/]+\/n[a-z0-9]+\/?$/i.test(parsed.pathname);
+      ? kakuyomuPath
+      : notePath;
+
   if (!valid) throw new Error("サイトとURLの形式が一致しません");
   return parsed.href;
 }
