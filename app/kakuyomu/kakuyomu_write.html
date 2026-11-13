@@ -68,15 +68,15 @@ const $=id=>document.getElementById(id);
 let draft=null,toc=null,targetShelf=null,dbReady=false,saving=false;
 function showStatus(id,text,kind=""){const el=$(id);el.textContent=text;el.className="status "+kind}
 function getQuery(){return new URLSearchParams(location.search)}
-function validId(v){return /^\\d+$/.test(String(v||""))}
+function validId(v){return /^\d+$/.test(String(v||""))}
 function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME);req.onupgradeneeded=()=>{req.transaction.abort();reject(new Error("新DBが未作成です"))};req.onsuccess=()=>{const db=req.result;if(db.version!==2||!db.objectStoreNames.contains("works")||!db.objectStoreNames.contains("shelves")){db.close();reject(new Error("新DB構造が想定外です"))}else resolve(db)};req.onerror=()=>reject(req.error||new Error("新DBを開けません"))})}
 function readAll(db,store){return new Promise((resolve,reject)=>{const out=[],req=db.transaction(store,"readonly").objectStore(store).openCursor();req.onsuccess=()=>{const c=req.result;if(c){out.push(c.value);c.continue()}else resolve(out)};req.onerror=()=>reject(req.error||new Error(store+"読込失敗"))})}
 async function loadDraft(){
  const raw=sessionStorage.getItem(DRAFT_KEY);
  if(!raw)throw new Error("登録用の作品情報がありません。作品情報の解析ページから進んでください。");
  const value=JSON.parse(raw);
- if(!value||!validId(value.workId)||!/^https:\\/\\/kakuyomu\\.jp\\/works\\/\\d+/.test(value.url||""))throw new Error("登録用データの作品IDまたはURLが不正です。");
- if(value.workId!==String((value.url.match(/\\/works\\/(\\d+)/)||[])[1]||""))throw new Error("作品IDとURLが一致しません。");
+ if(!value||!validId(value.workId)||!/^https:\/\/kakuyomu\.jp\/works\/\d+/.test(value.url||""))throw new Error("登録用データの作品IDまたはURLが不正です。");
+ if(value.workId!==String((value.url.match(/\/works\/(\d+)/)||[])[1]||""))throw new Error("作品IDとURLが一致しません。");
  return value;
 }
 async function loadAndVerify(){
@@ -105,12 +105,12 @@ async function init(){
   $("workId").value=draft.workId;$("workUrl").value=draft.url;
   $("title").value=draft.title||"";$("author").value=draft.author||"";
   $("authorHandle").value=draft.handle||"";$("synopsis").value=draft.synopsis||"";
-  $("tags").value=Array.isArray(draft.tags)?draft.tags.join("\\n"):"";
+  $("tags").value=Array.isArray(draft.tags)?draft.tags.join("\n"):"";
   $("status").value=draft.status||"";$("characterCount").value=draft.characterCount||"";
   $("updatedAt").value=draft.updatedAt||"";
   toc=await loadAndVerify();
   $("tocSummary").hidden=false;
-  $("tocSummary").textContent="作品："+(toc.title||draft.title)+"\\n作品ID："+toc.work_id+"\\n総話数："+toc.episodes.length.toLocaleString("ja-JP")+"話\\nrequest_id："+getQuery().get("request_id")+"\\n検証：公表話数・抽出件数・連番・重複IDの確認済み";
+  $("tocSummary").textContent="作品："+(toc.title||draft.title)+"\n作品ID："+toc.work_id+"\n総話数："+toc.episodes.length.toLocaleString("ja-JP")+"話\nrequest_id："+getQuery().get("request_id")+"\n検証：公表話数・抽出件数・連番・重複IDの確認済み";
   $("totalCount").textContent=toc.episodes.length.toLocaleString("ja-JP")+"話（TOC JSON確定値）";
   $("episodeDetails").hidden=false;
   $("episodeList").replaceChildren(...toc.episodes.map(ep=>{const li=document.createElement("li");li.textContent=ep.title||("第"+ep.number+"話");return li;}));
@@ -125,7 +125,7 @@ async function init(){
   if(!$("title").value.trim()||!$("author").value.trim())throw new Error("作品タイトルと作者名は必須です。");
   $("saveButton").disabled=false;
  }catch(e){
-  showStatus("tocStatus","⚠️ 登録準備を完了できませんでした。\\n"+e.message,"bad");
+  showStatus("tocStatus","⚠️ 登録準備を完了できませんでした。\n"+e.message,"bad");
   $("saveButton").disabled=true;
  }
 }
@@ -140,7 +140,7 @@ $("saveButton").addEventListener("click",async()=>{
   if(exists)throw new Error("この作品は既に新DBに登録されています。既存データは変更していません。");
   const title=$("title").value.trim(),author=$("author").value.trim();
   if(!title||!author)throw new Error("作品タイトルと作者名は必須です。");
-  const tags=$("tags").value.split(/[\\n,、]+/).map(x=>x.trim()).filter(Boolean);
+  const tags=$("tags").value.split(/[\n,、]+/).map(x=>x.trim()).filter(Boolean);
   const now=new Date().toISOString();
   const item={
    id,site:"kakuyomu",workId:draft.workId,title,authorName:author,authorId:$("authorHandle").value.trim(),
@@ -159,9 +159,9 @@ $("saveButton").addEventListener("click",async()=>{
   };
   await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite");tx.objectStore("works").add(item);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存失敗"));tx.onabort=()=>reject(tx.error||new Error("保存中止"))});
   sessionStorage.removeItem(DRAFT_KEY);
-  showStatus("saveStatus","✅ 新DBへ登録しました。\\n"+title+"\\n総話数："+toc.episodes.length+"話\\n本棚へ戻ります…","good");
+  showStatus("saveStatus","✅ 新DBへ登録しました。\n"+title+"\n総話数："+toc.episodes.length+"話\n本棚へ戻ります…","good");
   setTimeout(()=>location.href="../../index.html",900);
- }catch(e){showStatus("saveStatus","⚠️ 登録できませんでした。\\n"+e.message,"bad");$("saveButton").disabled=false}
+ }catch(e){showStatus("saveStatus","⚠️ 登録できませんでした。\n"+e.message,"bad");$("saveButton").disabled=false}
  finally{if(db)db.close();saving=false}
 });
 init();
