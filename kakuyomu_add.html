@@ -175,25 +175,28 @@ $("parseButton").addEventListener("click",()=>{
   message("parseStatus","作品情報を解析しました。"+(missing.length?"\n確認・入力が必要："+missing.join("、"):"\n基本項目を抽出できました。下のフォームを確認してね。"),missing.length>0);
 });
 $("workUrl").addEventListener("input",()=>{$("workId").value=getWorkId($("workUrl").value)});
-$("saveButton").addEventListener("click",async()=>{
- const btn=$("saveButton");btn.disabled=true;let db;
+$("saveButton").addEventListener("click",()=>{
  try{
-  const url=$("workUrl").value.trim(),id=$("workId").value.trim()||getWorkId(url),title=$("workTitle").value.trim(),author=$("authorName").value.trim();
-  if(!/^https:\/\/kakuyomu\.jp\/works\/\d+/.test(url)||!id)throw new Error("カクヨムの作品URLを確認してください。");
+  const url=$("workUrl").value.trim(),id=$("workId").value.trim()||getWorkId(url);
+  const title=$("workTitle").value.trim(),author=$("authorName").value.trim();
+  if(!/^https:\\/\\/kakuyomu\\.jp\\/works\\/\\d+(?:[/?#]|$)/i.test(url)||!id)throw new Error("カクヨムの作品URLを確認してください。");
   if(id!==getWorkId(url))throw new Error("作品IDと作品URLが一致しません。");
   if(!title||!author)throw new Error("作品タイトルと作者名は必須です。");
-  db=await openDB();
-  const shelves=await readAll(db,"shelves"),targetShelf=shelves.find(x=>x&&x.work_add_target===true)||null,shelfId=String(targetShelf?.shelf_id||"");
-  const existing=await new Promise((resolve,reject)=>{const req=db.transaction("works","readonly").objectStore("works").get("kakuyomu:"+id);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error)});
-  if(existing)throw new Error("このカクヨム作品は既に新DBに登録されています。");
-  const item={id:"kakuyomu:"+id,site:"kakuyomu",workId:id,title,authorName:author,authorId:$("authorHandle").value.trim(),url,shelfId,updatedAt:extractDate($("updatedAt").value),status:$("workStatus").value.trim(),episodeCount:normalizeCount($("episodeCount").value),reading:{position:null,isRead:null},bookmark:{url:"",episodeId:"",position:0},siteData:{synopsis:$("synopsis").value.trim(),tags:$("tags").value.split(/[\n,、]+/).map(x=>x.trim()).filter(Boolean),characterCount:normalizeCount($("characterCount").value),legacyFields:{id,title,author,authorHandle:$("authorHandle").value.trim(),url,synopsis:$("synopsis").value.trim(),tags:$("tags").value.split(/[\n,、]+/).map(x=>x.trim()).filter(Boolean),status:$("workStatus").value.trim(),episodeCount:normalizeCount($("episodeCount").value),characterCount:normalizeCount($("characterCount").value),updatedAt:extractDate($("updatedAt").value),shelfId,site:"kakuyomu",createdAt:new Date().toISOString()}}};
-  await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite");tx.objectStore("works").add(item);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存失敗"));tx.onabort=()=>reject(tx.error||new Error("保存中止"))});
-  message("saveStatus","✅ 新DBへ作品を登録しました。\n"+title+"\n登録先："+(shelfId?String(targetShelf.shelf_name||"指定本棚"):"未分類")+"\n作品ID："+id+"\n本棚へ戻ります…");
-  setTimeout(()=>{location.href="index.html";},900);
- }catch(e){message("saveStatus","⚠️ 登録できませんでした："+e.message,true)}
- finally{if(db)db.close();btn.disabled=false}
+  const draft={
+   workId:id,url,title,author,handle:$("authorHandle").value.trim(),
+   synopsis:$("synopsis").value.trim(),
+   tags:$("tags").value.split(/[\\n,、]+/).map(x=>x.trim()).filter(Boolean),
+   status:$("workStatus").value.trim(),
+   characterCount:normalizeCount($("characterCount").value),
+   updatedAt:extractDate($("updatedAt").value)
+  };
+  sessionStorage.setItem("tomotaYomuKakuyomuDraft_v1",JSON.stringify(draft));
+  message("saveStatus","作品情報を引き渡します。目次取得結果を照合するページへ移動します。");
+  $("saveButton").disabled=true;
+  location.href="app/kakuyomu/kakuyomu_write.html";
+ }catch(e){message("saveStatus","⚠️ 次へ進めません："+e.message,true)}
 });
-loadShelves();
+// 新DBへの書き込みは kakuyomu_write.html に集約する。
 </script>
 </body>
 </html>
