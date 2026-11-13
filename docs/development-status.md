@@ -139,6 +139,7 @@
 - [判定センター運用ガイド](guides/diagnostic_center_guide.html)
 - [なろう登録・更新・復旧ガイド](guides/narou_register_guide.html)
 - [カクヨムガイド](guides/kakuyomu_guide.html)
+- [カクヨム目次・作品登録の自動化調査記録](kakuyomu-toc-registration-investigation.md)
 - [noteマガジンガイド](guides/note_magazine_guide.html)
 
 このページを資料室の入口とし、次スレッドへの引継ぎは本ページと各正本を参照して作成する。スクリーンショットPDFや過去スレッドの記憶を正本の代用にしない。
@@ -153,3 +154,16 @@
 - 実機での本棚再読み込み・3,601件表示確認は未実施。追加登録テストは本棚表示の確認後に再開する。
 
 - 追加確認：N5373FWは本棚カードに表示されたが、最終更新日・あらすじ・総話数が空欄。原因は新規なろう登録がAPI情報を siteData.legacyFields に保存する一方、トップ画面のカード変換が作品レコード直下の updatedAt / synopsis / episodeCount だけを参照していたこと。index.html のカード変換に legacyFields.general_lastup / story / general_all_no へのフォールバックを追加。commit 1bf1ac142a75dd6a9d59eabacc70e7358cc85328。実機表示確認は未実施。
+
+
+## 2026-11-13 追加：カクヨム目次・作品登録の自動化調査
+
+詳細記録：[`kakuyomu-toc-registration-investigation.md`](kakuyomu-toc-registration-investigation.md)
+
+- カクヨムの総話数・現在話数は、作品別TOC JSONを唯一の根拠とする方針で合意。総話数は `episodes` 件数、現在話数は保存済みepisodeIdを同じJSONと照合して求める。
+- TOC取得失敗時に、貼り付けテキスト由来の `episodeCount` へフォールバックしない。既存 `episodeCount` データは一括削除せず、まず表示経路から切り離す。
+- 既存Shortcut「とよむ+しおり」は変更しない。
+- 現行 `kakuyomu-toc.yml` は手動 `workflow_dispatch`。登録ページからの自動起動・完了待ち・TOC検証・本棚保存は未実装。
+- 自動化案として別のカクヨム登録ShortcutからWorkflowを起動する方式を検討中。ただしAtom更新ShortcutのAPI送信内容・認証情報の保管場所・安全性を確認してから方式を確定する。PAT等の秘密情報をGitHub Pagesへ埋め込まない。
+- 現時点で今回の調査に伴う本番コード・DB・既存Shortcutの変更は行っていない。
+- 次の作業はAtom更新ShortcutのAPI送信部分を確認すること。その後、カクヨムの保存先（IndexedDB/localStorage）に関するコード・資料間の記述差も照合する。
