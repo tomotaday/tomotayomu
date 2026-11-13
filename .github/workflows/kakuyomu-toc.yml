@@ -197,7 +197,11 @@ jobs:
           test -s "$RESULT"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          REQUEST_TOC="data/kakuyomu-toc-requests/${REQUEST_ID}.toc.json"
           git add "$RESULT" data/kakuyomu-toc/*.json
+          if test -s "$REQUEST_TOC"; then
+            git add "$REQUEST_TOC"
+          fi
           if git diff --cached --quiet; then
             echo "No repository changes."
             exit 0
