@@ -22,7 +22,7 @@ function validateBookmarkUrl(work, raw) {
   if (parsed.protocol !== "https:") throw new Error("URLはhttpsで始まる必要があります");
   const host = parsed.hostname.toLowerCase();
   const valid = work.workKey.startsWith("narou:")
-    ? (host === "syosetu.com" || host.endsWith(".syosetu.com")) && /^\\/[a-z0-9]+\\/\\d+\\/?$/i.test(parsed.pathname)
+    ? (host === "syosetu.com" || host.endsWith(".syosetu.com")) && /^\\/[a-z0-9]+\\/(?:\\d+\\/?)?$/i.test(parsed.pathname)
     : work.workKey.startsWith("kakuyomu:")
       ? host === "kakuyomu.jp" && /^\\/works\\/[^/]+\\/episodes\\/[^/]+\\/?$/.test(parsed.pathname)
       : host === "note.com" && /^\\/[^/]+\\/n[a-z0-9]+\\/?$/i.test(parsed.pathname);
