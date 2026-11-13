@@ -83,9 +83,20 @@ async function loadAndVerify(){
  const q=getQuery(),requestId=String(q.get("request_id")||""),workId=String(q.get("work_id")||"");
  if(!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(requestId)||!validId(workId))throw new Error("request_idまたはwork_idが指定されていません。");
  const base="https://raw.githubusercontent.com/tomotaday/tomotayomu/main/";
- const resultRes=await fetch(base+"data/kakuyomu-toc-requests/"+encodeURIComponent(requestId)+".json?ts="+Date.now(),{cache:"no-store"});
- if(!resultRes.ok)throw new Error("取得結果がまだ公開されていません（HTTP "+resultRes.status+"）。");
- const result=await resultRes.json();
+ let result=null,lastHttp=0;
+ for(let attempt=0;attempt<60;attempt++){
+  const resultRes=await fetch(base+"data/kakuyomu-toc-requests/"+encodeURIComponent(requestId)+".json?ts="+Date.now(),{cache:"no-store"});
+  lastHttp=resultRes.status;
+  if(resultRes.ok){
+   result=await resultRes.json();
+   if(result.status==="success"||result.status==="failure")break;
+  }else if(resultRes.status!==404){
+   throw new Error("取得結果の確認に失敗しました（HTTP "+resultRes.status+"）。");
+  }
+  showStatus("tocStatus","GitHub Actionsの目次取得結果を待っています…（"+(attempt+1)+"/60）");
+  await new Promise(resolve=>setTimeout(resolve,5000));
+ }
+ if(!result)throw new Error("目次取得結果が5分以内に公開されませんでした（HTTP "+lastHttp+"）。");
  if(result.request_id!==requestId)throw new Error("取得結果のrequest_idが一致しません。");
  if(result.status!=="success")throw new Error("目次取得に失敗しています："+String(result.error||"理由不明"));
  if(String(result.work_id)!==workId)throw new Error("取得結果の作品IDが一致しません。");
