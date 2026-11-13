@@ -81,7 +81,7 @@ async function loadDraft(){
 }
 async function loadAndVerify(){
  const q=getQuery(),requestId=String(q.get("request_id")||""),workId=String(q.get("work_id")||"");
- if(!/^[0-9a-fA-F-]{32,36}$/.test(requestId)||!validId(workId))throw new Error("request_idまたはwork_idが指定されていません。");
+ if(!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(requestId)||!validId(workId))throw new Error("request_idまたはwork_idが指定されていません。");
  const base="https://raw.githubusercontent.com/tomotaday/tomotayomu/main/";
  const resultRes=await fetch(base+"data/kakuyomu-toc-requests/"+encodeURIComponent(requestId)+".json?ts="+Date.now(),{cache:"no-store"});
  if(!resultRes.ok)throw new Error("取得結果がまだ公開されていません（HTTP "+resultRes.status+"）。");
@@ -89,7 +89,9 @@ async function loadAndVerify(){
  if(result.request_id!==requestId)throw new Error("取得結果のrequest_idが一致しません。");
  if(result.status!=="success")throw new Error("目次取得に失敗しています："+String(result.error||"理由不明"));
  if(String(result.work_id)!==workId)throw new Error("取得結果の作品IDが一致しません。");
- const tocRes=await fetch(base+"data/kakuyomu-toc/"+encodeURIComponent(workId)+".json?ts="+Date.now(),{cache:"no-store"});
+ const expectedTocPath="data/kakuyomu-toc-requests/"+requestId+".toc.json";
+ if(result.toc_path!==expectedTocPath)throw new Error("今回のリクエストに対応する目次ファイルではありません。");
+ const tocRes=await fetch(base+expectedTocPath+"?ts="+Date.now(),{cache:"no-store"});
  if(!tocRes.ok)throw new Error("目次JSONを読み込めません（HTTP "+tocRes.status+"）。");
  const data=await tocRes.json();
  if(String(data.work_id)!==workId||!Array.isArray(data.episodes))throw new Error("目次JSONの形式または作品IDが不正です。");
