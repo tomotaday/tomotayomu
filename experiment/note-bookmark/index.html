@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>noteしおり照合テスト</title>
+<style>
+:root{color-scheme:light}*{box-sizing:border-box}body{margin:0;padding:20px;background:#f7f5fb;color:#29243a;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",sans-serif;line-height:1.6}
+main{max-width:620px;margin:auto}.panel{background:#fff;border:1px solid #e5deef;border-radius:16px;padding:18px;margin:14px 0}
+h1{font-size:1.35rem;margin:0 0 8px}.muted{color:#716b7d;font-size:.9rem}
+label{display:block;font-weight:700;margin:12px 0 6px}input{width:100%;padding:13px;border:1px solid #cfc5dc;border-radius:10px;font-size:16px}
+button{border:0;border-radius:10px;padding:12px 15px;margin:8px 6px 0 0;background:#6650a4;color:white;font-size:15px;font-weight:700}
+button.secondary{background:#eee9f6;color:#41365c}.result{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f0f8;padding:14px;border-radius:10px;min-height:90px}
+.notice{border-left:4px solid #a18bd1;padding-left:12px}.safe{font-weight:700;color:#27734b}
+</style>
+</head>
+<body><main>
+<h1>🔖 noteしおり照合テスト</h1>
+<p class="muted">専用ブランチの検証ページ。本番本棚・IndexedDB・localStorage・ショートカットには接続しません。</p>
+<section class="panel">
+<p class="notice">このページは公開中のnote目次JSONを読み取り、記事キーの一致数だけを確認します。しおり保存は実行せず、結果を画面内に表示するだけです。</p>
+<label for="article">照合するnote記事URL</label>
+<input id="article" type="url" value="https://note.com/campana/n/n55129b3a4e8a" autocomplete="off">
+<div>
+<button id="check">記事URLを照合</button>
+<button class="secondary" id="missing">未登録記事で試す</button>
+<button class="secondary" id="duplicate">複数一致を試す</button>
+<button class="secondary" id="failure">読込失敗を試す</button>
+</div>
+</section>
+<section class="panel">
+<strong>照合結果</strong>
+<div id="result" class="result" role="status" aria-live="polite">まだ照合していません。</div>
+</section>
+<p class="muted">安全確認：画面内のメモリだけで処理します。ページを閉じると入力内容・結果は保持されません。</p>
+</main>
+<script>
+"use strict";
+const INDEX_URL="https://raw.githubusercontent.com/tomotaday/tomotayomu/main/data/note-index-m8a34f89ccce0.json";
+const MAGAZINE={id:"m8a34f89ccce0",name:"登録済みnoteマガジン",url:"https://note.com/campana/m/m8a34f89ccce0"};
+const $=id=>document.getElementById(id);
+function articleKey(value){
+  try{const u=new URL(String(value||""));if(u.hostname!=="note.com"&&!u.hostname.endsWith(".note.com"))return "";const m=u.pathname.match(/^\/[^/]+\/n\/([a-z0-9]+)/i);return m?m[1]:"";}catch{return "";}
+}
+async function loadIndex(forceFailure=false){
+  if(forceFailure)throw new Error("テスト指定による読み込み失敗");
+  const response=await fetch(INDEX_URL,{cache:"no-store"});
+  if(!response.ok)throw new Error("目次JSONの取得に失敗: HTTP "+response.status);
+  const data=await response.json();
+  if(!Array.isArray(data.items))throw new Error("目次JSONの形式が不正です");
+  return data.items;
+}
+async function run(mode="normal"){
+  const output=$("result");output.textContent="照合中…";
+  try{
+    const key=articleKey($("article").value);
+    if(!key)throw new Error("note記事URLから記事キーを取得できません");
+    const items=await loadIndex(mode==="failure");
+    let matches=items.filter(x=>String(x.key||"").toLowerCase()===key.toLowerCase()||articleKey(x.url).toLowerCase()===key.toLowerCase());
+    if(mode==="missing")matches=[];
+    if(mode==="duplicate"&&matches.length)matches=[...matches,...matches];
+    const lines=["記事キー: "+key,"目次件数: "+items.length,"一致数: "+matches.length];
+    if(matches.length===1){lines.push("判定: 1件一致","対象: "+MAGAZINE.name,"結果: 保存対象として特定できました（このテストページでは保存しません）");}
+    else if(matches.length===0){lines.push("判定: 一致なし","結果: 保存しない");}
+    else{lines.push("判定: 複数一致","結果: 誤保存防止のため保存しない");}
+    lines.push("本番データへの書き込み: なし");
+    output.textContent=lines.join("\n");
+  }catch(e){output.textContent="照合エラー: "+e.message+"\n結果: 保存しない\n本番データへの書き込み: なし";}
+}
+$("check").addEventListener("click",()=>run());
+$("missing").addEventListener("click",()=>run("missing"));
+$("duplicate").addEventListener("click",()=>run("duplicate"));
+$("failure").addEventListener("click",()=>run("failure"));
+</script></body></html>
