@@ -288,3 +288,45 @@
 
 なろうの作者登録エラーを最優先で再現・切り分けし、その後ほかの現役Shortcutも一つずつ確認する。確認前にShortcutや本番登録処理を推測で変更しない。未確認のShortcutは正常と記載しない。
 
+
+
+---
+
+## 2026-11-14 現行接続への追記（旧調査結果との優先関係）
+
+この文書の前半は新DB移行前の調査メモであり、現行の保存先を示す正本としては使用しない。旧DB時代の経緯として保持する。以下は2026-11-14時点のmainコードで確認した現行接続を示す。
+
+### 現行作品データの正本
+
+- 共通作品レコード：IndexedDB `tomotaYomuWorksDB` version 2 / `works`。
+- 棚マスター：同DB / `shelves`。
+- なろう・note・カクヨムの作品本体は新DBへ保存する。
+- カクヨム作品編集は `app/kakuyomu/kakuyomu_edit.html` が新DBの `works` を読み書きする。
+- カクヨム登録は `app/kakuyomu/kakuyomu_write.html` がGitHub Actions結果を受け取り、利用者の明示操作後に新DB `works` へ追加する。
+- 旧DB `tomotaYomuDB` と旧localStorage作品キーは移行履歴・保全対象として残す。残存データを現行本体の正本と誤認しない。削除は別途承認が必要。
+
+### 管理設定棚・資料室リンクの役割
+
+管理設定棚は作品データの保存先ではなく、管理画面・診断・GitHub Actions・資料室への入口である。メニューの表示順等のUI設定は作品データと分離する。各リンク先の保存先はリンク元メニューから推測せず、リンク先ページの実装で判断する。
+
+2026-11-14時点の資料室リンクは、開発状況インデックス、なろう・note・カクヨム各ガイド、判定センター、バックアップ・復元、リポジトリ構成、DB構成等を案内する。カクヨム技術記録も資料室から参照できるよう追加する。
+
+### 2026-11-14にコード確認した接続
+
+| 画面・機能 | 読み取り | 書き込み | 注意 |
+|---|---|---|---|
+| カクヨム登録 | 新DB `shelves`、Actions結果・TOC JSON | 新DB `works` | UUIDでActions結果と照合 |
+| カクヨム作品編集 | 新DB `works` | 新DB `works` | `kakuyomu:{work_id}` を対象 |
+| カクヨム作品カード | 新DB `works`、GitHubの作品別TOC | 新DBの読書・しおり情報 | TOCで話数を照合 |
+| note・なろう作品 | 新DB `works` | 新DB `works` | サイト固有フィールドは `siteData` 等に保持 |
+| 本棚管理 | 新DB `works` / `shelves` | 新DB `works.shelfId` / `shelves` | 旧DB棚ストアは現行本棚の正本ではない |
+| 作者管理 | 新DB `works` | 新DB `works` | 旧作者localStorage台帳は現行参照経路から切離し済み |
+| ともためも | `tomotaMemoDB/items` | 同ストア | 作品DBとは独立 |
+| 作者Atom | `tomotaYomuAtomDB` と公開JSON | Atom DB | 作品データとは別管理 |
+
+### 継続調査・保全
+
+- DB構造の詳細・localStorage主要キーは `database-structure.md` を参照。
+- 移行の時系列・バックアップ照合・旧DBの孤立読書位置は `data-migration-log.md` を参照。
+- 旧DB・旧localStorageの削除は、保存先の全参照経路・保全対象・復元テストの確定後に判断する。
+- 本資料の更新は、ブラウザ内のDB・localStorageを変更しない。
