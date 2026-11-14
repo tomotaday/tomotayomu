@@ -199,6 +199,13 @@ $("saveButton").addEventListener("click",()=>{
   location.href="app/kakuyomu/kakuyomu_write.html?request_id="+encodeURIComponent(requestId)+"&work_id="+encodeURIComponent(id);
  }catch(e){message("saveStatus","⚠️ 次へ進めません："+e.message,true)}
 });
+// Shortcutから渡された作品IDがあれば、URL欄へ自動反映する。
+const initialParams=new URLSearchParams(location.search);
+const initialWorkId=String(initialParams.get("work_id")||"");
+if(/^\d+$/.test(initialWorkId)){
+  $("workUrl").value="https://kakuyomu.jp/works/"+initialWorkId;
+  $("workId").value=initialWorkId;
+}
 // 新DBへの書き込みは kakuyomu_write.html に集約する。
 </script>
 </body>
