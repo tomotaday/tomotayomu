@@ -1,8 +1,8 @@
 # ともたよむ DB構成表・接続一覧
 
-最終確認日：2026-11-10  
+最終確認日：2026-11-14  
 対象：GitHub main / iPhone Braveでの現行運用  
-アプリ基準版：v3.8.0【2026/11/09】  
+アプリ基準版：v3.8.1【2026/11/14】  
 正本：`index.html` と各接続先HTML
 
 > この資料はコード上の接続を整理したもの。ブラウザ内DBの実件数・全keyPathは、読み取り専用のDB診断ページで実機確認する。未確認値を推測で埋めない。
@@ -71,9 +71,9 @@
 
 | キー | 用途 | 扱い |
 |---|---|---|
-| `tomotaYomu_note_magazines_v1` | noteマガジン情報・しおり | 移行元の残存データ。現行本体の正本ではない。削除は実機確認後 |
-| `tomotaYomu_kakuyomu_works_v1` | カクヨム作品情報・しおり | 新DB移行待ち |
-| `tomotaYomu_v330_reading_history` | 3サイト共通の閲覧履歴 | 現行独立保存。最大30件 |
+| `tomotaYomu_note_magazines_v1` | noteマガジン情報・しおり | 移行元の残存データ。現行本体の正本ではない。削除は保留 |
+| `tomotaYomu_kakuyomu_works_v1` | カクヨム作品情報・しおり | 移行元の残存データ。現行本体の正本ではない。削除は保留 |
+| `tomotaYomu_v330_reading_history` | 3サイト共通の閲覧履歴 | 現行独立保存。最大30件 |\n| `tomotaYomu_pending_note_bookmark_v1` | 受信したnote記事URLの一時保留 | 全マガジン目次との一意照合・新DB保存が成功するまで保持。保存成功後に削除 |
 | `tomotaYomu_atom_display_days` | 作者更新の表示期間 | 表示設定として維持 |
 | `tomotaYomu_mixed_shelf_order_v1` | 棚・システム棚の表示順 | 作品データとは別管理 |
 | `tomotaYomu_search_excluded_ncodes_v1` | なろう検索除外Nコード | 検索除外リストのUI状態として独立保存。作品メタデータは新DB |
@@ -94,7 +94,7 @@
 
 1. 新DB `tomotaYomuWorksDB` はversion 2。worksとshelvesを保持する。
 2. なろう読書位置は新DBへ切替済み。Brave実機で読書位置・短編既読状態・再読込保持を確認する。
-3. note / カクヨムの作品本体、しおり、目次はサイト別保存経路が残る。共通作品DBへの切替は今後1項目ずつ実施する。
+3. note / カクヨムの作品本体としおりは新DB `works` を正本とする。noteのしおり受信URLはlocalStorageの一時キーで受け取り、登録済み全マガジン目次との一意照合後に該当作品の `bookmarkUrl` として新DBへ保存する。目次JSONはGitHub上の `data/note-index-*.json` / `data/kakuyomu-toc/*.json` を利用する。
 4. 棚移動・本棚管理・作者管理は新DBへ切替済み。作者管理の旧localStorage台帳参照・補完処理は切離し済み。旧キーは削除せず保管する。旧DBの読書位置には作品・棚配置が存在しない孤立レコード3件が残るため、旧DB本体は引き続き保持する。
 5. Atom DB・Memo DB・履歴・表示設定は作品DBと別目的の保存先。安易に統合しない。
 6. 旧DB・旧localStorageは、全接続先の移行と実機確認が終わるまで削除しない。
