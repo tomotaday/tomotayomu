@@ -41,10 +41,20 @@ https://tomotaday.github.io/tomotayomu/app/kakuyomu/kakuyomu_write.html?request_
 | 4 | 変数を設定 | `token` ← `GitHub_PAT` |
 | 5 | If | `GitHub_PAT` の値がない場合にトークン入力を要求し、`token` に設定して `GitHub_PAT` としてキーチェーン保存。If終了 |
 | 6 | Generate UUID | UUIDを生成 |
-| 7 | URLの内容を取得 | GitHub APIのWorkflow dispatch URLへPOST、`ref=main`、本文JSON |
+| 7 | URLの内容を取得 | GitHub APIのWorkflow dispatch URLへPOST。ヘッダ3項目、`ref=main`、本文JSON |
 | 8 | inputs | `work_url` ← 変数 `work_url`、`request_id` ← Generate UUIDの結果 |
 | 9 | テキスト | `kakuyomu_write.html?request_id={UUID}` を作成 |
 | 10 | テキストを開く | 作成した登録ページURLを開く |
+
+ヘッダ設定（2026-11-14追加画像で確認）：
+
+| ヘッダ | 値 |
+|---|---|
+| Authorization | `Bearer` ＋変数 `token` |
+| Accept | `application/vnd.github+json` |
+| X-GitHub-Api-Version | `2022-11-28` |
+
+PATそのものは記録せず、Bearer認証の値にはキーチェーンから取得・設定した変数 `token` を使用する。
 
 Workflow dispatch URL：
 
@@ -52,7 +62,7 @@ Workflow dispatch URL：
 https://api.github.com/repos/tomotaday/tomotayomu/actions/workflows/kakuyomu-toc.yml/dispatches
 ```
 
-確認範囲と留保：HTTPリクエストのヘッダ詳細は画面で展開・確認できていない。画面に写っていないアクションや設定値も未確認。したがって、認証ヘッダ等の具体的な内容をこの資料で断定しない。PATの実値は記録しない。Shortcutの再構築時は、画面記録だけでなく実機での起動・登録結果を確認する。
+確認範囲と留保：今回の追加画像でヘッダ3項目を確認した。画面に写っていないアクションや設定値は未確認。PATの実値は記録しない。Shortcutの再構築時は、画面記録だけでなく実機での起動・登録結果を確認する。
 
 ## 3. Workflow
 
