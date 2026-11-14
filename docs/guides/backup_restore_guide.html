@@ -17,9 +17,14 @@ main{width:min(100%,780px);margin:auto;padding:22px 16px 52px}h1{font-size:24px;
 <p class="lead">保存領域のバックアップ作成と、専用領域への復元・全件照合の手順、および過去の検証結果を記録する。</p>
 
 <section class="card current">
-<strong>初回バックアップ・復元検証｜2026/11/08</strong>
-<p>バックアップJSONの書き出しに成功し、Safari上に専用の検証用IndexedDBを作成して、5ストア・9,850件の復元後データが元データと完全一致することを確認した。さらに、検証用DBを読み取り専用で開き、本棚表示まで確認した。</p>
-<p class="small">この確認はバックアップ機能の初回デビューを示すもの。アプリ全体の完全復旧を保証するものではない。</p>
+<strong>現行の保存構成｜2026/11/14</strong>
+<p>作品・棚の正本は <code>tomotaYomuWorksDB</code> version 2（<code>works</code> / <code>shelves</code>）。作者Atom DB・ともためもDB・localStorageも用途別に存在する。バックアップは保存領域全体を対象に作成し、復元テストは専用名のIndexedDBと専用接頭辞のlocalStorageキーへ復元する。</p>
+<p class="small">以下の2026/11/08の数値と検証は旧DB時代の履歴であり、現行DBの件数・完全復旧を示すものではない。</p>
+</section>
+<section class="card">
+<strong>過去の復元検証｜2026/11/08</strong>
+<p>バックアップJSONの書き出しに成功し、Safari上に専用の検証用IndexedDBを作成して、旧DBの5ストア・9,850件の復元後データが元データと完全一致することを確認した記録。</p>
+<p class="small">この検証は旧DBの復元記録であり、現在の新DBを含むアプリ全体の完全復旧を保証するものではない。</p>
 </section>
 
 <h2>1. 関連ページと役割</h2>
