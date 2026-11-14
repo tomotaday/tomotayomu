@@ -92,7 +92,8 @@ Object Store：`items`（keyPath `id`、index `parentId`）
 | `tomotaYomu_font_size` | 文字サイズ | UI表示設定 |
 | `tomotaYomu_font_family` | フォント | UI表示設定 |
 | `tomotaYomu_custom_colors_v1` | カスタム配色 | UI表示設定 |
-| `tomotaYomu_theme` | テーマ | UI表示設定 |\n| `tomotaYomu_work_edit_overrides_v1` | 旧作品編集表示上書きデータ | 起動時に `index.html` が削除を試みる旧キー。作品本体の保存先ではない |
+| `tomotaYomu_theme` | テーマ | UI表示設定 |
+| `tomotaYomu_work_edit_overrides_v1` | 旧作品編集表示上書きデータ | 起動時に `index.html` が削除を試みる旧キー。作品本体の保存先ではない |
 
 上表はルート `index.html` で確認したキー。各画面固有のキーやブラウザに残る旧キーを網羅した一覧ではない。ブラウザ内に実在するキーの全件は、対象端末の保存領域診断で確認する。
 
