@@ -78,7 +78,7 @@ Object Store：`items`（keyPath `id`、index `parentId`）
 | キー | 用途 | 主な操作・備考 |
 |---|---|---|
 | `tomotaYomu_v211_update_baseline` | 作品ごとの更新基準 | 初回同期・更新管理の補助データ |
-| `tomotaYomu_v211_reading` | 旧読書位置互換キー | 現行の読書位置正本は新DB。互換処理の参照有無を混同しない |
+| `tomotaYomu_v211_reading` | 旧読書位置用の定数名 | 現行 `index.html` ではキー定数の宣言のみ確認。読み書き処理での使用は確認できない。端末内に値が残るかは未確認 |
 | `tomotaYomu_v211_last_check` | 更新確認時刻 | 更新管理 |
 | `tomotaYomu_v214_global_baseline` | 全体更新確認の基準時刻 | 更新確認期間の起点 |
 | `tomotaYomu_v214_update_candidates` | 更新候補 | 更新棚・🆙表示の判定 |
@@ -92,7 +92,7 @@ Object Store：`items`（keyPath `id`、index `parentId`）
 | `tomotaYomu_font_size` | 文字サイズ | UI表示設定 |
 | `tomotaYomu_font_family` | フォント | UI表示設定 |
 | `tomotaYomu_custom_colors_v1` | カスタム配色 | UI表示設定 |
-| `tomotaYomu_theme` | テーマ | UI表示設定 |
+| `tomotaYomu_theme` | テーマ | UI表示設定 |\n| `tomotaYomu_work_edit_overrides_v1` | 旧作品編集表示上書きデータ | 起動時に `index.html` が削除を試みる旧キー。作品本体の保存先ではない |
 
 上表はルート `index.html` で確認したキー。各画面固有のキーやブラウザに残る旧キーを網羅した一覧ではない。ブラウザ内に実在するキーの全件は、対象端末の保存領域診断で確認する。
 
