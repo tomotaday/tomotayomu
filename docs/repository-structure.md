@@ -121,7 +121,7 @@ Workflowを変更・移動する場合は、参照するスクリプトのパス
 |---|---|
 | `index.html` | GitHub Pagesの本体URL |
 | `register.html` | なろう登録Shortcut等の呼び出し先 |
-| `kakuyomu_add.html` | カクヨム登録Shortcutの呼び出し先 |
+| `kakuyomu_add.html` | 旧カクヨム登録ページ。現行専用Shortcutの入口ではないため、参照元を確認するまで保持 |
 | `note_magazine_add.html` | note登録Shortcutの呼び出し先 |
 | `README.md` | GitHubリポジトリの標準説明ファイル |
 
