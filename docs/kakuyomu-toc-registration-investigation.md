@@ -10,9 +10,12 @@
 
 ## 1. 現行フロー
 
-1. カクヨム登録専用ShortcutがUUID形式の `request_id` を生成する。
-2. Shortcutが作品URL・request_idをGitHub Actions `kakuyomu-toc.yml` へ送る。
-3. ShortcutがGitHub Pagesの登録ページを開く。
+1. 共有シートからURLを受け取り、変数 `work_url` に「ショートカットの入力」を設定する。
+2. キーチェーンから `GitHub_PAT` を取得して `token` に設定する。値がない場合はテキスト入力を要求し、入力値を `token` に設定して `GitHub_PAT` としてキーチェーンへ保存する。
+3. `Generate UUID` でUUIDを生成する。
+4. GitHub APIのWorkflow dispatchエンドポイントへPOSTする。URLは `https://api.github.com/repos/tomotaday/tomotayomu/actions/workflows/kakuyomu-toc.yml/dispatches`、`ref=main`、本文はJSON。
+5. JSONの `inputs.work_url` に変数 `work_url`、`inputs.request_id` に生成したUUIDを設定する。
+6. ShortcutがGitHub Pagesの登録ページを開く。
 
 ```text
 https://tomotaday.github.io/tomotayomu/app/kakuyomu/kakuyomu_write.html?request_id={UUID}
@@ -27,7 +30,32 @@ https://tomotaday.github.io/tomotayomu/app/kakuyomu/kakuyomu_write.html?request_
 
 ポーリング表示の `1/60` は確認回数であり、作品話数やWorkflowの処理段階数ではない。1回ごとに5秒待つ。成功・失敗の終端状態を受け取ればループを抜ける。
 
-## 2. Workflow
+## 2. Shortcutの画面確認記録（2026-11-14）
+
+利用者から提供されたiPhoneショートカット画面で、以下のアクションを確認した。
+
+| 順序 | アクション | 確認できた設定 |
+|---:|---|---|
+| 1 | 共有シートからURLを受け取る | 「共有シートからアプリ、URLを受け取る」。入力がない場合は続行 |
+| 2 | 変数を設定 | `work_url` ← ショートカットの入力 |
+| 3 | キーチェーン値を取得 | `GitHub_PAT` を取得 |
+| 4 | 変数を設定 | `token` ← `GitHub_PAT` |
+| 5 | If | `GitHub_PAT` の値がない場合にトークン入力を要求し、`token` に設定して `GitHub_PAT` としてキーチェーン保存。If終了 |
+| 6 | Generate UUID | UUIDを生成 |
+| 7 | URLの内容を取得 | GitHub APIのWorkflow dispatch URLへPOST、`ref=main`、本文JSON |
+| 8 | inputs | `work_url` ← 変数 `work_url`、`request_id` ← Generate UUIDの結果 |
+| 9 | テキスト | `kakuyomu_write.html?request_id={UUID}` を作成 |
+| 10 | テキストを開く | 作成した登録ページURLを開く |
+
+Workflow dispatch URL：
+
+```text
+https://api.github.com/repos/tomotaday/tomotayomu/actions/workflows/kakuyomu-toc.yml/dispatches
+```
+
+確認範囲と留保：HTTPリクエストのヘッダ詳細は画面で展開・確認できていない。画面に写っていないアクションや設定値も未確認。したがって、認証ヘッダ等の具体的な内容をこの資料で断定しない。PATの実値は記録しない。Shortcutの再構築時は、画面記録だけでなく実機での起動・登録結果を確認する。
+
+## 3. Workflow
 
 対象：`.github/workflows/kakuyomu-toc.yml`
 
@@ -46,7 +74,7 @@ https://tomotaday.github.io/tomotayomu/app/kakuyomu/kakuyomu_write.html?request_
   - `data/kakuyomu-toc/{work_id}.json`：本棚で参照する作品別TOC
 - 成功・失敗の結果JSONを公開し、登録ページがポーリングで取得する。
 
-## 3. 登録ページ
+## 4. 登録ページ
 
 対象：`app/kakuyomu/kakuyomu_write.html`
 
@@ -63,7 +91,7 @@ https://tomotaday.github.io/tomotayomu/app/kakuyomu/kakuyomu_write.html?request_
 - authorIdと `siteData.legacyFields.authorHandle` に作者ハンドルを `@` なしで保存する。
 - TOCの総話数は検証済みepisodes件数を使用。
 
-## 4. 作品編集
+## 5. 作品編集
 
 対象：`app/kakuyomu/kakuyomu_edit.html`
 
@@ -73,7 +101,7 @@ https://tomotaday.github.io/tomotayomu/app/kakuyomu/kakuyomu_write.html?request_
 - 2026-11-14、保存ボタンが反応しない問題を確認。作品状態inputと保存メッセージ領域に同じDOM ID `status` があったため、inputを `workStatus`、保存メッセージを `saveStatus` に分離。読み込み・保存参照も修正した。
 - 修正後、利用者が編集・保存の実機動作を確認済み。
 
-## 5. 作品情報の更新方針
+## 6. 作品情報の更新方針
 
 - あらすじは初回登録時にWorkflowから取得し、新DBへ保存する。
 - 現行コードには、既存作品のあらすじを定期的・自動的に再取得して上書きする経路は確認していない。
@@ -81,14 +109,14 @@ https://tomotaday.github.io/tomotayomu/app/kakuyomu/kakuyomu_write.html?request_
 - 作者ハンドルは初回取得値を保存し、通常の目次再取得で上書きしない。必要な変更は編集画面で行う。
 - 目次JSONの取得・更新と、既存作品メタデータの自動更新は別機能として扱う。
 
-## 6. しおりと話数表示
+## 7. しおりと話数表示
 
 - 既存Shortcut「とよむ+しおり」は変更せず、カクヨムURLの受け渡しを維持する。
 - 本棚側は作品ID・episodeId・episode URLを作品レコードへ保存する。
 - 作品別TOC JSONのepisode_idと保存済みepisodeIdを照合して話数を求める。
-- TOC取得失敗・ID不一致は、正しい話数を確定できない状態として扱う。貼り付けテキスト由来のepisodeCountをTOCの代わりに根拠としない。
+- TOC取得失敗・ID不一致は、正しい話数を確定できない状態として扱う。検証済みTOCと一致しない値をepisodeCountの根拠にしない。
 
-## 7. 2026-11-14の実機確認・変更記録
+## 8. 2026-11-14の実機確認・変更記録
 
 | 対象 | 結果 |
 |---|---|
@@ -110,7 +138,7 @@ https://tomotaday.github.io/tomotayomu/app/kakuyomu/kakuyomu_write.html?request_
 - 作品編集のDOM ID重複修正：`db92533b2643f0d45da4f0d13fc9c80c7a5f897e`
 - カクヨム・note専用棚を最終更新日順へ統一：`5a1020b1e9e675bff34e0cb7876fa7a6732feb13`
 
-## 8. 保留・注意事項
+## 9. 保留・注意事項
 
 - カクヨム専用棚・note専用棚の並び順変更はコード反映済み。実機で最新順・反転動作を最終確認する。
 - Workflow結果ファイル・TOC JSONの保持期間や古いrequest結果の整理は、依存関係を確認してから判断する。
