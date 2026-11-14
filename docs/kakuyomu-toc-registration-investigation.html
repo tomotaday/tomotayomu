@@ -7,20 +7,46 @@
 <title>カクヨム登録処理の技術記録｜ともたよむ資料室</title>
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;min-height:100%;background:#f6f3ed;color:#252525;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.6}
-main{max-width:900px;margin:auto;padding:18px 14px 28px}
-.back{display:inline-block;color:#245b8f;text-decoration:underline;font-weight:600;margin:0 0 14px}
-h1{font-size:22px;line-height:1.35;margin:0 0 8px}
-p{margin:6px 0 14px;color:#555}
-iframe{display:block;width:100%;height:calc(100dvh - 170px);min-height:620px;border:1px solid #c9c0b4;border-radius:10px;background:#fff;padding:12px}
+html,body{margin:0;min-height:100%;background:#f6f3ed;color:#252525;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.7}
+main{max-width:900px;margin:auto;padding:18px 16px 40px}
+.back{display:inline-block;color:#245b8f;text-decoration:underline;font-weight:700;margin:0 0 18px;font-size:17px}
+article{background:#fff;border:1px solid #d8d0c5;border-radius:14px;padding:22px 18px;overflow-wrap:anywhere}
+h1{font-size:1.65rem;line-height:1.4;margin:.2em 0 .7em}
+h2{font-size:1.3rem;margin:1.8em 0 .65em;padding-bottom:.3em;border-bottom:1px solid #ddd}
+h3{font-size:1.1rem;margin:1.5em 0 .5em}
+p,ul,ol,blockquote,pre,table{margin:.75em 0}
+li{margin:.35em 0}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#f2f0ec;padding:.08em .28em;border-radius:4px;overflow-wrap:anywhere}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f4f3f0;padding:12px;border-radius:8px}
+pre code{background:transparent;padding:0}
+blockquote{margin-left:0;padding:10px 14px;border-left:4px solid #b7c8d8;background:#f5f8fa;color:#444}
+table{width:100%;border-collapse:collapse;display:block;overflow-x:auto}
+th,td{border:1px solid #d8d8d8;padding:8px 10px;text-align:left;vertical-align:top}
+th{background:#f1f3f5}
+a{color:#245b8f}
+.loading,.error{padding:18px;color:#666}
+@media(min-width:700px){article{padding:30px 34px}}
 </style>
 </head>
 <body>
 <main>
 <a class="back" href="../index.html">← INDEXページへ戻る</a>
-<h1>カクヨム登録・目次取得 技術記録</h1>
-<p>本文はMarkdown正本を表示しています。上のリンクから、ともたよむのINDEXページへ戻れます。</p>
-<iframe src="kakuyomu-toc-registration-investigation.md" title="カクヨム登録・目次取得 技術記録"></iframe>
+<article id="document"><p class="loading">技術記録を読み込んでいます…</p></article>
 </main>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+(async()=>{
+ const target=document.getElementById("document");
+ try{
+  const response=await fetch("./kakuyomu-toc-registration-investigation.md");
+  if(!response.ok) throw new Error("技術記録を取得できませんでした（"+response.status+"）");
+  const markdown=await response.text();
+  if(!window.marked) throw new Error("Markdown表示ライブラリを読み込めませんでした。通信状態を確認してください。");
+  target.innerHTML=marked.parse(markdown,{gfm:true,breaks:false});
+ }catch(error){
+  target.innerHTML='<p class="error">'+String(error.message||error)+'</p><p><a href="./kakuyomu-toc-registration-investigation.md">Markdown正本を開く</a></p>';
+ }
+})();
+</script>
 </body>
 </html>
