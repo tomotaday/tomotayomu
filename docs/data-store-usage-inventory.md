@@ -38,7 +38,7 @@ DB：`tomotaYomuWorksDB` version 2
 | 本棚管理 | `works` / `shelves` | `works.shelfId` / `shelves` | `app/shelf/shelf_manager.html` |
 | 作者管理 | `works` | `works` の作者関連フィールド | `app/author/author.html` |
 | なろう登録 | `shelves`、既存作品確認に `works` | `works` | `register.html` |
-| 手動登録・検索除外作品管理 | `works` / `shelves` | `works` | `app/register/work_add.html` |
+| 手動登録・検索除外作品管理 | `works` / `shelves` | `works` | `app/register/work_add.html` |\n| 検索除外作品の既存情報編集 | 対象の `works` レコード | `works` | `app/register/search_excluded_edit.html` |\n| あらすじ補完 | 対象の `works` レコード | `works.synopsis` / `siteData.legacyFields` | `app/shelf/synopsis_repair.html` |
 | noteマガジン登録 | `shelves`、既存作品確認に `works` | `works` | `note_magazine_add.html` |
 | カクヨム登録 | `shelves`、Actions結果・TOC JSON | `works` | `app/kakuyomu/kakuyomu_write.html` |
 | カクヨム作品編集 | 対象作品を `works` から取得 | `works` | `app/kakuyomu/kakuyomu_edit.html` |
@@ -121,7 +121,7 @@ Object Store：`items`（keyPath `id`、index `parentId`）
 
 `storage_inventory.html` はDBが存在しない場合に新規作成しないよう、`onupgradeneeded` でupgrade transactionを中止する実装を持つ。診断ページを使う場合も、対象ブラウザ・表示結果・実行操作を確認し、実機データの変更を伴う操作を行わない。
 
-## 5. 運用上の原則
+## 5. 補助画面・診断ページの接続\n\n| ファイル | 読み取り | 書き込み・出力 |\n|---|---|---|\n| `app/register/search_excluded_edit.html` | 新DB `works` の対象なろう作品 | 同レコードの作品名・作者・あらすじ・話数・更新情報等を `works` へ保存 |\n| `app/shelf/synopsis_repair.html` | 新DB `works` のなろう作品 | あらすじが空の作品に限り `synopsis` と互換用 `siteData.legacyFields.story` を補完 |\n| `app/settings/color_studio.html` | テーマ・カスタム色・文字設定のlocalStorage | 表示設定キーのみ |\n| `tools/export/export_ncodes.html` | 新DB `works` | Nコードのテキストファイルを出力。DB書き込みなし |\n| `tools/diagnostic/work_db_production_card_audit.html` | 新DB `works` | なし。読み取り専用 |\n| `tools/diagnostic/restore_test.html` | 利用者が選択したバックアップJSON | 専用名のテストDB・専用接頭辞のテスト用localStorageキーを作成し、全件照合 |\n\n## 6. 運用上の原則
 
 1. 作品本体の正本は `tomotaYomuWorksDB/works`、棚マスターは同DBの `shelves`。
 2. Atom・ともためも・表示設定・閲覧履歴は、それぞれの用途に応じて独立管理する。
@@ -130,7 +130,7 @@ Object Store：`items`（keyPath `id`、index `parentId`）
 5. この資料の更新はコードの読み取り・資料編集に限定し、本番DB・localStorage・Shortcut・GitHub Actionsを変更しない。
 6. コード確認とiPhone実機確認を区別し、実機未確認の事項を実機確認済みと記載しない。
 
-## 6. 参照資料
+## 7. 参照資料
 
 - DB構造・接続先：`database-structure.md`
 - 移行の経緯・旧データ照合：`data-migration-log.md`
