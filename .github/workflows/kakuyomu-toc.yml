@@ -138,9 +138,33 @@ jobs:
               if work_id == known_work and [x["episode_id"] for x in episodes[:10]] != known_first_ten:
                   raise ValueError("検証用作品の先頭10話ID・順序が一致しません。")
 
+              # 作品情報も同じApolloキャッシュから取得する。
+              author_ref = work.get("author") or {}
+              author = resolve(author_ref) if isinstance(author_ref, dict) else None
+              author = author or {}
+              author_name = author.get("activityName") or author.get("name") or ""
+              author_handle = author.get("urlName") or author.get("username") or ""
+              synopsis = work.get("introduction") or work.get("catchphrase") or ""
+              tag_labels = work.get("tagLabels") or []
+              if not isinstance(tag_labels, list):
+                  tag_labels = []
+
+              work_metadata = {
+                  "title": work.get("title", ""),
+                  "author": author_name,
+                  "author_handle": author_handle,
+                  "synopsis": synopsis,
+                  "tags": [str(tag) for tag in tag_labels if str(tag).strip()],
+                  "status": work.get("serialStatus", ""),
+                  "character_count": int(work.get("totalCharacterCount") or 0),
+                  "updated_at": work.get("lastEpisodePublishedAt") or work.get("editedAt") or "",
+                  "published_at": work.get("publishedAt") or "",
+              }
+
               toc_data = {
                   "work_id": work_id,
                   "title": work.get("title", ""),
+                  "work_metadata": work_metadata,
                   "public_episode_count": int(expected),
                   "extracted_count": len(episodes),
                   "episodes": episodes
@@ -163,6 +187,7 @@ jobs:
                   "status": "success",
                   "work_id": work_id,
                   "title": toc_data["title"],
+                  "work_metadata": work_metadata,
                   "public_episode_count": int(expected),
                   "extracted_count": len(episodes),
                   "toc_path": request_toc_path
