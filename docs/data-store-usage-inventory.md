@@ -173,7 +173,7 @@ Object Store：`items`（keyPath `id`、index `parentId`）
 ### この調査で確定していないこと
 
 - iPhoneのShortcut、Safari/Braveの履歴・ホーム画面登録、端末に残る古いHTML、外部から呼び出すURLが旧DBを参照していないか。
-- 旧DB内の孤立 `reading_position` 3件を、今後も保管する必要があるか。
+- 旧DB内の孤立 `reading_position` 3件（N1351MD / N5420MC / N8546MG）は、2026-11-14にユーザーが新DBへ移行せず、旧DB退役時に削除する方針を決定済み。現時点では旧DB内に残存し、削除は未実施。
 - iPhone実機上の現在のDB一覧・件数・バックアップファイルの保存状態。
 - 現行コードの直接参照が見つからないことだけを根拠に、旧DBを削除してよいとは判断しない。
 
