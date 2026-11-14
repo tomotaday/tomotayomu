@@ -173,3 +173,67 @@ Workflowを変更・移動する場合は、参照するスクリプトのパス
 - iPhoneショートカットとの整合性確認は未実施。なろうの作者登録ショートカットでエラーが発生しているが、原因は未特定。他のショートカットも未確認。
 - ShortcutのURL、入力形式、保存先、後続処理を照合するまで、入口ファイルの移動・改名・処理変更を行わない。
 
+
+
+---
+
+## 2026-11-14 現行ツリー・機能接続の追記
+
+この資料の上部にある2026-11-05時点の一覧は当時の構成記録として保持する。現行のファイル配置はGitHub mainの実ツリーを優先する。以下は2026-11-14に確認した主要な現行パス。
+
+### ルート入口
+
+| パス | 役割 | 注意 |
+|---|---|---|
+| `index.html` | ともたよむ本体・本棚・管理設定棚 | GitHub Pagesの入口 |
+| `register.html` | なろう作品登録入口 | Shortcut等から呼ばれるためルート固定 |
+| `note_magazine_add.html` | note登録入口 | Shortcut等から呼ばれる可能性があるためルート固定 |
+| `.github/workflows/kakuyomu-toc.yml` | カクヨム目次・作品情報取得Workflow | Shortcutから起動する現行フロー |
+| `app/kakuyomu/kakuyomu_write.html` | カクヨム新規登録ページ | UUID付きrequest_idでActions結果を待つ |
+| `app/kakuyomu/kakuyomu_edit.html` | カクヨム作品編集 | 新DBを読み書き |
+| `kakuyomu_add.html` | 旧カクヨム登録ページ | 現行登録Shortcutの入口として扱わない。削除・移動は参照元確認後 |
+
+### 現行の主要フォルダ
+
+| パス | 主な内容 |
+|---|---|
+| `app/author/` | 作者管理 |
+| `app/kakuyomu/` | カクヨム登録・編集 |
+| `app/memo/` | ともためも |
+| `app/register/` | 検索除外作品の手動登録・照合・編集 |
+| `app/settings/` | カラー工房 |
+| `app/shelf/` | 本棚管理・あらすじ補完 |
+| `docs/` | 開発状況、構成資料、移行記録、技術記録 |
+| `docs/guides/` | なろう・note・カクヨム・診断・バックアップの操作ガイド |
+| `data/kakuyomu-toc/` | 作品ID別カクヨム目次JSON |
+| `data/kakuyomu-toc-requests/` | request_id別の登録実行結果・一時TOC |
+| `tools/diagnostic/` | 読み取り専用診断・監査・復元検証 |
+| `tools/export/` | データ出力 |
+| `tools/maintenance/` | 明示操作型メンテナンス |
+| `scripts/` | Workflow等から呼び出すスクリプト |
+
+### 現行資料室ファイル
+
+- `docs/development-status.md`：資料室入口・開発状況
+- `docs/database-structure.md` / `database-structure.html`：DB構成・接続先
+- `docs/data-store-usage-inventory.md`：画面・機能別の保存先調査
+- `docs/data-migration-log.md`：移行履歴
+- `docs/repository-structure.md` / `repository-structure.html`：ファイル構成
+- `docs/kakuyomu-toc-registration-investigation.md`：カクヨム登録・目次取得の技術記録
+- `docs/guides/`：利用者向け各種ガイド
+
+### カクヨムWorkflowのデータ経路
+
+- `.github/workflows/kakuyomu-toc.yml` が `workflow_dispatch` で起動される。
+- request_id別の結果JSON・TOC JSONを `data/kakuyomu-toc-requests/` に出力する。
+- 作品別TOCを `data/kakuyomu-toc/{work_id}.json` に保存する。
+- 登録ページ `app/kakuyomu/kakuyomu_write.html` はrequest_idで結果を照合し、検証成功後に新DBへ登録する。
+- 既存Shortcut「とよむ+しおり」は別経路として維持する。
+
+### 構成表の更新ルール
+
+1. ファイルを移動・改名・削除する前に、index・Shortcut・Workflow・相対リンクの参照元を確認する。
+2. 現在のGitHub mainツリーとこの資料を照合し、実在しないファイルを現役として掲載しない。
+3. MarkdownとHTMLの両方がある資料は、更新時に双方の内容とリンクを照合する。
+4. 構成整理だけではアプリのバージョン番号を変更しない。
+5. 本番DB・localStorage・Shortcut・Actionsを壊さないことを最優先とする。
