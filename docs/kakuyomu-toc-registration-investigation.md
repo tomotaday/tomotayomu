@@ -14,7 +14,7 @@
 1. 共有シートからURLを受け取り、変数 `work_url` にショートカット入力を設定する。
 2. キーチェーンから `GitHub_PAT` を取得して `token` に設定する。値がない場合は入力を要求し、入力値を `token` に設定して `GitHub_PAT` として保存する。
 3. `Generate UUID` でUUID形式の `request_id` を生成する。
-4. GitHub APIのWorkflow dispatchエンドポイントへPOSTする。URLは `https://api.github.com/repos/tomotaday/tomotayomu/actions/workflows/kakuyomu-toc.yml/dispatches`、`ref=main)、本文はJSON。 `inputs.work_url` に変数 `work_url`、`inputs.request_id` に生成UUIDを設定する。
+4. GitHub APIのWorkflow dispatchエンドポイントへPOSTする。URLは `https://api.github.com/repos/tomotaday/tomotayomu/actions/workflows/kakuyomu-toc.yml/dispatches`、`ref=main`、本文はJSON。 `inputs.work_url` に変数 `work_url`、`inputs.request_id` に生成UUIDを設定する。
 5. Shortcutは次の登録ページを開く。URL中のUUIDはActions実行と登録ページを結びつける照合キー。
 
 ```text
