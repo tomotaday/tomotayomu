@@ -73,7 +73,8 @@
 |---|---|---|
 | `tomotaYomu_note_magazines_v1` | noteマガジン情報・しおり | 移行元の残存データ。現行本体の正本ではない。削除は保留 |
 | `tomotaYomu_kakuyomu_works_v1` | カクヨム作品情報・しおり | 移行元の残存データ。現行本体の正本ではない。削除は保留 |
-| `tomotaYomu_v330_reading_history` | 3サイト共通の閲覧履歴 | 現行独立保存。最大30件 |\n| `tomotaYomu_pending_note_bookmark_v1` | 受信したnote記事URLの一時保留 | 全マガジン目次との一意照合・新DB保存が成功するまで保持。保存成功後に削除 |
+| `tomotaYomu_v330_reading_history` | 3サイト共通の閲覧履歴 | 現行独立保存。最大30件 |
+| `tomotaYomu_pending_note_bookmark_v1` | 受信したnote記事URLの一時保留 | 全マガジン目次との一意照合・新DB保存が成功するまで保持。保存成功後に削除 |
 | `tomotaYomu_atom_display_days` | 作者更新の表示期間 | 表示設定として維持 |
 | `tomotaYomu_mixed_shelf_order_v1` | 棚・システム棚の表示順 | 作品データとは別管理 |
 | `tomotaYomu_search_excluded_ncodes_v1` | なろう検索除外Nコード | 検索除外リストのUI状態として独立保存。作品メタデータは新DB |
