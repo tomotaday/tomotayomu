@@ -459,28 +459,43 @@ async function buildV3CardsFromIndexedDB(){
   }
   const pendingBookmark=String(localStorage.getItem("tomotaYomu_pending_note_bookmark_v1")||"").trim();
   if(pendingBookmark){
+    const receiveBox=document.getElementById("noteReceiveStatus");
     try{
       const received=new URL(pendingBookmark);
       const articleKey=noteArticleKey(received.href);
-      const authorMatch=received.pathname.match(/^\/([^/]+)\/n\/[a-z0-9]+/i);
-      const target=noteItems.find(x=>{
-        try{
-          const magazine=new URL(String(x.url||""));
-          const m=magazine.pathname.match(/^\/([^/]+)\/m\/[a-z0-9]+/i);
-          return articleKey&&authorMatch&&m&&m[1]===authorMatch[1];
-        }catch(e){return false}
-      });
-      if(target){
-        await saveNoteItem({...target,bookmarkUrl:received.href});
-        localStorage.removeItem("tomotaYomu_pending_note_bookmark_v1");
-        noteItems=readNoteItems();
-        const receiveBox=document.getElementById("noteReceiveStatus");
-        if(receiveBox){receiveBox.hidden=false;receiveBox.textContent="🔖 しおりを本棚に取り込みました。作品カードの「続きから」から開けます。"}
-      }else{
-        const receiveBox=document.getElementById("noteReceiveStatus");
-        if(receiveBox){receiveBox.hidden=false;receiveBox.textContent="📩 URLは受信しましたが、同じ作者のnote作品が本棚に見つかりません。しおりは未保存です。"}
+      if(!articleKey)throw new Error("記事キーを取得できません");
+
+      // 登録済みの全マガジン目次を照合する。取得失敗が1件でもあれば誤保存を避けて中止。
+      const matchedItems=[];
+      for(const item of noteItems){
+        const magazine=new URL(String(item.url||""));
+        if(magazine.protocol!=="https:" || magazine.hostname!=="note.com" && !magazine.hostname.endsWith(".note.com")){
+          throw new Error("マガジンURLが不正です");
+        }
+        const magazineMatch=magazine.pathname.match(/^\/[^/]+\/m\/([a-z0-9]+)/i);
+        if(!magazineMatch)throw new Error("マガジンIDを取得できません");
+        const indexItems=await loadNoteIndex(magazineMatch[1]);
+        const found=indexItems.some(entry=>
+          String(entry.key||"").toLowerCase()===articleKey.toLowerCase() ||
+          noteArticleKey(entry.url).toLowerCase()===articleKey.toLowerCase()
+        );
+        if(found)matchedItems.push(item);
       }
-    }catch(e){}
+
+      if(matchedItems.length===1){
+        await saveNoteItem({...matchedItems[0],bookmarkUrl:received.href});
+        noteItems=readNoteItems();
+        localStorage.removeItem("tomotaYomu_pending_note_bookmark_v1");
+        if(receiveBox){receiveBox.hidden=false;receiveBox.textContent="🔖 しおりを本棚に取り込みました。作品カードの「続きから」から開けます。"}
+      }else if(matchedItems.length===0){
+        if(receiveBox){receiveBox.hidden=false;receiveBox.textContent="📩 受信した記事は登録済みマガジンの目次に見つかりませんでした。しおりは保存していません。"}
+      }else{
+        if(receiveBox){receiveBox.hidden=false;receiveBox.textContent="📩 受信した記事が複数のマガジンで見つかりました。誤保存を避けるため、しおりは保存していません。"}
+      }
+    }catch(e){
+      console.warn("noteしおり受信の照合・保存に失敗",e);
+      if(receiveBox){receiveBox.hidden=false;receiveBox.textContent="⚠️ noteの目次確認またはしおり保存に失敗しました。しおりは保存していません。通信状態を確認して、もう一度お試しください。"}
+    }
   }
   const shelves=v3Shelves;
   const wm=new Map(works.map(v=>[String(v.ncode||"").toUpperCase(),v]));
