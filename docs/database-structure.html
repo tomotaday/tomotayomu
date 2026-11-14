@@ -2,8 +2,8 @@
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f6f3ed"><title>DB構成表・接続一覧｜ともたよむ資料室</title>
 <style>body{margin:0;background:#f6f3ed;color:#252525;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.7}main{max-width:760px;margin:auto;padding:24px 16px 48px}section{background:#fffdf9;border:1px solid #aaa195;border-radius:12px;padding:14px;margin:14px 0}a{overflow-wrap:anywhere}</style></head>
 <body><main><a href="../index.html">← ともたよむ本棚へ戻る</a><h1>🗄️ DB構成表・接続一覧</h1>
-<section><strong>このページについて</strong><p>DB構造・画面別の読み書き先・localStorageの役割を管理する資料です。過去の移行記録と現行接続を分けて記載しています。最新の詳細・変更履歴はMarkdown正本を参照してください。</p>
+<section><strong>このページについて</strong><p>作品データの正本は tomotaYomuWorksDB v2（works / shelves）です。作者Atomとともためもは独立DB、履歴・更新管理・表示設定等は用途別に管理します。画面別の読み書き先と保全ルールの詳細はMarkdown正本を参照してください。</p>
 <p><a href="database-structure.md">DB構成表・接続一覧（Markdown正本）を開く</a></p></section>
-<section><h2>現行の基本方針</h2><ul><li>作品データの正本はIndexedDB <code>tomotaYomuWorksDB</code> version 2 の <code>works</code>。</li><li>棚マスターは同DBの <code>shelves</code>。</li><li>旧DB・旧localStorageは、保全・照合が終わるまで削除しない。</li><li>ともためも・作者Atom・閲覧履歴・表示設定は用途別に分離する。</li><li>不明な保存先を推測で決めず、コードと実機結果を照合する。</li></ul></section>
+<section><h2>現行の基本方針</h2><ul><li>作品データの正本はIndexedDB <code>tomotaYomuWorksDB</code> version 2 の <code>works</code>。</li><li>棚マスターは同DBの <code>shelves</code>。</li><li>旧DB・旧localStorageは、参照経路と保全要否を確認し、別途承認されるまで削除しない。</li><li>作者Atom・ともためも・閲覧履歴・更新管理・表示設定は用途別に分離する。</li><li>不明な保存先を推測で決めず、コードと実機結果を照合する。</li></ul></section>
 <section><h2>関連資料</h2><ul><li><a href="data-store-usage-inventory.md">保存先・画面利用関係の調査メモ</a></li><li><a href="data-migration-log.md">データ統合・参照先移行記録</a></li><li><a href="development-status.md">資料室入口・開発状況</a></li></ul></section>
 </main></body></html>
