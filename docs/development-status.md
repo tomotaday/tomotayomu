@@ -41,7 +41,7 @@
 - 検証成功後、登録ページで内容・登録先を確認し、明示操作で新DB `tomotaYomuWorksDB/works` に登録する。
 - 作品IDは `kakuyomu:{work_id}`。作者ハンドルは@なしで `authorId` に保存する。
 - あらすじは初回取得。既存作品の自動再取得・上書きは現行仕様にない。必要なら編集画面で手動修正。
-- 登録専用Shortcutの画面確認記録は技術記録に掲載。HTTPヘッダ詳細などスクリーンショットで見えない設定は未確認。
+- 登録専用Shortcutの画面確認記録は技術記録に掲載。HTTPヘッダはAuthorization（Bearer＋token）、Accept（application/vnd.github+json）、X-GitHub-Api-Version（2022-11-28）を画像確認済み。画面外の設定は未確認。
 - 既存Shortcut「とよむ+しおり」は変更しない。
 
 詳細：[`カクヨム登録・しおりガイド`](guides/kakuyomu_guide.html) / [技術記録](kakuyomu-toc-registration-investigation.md)
