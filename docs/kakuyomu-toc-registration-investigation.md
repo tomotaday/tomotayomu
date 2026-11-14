@@ -1,6 +1,5 @@
 # カクヨム登録・目次取得 技術記録
 
-[← INDEXページへ戻る](../index.html)
 
 最終更新：2026-11-14  
 対象リポジトリ：tomotaday/tomotayomu  
