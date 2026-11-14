@@ -72,13 +72,14 @@ async function run(mode="normal"){
     if(!articleKey)throw new Error("note記事URLから記事キーを取得できません");
     const matched=[];
     const details=[];
+    const compareKey=mode==="missing"?articleKey+"__missing_test__":articleKey;
     for(let i=0;i<MAGAZINES.length;i++){
       const magazine=MAGAZINES[i];
       magazineKeyFromUrl(magazine.url);
       const items=await loadNoteIndex(magazine,mode==="failure"&&i===1);
       const found=items.some(entry=>
-        String(entry.key||"").toLowerCase()===articleKey.toLowerCase()||
-        noteArticleKey(entry.url).toLowerCase()===articleKey.toLowerCase()
+        String(entry.key||"").toLowerCase()===compareKey.toLowerCase()||
+        noteArticleKey(entry.url).toLowerCase()===compareKey.toLowerCase()
       );
       if(mode==="duplicate"&&i===1&&matched.length===1){
         matched.push(magazine);
