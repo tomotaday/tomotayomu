@@ -149,3 +149,29 @@ Object Store：`items`（keyPath `id`、index `parentId`）
 - 移行の経緯・旧データ照合：`data-migration-log.md`
 - リポジトリ内の配置：`repository-structure.md`
 - 現在の作業状況：`development-status.md`
+
+## 8. 旧DB参照の追加確認（2026-11-14）
+
+### 現行ファイル・Workflow
+
+- 現行の主要画面13ページと、今回追加で確認した登録ページ5ページでは、旧DB名 `tomotaYomuDB` および旧ストア名を直接指定する参照は確認できなかった。登録ページ5ページの `indexedDB.open(DB_NAME)` は、新DB名を定数から参照する実装である。
+- 現行Workflow `.github/workflows/publish-author-atom-feeds.yml` に `"source": "tomotaYomuDB.authors"` という文字列が残る。これは生成する `data/author-list.json` の `source` メタデータであり、Workflowが旧IndexedDBへ接続・読み取りする処理ではない。Workflowは入力JSONまたは保存済み `data/author-list.json` を使ってAtom feedを生成する。
+- 現行のカクヨム目次・note目次・作者Atom公開Workflowに、旧DBへの接続処理は確認できなかった。
+- 実験用 `experiment/bookmark/` は独立した `tomotaYomuBookmarkLabDB` を使用し、本番DB・旧DB・localStorage・Shortcutを読み書きしない旨がREADMEに記載されている。
+
+### 保管領域 `archive/delete_pending/`
+
+- ここは現行画面からの通常導線ではなく、保管中のファイル群。ただしGitHub Pages上で公開され得るパスであり、ファイルを直接開いて操作する場合は注意する。
+- `html/DELETE_author-export.html` は旧DB `tomotaYomuDB` を開き、作者情報を読み出す旧DB参照ページ。
+- `html/DELETE_cleanup_manual_test_works.html` は旧DB `works_cache` の対象レコードを削除する操作を含む。
+- `html/DELETE_maintenance_cleanup_deleted_works.html` は旧DBの `shelf_placement` / `works_cache` / `authors` / `reading_position` を対象とする削除操作を含む。
+- これらは保管中であり、現行アプリの本番導線から利用するものではない。旧DB削除の判断前に、これらの保管ページを実行・再利用しないこと。ファイル自体の削除も、別途一覧提示・承認を経る。
+- 今回確認した保管中の他HTML、Pythonスクリプト、Workflowには、旧DB名・旧ストア名・IndexedDB削除処理の直接一致は見つからなかった。ただし、これは確認した文字列による静的検索結果であり、動的生成・外部Shortcut・端末内に保存されたページ等の不存在を保証しない。
+
+### この調査で確定していないこと
+
+- iPhoneのShortcut、Safari/Braveの履歴・ホーム画面登録、端末に残る古いHTML、外部から呼び出すURLが旧DBを参照していないか。
+- 旧DB内の孤立 `reading_position` 3件を、今後も保管する必要があるか。
+- iPhone実機上の現在のDB一覧・件数・バックアップファイルの保存状態。
+- 現行コードの直接参照が見つからないことだけを根拠に、旧DBを削除してよいとは判断しない。
+
