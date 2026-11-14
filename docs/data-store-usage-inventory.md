@@ -339,7 +339,7 @@
 - 共有シートからURLを受け取り、変数 `work_url` にショートカット入力を設定。
 - キーチェーンの `GitHub_PAT` を取得して `token` に設定。値がない場合はトークン入力を要求し、入力値を `token` に設定して `GitHub_PAT` として保存。
 - `Generate UUID` でUUIDを生成。
-- GitHub APIの `/repos/tomotaday/tomotayomu/actions/workflows/kakuyomu-toc.yml/dispatches` へPOST。画面で確認できた設定は `ref=main`、本文JSON。
+- GitHub APIの `/repos/tomotaday/tomotayomu/actions/workflows/kakuyomu-toc.yml/dispatches` へPOST。画面で確認できた設定はPOST、Authorization（Bearer＋変数 `token`）、Accept（`application/vnd.github+json`）、X-GitHub-Api-Version（`2022-11-28`）、`ref=main`、本文JSON。
 - `inputs` は2項目：`work_url` ← 変数 `work_url`、`request_id` ← 生成UUID。
 - 登録ページURLに `request_id` を付けて開く。
 
