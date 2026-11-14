@@ -1,144 +1,119 @@
-# カクヨム目次・作品登録の自動化調査記録
+# カクヨム登録・目次取得 技術記録
 
-最終更新：2026-11-13
-対象リポジトリ：tomotaday/tomotayomu
-対象ブランチ：main
-アプリ基準版：v3.8.0【2026/11/09】
-位置づけ：カクヨム登録・目次照合の仕様決定と未解決調査をまとめる作業記録。アプリの実装仕様書ではない。
+最終更新：2026-11-14  
+対象リポジトリ：tomotaday/tomotayomu  
+対象ブランチ：main  
+対象機能：専用Shortcut → GitHub Actions → 登録ページ → 新DB  
+位置づけ：現行実装の技術的な接続・検証記録。利用者向け手順は `docs/guides/kakuyomu_guide.html` を参照。
 
-> この文書は、現時点の合意と調査結果を固定するためのもの。未実装の案を現行機能として扱わない。資料間・現行コード間に矛盾がある場合は、実際のコードと実機結果を照合して解消する。
+> 本書は2026-11-14時点のコードと実機確認を反映する。過去の設計案・旧実装は履歴として区別し、現行仕様として扱わない。実機未確認の項目は完了扱いしない。
 
-## 1. 目的
+## 1. 現行フロー
 
-カクヨム作品の登録時に作品別目次JSONを自動取得し、その同じ目次JSONを唯一の根拠として、
-- 本棚カードの総話数
-- 保存したしおりエピソードIDに対応する現在話数
+1. カクヨム登録専用ShortcutがUUID形式の `request_id` を生成する。
+2. Shortcutが作品URL・request_idをGitHub Actions `kakuyomu-toc.yml` へ送る。
+3. ShortcutがGitHub Pagesの登録ページを開く。
 
-を表示できるようにする。
+```text
+https://tomotaday.github.io/tomotayomu/app/kakuyomu/kakuyomu_write.html?request_id={UUID}
+```
 
-登録時に作品URLから目次を取得できることを基本経路とし、しおり受信時には保存済みのエピソードIDを同じ目次JSONと照合する。
+4. Workflowがカクヨム作品情報と作品別目次を取得・検証する。
+5. Workflowがrequest_idに対応する結果JSON・TOC JSONを公開する。
+6. 登録ページは結果JSONを5秒間隔でポーリングし、最大60回（約5分）待つ。
+7. 成功結果を受け取ると、request_id一致・TOC JSONの存在・作品ID・公表話数・抽出件数・連番・重複ID等を検証し、作品情報を画面へ表示する。
+8. 利用者が内容・登録先を確認し、明示的に登録操作を行う。
+9. 登録ページは新DBへ作品レコードを追加する。
 
-## 2. 仕様として合意済み
+ポーリング表示の `1/60` は確認回数であり、作品話数やWorkflowの処理段階数ではない。1回ごとに5秒待つ。成功・失敗の終端状態を受け取ればループを抜ける。
 
-### 2-1. 総話数と現在話数の根拠
-
-- **カクヨムの総話数は、作品別TOC JSONの episodes 件数を唯一の根拠とする。**
-- **現在話数は、しおりとして保存された episodeId を同じTOC JSONの episodes[].episode_id と照合し、該当レコードの number を使う。**
-- 作品URLを登録すれば目次を取得し、その目次件数を総話数として作品カードへ表示する。
-- エピソードURLを受け取ったら、作品ID・エピソードID・エピソードURLを保存する。現在話数は目次JSONから求める。
-- `episodeCount`（貼り付けテキスト由来の総話数）は、カクヨムの総話数・現在話数表示の根拠にしない。
-- TOC JSONを取得できない場合は、取得失敗を明示する。 `episodeCount` に黙ってフォールバックしない。
-- TOC JSONを取得できたがepisodeIdが見つからない場合は「話数未照合」等として区別する。
-
-### 2-2. 既存連携の保護
-
-- 既存iOS Shortcut「とよむ+しおり」は変更しない。
-- Shortcutから受け取る既存のしおりURL形式・受け渡しを壊さない。
-- 旧 `episodeCount` データを一括削除しない。まず表示・取得経路から切り離し、他用途・復旧上の必要性を確認してから扱いを決める。
-- 本番IndexedDB / localStorage、GitHub Actions、既存Shortcutに対する変更は、現状調査と設計合意の後に小さく実施する。
-
-## 3. 現在の登録・目次取得コード
-
-### 3-1. 登録ページ
-
-対象：`kakuyomu_add.html`
-確認SHA：`fdfab25a29343d0a878687dd9cafb09303033091`
-
-確認できた現状：
-- 作品情報テキストを貼り付け、`parseKakuyomu(raw)` でタイトル・作者・あらすじ・タグ・作品状態・文字数・最終更新日等を解析する。
-- 作品URLから作品IDを抽出する。
-- 貼り付けテキスト中の「全N話」から `episodes` を解析し、画面の「総話数」欄へ入れる。
-- 画面に総話数の手入力欄がある。
-- 保存時に新DB `tomotaYomuWorksDB` version 2 の `works` へ作品を保存し、`episodeCount` も保存する。
-- 登録時のTOC取得・GitHub Actions起動・TOC完了待ち・TOC JSON検証は実装されていない。
-- 既存の作品情報テキスト解析は、総話数以外のメタデータ取得に利用できる可能性がある。総話数の取得経路をTOCへ変更することと、他のメタデータ解析を全廃することは同義ではない。
-
-### 3-2. 目次取得Workflow
+## 2. Workflow
 
 対象：`.github/workflows/kakuyomu-toc.yml`
-確認SHA：`383c07eb48cf104157007fd6ae2024281923b395`
 
-現状：
-- `workflow_dispatch` 入力 `work_url` を受け取る手動実行方式。
-- カクヨム作品ページの `__NEXT_DATA__` / `__APOLLO_STATE__` から `Work:{work_id}` と目次を取得する。
-- `tableOfContentsV2` または `tableOfContents` をたどり、`EmptyEpisode` と重複IDを除外して順番付きepisodesを作成する。
-- `publicEpisodeCount` と抽出件数が一致しなければ失敗し、保存を止める。
-- 検証用作品ID `1177354054891965415` は先頭10件のID・順序も既知値と照合する。
-- JSON / CSVを生成し、Artifact（7日保持）へアップロードする。
-- 成功したJSONを `data/kakuyomu-toc/{WORK_ID}.json` に保存し、変更があればActionsからcommit/pushする。
-- JSONには `work_id`、`title`、`public_episode_count`、`extracted_count`、`episodes` が含まれる。
-- 作者名・あらすじ・タグ・文字数・最終更新日など、登録画面の全メタデータは現行Workflowでは取得していない。
+- トリガー：`workflow_dispatch`
+- 入力：作品URLまたは作品ID、request_id
+- request_id：UUID形式を検証し、結果ファイル名・実行グループの対応キーとして利用。
+- 作品URL：カクヨムの `/works/{作品ID}` 形式を検証。
+- 作品データ：カクヨムページの埋め込みデータを解析し、作品情報・目次を取得。
+- 目次：`EmptyEpisode` と重複IDを除外し、順番付きepisodesを構成。
+- 検証：公表総話数と抽出件数が一致しなければ失敗。episode番号の連番とIDの重複も登録ページ側で再検証。
+- 作品メタデータ：title、author、author_handle、synopsis、tags、status、character_count、updated_at、published_at等を `work_metadata` として出力。
+- 作者ハンドル：作者オブジェクトの `name` を採用。画面・DBでは `@` を付けずに保存する。
+- 保存先：
+  - `data/kakuyomu-toc-requests/{request_id}.json`：実行結果・作品メタデータ
+  - `data/kakuyomu-toc-requests/{request_id}.toc.json`：登録要求ごとのTOC
+  - `data/kakuyomu-toc/{work_id}.json`：本棚で参照する作品別TOC
+- 成功・失敗の結果JSONを公開し、登録ページがポーリングで取得する。
 
-### 3-3. 目次JSONの既存実績
+## 3. 登録ページ
 
-- `data/kakuyomu-toc/1177354054891965415.json`：1,132話
-- `data/kakuyomu-toc/16816927860897723860.json`：532話
-- 目次抽出実験では1,132話の順序・重複・空タイトル等を検証し、先頭10件のID照合も成功した記録がある。
-- これらの既存JSONは本調査記録の作成時点で参照されている実績であり、今回の自動登録フローが実装済みであることを意味しない。
+対象：`app/kakuyomu/kakuyomu_write.html`
 
-## 4. 本棚表示の現状と修正対象
+- request_idをURLクエリから取得し、UUID形式を検証。
+- GitHub上のrequest結果JSONを5秒間隔・最大60回確認する。
+- 結果のrequest_id一致を確認。
+- TOC JSONを取得し、作品ID・件数・episode番号・episode_idの重複を検証。
+- Workflowが出力した `work_metadata` を画面へ反映。
+- 新DB `tomotaYomuWorksDB` version 2 を開く。versionや `works` / `shelves` 構造が想定外なら中止し、勝手にDBを作成・更新しない。
+- 作品レコードIDは `kakuyomu:{work_id}`。
+- 登録時に既存IDを確認し、重複作品を追加しない。
+- 利用者の明示操作で `works` に追加する。ページを開いたこと自体では登録しない。
+- 作品情報には title、authorName、authorId、synopsis、status、episodeCount、characterCount、updatedAt、siteData等を保存。
+- authorIdと `siteData.legacyFields.authorHandle` に作者ハンドルを `@` なしで保存する。
+- TOCの総話数は検証済みepisodes件数を使用。
 
-対象：`index.html`
-確認SHA：`462f4d6cfd92ab994fce251b18d2e76cb3e71861`
+## 4. 作品編集
 
-確認したコード：
-- `loadKakuyomuToc(workId)` が `data/kakuyomu-toc/{id}.json` を取得し、`work_id` と `episodes` 配列を検証する。
-- カクヨムカードの表示処理は `item.episodeCount` を総話数として読み、しおりepisodeIdをTOCと照合して現在話数を表示する。
-- TOC取得失敗時・ID不一致時にも、総話数表示に `episodeCount` を使う経路が残っている。これは合意した「TOC JSONのみを根拠にする」仕様と一致しないため、後続実装で修正対象となる。
-- しおり受信は `kakuyomuUrl` クエリから作品ID・episodeIdを抽出し、登録済み作品にURLとIDを保存する処理がある。既存Shortcutの受け渡し形式は維持する。
+対象：`app/kakuyomu/kakuyomu_edit.html`
 
-**保存先に関する要照合事項：** 現行ファイルの一部には `readKakuyomuItems()` / `saveKakuyomuItem()` を通じる既存カクヨムデータ処理も見える一方、登録ページとDB構成資料は新DB `tomotaYomuWorksDB` を示している。カクヨムの作品・しおりの実際の読み書き経路について、関連関数の定義・呼び出し元・実機保存先をまとめて再確認し、資料間の記述差を解消すること。確認前に保存先を決めつけたり、データを移動・削除したりしない。
+- 新DB `tomotaYomuWorksDB` version 2 の `works` から `kakuyomu:{work_id}` を読み込む。
+- タイトル、作者表示名、作者ハンドル、あらすじ、作品状態、総話数、文字数、最終更新日、タグ等を編集可能。
+- 保存は新DB `works` へのput。
+- 2026-11-14、保存ボタンが反応しない問題を確認。作品状態inputと保存メッセージ領域に同じDOM ID `status` があったため、inputを `workStatus`、保存メッセージを `saveStatus` に分離。読み込み・保存参照も修正した。
+- 修正後、利用者が編集・保存の実機動作を確認済み。
 
-## 5. 自動登録方式の検討
+## 5. 作品情報の更新方針
 
-### 案として検討中
+- あらすじは初回登録時にWorkflowから取得し、新DBへ保存する。
+- 現行コードには、既存作品のあらすじを定期的・自動的に再取得して上書きする経路は確認していない。
+- あらすじ変更が必要な場合は作品編集画面で手動修正する。
+- 作者ハンドルは初回取得値を保存し、通常の目次再取得で上書きしない。必要な変更は編集画面で行う。
+- 目次JSONの取得・更新と、既存作品メタデータの自動更新は別機能として扱う。
 
-1. カクヨム登録用の**別Shortcut**を新設し、作品URLを受け取る。
-2. ShortcutからGitHub Actions `workflow_dispatch` を呼び出し、`kakuyomu-toc.yml` に作品URLを渡す。
-3. 登録ページを開き、GitHub Actionsの実行状態を確認する。
-4. Workflow完了後、公開された作品別TOC JSONを取得・検証する。
-5. 取得結果を画面に表示し、ともたが確認したうえで本棚へ保存する。
+## 6. しおりと話数表示
 
-この案は、既存の「とよむ+しおり」Shortcutを変更しないための候補である。まだ方式確定・実装済みではない。
+- 既存Shortcut「とよむ+しおり」は変更せず、カクヨムURLの受け渡しを維持する。
+- 本棚側は作品ID・episodeId・episode URLを作品レコードへ保存する。
+- 作品別TOC JSONのepisode_idと保存済みepisodeIdを照合して話数を求める。
+- TOC取得失敗・ID不一致は、正しい話数を確定できない状態として扱う。貼り付けテキスト由来のepisodeCountをTOCの代わりに根拠としない。
 
-### 必須の未解決調査：Atom更新Shortcutの認証方式
+## 7. 2026-11-14の実機確認・変更記録
 
-- 既存Atom更新処理の画面側には、GitHub Actionsのworkflow run一覧をポーリングする処理がある。
-- ただし、確認した `index.html` のポーリング処理はActions実行状況の読み取りであり、Workflowを起動する認証処理そのものではない。
-- リポジトリ内検索では、フロントエンドからActionsをdispatchする処理は確認できていない。
-- 次に、**Atom更新ShortcutのAPI送信部分**を確認する。どのURLへ何をPOSTしているか、認証情報をどこに保持しているか、Shortcutの共有・複製時に漏えいしないかを確認する。
-- PAT等の秘密情報をGitHub PagesのJavaScriptへ埋め込む方式は採用しない。
-- 認証の安全な保持方法が確認できるまでは、Shortcutからのdispatch方式を確定しない。
-- 新しい中継サーバー/GASを追加する必要があるかどうかも、Atom Shortcutの実態確認後に判断する。現段階で中継サービスが必要と決めつけない。
+| 対象 | 結果 |
+|---|---|
+| Workflow取得 | 作品ID `1177354054892870623`、187話／187話で成功 |
+| request_id | `E2EBC0CA-9F18-492A-B2A2-6A62EA1A72F0` の実行記録あり |
+| 登録ページ | Shortcutから開き、作品情報・作者ハンドルを取得できることを確認 |
+| 新DB登録 | 利用者が登録成功を確認 |
+| カードリンク | カクヨム作品ページへのリンクを確認 |
+| しおり | 既存Shortcut経由のしおり動作を確認 |
+| 作者ハンドル | `author.name` を `@` なしで保存。画面表示上の@とは区別 |
+| 作品編集 | DOM ID重複修正後、編集・保存を確認 |
+| 専用棚の並び順 | 2026-11-14、カクヨム・note専用棚を最終更新日順へ変更。コード反映済み。実機最終確認は別途 |
 
-## 6. 未決定・未着手
+### 関連コミット
 
-| 項目 | 状態 | 次の確認・作業 |
-|---|---|---|
-| Atom更新ShortcutのAPI送信内容 | 調査待ち | API送信アクションのスクリーンショットまたはShortcut内容を確認 |
-| 認証情報の保持場所・安全性 | 未調査 | トークンの保管方法、共有時の露出可能性を確認 |
-| ShortcutからWorkflow dispatchする方式 | 検討中 | 上記調査後に方式決定 |
-| 登録画面でのActions完了待ち | 未実装 | 既存Atomポーリングの再利用可否と誤検知防止を設計 |
-| TOC JSON取得・検証・登録画面表示 | 未実装 | 完了後にJSONのwork_id・episodes・件数を検証 |
-| 登録時の総話数入力欄 | 変更未着手 | TOC件数を表示し、手入力・貼付テキスト値を正本にしない設計 |
-| カードの総話数・現在話数表示 | 修正未着手 | TOCのみを根拠にし、失敗時にepisodeCountへ戻らない |
-| カクヨム保存先の資料間不一致 | 要照合 | index・登録・編集画面・DB資料・実機の読み書きを照合 |
-| 旧episodeCountデータの整理 | 保留 | 表示経路切離し後、保持要否を別途判断 |
+- Workflowへ作品メタデータ追加：`a0c025a3f4ed2941207646a96fee45fbd791c466`
+- 作者ハンドル取得元を `author.name` に修正：`0bdb462a9360caa7fee7f75a430d425782e418e6`
+- 登録ページを新DB登録・取得結果待ちへ対応：`ea94b9f14692fef8e8ec8a480bf16fcde282c594`
+- 作品編集のDOM ID重複修正：`db92533b2643f0d45da4f0d13fc9c80c7a5f897e`
+- カクヨム・note専用棚を最終更新日順へ統一：`5a1020b1e9e675bff34e0cb7876fa7a6732feb13`
 
-## 7. 次に行う作業順
+## 8. 保留・注意事項
 
-1. ともたからAtom更新ShortcutのAPI送信部分を受け取り、内容を読む。
-2. 認証方式・トークン保管・Workflow dispatch先を特定する。
-3. カクヨムの実際の保存先（IndexedDB/localStorage）を関連コードと実機で再照合する。
-4. 自動登録フローの方式を決定する。既存「とよむ+しおり」は変更しない。
-5. 実装計画を小さな変更単位に分け、ともたの確認後にコード変更する。
-6. 登録テストは既存本番データを不用意に上書きしない検証用作品・確認手順を用意して行う。
-7. TOC JSONのみで総話数・現在話数が表示され、TOC取得失敗時に誤った数値を出さないことを確認する。
-8. 実機確認後、カクヨムガイドと開発状況インデックスを更新する。
-
-## 8. 変更履歴・安全上の記録
-
-- 本記録作成時点で、今回の自動登録調査に伴う本番コード変更・DB変更・Shortcut変更は行っていない。
-- `kakuyomu_add.html`、`index.html`、`kakuyomu-toc.yml` は読み取り調査のみ。
-- 既存TOC JSONや本番IndexedDB/localStorageの変更・削除は行っていない。
-- 本記録は調査の現在地を固定するものであり、アプリのバージョンを上げる変更ではない。
+- カクヨム専用棚・note専用棚の並び順変更はコード反映済み。実機で最新順・反転動作を最終確認する。
+- Workflow結果ファイル・TOC JSONの保持期間や古いrequest結果の整理は、依存関係を確認してから判断する。
+- 本番IndexedDB・localStorage、既存Shortcut、GitHub Actionsの入出力形式を、資料整理を理由に変更・削除しない。
+- PAT等の秘密情報をGitHub PagesのJavaScriptへ埋め込まない。
+- この資料の更新は、アプリ機能・DBデータの変更を意味しない。
