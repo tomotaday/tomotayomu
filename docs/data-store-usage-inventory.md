@@ -44,7 +44,7 @@ DB：`tomotaYomuWorksDB` version 2
 | noteマガジン登録 | `shelves`、既存作品確認に `works` | `works` | `note_magazine_add.html` |
 | カクヨム登録 | `shelves`、Actions結果・TOC JSON | `works` | `app/kakuyomu/kakuyomu_write.html` |
 | カクヨム作品編集 | 対象作品を `works` から取得 | `works` | `app/kakuyomu/kakuyomu_edit.html` |
-| 判定センター | `works` | 作品抽出処理内で必要な保存のみ | `tools/diagnostic/ncode_extract.html` |
+| 判定センター | 新DB `works`、Atom公開JSON、検索除外リスト | 作品DBへの書き込みなし。進捗・作者確認・作品確認を診断専用localStorageへ保存 | `tools/diagnostic/ncode_extract.html` |
 
 作品IDの形式例：`narou:N...`、`note:...`、`kakuyomu:...`。サイト共通の項目は共通フィールド、サイト固有の情報は `siteData`、読書状態は `reading`、しおりは `bookmark` に分けて保持する。
 
@@ -118,8 +118,8 @@ Object Store：`items`（keyPath `id`、index `parentId`）
 
 | ファイル | 読み取り対象 | 書き込み |
 |---|---|---|
-| `tools/diagnostic/storage_inventory.html` | IndexedDBの既知DB一覧、全ストア構造・件数、localStorageキー・概算容量 | 診断結果の画面表示。調査対象DBの内容は読み取り |
-| `tools/diagnostic/ncode_extract.html` | 新DB `tomotaYomuWorksDB/works` | 抽出結果の画面表示・必要な診断処理 |
+| `tools/diagnostic/storage_inventory.html` | IndexedDBの既知DB一覧、全ストア構造・件数、localStorageキー・概算容量 | 診断結果の画面表示、バックアップJSON出力。調査対象DBの内容は読み取り |
+| `tools/diagnostic/ncode_extract.html` | 新DB `tomotaYomuWorksDB/works`、Atom公開JSON、検索除外リスト | 作品DBへの書き込みなし。診断進捗・確認記録を専用localStorageへ保存 |
 
 `storage_inventory.html` はDBが存在しない場合に新規作成しないよう、`onupgradeneeded` でupgrade transactionを中止する実装を持つ。診断ページを使う場合も、対象ブラウザ・表示結果・実行操作を確認し、実機データの変更を伴う操作を行わない。
 
