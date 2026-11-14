@@ -6,8 +6,7 @@
 現行アプリ基準版：v3.8.1【2026/11/14】
 正本：ルートの `index.html`
 
-この資料は、2026年11月5日時点で確認したファイル配置と役割をまとめたもの。
-ファイルの移動・追加・削除を行う際は、必ずGitHub上の最新状態を再確認すること。
+冒頭の旧一覧は過去時点の構成記録を含む。現行の主要パスは末尾の「2026-11-14 現行ツリー・機能接続の追記」を参照し、ファイルの移動・追加・削除時はGitHub mainの実体を再確認すること。
 
 ## 1. リポジトリ全体
 
@@ -15,7 +14,7 @@
 |---|---|---|
 | `index.html` | ともたよむ本体 | GitHub Pagesの正本。IndexedDBを利用 |
 | `register.html` | なろう作品登録の入口 | Shortcut等から `register.html?ncode=...` で呼び出すためルート固定 |
-| `kakuyomu_add.html` | カクヨム作品登録の入口 | 現役Shortcutの呼び出し先。ルート固定 |
+| `kakuyomu_add.html` | 旧カクヨム登録ページ | 現行登録Shortcutの入口ではない。参照元を確認するまで保持 |
 | `note_magazine_add.html` | noteマガジン登録の入口 | 現役Shortcutの呼び出し先。ルート固定 |
 | `README.md` | リポジトリ概要 | 現状は最小限の内容。今回の整理では変更しない |
 | `.github/workflows/` | GitHub Actions | 自動取得・更新・検証処理 |
@@ -92,10 +91,10 @@ Workflowを変更・移動する場合は、参照するスクリプトのパス
 
 | パス | 主なファイル | 役割 |
 |---|---|---|
-| `tools/diagnostic/` | `diagnostic_db.html`, `storage_inventory.html` | 旧DB・保存領域の読み取り専用診断 |
+| `tools/diagnostic/` | `storage_inventory.html`, `ncode_extract.html`, `work_db_production_card_audit.html` | 保存領域の調査、新DB作品抽出・カード監査 |
 | `tools/diagnostic/` | `work_db_*.html`, `shelf_master_*.html` | 新DB監査・プレビュー・移行検証 |
 | `tools/diagnostic/` | `ncode_*.html`, `restore_*.html` | Nコード・復元関連の診断 |
-| `tools/maintenance/` | `cleanup_orphan_placements.html` | 孤立配置データ整理（明示操作） |
+| `tools/maintenance/` | 現行mainで該当ページの実在を確認できていない | 旧一覧の掲載を現行機能として扱わない |
 | `tools/export/` | `export_ncodes.html` | Nコード出力 |
 
 ## 8. archive/delete_pending（削除保留ファイル）
@@ -218,6 +217,30 @@ Workflowを変更・移動する場合は、参照するスクリプトのパス
 - `docs/repository-structure.md` / `repository-structure.html`：ファイル構成
 - `docs/kakuyomu-toc-registration-investigation.md`：カクヨム登録・目次取得の技術記録
 - `docs/guides/`：利用者向け各種ガイド
+
+### 2026-11-14 実在確認した主要ファイル
+
+| パス | 役割・確認範囲 |
+|---|---|
+| `index.html` | 本棚本体、共通作品DB読込、読書・しおり・更新・履歴・作者Atom |
+| `register.html` | なろう登録入口 |
+| `note_magazine_add.html` | note登録入口 |
+| `kakuyomu_add.html` | 旧カクヨム登録ページ。現行専用Shortcutの入口ではない |
+| `app/shelf/shelf_manager.html` | 新DBの棚マスター・作品棚ID管理 |
+| `app/author/author.html` | 新DB作品の作者情報管理 |
+| `app/kakuyomu/kakuyomu_write.html` | カクヨム新規登録 |
+| `app/kakuyomu/kakuyomu_edit.html` | カクヨム作品編集 |
+| `app/register/work_add.html` | 手動登録・検索除外作品管理 |
+| `app/register/search_excluded_edit.html` | 検索除外作品情報編集 |
+| `app/register/search_excluded_compare.html` | 取得失敗Nコード照合 |
+| `app/settings/color_studio.html` | カラー工房 |
+| `app/shelf/synopsis_repair.html` | あらすじ補完 |
+| `app/memo/tomota_memo.html` | ともためも |
+| `tools/diagnostic/storage_inventory.html` | IndexedDB・localStorage保存領域診断 |
+| `tools/diagnostic/ncode_extract.html` | 新DBからのNコード抽出・判定 |
+| `tools/diagnostic/work_db_production_card_audit.html` | 新DB作品カード監査 |
+
+※上表はこの作業で個別にGitHub main上の実在を確認した主要ファイルであり、リポジトリ全ファイルの完全な一覧ではない。
 
 ### カクヨムWorkflowのデータ経路
 
