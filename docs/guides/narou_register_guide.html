@@ -458,9 +458,9 @@ main{max-width:760px;margin:auto;padding:22px 16px 48px}a{color:#245e8c}h1{font-
 <h3>関連ファイル</h3>
 <ul>
 <li><code>storage_inventory.html</code>：IndexedDB・localStorageの保存領域診断。<code>ncode_extract.html</code>：新DBからのNコード抽出・判定。</li>
-<li><code>maintenance_cleanup_deleted_works.html</code>：対象9件の確認・削除用ページ。削除はまだ実行しない。バックアップ・復元機能が整うまで使用保留。</li>
+<li><code>archive/delete_pending/html/DELETE_maintenance_cleanup_deleted_works.html</code>：旧DBの4ストアから9件を一括削除する旧ツール。現在は削除保留フォルダに退避済み。対象外6件も削除するため、実行・再利用禁止。2026-11-14に削除方針を決めた孤立しおり3件も対象に含まれるが、このツールでは削除しない。3件の削除は旧DB退役時に対象を限定した別手順で行う。</li>
 </ul>
-<p><strong>忘れずに消そうね候補：</strong>バックアップ・復元機能の実装と検証が完了したら、この9件の整理を再開する。</p>
+<p><strong>注意：</strong>この9件の旧整理計画は履歴として残す。旧DB内の孤立しおり3件の削除決定とは別の話であり、9件一括削除を再開する意味ではない。旧DBの退役時には、確定した対象だけを限定して扱う。</p>
 </section>
 </div>
 </details>
