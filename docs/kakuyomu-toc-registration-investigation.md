@@ -141,7 +141,7 @@ https://api.github.com/repos/tomotaday/tomotayomu/actions/workflows/kakuyomu-toc
 | 作者ハンドル | `author.name` を `@` なしで保存。画面表示上の@とは区別 |
 | 作品編集 | DOM ID重複修正後、編集・保存を確認 |
 | 重複登録防止 | 2026-11-14、既に登録済みのカクヨム作品を再登録操作し、登録ページが重複として拒否することを実機確認。登録ページの拒否メッセージは既存データを変更していない旨を表示する。元カード・しおり状態の事後確認は別途 |
-| 専用棚の並び順 | 2026-11-14、カクヨム・note専用棚を最終更新日順へ変更。コード反映済み。実機最終確認は別途 |
+| 専用棚の並び順 | 2026-11-14、カクヨム・note専用棚を最終更新日順へ変更。順序反転を含めiPhone実機確認済み |
 
 ### 関連コミット
 
@@ -159,7 +159,7 @@ https://api.github.com/repos/tomotaday/tomotayomu/actions/workflows/kakuyomu-toc
 
 ## 9. 保留・注意事項
 
-- カクヨム専用棚・note専用棚の並び順変更はコード反映済み。実機で最新順・反転動作を最終確認する。
+- カクヨム専用棚・note専用棚の並び順変更は、2026-11-14に最新順・反転動作をiPhone実機確認済み。
 - Workflow結果ファイル・TOC JSONの保持期間や古いrequest結果の整理は、依存関係を確認してから判断する。
 - 本番IndexedDB・localStorage、既存Shortcut、GitHub Actionsの入出力形式を、資料整理を理由に変更・削除しない。
 - PAT等の秘密情報をGitHub PagesのJavaScriptへ埋め込まない。
