@@ -40,9 +40,9 @@ main{width:min(100%,780px);margin:auto;padding:22px 16px 52px}h1{font-size:24px;
 <li>JSONの <code>inputs</code> は2項目。<code>work_url</code> に変数 <code>work_url</code>、<code>request_id</code> に生成したUUIDを設定する。</li>
 <li><code>request_id</code> をクエリに含む登録ページURLをテキストとして作成し、そのテキストを開く。</li>
 </ol>
-<p class="small">スクリーンショットで確認できた範囲の記録。HTTPリクエストの「ヘッダ」欄の詳細、入力アクションの追加設定、画面に写っていない後続アクションは未確認として扱い、推測で補わない。PATの実値は資料に記載しない。</p>
+<p class="small">スクリーンショットで確認できた範囲の記録。HTTPリクエストのヘッダは、Authorization = Bearer ＋変数 token、Accept = application/vnd.github+json、X-GitHub-Api-Version = 2022-11-28。PATの実値は資料に記載しない。画面に写っていない後続アクションや追加設定は未確認として扱い、推測で補わない。</p>
 <span class="code">POST https://api.github.com/repos/tomotaday/tomotayomu/actions/workflows/kakuyomu-toc.yml/dispatches</span>
-<span class="code">ref = main<br>inputs.work_url = 変数 work_url<br>inputs.request_id = Generate UUID の結果</span>
+<span class="code">Authorization: Bearer {token}<br>Accept: application/vnd.github+json<br>X-GitHub-Api-Version: 2022-11-28<br>ref = main<br>inputs.work_url = 変数 work_url<br>inputs.request_id = Generate UUID の結果</span>
 
 <h2>2. Actions実行後の登録処理</h2>
 <ol class="flow">
