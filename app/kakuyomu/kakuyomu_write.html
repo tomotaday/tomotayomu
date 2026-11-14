@@ -34,8 +34,7 @@ button:disabled{opacity:.5}
 <section class="card">
 <h2>1. 取得結果</h2>
 <div id="tocStatus" class="status" aria-live="polite">取得結果を確認しています…</div>
-<button id="importInfoButton" type="button">作品情報を取り込む</button>
-<p class="small">目次の取得結果を先に確認できます。作品情報は必要なときに取り込んでください。</p>
+<p class="small">作品情報と目次はGitHub Actionsの取得結果から読み込みます。内容を確認してから登録してください。</p>
 <div id="tocSummary" class="summary" hidden></div>
 <details id="episodeDetails" hidden>
 <summary>目次の内容を確認</summary>
@@ -73,22 +72,22 @@ function getQuery(){return new URLSearchParams(location.search)}
 function validId(v){return /^\d+$/.test(String(v||""))}
 function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME);req.onupgradeneeded=()=>{req.transaction.abort();reject(new Error("新DBが未作成です"))};req.onsuccess=()=>{const db=req.result;if(db.version!==2||!db.objectStoreNames.contains("works")||!db.objectStoreNames.contains("shelves")){db.close();reject(new Error("新DB構造が想定外です"))}else resolve(db)};req.onerror=()=>reject(req.error||new Error("新DBを開けません"))})}
 function readAll(db,store){return new Promise((resolve,reject)=>{const out=[],req=db.transaction(store,"readonly").objectStore(store).openCursor();req.onsuccess=()=>{const c=req.result;if(c){out.push(c.value);c.continue()}else resolve(out)};req.onerror=()=>reject(req.error||new Error(store+"読込失敗"))})}
-async function loadDraft(){
- const raw=sessionStorage.getItem(DRAFT_KEY);
- if(!raw)return null;
- const value=JSON.parse(raw);
- if(!value||!validId(value.workId)||!/^https:\/\/kakuyomu\.jp\/works\/\d+/.test(value.url||""))throw new Error("登録用データの作品IDまたはURLが不正です。");
- if(value.workId!==String((value.url.match(/\/works\/(\d+)/)||[])[1]||""))throw new Error("作品IDとURLが一致しません。");
- return value;
-}
-function applyDraft(value){
- draft=value;
- $("workId").value=value.workId;$("workUrl").value=value.url;
- $("title").value=value.title||"";$("author").value=value.author||"";
- $("authorHandle").value=value.handle||"";$("synopsis").value=value.synopsis||"";
- $("tags").value=Array.isArray(value.tags)?value.tags.join("\n"):"";
- $("status").value=value.status||"";$("characterCount").value=value.characterCount||"";
- $("updatedAt").value=value.updatedAt||"";
+function applyWorkMetadata(meta,workId){
+ const statusMap={RUNNING:"連載中",COMPLETED:"完結済"};
+ draft={
+  workId:String(workId),url:"https://kakuyomu.jp/works/"+String(workId),
+  title:meta.title||"",author:meta.author||"",handle:meta.author_handle||"",
+  synopsis:meta.synopsis||"",tags:Array.isArray(meta.tags)?meta.tags:[],
+  status:statusMap[meta.status]||meta.status||"",
+  characterCount:Number(meta.character_count)||0,
+  updatedAt:String(meta.updated_at||"").slice(0,10)
+ };
+ $("workId").value=draft.workId;$("workUrl").value=draft.url;
+ $("title").value=draft.title;$("author").value=draft.author;
+ $("authorHandle").value=draft.handle;$("synopsis").value=draft.synopsis;
+ $("tags").value=draft.tags.join("\n");$("status").value=draft.status;
+ $("characterCount").value=draft.characterCount||"";
+ $("updatedAt").value=draft.updatedAt;
 }
 async function loadAndVerify(){
  const q=getQuery(),requestId=String(q.get("request_id")||"");
@@ -127,23 +126,19 @@ async function loadAndVerify(){
 }
 async function init(){
  try{
-  // 先にGitHub Actionsの取得結果を読み込む。作品情報draftは必須にしない。
-  draft=await loadDraft();
+  // GitHub Actionsが公開した取得結果から作品情報と目次をまとめて読む。
   toc=await loadAndVerify();
+  if(!toc.work_metadata)throw new Error("取得結果に作品情報がありません。新しいショートカット実行結果を使用してください。");
+  applyWorkMetadata(toc.work_metadata,toc.work_id);
   const requestId=getQuery().get("request_id");
   $("tocSummary").hidden=false;
-  $("tocSummary").textContent="作品："+(toc.title||(draft&&draft.title)||"作品情報未取込")+"\n作品ID："+toc.work_id+"\n総話数："+toc.episodes.length.toLocaleString("ja-JP")+"話\nrequest_id："+requestId+"\n検証：公表話数・抽出件数・連番・重複IDの確認済み";
+  $("tocSummary").textContent="作品："+(toc.title||draft.title||"")+"\n作者："+(draft.author||"未取得")+"\n作品ID："+toc.work_id+"\n総話数："+toc.episodes.length.toLocaleString("ja-JP")+"話\nrequest_id："+requestId+"\n検証：公表話数・抽出件数・連番・重複IDの確認済み";
   $("totalCount").textContent=toc.episodes.length.toLocaleString("ja-JP")+"話（TOC JSON確定値）";
   $("episodeDetails").hidden=false;
   $("episodeList").replaceChildren(...toc.episodes.map(ep=>{const li=document.createElement("li");li.textContent=ep.title||("第"+ep.number+"話");return li;}));
   showStatus("tocStatus","✅ 目次取得結果と作品ID・話数を照合しました。","good");
 
-  if(draft)applyDraft(draft);
-  else{
-   $("workId").value=String(toc.work_id);
-   $("workUrl").value="https://kakuyomu.jp/works/"+String(toc.work_id);
-   showStatus("saveStatus","作品情報はまだ取り込まれていません。下の「作品情報を取り込む」から進んでください。");
-  }
+  
 
   const db=await openDB();
   try{
@@ -153,16 +148,13 @@ async function init(){
    dbReady=true;
   }finally{db.close()}
 
-  $("importInfoButton").addEventListener("click",()=>{
-   location.href="../../kakuyomu_add.html?request_id="+encodeURIComponent(requestId)+"&work_id="+encodeURIComponent(toc.work_id);
-  });
   const ready=!!draft&&!!$("title").value.trim()&&!!$("author").value.trim()&&dbReady;
   $("saveButton").disabled=!ready;
   if(draft&&!ready)showStatus("saveStatus","作品タイトルと作者名を確認してください。");
  }catch(e){
   showStatus("tocStatus","⚠️ 目次を表示できませんでした。\n"+e.message,"bad");
   $("saveButton").disabled=true;
-  $("importInfoButton").disabled=true;
+  
  }
 }
 $("saveButton").addEventListener("click",async()=>{
@@ -194,7 +186,7 @@ $("saveButton").addEventListener("click",async()=>{
    }
   };
   await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite");tx.objectStore("works").add(item);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存失敗"));tx.onabort=()=>reject(tx.error||new Error("保存中止"))});
-  sessionStorage.removeItem(DRAFT_KEY);
+  
   showStatus("saveStatus","✅ 新DBへ登録しました。\\n"+title+"\\n総話数："+toc.episodes.length+"話\\n本棚へ戻ります…","good");
   setTimeout(()=>location.href="../../index.html",900);
  }catch(e){showStatus("saveStatus","⚠️ 登録できませんでした。\\n"+e.message,"bad");$("saveButton").disabled=false}
