@@ -54,12 +54,12 @@
 |---|---|---|
 | `development-status.md` | 開発の現在地、優先作業、資料案内 | 本ページ |
 | `database-structure.md` | IndexedDB/localStorage、画面別接続先 | 2026-11-14の現行コードを基準に整理済み。実件数は実機診断で確認 |
-| `data-store-usage-inventory.md` | 画面・機能別の保存先と読み書き経路 | 2026-11-14の主要画面を現行コードから再整理。未掲載画面の追加照合は継続 |
+| `data-store-usage-inventory.md` | 画面・機能別の保存先と読み書き経路 | 主要画面・登録画面・診断画面を確認。未掲載の補助画面の追加照合は継続 |
 | `data-migration-log.md` | 移行の経緯、変更前記録、検査結果、判断履歴 | 履歴として保持 |
-| `repository-structure.md` | ファイル配置・役割・依存関係 | 2026-11-14のGitHub main再帰ツリーと照合。記載誤り・重複を修正中 |
+| `repository-structure.md` | ファイル配置・役割・依存関係 | 2026-11-14のGitHub main再帰ツリー96ファイル・29ディレクトリと照合。主要な記載誤り・重複を修正済み |
 | `database-structure.html` | DB構成資料の閲覧用HTML | 現行要約・リンクをMarkdown正本に合わせて更新 |
 | `repository-structure.html` | リポジトリ構成資料の閲覧用HTML | 現行要約・リンクをMarkdown正本に合わせて更新 |
-| `guides/*.html` | 操作・復元・診断・サイト連携の手順 | なろう・note・診断・復元ガイドを更新。カクヨムガイドも現行接続を確認。全ページ確認は継続 |
+| `guides/*.html` | 操作・復元・診断・サイト連携の手順 | なろう・note・カクヨム・診断・復元ガイドを確認。旧削除ツールの案内と重複記述を修正。未確認事項は各ガイドに明記 |
 
 ### 資料の運用ルール
 
