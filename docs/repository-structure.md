@@ -91,9 +91,9 @@ Workflowを変更・移動する場合は、参照するスクリプトのパス
 
 | パス | 主なファイル | 役割 |
 |---|---|---|
-| `tools/diagnostic/` | `storage_inventory.html`, `ncode_extract.html`, `work_db_production_card_audit.html` | 保存領域の調査、新DB作品抽出・カード監査 |
+| `tools/diagnostic/` | `storage_inventory.html`, `ncode_extract.html`, `work_db_production_card_audit.html`, `restore_test.html` | 保存領域調査、Nコード抽出、作品カード監査、バックアップ復元テスト |
 | `tools/diagnostic/` | `work_db_*.html`, `shelf_master_*.html` | 新DB監査・プレビュー・移行検証 |
-| `tools/diagnostic/` | `ncode_*.html`, `restore_*.html` | Nコード・復元関連の診断 |
+| `tools/diagnostic/` | `ncode_extract.html`, `restore_test.html` | Nコード抽出・専用領域への復元テスト |
 | `tools/maintenance/` | 現行mainで該当ページの実在を確認できていない | 旧一覧の掲載を現行機能として扱わない |
 | `tools/export/` | `export_ncodes.html` | Nコード出力 |
 
@@ -215,8 +215,8 @@ Workflowを変更・移動する場合は、参照するスクリプトのパス
 - `docs/data-store-usage-inventory.md`：画面・機能別の保存先調査
 - `docs/data-migration-log.md`：移行履歴
 - `docs/repository-structure.md` / `repository-structure.html`：ファイル構成
-- `docs/kakuyomu-toc-registration-investigation.md`：カクヨム登録・目次取得の技術記録
-- `docs/guides/`：利用者向け各種ガイド
+- `docs/kakuyomu-toc-registration-investigation.html`：カクヨム登録・目次取得の技術記録
+- `docs/guides/diagnostic_center_guide.html`：判定センター運用・判定基準\n- `docs/guides/backup_restore_guide.html`：バックアップ・復元手順\n- `docs/guides/`：なろう・note・カクヨム等の利用者向けガイド
 
 ### 2026-11-14 実在確認した主要ファイル
 
