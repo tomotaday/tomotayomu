@@ -216,7 +216,9 @@ Workflowを変更・移動する場合は、参照するスクリプトのパス
 - `docs/data-migration-log.md`：移行履歴
 - `docs/repository-structure.md` / `repository-structure.html`：ファイル構成
 - `docs/kakuyomu-toc-registration-investigation.html`：カクヨム登録・目次取得の技術記録
-- `docs/guides/diagnostic_center_guide.html`：判定センター運用・判定基準\n- `docs/guides/backup_restore_guide.html`：バックアップ・復元手順\n- `docs/guides/`：なろう・note・カクヨム等の利用者向けガイド
+- `docs/guides/diagnostic_center_guide.html`：判定センター運用・判定基準
+- `docs/guides/backup_restore_guide.html`：バックアップ・復元手順
+- `docs/guides/`：なろう・note・カクヨム等の利用者向けガイド
 
 ### 2026-11-14 実在確認した主要ファイル
 
