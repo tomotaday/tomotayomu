@@ -35,8 +35,9 @@ main{width:min(100%,760px);margin:auto;padding:22px 16px 52px}h1{font-size:25px;
 <li><code>.github/workflows/note-magazine-index.yml</code>：GitHub Actions。URL検証、note API取得、目次JSON保存。</li>
 <li><code>note_magazine_add.html</code>：受け渡し・確認・登録画面。JSONを読み、表示名を確認して本棚へ登録する。</li>
 <li><code>data/note-index-{magazineKey}.json</code>：マガジンごとの取得結果。記事タイトル、記事URL、記事キー、公開日時、ページ情報などを保存。</li>
-<li>端末内 localStorage <code>tomotaYomu_note_magazines_v1</code>：本棚に登録したnoteマガジンの管理情報。</li>
-<li>端末内 IndexedDB <code>tomotaYomuDB</code>：登録時に未分類棚のIDを参照するために使用。</li>
+<li>端末内 IndexedDB <code>tomotaYomuWorksDB</code> version 2 / <code>works</code>：noteマガジン作品レコード・しおり・棚IDの保存先。</li>
+<li>端末内 IndexedDB <code>tomotaYomuWorksDB</code> version 2 / <code>shelves</code>：登録先棚の確認に使用。</li>
+<li>localStorage <code>tomotaYomu_pending_note_bookmark_v1</code>：共有URLから受け取った記事URLの一時保留。全マガジン目次との一意照合と新DB保存が成功した後に削除。</li>
 </ul>
 <p class="small">マガジン作品本体・棚ID・しおりは新DBが正本。GitHub上のJSONは記事目次データであり、端末内の作品レコードそのものではない。</p>
 
@@ -128,7 +129,8 @@ main{width:min(100%,760px);margin:auto;padding:22px 16px 52px}h1{font-size:25px;
 <li class="ok">GitHub ActionsをPOSTで起動し、成功する。</li>
 <li class="ok">目次JSONを取得し、登録画面でマガジン名・作者名・記事を表示する。</li>
 <li class="ok">新DBへ登録し、note棚の作品カード・目次・しおりURLが反映される。</li>\n<li class="ok">2026/11/14、共有されたnote記事URLを登録済み全マガジン目次と照合し、一意に一致した作品のしおりとして新DBへ保存。iPhone実機で93話から94話への更新を確認。</li>
-<li>未確認：新着記事を追加した後、同じショートカットで再取得し「目次を更新」したときの差分反映。</li>\n<li>しおり受信の0件一致・複数一致・目次取得失敗時は保存しない分岐をテストページで確認。これらの本番端末データへの操作は行っていない。</li>
+<li>未確認：新着記事を追加した後、同じショートカットで再取得し「目次を更新」したときの差分反映。</li>
+<li>しおり受信の0件一致・複数一致・目次取得失敗時は保存しない分岐をテストページで確認。これらの本番端末データへの操作は行っていない。</li>\n<li>しおり受信の0件一致・複数一致・目次取得失敗時は保存しない分岐をテストページで確認。これらの本番端末データへの操作は行っていない。</li>
 <li>未実装：note更新の自動検知・自動巡回。</li>
 </ul>
 <p class="small muted">復旧の基本方針：まず成功済みのショートカット構造を保ち、問題のある工程だけを確認する。PATの再発行やヘッダーの変更など、必要性が確認できない変更は行わない。</p>
