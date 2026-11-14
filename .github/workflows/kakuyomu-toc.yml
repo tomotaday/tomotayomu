@@ -143,7 +143,7 @@ jobs:
               author = resolve(author_ref) if isinstance(author_ref, dict) else None
               author = author or {}
               author_name = author.get("activityName") or author.get("name") or ""
-              author_handle = author.get("urlName") or author.get("username") or ""
+              author_handle = author.get("name") or ""
               synopsis = work.get("introduction") or work.get("catchphrase") or ""
               tag_labels = work.get("tagLabels") or []
               if not isinstance(tag_labels, list):
