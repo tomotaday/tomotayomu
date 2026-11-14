@@ -47,9 +47,9 @@ main{max-width:760px;margin:auto;padding:22px 16px 48px}a{color:#245e8c}h1{font-
 <ol class="flow">
 <li><strong>Nコードを受け取る</strong>：URLの <code>ncode</code> パラメータから取得する。</li>
 <li><strong>作品情報を取得する</strong>：まず全年齢向けAPIを確認し、見つからない場合はR18向けAPIも確認する。</li>
-<li><strong>登録先を調べる</strong>：IndexedDBの <code>shelf_names</code> から <code>work_add_target === true</code> の棚を探す。</li>
-<li><strong>重複を確認する</strong>：<code>works_cache</code> や <code>shelf_placement</code> に既存データがある場合は、既存データを上書きしない。</li>
-<li><strong>新規作品を保存する</strong>：作品情報・棚への配置・取得できる作者情報をIndexedDBへ保存する。</li>
+<li><strong>登録先を調べる</strong>：新DB <code>tomotaYomuWorksDB</code> version 2 の <code>shelves</code> から、通常棚の <code>work_add_target === true</code> を探す。</li>
+<li><strong>重複を確認する</strong>：新DB <code>works</code> の <code>narou:{Nコード}</code> を確認し、既存作品を重複登録しない。</li>
+<li><strong>新規作品を保存する</strong>：共通作品レコードを新DB <code>works</code> へ保存し、<code>shelfId</code> に登録先を記録する。</li>
 <li><strong>結果を伝えて本棚へ戻る</strong>：結果コード付きで <code>index.html</code> に移動する。</li>
 </ol>
 </section>
@@ -69,9 +69,9 @@ main{max-width:760px;margin:auto;padding:22px 16px 48px}a{color:#245e8c}h1{font-
 <h2>5. 保存先と安全策</h2>
 <section>
 <ul>
-<li>本棚データの正本はブラウザー内のIndexedDB（DB名 <code>tomotaYomuDB</code>）。</li>
-<li>登録先は本棚管理で指定した「📥登録先」に従う。</li>
-<li>同じNコードが既に作品情報または本棚配置にある場合、新規登録せず既存データを保持する。</li>
+<li>本棚データの正本はブラウザー内のIndexedDB（DB名 <code>tomotaYomuWorksDB</code>、version 2、Object Store <code>works</code> / <code>shelves</code>）。</li>
+<li>登録先は新DB <code>shelves</code> の通常棚に設定された「📥登録先」に従う。該当棚がなければ空の <code>shelfId</code> で登録し、未分類として表示する。</li>
+<li>同じNコードが新DBに既にある場合、新規登録せず既存データを保持する。</li>
 <li>ショートカットはNコードを登録ページへ渡す役割。作品情報の取得・保存は <code>register.html</code> が担当する。</li>
 </ul>
 </section>
@@ -121,9 +121,9 @@ main{max-width:760px;margin:auto;padding:22px 16px 48px}a{color:#245e8c}h1{font-
 <ul>
 <li>Nコード、作品タイトル、取得元URL、開示設定などを検証する。</li>
 <li>開示設定に「検索除外中」が確認できない場合は登録を止める。</li>
-<li>同じNコードが <code>works_cache</code> に既にある場合は、新規登録を止める。既存作品の編集は別の画面を使う。</li>
+<li>同じNコードが新DB <code>works</code> に既にある場合は、新規登録を止める。既存作品の編集は別の画面を使う。</li>
 <li>作者IDは任意項目。入力時は英数字・アンダースコア・ハイフンを文字列として扱い、数字だけのIDに限定しない。</li>
-<li>登録時には本棚のIndexedDBを利用する。登録結果や必須項目の不足は画面のメッセージで確認する。</li>
+<li>登録時には新DB <code>tomotaYomuWorksDB</code> の <code>works</code> / <code>shelves</code> を利用する。登録結果や必須項目の不足は画面のメッセージで確認する。</li>
 </ul>
 <h3>復旧時の参照先</h3>
 <ul>
@@ -441,7 +441,7 @@ main{max-width:760px;margin:auto;padding:22px 16px 48px}a{color:#245e8c}h1{font-
 </ul>
 <h3>発見の経緯・確認結果</h3>
 <ul>
-<li>IndexedDB <code>tomotaYomuDB</code> の <code>shelf_placement</code> と <code>works_cache</code> をNコード単位で照合した。</li>
+<li>これは旧DB移行前の照合記録であり、現在の登録先や現行作品DBを示すものではない。</li>
 <li>検索除外作品を追加登録する前は不一致が13件だった。</li>
 <li>検索除外作品の登録後、4件が解消し、上記9件が残った。</li>
 <li>残った9件は、ユーザーが作品ページを確認し、すべて作品が存在しないことを確認済み。</li>
@@ -457,7 +457,7 @@ main{max-width:760px;margin:auto;padding:22px 16px 48px}a{color:#245e8c}h1{font-
 </ul>
 <h3>関連ファイル</h3>
 <ul>
-<li><code>diagnostic_db.html</code>：DB構造・件数・作品本体がない配置データの読み取り専用診断。</li>
+<li><code>storage_inventory.html</code>：IndexedDB・localStorageの保存領域診断。<code>ncode_extract.html</code>：新DBからのNコード抽出・判定。</li>
 <li><code>maintenance_cleanup_deleted_works.html</code>：対象9件の確認・削除用ページ。削除はまだ実行しない。バックアップ・復元機能が整うまで使用保留。</li>
 </ul>
 <p><strong>忘れずに消そうね候補：</strong>バックアップ・復元機能の実装と検証が完了したら、この9件の整理を再開する。</p>
