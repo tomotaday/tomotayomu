@@ -72,7 +72,7 @@
 
 ## 6. .github/workflows（GitHub Actions）
 
-2026-11-05時点で確認した現役Workflow：
+2026-11-05時点の履歴一覧（現行一覧ではない）：
 
 | ファイル | 役割・区分 |
 |---|---|
@@ -84,7 +84,7 @@
 | `benchmark-author-atom-fetch-full.yml` | 作者Atom全件取得の検証 |
 | `measure-author-atom-window.yml` | 作者Atom取得範囲・時間の計測 |
 
-Workflowを変更・移動する場合は、参照するスクリプトのパス、トリガー、権限、生成データの保存先を確認する。
+2026-11-14に管理設定棚と現行ガイドから参照される次の3本は、現行機能として個別に確認した：`publish-author-atom-feeds.yml`、`note-magazine-index.yml`、`kakuyomu-toc.yml`。上表の他のWorkflowが現在も存在するか・現役かは、この確認では網羅していない。\n\nWorkflowを変更・移動する場合は、参照するスクリプトのパス、トリガー、権限、生成データの保存先を確認する。
 診断用Workflowは本番Workflowと区別し、実行確認が済んでいないものを正常確認済みと扱わない。
 
 ## 7. tools（手動利用ツール）
