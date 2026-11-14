@@ -330,3 +330,17 @@
 - 移行の時系列・バックアップ照合・旧DBの孤立読書位置は `data-migration-log.md` を参照。
 - 旧DB・旧localStorageの削除は、保存先の全参照経路・保全対象・復元テストの確定後に判断する。
 - 本資料の更新は、ブラウザ内のDB・localStorageを変更しない。
+
+
+## 2026-11-14 追加：カクヨム登録専用Shortcutの画面確認
+
+利用者提供のiPhoneスクリーンショットで、カクヨム登録専用Shortcutの主要なアクションとGitHub Actionsへの入力対応を確認した。従来の「Shortcut連携の確認待ち」表は当時の未調査記録として保持し、カクヨム登録専用Shortcutについては本節の確認内容を優先する。
+
+- 共有シートからURLを受け取り、変数 `work_url` にショートカット入力を設定。
+- キーチェーンの `GitHub_PAT` を取得して `token` に設定。値がない場合はトークン入力を要求し、入力値を `token` に設定して `GitHub_PAT` として保存。
+- `Generate UUID` でUUIDを生成。
+- GitHub APIの `/repos/tomotaday/tomotayomu/actions/workflows/kakuyomu-toc.yml/dispatches` へPOST。画面で確認できた設定は `ref=main`、本文JSON。
+- `inputs` は2項目：`work_url` ← 変数 `work_url`、`request_id` ← 生成UUID。
+- 登録ページURLに `request_id` を付けて開く。
+
+HTTPリクエストのヘッダ詳細、画面に写っていないアクション・設定は未確認。PATの実値は記録しない。利用者向け手順と再構築時の注意は docs/kakuyomu-toc-registration-investigation.md を正本とする。今回の記録追加はShortcut本体・GitHub Actions・DB・localStorageを変更しない。
