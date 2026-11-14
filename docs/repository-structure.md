@@ -167,7 +167,7 @@ Workflowを変更・移動する場合は、参照するスクリプトのパス
 
 ### Shortcutから呼び出される入口ファイル
 
-- `register.html`、`kakuyomu_add.html`、`note_magazine_add.html` は外部URL／Shortcutから呼び出される可能性があるため、移動・改名・削除前に必ず参照元を確認する。
+- `register.html`、`note_magazine_add.html` は現役の登録入口。`kakuyomu_add.html` は旧登録ページだが、過去リンクの有無を確認するまで削除・移動しない。
 - iPhoneショートカットとの整合性確認は未実施。なろうの作者登録ショートカットでエラーが発生しているが、原因は未特定。他のショートカットも未確認。
 - ShortcutのURL、入力形式、保存先、後続処理を照合するまで、入口ファイルの移動・改名・処理変更を行わない。
 
