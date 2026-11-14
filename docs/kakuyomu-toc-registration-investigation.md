@@ -10,23 +10,22 @@
 
 ## 1. 現行フロー
 
-1. 共有シートからURLを受け取り、変数 `work_url` に「ショートカットの入力」を設定する。
-2. キーチェーンから `GitHub_PAT` を取得して `token` に設定する。値がない場合はテキスト入力を要求し、入力値を `token` に設定して `GitHub_PAT` としてキーチェーンへ保存する。
-3. `Generate UUID` でUUIDを生成する。
-4. GitHub APIのWorkflow dispatchエンドポイントへPOSTする。URLは `https://api.github.com/repos/tomotaday/tomotayomu/actions/workflows/kakuyomu-toc.yml/dispatches`、`ref=main`、本文はJSON。
-5. JSONの `inputs.work_url` に変数 `work_url`、`inputs.request_id` に生成したUUIDを設定する。
-6. ShortcutがGitHub Pagesの登録ページを開く。
+1. 共有シートからURLを受け取り、変数 `work_url` にショートカット入力を設定する。
+2. キーチェーンから `GitHub_PAT` を取得して `token` に設定する。値がない場合は入力を要求し、入力値を `token` に設定して `GitHub_PAT` として保存する。
+3. `Generate UUID` でUUID形式の `request_id` を生成する。
+4. GitHub APIのWorkflow dispatchエンドポイントへPOSTする。URLは `https://api.github.com/repos/tomotaday/tomotayomu/actions/workflows/kakuyomu-toc.yml/dispatches`、`ref=main)、本文はJSON。 `inputs.work_url` に変数 `work_url`、`inputs.request_id` に生成UUIDを設定する。
+5. Shortcutは次の登録ページを開く。URL中のUUIDはActions実行と登録ページを結びつける照合キー。
 
 ```text
 https://tomotaday.github.io/tomotayomu/app/kakuyomu/kakuyomu_write.html?request_id={UUID}
 ```
 
-4. Workflowがカクヨム作品情報と作品別目次を取得・検証する。
-5. Workflowがrequest_idに対応する結果JSON・TOC JSONを公開する。
-6. 登録ページは結果JSONを5秒間隔でポーリングし、最大60回（約5分）待つ。
-7. 成功結果を受け取ると、request_id一致・TOC JSONの存在・作品ID・公表話数・抽出件数・連番・重複ID等を検証し、作品情報を画面へ表示する。
-8. 利用者が内容・登録先を確認し、明示的に登録操作を行う。
-9. 登録ページは新DBへ作品レコードを追加する。
+6. Workflowがカクヨム作品情報と作品別目次を取得・検証する。
+7. Workflowがrequest_idに対応する結果JSON・TOC JSONを公開する。
+8. 登録ページは結果JSONを5秒間隔でポーリングし、最大60回（約5分）待つ。
+9. 成功結果を受け取ると、request_id一致・TOC JSONの存在・作品ID・公表話数・抽出件数・連番・重複ID等を検証し、作品情報を画面へ表示する。
+10. 利用者が内容・登録先を確認し、明示的に登録操作を行う。
+11. 登録ページは新DBへ作品レコードを追加する。
 
 ポーリング表示の `1/60` は確認回数であり、作品話数やWorkflowの処理段階数ではない。1回ごとに5秒待つ。成功・失敗の終端状態を受け取ればループを抜ける。
 
