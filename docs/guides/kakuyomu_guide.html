@@ -27,11 +27,27 @@ main{width:min(100%,780px);margin:auto;padding:22px 16px 52px}h1{font-size:24px;
 <p class="small">登録・カードリンク・しおりは実機確認済み。作品ごとの目次取得結果は、実行結果と対象作品で確認する。</p>
 </section>
 
-<h2>1. 新規登録の流れ</h2>
+<h2>1. 登録専用Shortcutの構造（2026-11-14画面確認）</h2>
+<p>Shortcut名は「とよむ←カクヨ…」（画面上の表示は省略形）。今回確認できたアクションを、画面に写っている順に記録する。</p>
 <ol class="flow">
-<li>カクヨム作品ページから専用Shortcutを実行する。</li>
-<li>ShortcutがUUID形式の <code>request_id</code> を発行し、作品URLとともにGitHub Actions「カクヨム目次取得」を起動する。</li>
-<li>Shortcutは次の登録ページを開く。URL中のUUIDはActions実行と登録ページを結びつける照合キー。</li>
+<li>「共有シートからアプリ、URLを受け取る」。入力がない場合は「続ける」。</li>
+<li>変数 <code>work_url</code> に「ショートカットの入力」を設定する。</li>
+<li>キーチェーンから <code>GitHub_PAT</code> を取得し、変数 <code>token</code> に設定する。</li>
+<li><code>GitHub_PAT</code> の値がない場合は「GitHub Personal Access Tokenを入力してください」でテキスト入力を要求し、入力値を <code>token</code> に設定して、キーチェーンへ <code>GitHub_PAT</code> として保存する。</li>
+<li>If文を終了する。</li>
+<li><code>Generate UUID</code> でUUIDを生成する。</li>
+<li>GitHub APIのWorkflow dispatchエンドポイントへPOSTする。URLは <code>https://api.github.com/repos/tomotaday/tomotayomu/actions/workflows/kakuyomu-toc.yml/dispatches</code>、<code>ref</code> は <code>main</code>、本文はJSON。</li>
+<li>JSONの <code>inputs</code> は2項目。<code>work_url</code> に変数 <code>work_url</code>、<code>request_id</code> に生成したUUIDを設定する。</li>
+<li><code>request_id</code> をクエリに含む登録ページURLをテキストとして作成し、そのテキストを開く。</li>
+</ol>
+<p class="small">スクリーンショットで確認できた範囲の記録。HTTPリクエストの「ヘッダ」欄の詳細、入力アクションの追加設定、画面に写っていない後続アクションは未確認として扱い、推測で補わない。PATの実値は資料に記載しない。</p>
+<span class="code">POST https://api.github.com/repos/tomotaday/tomotayomu/actions/workflows/kakuyomu-toc.yml/dispatches</span>
+<span class="code">ref = main<br>inputs.work_url = 変数 work_url<br>inputs.request_id = Generate UUID の結果</span>
+
+<h2>2. 新規登録後の流れ</h2>
+<ol class="flow">
+<li>GitHub Actionsが作品情報・目次を取得・検証する。</li>
+<li>登録ページはrequest_idを使って実行結果を照合する。</li>
 </ol>
 <span class="code">https://tomotaday.github.io/tomotayomu/app/kakuyomu/kakuyomu_write.html?request_id={UUID}</span>
 <ol class="flow" start="4">
@@ -41,7 +57,7 @@ main{width:min(100%,780px);margin:auto;padding:22px 16px 52px}h1{font-size:24px;
 </ol>
 <p class="small">「1/60」などの表示は、作品の話数やActionの工程数ではなく、5秒ごとの完了確認回数。</p>
 
-<h2>2. 取得する作品情報</h2>
+<h2>3. 取得する作品情報</h2>
 <p>Workflowの <code>work_metadata</code> から、タイトル、作者表示名、作者ハンドル、あらすじ、タグ、作品状態、文字数、最終更新日、初回掲載日等を登録画面へ渡す。</p>
 <ul>
 <li>作者ハンドルは <code>author.name</code> 由来の値を <code>@</code> なしで保存する。表示上の <code>@</code> は必要な場合に画面側で付ける。</li>
@@ -50,7 +66,7 @@ main{width:min(100%,780px);margin:auto;padding:22px 16px 52px}h1{font-size:24px;
 <li>総話数は検証済みTOCの <code>episodes</code> 件数を採用する。</li>
 </ul>
 
-<h2>3. 完了結果と保存ファイル</h2>
+<h2>4. 完了結果と保存ファイル</h2>
 <table>
 <tr><th>ファイル</th><th>役割</th></tr>
 <tr><td><code>data/kakuyomu-toc-requests/{UUID}.json</code></td><td>Shortcutが指定したrequest_idに対応する実行結果・作品メタデータ</td></tr>
@@ -59,15 +75,15 @@ main{width:min(100%,780px);margin:auto;padding:22px 16px 52px}h1{font-size:24px;
 </table>
 <p><a href="https://github.com/tomotaday/tomotayomu/actions/workflows/kakuyomu-toc.yml" target="_blank" rel="noopener noreferrer">GitHub Actions：カクヨム目次取得を開く</a></p>
 
-<h2>4. 本棚表示・しおり</h2>
+<h2>5. 本棚表示・しおり</h2>
 <ul>
 <li>本棚カードの作品リンクは対象作品のカクヨムURLを開く。</li>
 <li>しおりShortcut「とよむ+しおり」はエピソードURLを受け取り、作品ID・エピソードID・URLを本棚データへ保存する。</li>
 <li>作品別TOC JSONのエピソードIDと保存済みしおりを照合し、読了話数／総話数を表示する。</li>
-<li>TOCが取得できない場合やエピソードIDが見つからない場合は、話数を確定できない。貼り付けテキスト由来の話数を正しい話数として扱わない。</li>
+<li>TOCが取得できない場合やエピソードIDが見つからない場合は、話数を確定できない。検証済みTOCと一致しない値を総話数の根拠にしない。</li>
 </ul>
 
-<h2>5. 保存先・編集</h2>
+<h2>6. 保存先・編集</h2>
 <ul>
 <li>作品レコード：IndexedDB <code>tomotaYomuWorksDB</code> version 2 の <code>works</code>。</li>
 <li>作品IDを含むレコードID：<code>kakuyomu:{作品ID}</code>。</li>
@@ -87,7 +103,7 @@ main{width:min(100%,780px);margin:auto;padding:22px 16px 52px}h1{font-size:24px;
 </ul>
 </section>
 
-<h2>6. 現在の確認記録</h2>
+<h2>7. 現在の確認記録</h2>
 <ul>
 <li>2026-11-14：作品ID <code>1177354054892870623</code> で187話／187話の取得・検証成功を確認。</li>
 <li>同日：作者ハンドルが登録画面へ反映されることを確認。例：表示名とハンドルは別項目。</li>
@@ -96,7 +112,7 @@ main{width:min(100%,780px);margin:auto;padding:22px 16px 52px}h1{font-size:24px;
 <li>2026-11-14：カクヨム専用棚の並び順を最終更新日順へ変更。コード反映済み。実機での最終確認は別途。</li>
 </ul>
 
-<h2>7. 関連資料</h2>
+<h2>8. 関連資料</h2>
 <ul>
 <li><a href="../kakuyomu-toc-registration-investigation.md">カクヨム登録・目次取得の技術記録</a></li>
 <li><a href="../development-status.md">資料室入口・開発状況</a></li>
