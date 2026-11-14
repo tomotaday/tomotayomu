@@ -107,7 +107,7 @@
 ## 5. 旧DB・保全上の注意
 
 - 旧DB `tomotaYomuDB` は現行通常画面の作品・棚・作者の正本ではない。過去の移行監査で旧ストアと新DBの照合を行った記録がある。
-- 旧 `reading_position` に、旧作品・棚配置に対応しない孤立レコード3件（N1351MD：10話、N5420MC：42話、N8546MG：13話）が残ると過去の実機調査で確認した。現時点で削除したとは扱わない。
+- 旧 `reading_position` に、旧作品・棚配置に対応しない孤立レコード3件（N1351MD：10話、N5420MC：42話、N8546MG：13話）が残ると2026-11-10の実機調査で確認した。2026-11-14、これらは新DBへ移行せず、旧DB退役時に削除する方針を決定。現時点では旧DB内に残存しており、削除操作は未実施。
 - 旧DB・旧localStorageキー・再構築用DBは、参照経路・保全要否・復元方法が確定し、別途承認されるまで削除・変更しない。
 - `tools/diagnostic/storage_inventory.html` は既知DB（Works / 旧DB / Atom / Memo / rebuild）とlocalStorageを調査する。DBが存在しない場合は `onupgradeneeded` でupgrade transactionを中止し、新規DBを作らない実装である。
 
