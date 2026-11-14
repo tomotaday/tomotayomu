@@ -1,52 +1,46 @@
 <!doctype html>
-<html lang="ja">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#f6f3ed">
-<title>カクヨム登録処理の技術記録｜ともたよむ資料室</title>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f6f3ed"><title>カクヨム登録処理の技術記録｜ともたよむ資料室</title>
 <style>
-*{box-sizing:border-box}
-html,body{margin:0;min-height:100%;background:#f6f3ed;color:#252525;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.7}
-main{max-width:900px;margin:auto;padding:18px 16px 40px}
-.back{display:inline-block;color:#245b8f;text-decoration:underline;font-weight:700;margin:0 0 18px;font-size:17px}
-article{background:#fff;border:1px solid #d8d0c5;border-radius:14px;padding:22px 18px;overflow-wrap:anywhere}
-h1{font-size:1.65rem;line-height:1.4;margin:.2em 0 .7em}
-h2{font-size:1.3rem;margin:1.8em 0 .65em;padding-bottom:.3em;border-bottom:1px solid #ddd}
-h3{font-size:1.1rem;margin:1.5em 0 .5em}
-p,ul,ol,blockquote,pre,table{margin:.75em 0}
-li{margin:.35em 0}
-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#f2f0ec;padding:.08em .28em;border-radius:4px;overflow-wrap:anywhere}
-pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f4f3f0;padding:12px;border-radius:8px}
-pre code{background:transparent;padding:0}
-blockquote{margin-left:0;padding:10px 14px;border-left:4px solid #b7c8d8;background:#f5f8fa;color:#444}
-table{width:100%;border-collapse:collapse;display:block;overflow-x:auto}
-th,td{border:1px solid #d8d8d8;padding:8px 10px;text-align:left;vertical-align:top}
-th{background:#f1f3f5}
-a{color:#245b8f}
-.loading,.error{padding:18px;color:#666}
-@media(min-width:700px){article{padding:30px 34px}}
-</style>
-</head>
-<body>
-<main>
-<a class="back" href="../index.html">← INDEXページへ戻る</a>
-<article id="document"><p class="loading">技術記録を読み込んでいます…</p></article>
-</main>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script>
-(async()=>{
- const target=document.getElementById("document");
- try{
-  const response=await fetch("./kakuyomu-toc-registration-investigation.md");
-  if(!response.ok) throw new Error("技術記録を取得できませんでした（"+response.status+"）");
-  const markdown=await response.text();
-  if(!window.marked) throw new Error("Markdown表示ライブラリを読み込めませんでした。通信状態を確認してください。");
-  target.innerHTML=marked.parse(markdown,{gfm:true,breaks:false});
- }catch(error){
-  target.innerHTML='<p class="error">'+String(error.message||error)+'</p><p><a href="./kakuyomu-toc-registration-investigation.md">Markdown正本を開く</a></p>';
- }
-})();
-</script>
-</body>
-</html>
+*{box-sizing:border-box}html,body{margin:0;background:#f6f3ed;color:#252525;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.7}main{max-width:900px;margin:auto;padding:18px 14px 40px}.back{display:inline-block;margin:0 0 18px;color:#245b8f;font-weight:700;font-size:17px}article{background:#fff;border:1px solid #d8d0c5;border-radius:14px;padding:22px 18px;overflow-wrap:anywhere}h1{font-size:1.65rem;line-height:1.4}h2{font-size:1.3rem;margin:1.8em 0 .65em;padding-bottom:.3em;border-bottom:1px solid #ddd}h3{font-size:1.1rem}p,ul,ol,blockquote,pre{margin:.75em 0}li{margin:.35em 0}code{font-family:ui-monospace,Menlo,monospace;background:#f2f0ec;padding:.08em .28em;border-radius:4px;overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f4f3f0;padding:12px;border-radius:8px}pre code{background:transparent;padding:0}blockquote{margin-left:0;padding:10px 14px;border-left:4px solid #b7c8d8;background:#f5f8fa}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse}th,td{border:1px solid #d8d8d8;padding:8px 10px;text-align:left;vertical-align:top}th{background:#f1f3f5}a{color:#245b8f}@media(min-width:700px){article{padding:30px 34px}}
+</style></head><body><main><a class="back" href="../index.html">← INDEXページへ戻る</a><article><h1>カクヨム登録・目次取得 技術記録</h1>
+<p>最終更新：2026-11-14 対象リポジトリ：tomotaday/tomotayomu 対象ブランチ：main 対象機能：専用Shortcut → GitHub Actions → 登録ページ → 新DB 位置づけ：現行実装の技術的な接続・検証記録。利用者向け手順は <code>docs/guides/kakuyomu_guide.html</code> を参照。</p>
+<blockquote><p>本書は2026-11-14時点のコードと実機確認を反映する。過去の設計案・旧実装は履歴として区別し、現行仕様として扱わない。実機未確認の項目は完了扱いしない。</p></blockquote>
+<h2>1. 現行フロー</h2>
+<ol><li>共有シートからURLを受け取り、変数 <code>work_url</code> にショートカット入力を設定する。</li><li>キーチェーンから <code>GitHub_PAT</code> を取得して <code>token</code> に設定する。値がない場合は入力を要求し、入力値を <code>token</code> に設定して <code>GitHub_PAT</code> として保存する。</li><li><code>Generate UUID</code> でUUID形式の <code>request_id</code> を生成する。</li><li>GitHub APIのWorkflow dispatchエンドポイントへPOSTする。URLは <code>https://api.github.com/repos/tomotaday/tomotayomu/actions/workflows/kakuyomu-toc.yml/dispatches</code>、<code>ref=main)、本文はJSON。 </code>inputs.work_url<code> に変数 </code>work_url<code>、</code>inputs.request_id` に生成UUIDを設定する。</li><li>Shortcutは次の登録ページを開く。URL中のUUIDはActions実行と登録ページを結びつける照合キー。</li></ol>
+<pre><code>https://tomotaday.github.io/tomotayomu/app/kakuyomu/kakuyomu_write.html?request_id={UUID}</code></pre>
+<ol><li>Workflowがカクヨム作品情報と作品別目次を取得・検証する。</li><li>Workflowがrequest_idに対応する結果JSON・TOC JSONを公開する。</li><li>登録ページは結果JSONを5秒間隔でポーリングし、最大60回（約5分）待つ。</li><li>成功結果を受け取ると、request_id一致・TOC JSONの存在・作品ID・公表話数・抽出件数・連番・重複ID等を検証し、作品情報を画面へ表示する。</li><li>利用者が内容・登録先を確認し、明示的に登録操作を行う。</li><li>登録ページは新DBへ作品レコードを追加する。</li></ol>
+<p>ポーリング表示の <code>1/60</code> は確認回数であり、作品話数やWorkflowの処理段階数ではない。1回ごとに5秒待つ。成功・失敗の終端状態を受け取ればループを抜ける。</p>
+<h2>2. Shortcutの画面確認記録（2026-11-14）</h2>
+<p>対象Shortcut名：<strong>とよむ←カクヨム作品登録</strong>。名称はショートカット一覧の表示枠に収まるよう、「ともたよむ」ではなく短い「とよむ」を使用する。</p>
+<p>利用者から提供されたiPhoneショートカット画面で、以下のアクションを確認した。</p>
+<div class="table-wrap"><table><thead><tr><th>順序</th><th>アクション</th><th>確認できた設定</th></tr></thead><tbody><tr><td>1</td><td>共有シートからURLを受け取る</td><td>「共有シートからアプリ、URLを受け取る」。入力がない場合は続行</td></tr><tr><td>2</td><td>変数を設定</td><td><code>work_url</code> ← ショートカットの入力</td></tr><tr><td>3</td><td>キーチェーン値を取得</td><td><code>GitHub_PAT</code> を取得</td></tr><tr><td>4</td><td>変数を設定</td><td><code>token</code> ← <code>GitHub_PAT</code></td></tr><tr><td>5</td><td>If</td><td><code>GitHub_PAT</code> の値がない場合にトークン入力を要求し、<code>token</code> に設定して <code>GitHub_PAT</code> としてキーチェーン保存。If終了</td></tr><tr><td>6</td><td>Generate UUID</td><td>UUIDを生成</td></tr><tr><td>7</td><td>URLの内容を取得</td><td>GitHub APIのWorkflow dispatch URLへPOST。ヘッダ3項目、<code>ref=main</code>、本文JSON</td></tr><tr><td>8</td><td>inputs</td><td><code>work_url</code> ← 変数 <code>work_url</code>、<code>request_id</code> ← Generate UUIDの結果</td></tr><tr><td>9</td><td>テキスト</td><td><code>kakuyomu_write.html?request_id={UUID}</code> を作成</td></tr><tr><td>10</td><td>テキストを開く</td><td>作成した登録ページURLを開く</td></tr></tbody></table></div>
+<p>ヘッダ設定（2026-11-14追加画像で確認）：</p>
+<div class="table-wrap"><table><thead><tr><th>ヘッダ</th><th>値</th></tr></thead><tbody><tr><td>Authorization</td><td><code>Bearer</code> ＋変数 <code>token</code></td></tr><tr><td>Accept</td><td><code>application/vnd.github+json</code></td></tr><tr><td>X-GitHub-Api-Version</td><td><code>2022-11-28</code></td></tr></tbody></table></div>
+<p>PATそのものは記録せず、Bearer認証の値にはキーチェーンから取得・設定した変数 <code>token</code> を使用する。</p>
+<p>Workflow dispatch URL：</p>
+<pre><code>https://api.github.com/repos/tomotaday/tomotayomu/actions/workflows/kakuyomu-toc.yml/dispatches</code></pre>
+<p>確認範囲と留保：今回の追加画像でヘッダ3項目を確認した。画面に写っていないアクションや設定値は未確認。PATの実値は記録しない。Shortcutの再構築時は、画面記録だけでなく実機での起動・登録結果を確認する。</p>
+<h2>3. Workflow</h2>
+<p>対象：<code>.github/workflows/kakuyomu-toc.yml</code></p>
+<ul><li>トリガー：<code>workflow_dispatch</code></li><li>入力：作品URLまたは作品ID、request_id</li><li>request_id：UUID形式を検証し、結果ファイル名・実行グループの対応キーとして利用。</li><li>作品URL：カクヨムの <code>/works/{作品ID}</code> 形式を検証。</li><li>作品データ：カクヨムページの埋め込みデータを解析し、作品情報・目次を取得。</li><li>目次：<code>EmptyEpisode</code> と重複IDを除外し、順番付きepisodesを構成。</li><li>検証：公表総話数と抽出件数が一致しなければ失敗。episode番号の連番とIDの重複も登録ページ側で再検証。</li><li>作品メタデータ：title、author、author_handle、synopsis、tags、status、character_count、updated_at、published_at等を <code>work_metadata</code> として出力。</li><li>作者ハンドル：作者オブジェクトの <code>name</code> を採用。画面・DBでは <code>@</code> を付けずに保存する。</li><li>保存先：</li></ul>
+<p>- <code>data/kakuyomu-toc-requests/{request_id}.json</code>：実行結果・作品メタデータ - <code>data/kakuyomu-toc-requests/{request_id}.toc.json</code>：登録要求ごとのTOC - <code>data/kakuyomu-toc/{work_id}.json</code>：本棚で参照する作品別TOC</p>
+<ul><li>成功・失敗の結果JSONを公開し、登録ページがポーリングで取得する。</li></ul>
+<h2>4. 登録ページ</h2>
+<p>対象：<code>app/kakuyomu/kakuyomu_write.html</code></p>
+<ul><li>request_idをURLクエリから取得し、UUID形式を検証。</li><li>GitHub上のrequest結果JSONを5秒間隔・最大60回確認する。</li><li>結果のrequest_id一致を確認。</li><li>TOC JSONを取得し、作品ID・件数・episode番号・episode_idの重複を検証。</li><li>Workflowが出力した <code>work_metadata</code> を画面へ反映。</li><li>新DB <code>tomotaYomuWorksDB</code> version 2 を開く。versionや <code>works</code> / <code>shelves</code> 構造が想定外なら中止し、勝手にDBを作成・更新しない。</li><li>作品レコードIDは <code>kakuyomu:{work_id}</code>。</li><li>登録時に既存IDを確認し、重複作品を追加しない。</li><li>利用者の明示操作で <code>works</code> に追加する。ページを開いたこと自体では登録しない。</li><li>作品情報には title、authorName、authorId、synopsis、status、episodeCount、characterCount、updatedAt、siteData等を保存。</li><li>authorIdと <code>siteData.legacyFields.authorHandle</code> に作者ハンドルを <code>@</code> なしで保存する。</li><li>TOCの総話数は検証済みepisodes件数を使用。</li></ul>
+<h2>5. 作品編集</h2>
+<p>対象：<code>app/kakuyomu/kakuyomu_edit.html</code></p>
+<ul><li>新DB <code>tomotaYomuWorksDB</code> version 2 の <code>works</code> から <code>kakuyomu:{work_id}</code> を読み込む。</li><li>タイトル、作者表示名、作者ハンドル、あらすじ、作品状態、総話数、文字数、最終更新日、タグ等を編集可能。</li><li>保存は新DB <code>works</code> へのput。</li><li>2026-11-14、保存ボタンが反応しない問題を確認。作品状態inputと保存メッセージ領域に同じDOM ID <code>status</code> があったため、inputを <code>workStatus</code>、保存メッセージを <code>saveStatus</code> に分離。読み込み・保存参照も修正した。</li><li>修正後、利用者が編集・保存の実機動作を確認済み。</li></ul>
+<h2>6. 作品情報の更新方針</h2>
+<ul><li>あらすじは初回登録時にWorkflowから取得し、新DBへ保存する。</li><li>現行コードには、既存作品のあらすじを定期的・自動的に再取得して上書きする経路は確認していない。</li><li>あらすじ変更が必要な場合は作品編集画面で手動修正する。</li><li>作者ハンドルは初回取得値を保存し、通常の目次再取得で上書きしない。必要な変更は編集画面で行う。</li><li>目次JSONの取得・更新と、既存作品メタデータの自動更新は別機能として扱う。</li></ul>
+<h2>7. しおりと話数表示</h2>
+<ul><li>既存Shortcut「とよむ+しおり」は変更せず、カクヨムURLの受け渡しを維持する。</li><li>本棚側は作品ID・episodeId・episode URLを作品レコードへ保存する。</li><li>作品別TOC JSONのepisode_idと保存済みepisodeIdを照合して話数を求める。</li><li>TOC取得失敗・ID不一致は、正しい話数を確定できない状態として扱う。検証済みTOCと一致しない値をepisodeCountの根拠にしない。</li></ul>
+<h2>8. 2026-11-14の実機確認・変更記録</h2>
+<div class="table-wrap"><table><thead><tr><th>対象</th><th>結果</th></tr></thead><tbody><tr><td>Workflow取得</td><td>作品ID <code>1177354054892870623</code>、187話／187話で成功</td></tr><tr><td>request_id</td><td><code>E2EBC0CA-9F18-492A-B2A2-6A62EA1A72F0</code> の実行記録あり</td></tr><tr><td>登録ページ</td><td>Shortcutから開き、作品情報・作者ハンドルを取得できることを確認</td></tr><tr><td>新DB登録</td><td>利用者が登録成功を確認</td></tr><tr><td>カードリンク</td><td>カクヨム作品ページへのリンクを確認</td></tr><tr><td>しおり</td><td>既存Shortcut経由のしおり動作を確認</td></tr><tr><td>作者ハンドル</td><td><code>author.name</code> を <code>@</code> なしで保存。画面表示上の@とは区別</td></tr><tr><td>作品編集</td><td>DOM ID重複修正後、編集・保存を確認</td></tr><tr><td>重複登録防止</td><td>2026-11-14、既に登録済みのカクヨム作品を再登録操作し、登録ページが重複として拒否することを実機確認。登録ページの拒否メッセージは既存データを変更していない旨を表示する。元カード・しおり状態の事後確認は別途</td></tr><tr><td>専用棚の並び順</td><td>2026-11-14、カクヨム・note専用棚を最終更新日順へ変更。コード反映済み。実機最終確認は別途</td></tr></tbody></table></div>
+<h3>関連コミット</h3>
+<ul><li>Workflowへ作品メタデータ追加：<code>a0c025a3f4ed2941207646a96fee45fbd791c466</code></li><li>作者ハンドル取得元を <code>author.name</code> に修正：<code>0bdb462a9360caa7fee7f75a430d425782e418e6</code></li><li>登録ページを新DB登録・取得結果待ちへ対応：<code>ea94b9f14692fef8e8ec8a480bf16fcde282c594</code></li><li>作品編集のDOM ID重複修正：<code>db92533b2643f0d45da4f0d13fc9c80c7a5f897e</code></li><li>カクヨム・note専用棚を最終更新日順へ統一：<code>5a1020b1e9e675bff34e0cb7876fa7a6732feb13</code></li></ul>
+<h3>重複登録防止の確認</h3>
+<p>2026-11-14、利用者が既に新DBへ登録済みのカクヨム作品を同じ登録専用Shortcutから再登録し、登録ページで拒否されたことを確認した。登録ページの現行コードは <code>kakuyomu:{workId}</code> をキーに <code>works</code> を読み取り、既存レコードがあれば「この作品は既に新DBに登録されています。既存データは変更していません。」として保存処理を中止する。</p>
+<p>この試験で確認できたのは重複拒否の表示・動作まで。元の作品カード、しおり位置、読書状態が試験前と同じかどうかは、利用者による本棚側の確認待ち。確認完了までは「既存データが無変更だった」と実機結果として断定しない。</p>
+<h2>9. 保留・注意事項</h2>
+<ul><li>カクヨム専用棚・note専用棚の並び順変更はコード反映済み。実機で最新順・反転動作を最終確認する。</li><li>Workflow結果ファイル・TOC JSONの保持期間や古いrequest結果の整理は、依存関係を確認してから判断する。</li><li>本番IndexedDB・localStorage、既存Shortcut、GitHub Actionsの入出力形式を、資料整理を理由に変更・削除しない。</li><li>PAT等の秘密情報をGitHub PagesのJavaScriptへ埋め込まない。</li><li>この資料の更新は、アプリ機能・DBデータの変更を意味しない。</li></ul></article></main></body></html>
