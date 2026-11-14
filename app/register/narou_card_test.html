@@ -105,6 +105,54 @@ function toWorksRecord(apiWork,originalUrl,isR18){
     novelupdatedAt:apiWork.novelupdated_at||""
   };
 }
+// 既存DBの存在を先に確認し、存在する場合だけ読み取り専用で開く。
+// indexedDB.databases() 非対応環境では、安全のため読み取りを行わない。
+async function inspectExistingWork(ncode){
+  if(!indexedDB.databases) return {available:false,reason:"このブラウザではDB一覧を確認できないため、安全のため読み取りを省略しました。"};
+  const dbList=await indexedDB.databases();
+  const info=dbList.find(x=>x.name==="tomotaYomuWorksDB");
+  if(!info) return {available:false,reason:"tomotaYomuWorksDB が見つかりません。DBは新規作成していません。"};
+  if(info.version!==2) return {available:false,reason:"想定DBバージョン(v2)と異なるため読み取りを中止しました。検出バージョン："+info.version};
+  const db=await new Promise((resolve,reject)=>{
+    const req=indexedDB.open("tomotaYomuWorksDB");
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error||new Error("DBを開けませんでした。"));
+    req.onupgradeneeded=()=>{req.transaction.abort();reject(new Error("予期しないDB作成・更新要求を検出したため中止しました。"));};
+  });
+  try{
+    return await new Promise((resolve,reject)=>{
+      const tx=db.transaction(["works","shelves"],"readonly");
+      const workReq=tx.objectStore("works").get("narou:"+ncode);
+      workReq.onsuccess=()=>{
+        const work=workReq.result||null;
+        if(!work||!work.shelfId){resolve({available:true,work,shelf:null});return;}
+        const shelfReq=tx.objectStore("shelves").get(work.shelfId);
+        shelfReq.onsuccess=()=>resolve({available:true,work,shelf:shelfReq.result||null});
+        shelfReq.onerror=()=>reject(shelfReq.error||new Error("本棚マスターの読み取りに失敗しました。"));
+      };
+      workReq.onerror=()=>reject(workReq.error||new Error("worksレコードの読み取りに失敗しました。"));
+      tx.onerror=()=>reject(tx.error||new Error("読み取りトランザクションに失敗しました。"));
+    });
+  } finally { db.close(); }
+}
+function appendExistingData(result,inspection){
+  const box=document.createElement("section");box.className="panel";
+  const heading=document.createElement("h2");heading.textContent="既存worksデータ（読み取り専用）";box.append(heading);
+  const note=document.createElement("p");note.className="note";
+  if(!inspection.available){note.textContent=inspection.reason;box.append(note);result.append(box);return;}
+  if(!inspection.work){note.textContent="このNコードの作品は新DBのworksに見つかりませんでした。";box.append(note);result.append(box);return;}
+  const w=inspection.work;
+  note.textContent="既存レコードを読み取りました。データの変更・保存はしていません。";box.append(note);
+  const shelf=document.createElement("p");shelf.className="raw";
+  shelf.textContent="shelfId："+String(w.shelfId??"（未設定）")+" ／ 本棚名："+String(inspection.shelf?.name??inspection.shelf?.shelfName??(w.shelfId?"マスター該当なし":"未分類"));
+  box.append(shelf);
+  const reading=document.createElement("pre");reading.className="raw";
+  reading.textContent="現在のreading：\\n"+JSON.stringify(w.reading??null,null,2)+"\\n\\n現在のbookmark：\\n"+JSON.stringify(w.bookmark??null,null,2);
+  box.append(reading);
+  const raw=document.createElement("details");const summary=document.createElement("summary");summary.textContent="既存worksレコード全体";
+  const pre=document.createElement("pre");pre.className="raw";pre.textContent=JSON.stringify(w,null,2);raw.append(summary,pre);box.append(raw);
+  result.append(box);
+}
 function formatDate(value){
   const raw=String(value||"").trim();
   const m=raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:\s+(\d{2}):(\d{2}):\d{2})?/);
@@ -139,6 +187,9 @@ async function run(){
     const fetched=await fetchWork(ncode);
     const record=toWorksRecord(fetched.apiWork,originalUrl,fetched.isR18);
     result.append(renderCard(record));
+    status.textContent="取得・カード描画に成功しました。既存worksを読み取り中…";
+    const inspection=await inspectExistingWork(ncode);
+    appendExistingData(result,inspection);
     status.textContent="取得・カード描画に成功しました。\n保存先：なし（テスト用レコードのみ）";
     const debug=document.createElement("details");
     const summary=document.createElement("summary");summary.textContent="テスト用worksレコードを確認";
