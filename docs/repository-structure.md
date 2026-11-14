@@ -101,7 +101,6 @@ Workflowを変更・移動する場合は、参照するスクリプトのパス
 | `tools/export/` | `export_ncodes.html` | Nコード出力 |
 
 `tools/maintenance/` は2026-11-14のmainツリーに存在しない。
-| `tools/export/` | `export_ncodes.html` | Nコード出力 |
 
 ## 8. archive/delete_pending（削除保留ファイル）
 
@@ -211,7 +210,7 @@ Workflowを変更・移動する場合は、参照するスクリプトのパス
 | `data/kakuyomu-toc-requests/` | request_id別の登録実行結果・一時TOC |
 | `tools/diagnostic/` | 読み取り専用診断・監査・復元検証 |
 | `tools/export/` | データ出力 |
-| `tools/maintenance/` | 明示操作型メンテナンス |
+| `tools/maintenance/` | 2026-11-14のmainツリーには存在しない |
 | `scripts/` | Workflow等から呼び出すスクリプト |
 
 ### 現行資料室ファイル
