@@ -44,17 +44,14 @@ main{width:min(100%,780px);margin:auto;padding:22px 16px 52px}h1{font-size:24px;
 <span class="code">POST https://api.github.com/repos/tomotaday/tomotayomu/actions/workflows/kakuyomu-toc.yml/dispatches</span>
 <span class="code">ref = main<br>inputs.work_url = 変数 work_url<br>inputs.request_id = Generate UUID の結果</span>
 
-<h2>2. 新規登録後の流れ</h2>
+<h2>2. Actions実行後の登録処理</h2>
 <ol class="flow">
-<li>GitHub Actionsが作品情報・目次を取得・検証する。</li>
-<li>登録ページはrequest_idを使って実行結果を照合する。</li>
-</ol>
-<span class="code">https://tomotaday.github.io/tomotayomu/app/kakuyomu/kakuyomu_write.html?request_id={UUID}</span>
-<ol class="flow" start="4">
+<li>Shortcutが次の登録ページを開く。URL中のUUIDはActions実行と登録ページを結びつける照合キー。</li>
 <li>GitHub Actionsがカクヨムの作品情報と目次を取得し、作品ID・公表総話数・抽出件数・連番・重複エピソードIDを検証する。</li>
 <li>登録ページは結果JSONを5秒間隔で確認する。最大60回（最大約5分）待ち、成功結果を受け取ると検証済みTOCと作品メタデータを読み込む。</li>
 <li>登録ページで作品情報・登録先を確認し、「本棚へ登録」を実行する。登録ページを開いただけでは作品は保存されない。</li>
 </ol>
+<span class="code">https://tomotaday.github.io/tomotayomu/app/kakuyomu/kakuyomu_write.html?request_id={UUID}</span>
 <p class="small">「1/60」などの表示は、作品の話数やActionの工程数ではなく、5秒ごとの完了確認回数。</p>
 
 <h2>3. 取得する作品情報</h2>
