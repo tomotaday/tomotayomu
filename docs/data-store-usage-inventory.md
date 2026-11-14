@@ -134,6 +134,8 @@ Object Store：`items`（keyPath `id`、index `parentId`）
 | `tools/diagnostic/work_db_production_card_audit.html` | 新DB `works` | なし。読み取り専用 |
 | `tools/diagnostic/restore_test.html` | 利用者が選択したバックアップJSON | 専用名のテストDB・専用接頭辞のテスト用localStorageキーを作成し、全件照合 |
 
+| ファイル | 読み取り対象 | 書き込み・出力 |
+|---|---|---|
 | `app/register/search_excluded_compare.html` | localStorage `tomotaYomu_search_excluded_ncodes_v1` | なし。取得失敗Nコードと検索除外リストを照合し、結果を画面表示。コピー操作時のみクリップボードへ出力 |
 | `tools/diagnostic/bookmark_migration_audit.html` | 新DB `tomotaYomuWorksDB/works`（既存DBの存在・version 2・ストア構造を確認後、readonlyで全件取得）。カクヨム目次JSON・note目次JSON | なし。旧DB・localStorage・他DBには接続しない。作品レコードと目次の照合結果を画面表示 |
 | `tools/diagnostic/work_shelf_id_check.html` | 新DB `tomotaYomuWorksDB/works`（既存DBを確認後、readonlyで指定Nコードの1件を取得） | なし。localStorage・他DBには接続しない |
