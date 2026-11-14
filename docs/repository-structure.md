@@ -17,12 +17,12 @@
 | `kakuyomu_add.html` | 旧カクヨム登録ページ | 現行登録Shortcutの入口ではない。参照元を確認するまで保持 |
 | `note_magazine_add.html` | noteマガジン登録の入口 | 現役Shortcutの呼び出し先。ルート固定 |
 | `README.md` | リポジトリ概要 | 現状は最小限の内容。今回の整理では変更しない |
-| `.github/workflows/` | GitHub Actions | 自動取得・更新・検証処理 |
+| `.github/workflows/` | GitHub Actions | main上に7本存在。存在と現役運用・実行成功は区別して確認 |
 | `app/` | アプリ内の管理・補助画面 | 機能別に分類 |
 | `data/` | アプリが参照するデータ | JSON等。用途ごとに分類 |
 | `docs/` | 説明資料・ガイド | GitHub Pagesのアプリ本体とは分離 |
 | `scripts/` | Actions等から実行するスクリプト | 本番処理と診断処理を分離 |
-| `tools/` | 手動利用する診断・出力ツール | 本体機能とは独立 |
+| `tools/` | 手動利用する診断・出力ツール | 現行mainには `diagnostic/` と `export/`。`maintenance/` は存在しない |
 | `archive/delete_pending/` | 削除候補の一時保管場所 | 退避中。削除未実施 |
 
 ## 2. app（管理・補助画面）
@@ -30,7 +30,7 @@
 | パス | 主なファイル | 役割 |
 |---|---|---|
 | `app/author/` | `author.html` | 作者管理 |
-| `app/kakuyomu/` | `kakuyomu_edit.html` | カクヨム作品情報の編集 |
+| `app/kakuyomu/` | `kakuyomu_write.html`, `kakuyomu_edit.html` | カクヨム新規登録・作品情報編集 |
 | `app/memo/` | `tomota_memo.html` | ともた用メモ |
 | `app/register/` | `work_add.html` | 検索除外作品等の手動登録 |
 | `app/register/` | `search_excluded_compare.html` | 取得失敗Nコード照合 |
@@ -56,6 +56,7 @@
 | `data/author-list.json` | 作者一覧 | 作者管理・Atom対象作者情報 |
 | `data/atom/author-feeds.json` | 作者Atomフィード取得結果 | GitHub Actionsが更新 |
 | `data/kakuyomu-toc/` | カクヨム目次データ | 作品ID単位のJSON |
+| `data/kakuyomu-toc-requests/` | カクヨム登録実行の結果・一時TOC | request_id単位のJSON。蓄積ファイルの整理要否は別途確認 |
 | `data/note-index-*.json` | noteマガジン目次データ | マガジン単位のJSON |
 
 ## 5. scripts（実行スクリプト）
@@ -72,7 +73,7 @@
 
 ## 6. .github/workflows（GitHub Actions）
 
-2026-11-05時点の履歴一覧（現行一覧ではない）：
+2026-11-14にGitHub mainの再帰ツリーで存在を確認したWorkflow一覧：
 
 | ファイル | 役割・区分 |
 |---|---|
@@ -84,7 +85,7 @@
 | `benchmark-author-atom-fetch-full.yml` | 作者Atom全件取得の検証 |
 | `measure-author-atom-window.yml` | 作者Atom取得範囲・時間の計測 |
 
-2026-11-14に管理設定棚と現行ガイドから参照される次の3本は、現行機能として個別に確認した：`publish-author-atom-feeds.yml`、`note-magazine-index.yml`、`kakuyomu-toc.yml`。上表の他のWorkflowが現在も存在するか・現役かは、この確認では網羅していない。
+上記7本すべてのファイル実在を確認した。管理設定棚・現行ガイドから参照される `publish-author-atom-feeds.yml`、`note-magazine-index.yml`、`kakuyomu-toc.yml` は現行機能の接続先として個別確認済み。残る4本はファイル実在のみ確認し、現役運用・直近実行成功までは確認していない。
 
 Workflowを変更・移動する場合は、参照するスクリプトのパス、トリガー、権限、生成データの保存先を確認する。
 診断用Workflowは本番Workflowと区別し、実行確認が済んでいないものを正常確認済みと扱わない。
@@ -93,10 +94,13 @@ Workflowを変更・移動する場合は、参照するスクリプトのパス
 
 | パス | 主なファイル | 役割 |
 |---|---|---|
-| `tools/diagnostic/` | `storage_inventory.html`, `ncode_extract.html`, `work_db_production_card_audit.html`, `restore_test.html` | 保存領域調査、Nコード抽出、作品カード監査、バックアップ復元テスト |
-| `tools/diagnostic/` | `work_db_*.html`, `shelf_master_*.html` | 新DB監査・プレビュー・移行検証 |
-| `tools/diagnostic/` | `ncode_extract.html`, `restore_test.html` | Nコード抽出・専用領域への復元テスト |
-| `tools/maintenance/` | 現行mainで該当ページの実在を確認できていない | 旧一覧の掲載を現行機能として扱わない |
+| `tools/diagnostic/` | `bookmark_migration_audit.html` | しおり移行監査 |
+| `tools/diagnostic/` | `ncode_batch_test.html`, `ncode_extract.html` | Nコード一括試験・抽出 |
+| `tools/diagnostic/` | `restore_test.html`, `storage_inventory.html` | 復元試験・保存領域調査 |
+| `tools/diagnostic/` | `work_db_production_card_audit.html`, `work_shelf_id_check.html` | 新DB作品カード監査・棚ID確認 |
+| `tools/export/` | `export_ncodes.html` | Nコード出力 |
+
+`tools/maintenance/` は2026-11-14のmainツリーに存在しない。
 | `tools/export/` | `export_ncodes.html` | Nコード出力 |
 
 ## 8. archive/delete_pending（削除保留ファイル）
@@ -268,3 +272,28 @@ Workflowを変更・移動する場合は、参照するスクリプトのパス
 - ルート `index.html` のバージョン表示・ブラウザタイトルを更新した。commit `80d6eb19e1cb7e939e8523ea255a6dfa07d32fef`。
 - noteしおりの本番受信処理はルート `index.html` に実装され、登録済み全マガジン目次との一意照合後に新DBへ保存する。
 - `experiment/note-bookmark/index.html` は動作確認後に削除済み。既存 `experiment/bookmark/` は維持。
+
+
+### 2026-11-14 GitHub main再帰ツリー照合結果
+
+GitHub mainの再帰ツリーを取得し、truncated=falseを確認した。照合時点のcommitは `7e326e8bba889c703bc9d2426734742131fcd375`。
+
+- ファイル（blob）：96件
+- ディレクトリ（tree）：29件
+- 合計：125エントリー
+- 主要フォルダ・ルート・docs・Workflow・tools・archiveを含むツリー全体を取得できた。
+
+この件数は照合時点のスナップショットであり、今後の追加・削除で変わる。個々のファイルの現役性・実行状態・安全性を件数だけで判断しない。
+
+#### 今回の照合で補った点
+
+- `app/kakuyomu/kakuyomu_write.html` は現行のカクヨム新規登録ページとして存在。
+- `data/kakuyomu-toc-requests/` はrequest_id別JSON・TOC JSONを保持する実在フォルダ。
+- `tools/diagnostic/` には、しおり移行監査・Nコード一括試験・棚ID確認の各ページも存在。
+- `tools/maintenance/` は現行mainに存在しない。
+- `experiment/bookmark/` はREADME・DB処理JS・画面JS・HTML・CSSの5ファイルが存在。
+- `archive/delete_pending/` はHTML10件・scripts4件・workflows5件の計19ファイルが存在し、削除未実施の退避領域。
+
+#### 現行ツリーの扱い
+
+この追記はGitHub mainのファイル実在一覧の照合記録である。Shortcutからの参照、Actionsの実行頻度、診断ページの本番データへの書き込み有無など、ファイルツリーだけでは分からない性質は別途コード・設定・実機で確認する。
