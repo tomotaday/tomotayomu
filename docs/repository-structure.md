@@ -297,3 +297,28 @@ GitHub mainの再帰ツリーを取得し、truncated=falseを確認した。照
 #### 現行ツリーの扱い
 
 この追記はGitHub mainのファイル実在一覧の照合記録である。Shortcutからの参照、Actionsの実行頻度、診断ページの本番データへの書き込み有無など、ファイルツリーだけでは分からない性質は別途コード・設定・実機で確認する。
+
+
+### 2026-11-14 診断ツールの保存領域・書き込み範囲確認
+
+| ページ | 接続・保存先 | 操作の分類 | 旧DB削除との関係 |
+|---|---|---|---|
+| `tools/diagnostic/bookmark_migration_audit.html` | `tomotaYomuWorksDB` v2 / `works` | 読み取り専用。DB存在・version・storeを確認してからreadonly transaction | 旧DB・localStorage・他DBに触れない旨を画面にも明記 |
+| `tools/diagnostic/work_db_production_card_audit.html` | `tomotaYomuWorksDB` / `works` | 読み取り専用。既存DBのみ開き、readonly transactionで取得 | 旧DB・Atom DB・Memo DB・localStorageに触れない旨を画面にも明記 |
+| `tools/diagnostic/work_shelf_id_check.html` | `tomotaYomuWorksDB` v2 / `works` | 読み取り専用。readonly transactionで作品を取得 | 追加・変更・削除、localStorage、他DBへの接続なしと画面に明記 |
+| `tools/diagnostic/ncode_extract.html` | `tomotaYomuWorksDB` v2 / `works`、localStorageの判定進捗キー | DBは読み取り専用。API判定の進捗・監査結果をlocalStorageへ保存・削除 | 旧DBの削除処理ではない。診断用localStorageキーの扱いは別途確認対象 |
+| `tools/diagnostic/storage_inventory.html` | 旧DBを含む既知DB一覧、localStorage | DBの存在・ストア構成・件数をreadonlyで調査。バックアップ出力機能を含む | 削除前の棚卸し用。DB削除操作とは区別する |
+| `tools/diagnostic/restore_test.html` | バックアップ内のDB・localStorage | 専用接頭辞と識別子を付けたテスト領域へ作成・書き込み・照合・テスト領域削除 | 本番DB名や本番localStorageキーへ復元する処理ではない。現行バックアップを用いた実機試験は別途必要 |
+| `tools/diagnostic/ncode_batch_test.html` | なろうAPI | API照会テスト | IndexedDB削除処理なし |
+
+※これは2026-11-14に各HTMLのコードを確認した結果。画面に書かれた安全説明だけでなく、DB名・transaction mode・書き込み先をコードで照合した。実機での動作保証や、バックアップファイル自体の完全性を保証するものではない。
+
+#### 旧DB削除へ進む前の最小確認
+
+1. 旧DB `tomotaYomuDB` の参照元を、現行コード・Shortcut・Workflow・診断ページから再確認する。
+2. 現行DB `tomotaYomuWorksDB` と独立DB `tomotaYomuAtomDB` / `tomotaMemoDB` の最新バックアップを取得し、ファイルを別途保管する。
+3. `restore_test.html` で、その時点のバックアップをテスト領域へ復元し、全ストア・全レコード・キー・インデックス・localStorageの照合結果を確認する。
+4. 旧DBを削除する場合は、削除対象DB名を `tomotaYomuDB` に限定し、実行前に旧DBの最終件数・ストア構造を記録する。
+5. 削除実行は、ともたの明示確認を得てから行う。旧DB削除後も、旧DBバックアップは復元確認と一定期間の保全が済むまで保持する。
+
+この順序は旧DB削除の準備手順であり、現時点で削除を実施したものではない。
