@@ -308,7 +308,8 @@ GitHub mainの再帰ツリーを取得し、truncated=falseを確認した。照
 | `tools/diagnostic/ncode_extract.html` | `tomotaYomuWorksDB` v2 / `works`、localStorageの判定進捗キー | DBは読み取り専用。API判定の進捗・監査結果をlocalStorageへ保存・削除 | 旧DBの削除処理ではない。診断用localStorageキーの扱いは別途確認対象 |
 | `tools/diagnostic/storage_inventory.html` | 旧DBを含む既知DB一覧、localStorage | DBの存在・ストア構成・件数をreadonlyで調査。バックアップ出力機能を含む | 削除前の棚卸し用。DB削除操作とは区別する |
 | `tools/diagnostic/restore_test.html` | バックアップ内のDB・localStorage | 専用接頭辞と識別子を付けたテスト領域へ作成・書き込み・照合・テスト領域削除 | 本番DB名や本番localStorageキーへ復元する処理ではない。現行バックアップを用いた実機試験は別途必要 |
-| `tools/diagnostic/ncode_batch_test.html` | なろうAPI | API照会テスト | IndexedDB削除処理なし |
+| `tools/diagnostic/ncode_batch_test.html` | なろう通常API・R18 API、localStorage `tomotaYomu_search_excluded_ncodes_v1`（一括判定時に読み取り） | API照会と検索除外リストの照合。DB書き込みなし | IndexedDB削除処理なし。検索除外リストも読み取りのみ |
+| `app/register/search_excluded_compare.html` | localStorage `tomotaYomu_search_excluded_ncodes_v1` | 取得失敗Nコードとの照合・画面表示。コピー操作時のみクリップボード出力 | 作品DB・棚・しおり・読書位置・更新判定は変更しない |
 
 ※これは2026-11-14に各HTMLのコードを確認した結果。画面に書かれた安全説明だけでなく、DB名・transaction mode・書き込み先をコードで照合した。実機での動作保証や、バックアップファイル自体の完全性を保証するものではない。
 
