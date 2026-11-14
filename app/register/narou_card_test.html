@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>なろう作品カード描画テスト</title>
+<style>
+:root{color-scheme:light dark;--bg:#f4f1e9;--card:#fffdf8;--ink:#302d28;--muted:#716b61;--line:#ded8cc;--accent:#527b55}
+@media(prefers-color-scheme:dark){:root{--bg:#1d211e;--card:#292e2a;--ink:#f2f0e9;--muted:#c0b9ad;--line:#454b45;--accent:#9ac69b}}
+*{box-sizing:border-box}
+body{margin:0;padding:20px 14px 40px;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif}
+main{max-width:680px;margin:auto}
+h1{font-size:1.25rem;margin:0 0 8px}
+.lead,.note{color:var(--muted);font-size:.9rem;line-height:1.6}
+.panel,.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:14px}
+label{display:block;font-size:.9rem;font-weight:600;margin-bottom:7px}
+input{width:100%;padding:12px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font:inherit}
+button{width:100%;margin-top:10px;padding:12px;border:0;border-radius:9px;background:var(--accent);color:white;font:inherit;font-weight:700}
+button:disabled{opacity:.55}
+#status{font-size:.9rem;line-height:1.5;margin-top:10px;white-space:pre-wrap}
+.card{margin-top:18px}
+.meta{font-size:.8rem;color:var(--muted);margin-bottom:9px}
+h2{font-size:1.12rem;line-height:1.55;margin:0 0 8px;overflow-wrap:anywhere}
+.author{font-size:.9rem;margin-bottom:12px}
+.badge{display:inline-block;margin-left:7px;padding:2px 7px;border-radius:6px;background:#e4f2df;color:#315f35;font-size:.75rem}
+.badge.r18{background:#f7e4e4;color:#8b3434}
+details{border-top:1px solid var(--line);padding:10px 0}
+summary{cursor:pointer;font-size:.9rem;font-weight:600}
+.synopsis{font-size:.9rem;line-height:1.7;white-space:pre-wrap;margin:9px 0 2px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.actions a{display:inline-block;padding:10px 12px;border:1px solid var(--line);border-radius:8px;color:var(--accent);text-decoration:none;font-size:.9rem}
+.raw{font-size:.78rem;color:var(--muted);overflow-wrap:anywhere}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<main>
+<h1>なろう作品カード描画テスト</h1>
+<p class="lead">作品URLを受け取り、なろうAPIから情報を取得して、works形式のテスト用レコードからカードを1枚描画します。</p>
+<section class="panel">
+<label for="workUrl">作品URL</label>
+<input id="workUrl" type="url" inputmode="url" value="https://ncode.syosetu.com/n1608hl/" autocomplete="url">
+<button id="run" type="button">作品情報を取得してカードを描画</button>
+<div id="status" role="status" aria-live="polite">待機中です。</div>
+</section>
+<section id="result" aria-live="polite"></section>
+<p class="note">このページは表示テスト専用です。IndexedDB・localStorage・本番worksへの保存や変更は行いません。</p>
+</main>
+<script>
+"use strict";
+const API_NORMAL="https://api.syosetu.com/novelapi/api/";
+const API_R18="https://api.syosetu.com/novel18api/api/";
+const FIELDS="n-t-s-w-u-gf-gl-nt-e-ga-l-i-ir-nu";
+const $=id=>document.getElementById(id);
+
+function extractNcode(raw){
+  const url=new URL(raw);
+  if(url.protocol!=="https:")throw new Error("HTTPSの作品URLを入力してください。");
+  if(!["ncode.syosetu.com","novel18.syosetu.com","www.ncode.syosetu.com","www.novel18.syosetu.com"].includes(url.hostname))throw new Error("小説家になろうの作品URLではありません。");
+  const match=url.pathname.match(/^\/(n[0-9a-z]+)\/?$/i);
+  if(!match)throw new Error("URLからNコードを読み取れません。作品トップのURLを入力してください。");
+  return match[1].toUpperCase();
+}
+function jsonp(url){
+  return new Promise((resolve,reject)=>{
+    const callback="narouCardTest_"+Date.now()+"_"+Math.random().toString(36).slice(2);
+    const script=document.createElement("script");
+    const timer=setTimeout(()=>{cleanup();reject(new Error("API応答がタイムアウトしました。"))},20000);
+    function cleanup(){clearTimeout(timer);script.remove();try{delete window[callback]}catch(_){window[callback]=undefined}}
+    window[callback]=data=>{cleanup();resolve(data)};
+    script.onerror=()=>{cleanup();reject(new Error("APIの読み込みに失敗しました。通信状態を確認してください。"))};
+    script.src=url+"&out=jsonp&callback="+callback+"&_cb="+Date.now();
+    document.head.appendChild(script);
+  });
+}
+async function fetchWork(ncode){
+  const query="?ncode="+encodeURIComponent(ncode)+"&of="+FIELDS+"&lim=1";
+  const normal=await jsonp(API_NORMAL+query);
+  const normalRows=Array.isArray(normal)?normal.slice(1).filter(x=>x&&x.ncode):[];
+  if(normalRows.length)return {apiWork:normalRows[0],isR18:false};
+  const adult=await jsonp(API_R18+query);
+  const adultRows=Array.isArray(adult)?adult.slice(1).filter(x=>x&&x.ncode):[];
+  if(adultRows.length)return {apiWork:adultRows[0],isR18:true};
+  throw new Error("通常API・R18 APIのどちらからも作品情報を取得できませんでした。");
+}
+function toWorksRecord(apiWork,originalUrl,isR18){
+  return {
+    id:"narou:"+String(apiWork.ncode).toUpperCase(),
+    site:"narou",
+    workId:String(apiWork.ncode).toUpperCase(),
+    title:apiWork.title||"",
+    authorName:apiWork.writer||"",
+    authorId:apiWork.userid==null?"":String(apiWork.userid),
+    authorType:isR18?"r18":"normal",
+    url:originalUrl,
+    synopsis:apiWork.story||"",
+    episodeCount:Number(apiWork.general_all_no)||0,
+    updatedAt:apiWork.general_lastup||"",
+    status:String(apiWork.noveltype)==="2"?"短編":String(apiWork.end)==="0"?"完結":String(apiWork.end)==="1"?"連載中":"",
+    noveltype:Number(apiWork.noveltype)||0,
+    isR18:!!isR18,
+    apiEnd:apiWork.end,
+    length:Number(apiWork.length)||0,
+    isstop:Number(apiWork.isstop)||0,
+    novelupdatedAt:apiWork.novelupdated_at||""
+  };
+}
+function formatDate(value){
+  const raw=String(value||"").trim();
+  const m=raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:\s+(\d{2}):(\d{2}):\d{2})?/);
+  return m?m[1]+"/"+m[2]+"/"+m[3]+(m[4]?" "+m[4]+":"+m[5]:""):"—";
+}
+function renderCard(work){
+  const card=document.createElement("article");
+  card.className="card";
+  const meta=document.createElement("div");meta.className="meta";
+  meta.textContent="最終更新："+formatDate(work.updatedAt)+" ｜ "+(work.status||"状態不明")+" ｜ "+work.episodeCount+"話";
+  const title=document.createElement("h2");title.textContent=work.title||"（タイトルなし）";
+  const author=document.createElement("div");author.className="author";
+  author.append(document.createTextNode("作者："+(work.authorName||"不明")));
+  const badge=document.createElement("span");badge.className="badge"+(work.isR18?" r18":"");badge.textContent=work.isR18?"R18":"なろう";author.append(badge);
+  const details=document.createElement("details");
+  const summary=document.createElement("summary");summary.textContent="あらすじを読む";
+  const synopsis=document.createElement("p");synopsis.className="synopsis";synopsis.textContent=work.synopsis||"あらすじなし";
+  details.append(summary,synopsis);
+  const actions=document.createElement("div");actions.className="actions";
+  const link=document.createElement("a");link.href=work.url;link.target="_blank";link.rel="noopener";link.textContent="作品を開く";
+  actions.append(link);
+  card.append(meta,title,author,details,actions);
+  return card;
+}
+async function run(){
+  const button=$("run"),status=$("status"),result=$("result");
+  button.disabled=true;result.replaceChildren();
+  try{
+    const originalUrl=$("workUrl").value.trim();
+    const ncode=extractNcode(originalUrl);
+    status.textContent="Nコード "+ncode+" を確認しました。APIから作品情報を取得中…";
+    const fetched=await fetchWork(ncode);
+    const record=toWorksRecord(fetched.apiWork,originalUrl,fetched.isR18);
+    result.append(renderCard(record));
+    status.textContent="取得・カード描画に成功しました。\n保存先：なし（テスト用レコードのみ）";
+    const debug=document.createElement("details");
+    const summary=document.createElement("summary");summary.textContent="テスト用worksレコードを確認";
+    const pre=document.createElement("pre");pre.className="raw";pre.textContent=JSON.stringify(record,null,2);
+    debug.append(summary,pre);result.append(debug);
+  }catch(error){
+    status.textContent="エラー："+(error&&error.message?error.message:String(error));
+  }finally{button.disabled=false}
+}
+$("run").addEventListener("click",run);
+</script>
+</body>
+</html>
