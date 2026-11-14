@@ -4,97 +4,102 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f6f3ed">
-<title>カクヨム連携ガイド｜ともたよむ 資料室</title>
+<title>カクヨム登録・しおりガイド｜ともたよむ 資料室</title>
 <style>
-:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195;--ok:#e8f3e9;--future:#f0edf8}
+:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195;--ok:#e8f3e9;--warn:#fff3d9}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.7}
-main{width:min(100%,760px);margin:auto;padding:22px 16px 52px}h1{font-size:24px;line-height:1.35;margin:8px 0}h2{font-size:19px;margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:5px}h3{font-size:16px;margin:16px 0 5px}.lead,.muted{color:var(--muted)}.card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:14px;margin:12px 0}.current{background:var(--ok)}.future{background:var(--future)}.flow{padding-left:1.35em}.flow li{margin:6px 0}.code{display:block;overflow-wrap:anywhere;background:#f0eee9;border-radius:8px;padding:9px;font-family:ui-monospace,monospace;font-size:13px}.small{font-size:13px}.back{color:inherit}
+main{width:min(100%,780px);margin:auto;padding:22px 16px 52px}h1{font-size:24px;line-height:1.35;margin:8px 0}h2{font-size:19px;margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:5px}h3{font-size:16px;margin:16px 0 5px}.lead,.muted{color:var(--muted)}.card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:14px;margin:12px 0}.current{background:var(--ok)}.warn{background:var(--warn)}.flow{padding-left:1.35em}.flow li{margin:6px 0}.code{display:block;overflow-wrap:anywhere;background:#f0eee9;border-radius:8px;padding:9px;font-family:ui-monospace,monospace;font-size:13px}.small{font-size:13px}.back{color:inherit}a{overflow-wrap:anywhere}
 </style>
 </head>
 <body><main>
 <a class="back" href="../../index.html">← ともたよむ本棚へ戻る</a>
-<h1>📘 カクヨム連携ガイド</h1>
-<p class="lead">作品登録・しおり保存・目次取得・本棚での読了話数表示をまとめた資料室。</p>
+<h1>📘 カクヨム登録・しおりガイド</h1>
+<p class="lead">専用Shortcut、GitHub Actionsによる目次・作品情報取得、新DB登録、作品編集、しおりの流れをまとめた現行ガイド。</p>
 
 <section class="card current">
-<strong>現行構成｜v3.6.1【2026/11/01】</strong>
-<p class="small">カクヨム作品の登録としおりURLの保存に対応。作品別目次JSONを取得し、エピソードIDを話数へ変換して本棚カードに表示する。目次取得Actionは「カクヨム目次取得」。</p>
+<strong>現行仕様｜2026-11-14確認</strong>
+<ul>
+<li>登録専用ShortcutからGitHub Actionsを起動し、登録ページへ移動する。</li>
+<li>Actionsが目次と作品メタデータを取得・検証し、登録ページが完了結果を待って読み込む。</li>
+<li>登録ページの明示操作で新DB <code>tomotaYomuWorksDB</code> version 2 の <code>works</code> に保存する。</li>
+<li>既存のしおりShortcut「とよむ+しおり」は従来の受け渡しを維持する。</li>
+</ul>
+<p class="small">登録・カードリンク・しおりは実機確認済み。作品ごとの目次取得結果は、実行結果と対象作品で確認する。</p>
 </section>
 
-<h2>1. 全体のしくみ</h2>
+<h2>1. 新規登録の流れ</h2>
 <ol class="flow">
-<li>カクヨム作品ページから作品情報を取得し、登録画面で確認する。</li>
-<li>作品データを端末内に保存し、ともたよむの本棚に表示する。</li>
-<li>読書中のエピソードを共有シートから既存ショートカット「とよむ➕しおり」へ渡す。</li>
-<li>ショートカットがカクヨムURLをともたよむへ渡し、作品カードのしおりURL・エピソードIDを更新する。</li>
-<li>GitHub Actions「カクヨム目次取得」で作品目次を取得し、作品IDごとのJSONとして保存する。</li>
-<li>本棚が目次JSONとしおりのエピソードIDを照合し、読了話数を表示する。</li>
+<li>カクヨム作品ページから専用Shortcutを実行する。</li>
+<li>ShortcutがUUID形式の <code>request_id</code> を発行し、作品URLとともにGitHub Actions「カクヨム目次取得」を起動する。</li>
+<li>Shortcutは次の登録ページを開く。URL中のUUIDはActions実行と登録ページを結びつける照合キー。</li>
 </ol>
+<span class="code">https://tomotaday.github.io/tomotayomu/app/kakuyomu/kakuyomu_write.html?request_id={UUID}</span>
+<ol class="flow" start="4">
+<li>GitHub Actionsがカクヨムの作品情報と目次を取得し、作品ID・公表総話数・抽出件数・連番・重複エピソードIDを検証する。</li>
+<li>登録ページは結果JSONを5秒間隔で確認する。最大60回（最大約5分）待ち、成功結果を受け取ると検証済みTOCと作品メタデータを読み込む。</li>
+<li>登録ページで作品情報・登録先を確認し、「本棚へ登録」を実行する。登録ページを開いただけでは作品は保存されない。</li>
+</ol>
+<p class="small">「1/60」などの表示は、作品の話数やActionの工程数ではなく、5秒ごとの完了確認回数。</p>
 
-<h2>2. 作品登録</h2>
-<p><code>kakuyomu_add.html</code> は、作品情報テキストと作品URLを受け取り、解析結果を確認・修正して本棚へ登録する画面。</p>
-<ol class="flow">
-<li>登録用ショートカットから作品情報テキストを受け取る（現状はクリップボード経由の貼り付け）。</li>
-<li>カクヨム作品ページのURLを入力する。</li>
-<li>作品ID、タイトル、作者名、作者ハンドル、あらすじ、タグ、作品状態、総話数、文字数、最終更新日を確認・修正する。</li>
-<li>登録先の本棚を選択し、本棚へ登録する。</li>
-</ol>
-<p class="small">作品データはlocalStorageの <code>tomotaYomu_kakuyomu_works_v1</code> に保存される。登録先の棚情報はIndexedDB <code>tomotaYomuDB</code> から読み込む。</p>
+<h2>2. 取得する作品情報</h2>
+<p>Workflowの <code>work_metadata</code> から、タイトル、作者表示名、作者ハンドル、あらすじ、タグ、作品状態、文字数、最終更新日、初回掲載日等を登録画面へ渡す。</p>
+<ul>
+<li>作者ハンドルは <code>author.name</code> 由来の値を <code>@</code> なしで保存する。表示上の <code>@</code> は必要な場合に画面側で付ける。</li>
+<li>作者ハンドルは作者プロフィールURLの識別子として扱う。既存作品の編集で変更する場合を除き、通常の作品情報更新で上書きする仕様ではない。</li>
+<li>あらすじは初回登録時に取得する。現行の定期更新・目次再取得で既存作品のあらすじを自動更新する処理はない。必要に応じて編集画面で手動修正する。</li>
+<li>総話数は検証済みTOCの <code>episodes</code> 件数を採用する。</li>
+</ul>
 
-<h2>3. しおりの保存・再開</h2>
-<p>既存のiOSショートカット「とよむ➕しおり」にカクヨムURLの分岐を統合している。カクヨム公式アプリではなくBraveのWeb版を利用する運用。</p>
-<ol class="flow">
-<li>カクヨムのエピソードページを共有シートからショートカットへ渡す。</li>
-<li>ショートカットがURLを取り出し、URLエンコードしてともたよむを開く。</li>
-</ol>
-<span class="code">https://tomotaday.github.io/tomotayomu/index.html?kakuyomuUrl=エンコード済みURL</span>
-<p>ともたよむはURLから作品IDとエピソードIDを解析し、登録済み作品の <code>bookmarkEpisodeUrl</code> と <code>bookmarkEpisodeId</code> を保存する。「続き📖」リンクはこの保存済みURLを開く。旧形式の <code>kakuyomuId</code> と <code>episodeId</code> による受け取りも互換性のため残している。</p>
-
-<h2>4. 作品目次の取得（GitHub Actions）</h2>
-<p>エピソードIDだけでは何話目か分からないため、作品ごとの目次をGitHub Actionsで取得する。</p>
-<ol class="flow">
-<li>本棚の「⚙️管理設定用」から「カクヨム目次取得」を開く。</li>
-<li>GitHub Actionsで「Run workflow」を押す。</li>
-<li>作品URL欄に対象作品のURLをそのまま貼り付ける。数字だけの作品ID入力にも対応。</li>
-<li>もう一度「Run workflow」を押して実行する。</li>
-<li>成功すると <code>data/kakuyomu-toc/作品ID.json</code> としてGitHubリポジトリに保存される。</li>
-</ol>
+<h2>3. 完了結果と保存ファイル</h2>
+<table>
+<tr><th>ファイル</th><th>役割</th></tr>
+<tr><td><code>data/kakuyomu-toc-requests/{UUID}.json</code></td><td>Shortcutが指定したrequest_idに対応する実行結果・作品メタデータ</td></tr>
+<tr><td><code>data/kakuyomu-toc-requests/{UUID}.toc.json</code></td><td>登録ページが読み込む検証済みTOCデータ</td></tr>
+<tr><td><code>data/kakuyomu-toc/{作品ID}.json</code></td><td>本棚表示・しおり話数照合に利用する作品別TOC</td></tr>
+</table>
 <p><a href="https://github.com/tomotaday/tomotayomu/actions/workflows/kakuyomu-toc.yml" target="_blank" rel="noopener noreferrer">GitHub Actions：カクヨム目次取得を開く</a></p>
-<h3>取得時の検証</h3>
-<ul>
-<li>カクヨムが公表する総話数と抽出したエピソード数を照合する。</li>
-<li>検証用作品 <code>1177354054891965415</code> に限り、先頭10話のIDと順序も既知の値と照合する。</li>
-<li>検証に不一致がある場合はActionを失敗として止め、リポジトリへ不完全なJSONを保存しない。</li>
-</ul>
-<p class="small">目次は作品ごとに取得する。別作品を取得するときは、初期入力の検証用URLを対象作品のURLに置き換える。</p>
 
-<h2>5. 本棚カードと読了話数</h2>
-<p>本棚カードは、保存済みしおりのエピソードIDを作品別目次JSONと照合し、話数を自動算出する。</p>
-<span class="code">続き📖345/1,132話</span>
+<h2>4. 本棚表示・しおり</h2>
 <ul>
-<li>照合成功：目次上の話数／総話数を表示。</li>
-<li>目次取得に失敗：目次未取得と表示。</li>
-<li>目次は取得できたがIDが見つからない：話数未照合と表示。</li>
-<li>「続き📖」を押すと、話数表示とは独立して保存済みエピソードURLを開く。</li>
+<li>本棚カードの作品リンクは対象作品のカクヨムURLを開く。</li>
+<li>しおりShortcut「とよむ+しおり」はエピソードURLを受け取り、作品ID・エピソードID・URLを本棚データへ保存する。</li>
+<li>作品別TOC JSONのエピソードIDと保存済みしおりを照合し、読了話数／総話数を表示する。</li>
+<li>TOCが取得できない場合やエピソードIDが見つからない場合は、話数を確定できない。貼り付けテキスト由来の話数を正しい話数として扱わない。</li>
 </ul>
-<p>内容編集画面から「しおり（読了話数）」の手入力欄は廃止。しおりURLを正とし、読了話数は目次から自動算出する。総話数などの作品情報は引き続き編集できる。</p>
 
-<h2>6. 保存データと注意点</h2>
+<h2>5. 保存先・編集</h2>
 <ul>
-<li>カクヨム作品情報・しおり：端末内localStorage <code>tomotaYomu_kakuyomu_works_v1</code></li>
-<li>作品別目次：GitHubリポジトリ <code>data/kakuyomu-toc/作品ID.json</code></li>
-<li>目次JSONは作品ごとに独立している。別作品のJSONで上書きされない。</li>
-<li>本棚カードの話数表示には、対象作品の目次JSONが必要。</li>
+<li>作品レコード：IndexedDB <code>tomotaYomuWorksDB</code> version 2 の <code>works</code>。</li>
+<li>作品IDを含むレコードID：<code>kakuyomu:{作品ID}</code>。</li>
+<li>作者ハンドル：作品レコードの <code>authorId</code>。互換情報として <code>siteData.legacyFields.authorHandle</code> にも保存。</li>
+<li>あらすじ等のサイト固有情報：作品レコードの <code>synopsis</code> / <code>siteData</code>。</li>
+<li>作品編集ページ：<code>app/kakuyomu/kakuyomu_edit.html</code>。新DBの対象作品を読み込み、編集内容を <code>works</code> へ保存する。</li>
 </ul>
-<p class="small">このガイドは実装内容を整理したもの。Actionの成功や各作品での話数表示は、対象作品ごとの実行・実機確認をもって確認する。</p>
+<p><a href="../../app/kakuyomu/kakuyomu_edit.html">カクヨム作品編集（管理用）</a></p>
 
-<section class="card future">
-<h2>今後の整理候補</h2>
+<section class="card warn">
+<strong>安全上の注意</strong>
 <ul>
-<li>登録用ショートカットから登録画面への情報受け渡しを簡略化し、手動コピー・貼り付けを減らす。</li>
-<li>複数作品の目次更新を効率化する方法を検討する。</li>
-<li>なろう・note・カクヨムの共通UIを整理しつつ、サイト固有の取得・保存処理は分離して維持する。</li>
+<li>本番IndexedDBを初期化・削除しない。</li>
+<li>登録ページのUUID・ShortcutからActionsへの送信内容・Workflowの入出力形式を、確認なしに変更しない。</li>
+<li>既存の「とよむ+しおり」Shortcutの受け渡し形式を壊さない。</li>
+<li>GitHub Actionsの秘密情報をGitHub PagesのJavaScriptへ埋め込まない。</li>
 </ul>
-<p class="small">ここに記載した項目は今後の検討事項であり、未実装のものを含む。</p>
 </section>
+
+<h2>6. 現在の確認記録</h2>
+<ul>
+<li>2026-11-14：作品ID <code>1177354054892870623</code> で187話／187話の取得・検証成功を確認。</li>
+<li>同日：作者ハンドルが登録画面へ反映されることを確認。例：表示名とハンドルは別項目。</li>
+<li>同日：新DBへの作品登録、カードの作品リンク、しおり動作を実機確認。</li>
+<li>同日：カクヨム作品編集画面の保存ボタン不具合をDOM ID重複の修正で解消し、編集・保存を実機確認。</li>
+<li>2026-11-14：カクヨム専用棚の並び順を最終更新日順へ変更。コード反映済み。実機での最終確認は別途。</li>
+</ul>
+
+<h2>7. 関連資料</h2>
+<ul>
+<li><a href="../kakuyomu-toc-registration-investigation.md">カクヨム登録・目次取得の技術記録</a></li>
+<li><a href="../development-status.md">資料室入口・開発状況</a></li>
+<li><a href="../database-structure.md">DB構成表・接続一覧</a></li>
+</ul>
 </main></body></html>
