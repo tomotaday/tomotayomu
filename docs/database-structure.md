@@ -136,3 +136,46 @@
 - 登録先として選択できるのは通常棚のみ。通常棚の `work_add_target===true` があれば、その棚の `shelf_id` を新規作品へ保存する。
 - 通常棚にチェックがない場合は未分類。未分類は専用の選択操作・設定キー・作品棚IDを持たず、空白 `shelfId` の作品を計算で集める表示棚。
 - この設定は新規登録時だけに適用し、既存作品の `shelfId` は更新処理で変更しない。
+
+
+---
+
+## 2026-11-14 現行状態の追記（本節を現行判断の優先情報とする）
+
+本節は2026-11-14のmainコードを再確認した結果。上記の2026-11-09以前の記述・移行途中の記録と食い違う場合、古い節は当時の履歴として残し、本節と現行コードを照合する。
+
+### 新DB・カクヨム登録
+
+- カクヨム登録ページ `app/kakuyomu/kakuyomu_write.html` は `tomotaYomuWorksDB` version 2 の `works` / `shelves` を確認して使用する。DB構造が想定外の場合は登録を中止する。
+- カクヨム作品レコードIDは `kakuyomu:{work_id}`。作品本体は `works` に保存する。
+- 共通フィールド：`id`、`site`、`workId`、`title`、`authorName`、`authorId`、`shelfId`、`synopsis`、`episodeCount`、`updatedAt` 等。
+- サイト固有情報・TOC照合情報は `siteData` に保持する。作者ハンドルは `authorId` および互換情報 `siteData.legacyFields.authorHandle` に@なしで保存する。
+- `app/kakuyomu/kakuyomu_edit.html` は同じ新DBの `works` を読み書きする。
+- カクヨムの目次JSONはGitHub上の `data/kakuyomu-toc/{work_id}.json`。登録要求ごとの結果・TOCは `data/kakuyomu-toc-requests/{request_id}.json` および `.toc.json`。
+- 既存作品のあらすじを自動再取得して上書きする経路は現行コードで確認していない。初回取得後は編集画面で手動修正する。
+
+### 現行の主な接続先（2026-11-14）
+
+| 画面・処理 | 読み取り先 | 書き込み先 | 状態 |
+|---|---|---|---|
+| `index.html` 本棚・作品カード | 新DB `tomotaYomuWorksDB/works`、`shelves` | 新DB `works`（読書状態・しおり等）、用途別localStorage | 現行本体 |
+| `app/kakuyomu/kakuyomu_write.html` | 新DB `shelves`、GitHub Actions結果・TOC JSON | 新DB `works` | Shortcut連携の登録画面 |
+| `app/kakuyomu/kakuyomu_edit.html` | 新DB `works` | 新DB `works` | カクヨム編集 |
+| `app/shelf/shelf_manager.html` | 新DB `works` / `shelves` | 新DB `works.shelfId` / `shelves` | 本棚管理 |
+| `app/author/author.html` | 新DB `works` | 新DB `works` の作者情報 | 作者管理 |
+| `register.html` / `app/register/work_add.html` | 新DB `shelves` | 新DB `works` | なろう登録系 |
+| `note_magazine_add.html` | 新DB `shelves` | 新DB `works` | note登録 |
+| `tomotaMemoDB/items` | Memo DB | Memo DB | ともためも。作品DBと独立 |
+| `tomotaYomuAtomDB/entries,meta` | Atom DB・公開JSON | Atom DB | 作者Atom取得結果。作品DBと独立 |
+
+### localStorageの扱いに関する更新
+
+- 旧 `tomotaYomu_kakuyomu_works_v1` と旧 `tomotaYomu_note_magazines_v1` は、作品本体の現行正本ではない。作品本体・しおりは新DBへ移行済みとして扱う。旧キーがブラウザに残っていても、照合・保全前に削除しない。
+- 履歴 `tomotaYomu_v330_reading_history`、表示期間、混在棚順、検索除外リスト等の独立キーは用途別に維持する。作品レコードと一括統合・削除しない。
+- 本節はコード上の接続確認。実機の全件数や全ブラウザの残存キーを保証するものではない。
+
+### 並び順
+
+- 日付順の棚は `compareWorkDate` によってカードの `data-last-updated` を基準に比較する。
+- 2026-11-14、カクヨム専用棚・note専用棚をタイトル順から最終更新日順へ変更した（commit `5a1020b1e9e675bff34e0cb7876fa7a6732feb13`）。
+- 変更は既存カードに保持された日付の並べ替えであり、外部サイトから日付を再取得する処理ではない。カクヨムの日付は作品メタデータの `updatedAt`、noteは保存済み公開日等のカード日付を利用する。
