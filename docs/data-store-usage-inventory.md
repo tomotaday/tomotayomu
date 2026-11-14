@@ -164,7 +164,9 @@ Object Store：`items`（keyPath `id`、index `parentId`）
 - ここは現行画面からの通常導線ではなく、保管中のファイル群。ただしGitHub Pages上で公開され得るパスであり、ファイルを直接開いて操作する場合は注意する。
 - `html/DELETE_author-export.html` は旧DB `tomotaYomuDB` を開き、作者情報を読み出す旧DB参照ページ。
 - `html/DELETE_cleanup_manual_test_works.html` は旧DB `works_cache` の対象レコードを削除する操作を含む。
-- `html/DELETE_maintenance_cleanup_deleted_works.html` は旧DBの `shelf_placement` / `works_cache` / `authors` / `reading_position` を対象とする削除操作を含む。
+- `html/DELETE_maintenance_cleanup_deleted_works.html` は旧DBの `shelf_placement` / `works_cache` / `authors` / `reading_position` の4ストアを対象に、指定Nコード9件のレコードを削除する操作を含む。対象は N0747JE / N1351MD / N1632IO / N2184HF / N4411DT / N5420MC / N5909FO / N6158JM / N8546MG。
+- この9件には、2026-11-10の旧DB照合で「孤立読書位置」として保全対象にした N1351MD（10話）/ N5420MC（42話）/ N8546MG（13話）が含まれる。したがって、この保管ページは現在の保全方針と衝突する。**実行禁止・再利用禁止**。旧DBの読書位置3件を含むデータ保全が終わるまで、削除候補としても扱わない。
+- `DELETE_cleanup_manual_test_works.html` は旧DB `works_cache` の N0960MX / N7111BG / N9653IJ を削除する操作を含む。実行しない。
 - これらは保管中であり、現行アプリの本番導線から利用するものではない。旧DB削除の判断前に、これらの保管ページを実行・再利用しないこと。ファイル自体の削除も、別途一覧提示・承認を経る。
 - 今回確認した保管中の他HTML、Pythonスクリプト、Workflowには、旧DB名・旧ストア名・IndexedDB削除処理の直接一致は見つからなかった。ただし、これは確認した文字列による静的検索結果であり、動的生成・外部Shortcut・端末内に保存されたページ等の不存在を保証しない。
 
