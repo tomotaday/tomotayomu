@@ -165,6 +165,41 @@ async function init(){
   $("importInfoButton").disabled=true;
  }
 }
+$("saveButton").addEventListener("click",async()=>{
+ if(saving||!dbReady||!toc||!draft)return;
+ saving=true;$("saveButton").disabled=true;
+ let db;
+ try{
+  const id="kakuyomu:"+draft.workId;
+  db=await openDB();
+  const exists=await new Promise((resolve,reject)=>{const req=db.transaction("works","readonly").objectStore("works").get(id);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error||new Error("重複確認失敗"))});
+  if(exists)throw new Error("この作品は既に新DBに登録されています。既存データは変更していません。");
+  const title=$("title").value.trim(),author=$("author").value.trim();
+  if(!title||!author)throw new Error("作品タイトルと作者名は必須です。");
+  const tags=$("tags").value.split(/[\\n,、]+/).map(x=>x.trim()).filter(Boolean);
+  const now=new Date().toISOString();
+  const item={
+   id,site:"kakuyomu",workId:draft.workId,title,authorName:author,authorId:$("authorHandle").value.trim(),
+   url:draft.url,shelfId:String(targetShelf?.shelf_id||""),
+   updatedAt:$("updatedAt").value.trim(),status:$("status").value.trim(),
+   episodeCount:toc.episodes.length,
+   reading:{position:null,isRead:null},
+   bookmark:{url:"",episodeId:"",position:0},
+   siteData:{synopsis:$("synopsis").value.trim(),tags,characterCount:Number($("characterCount").value)||0,
+    kakuyomuToc:{workId:toc.work_id,publicEpisodeCount:toc.episodes.length,extractedCount:toc.episodes.length},
+    legacyFields:{id:draft.workId,title,author,authorHandle:$("authorHandle").value.trim(),url:draft.url,
+     synopsis:$("synopsis").value.trim(),tags,status:$("status").value.trim(),
+     episodeCount:toc.episodes.length,characterCount:Number($("characterCount").value)||0,
+     updatedAt:$("updatedAt").value.trim(),shelfId:String(targetShelf?.shelf_id||""),site:"kakuyomu",createdAt:now}
+   }
+  };
+  await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite");tx.objectStore("works").add(item);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存失敗"));tx.onabort=()=>reject(tx.error||new Error("保存中止"))});
+  sessionStorage.removeItem(DRAFT_KEY);
+  showStatus("saveStatus","✅ 新DBへ登録しました。\\n"+title+"\\n総話数："+toc.episodes.length+"話\\n本棚へ戻ります…","good");
+  setTimeout(()=>location.href="../../index.html",900);
+ }catch(e){showStatus("saveStatus","⚠️ 登録できませんでした。\\n"+e.message,"bad");$("saveButton").disabled=false}
+ finally{if(db)db.close();saving=false}
+});
 init();
 </script>
 </body>
