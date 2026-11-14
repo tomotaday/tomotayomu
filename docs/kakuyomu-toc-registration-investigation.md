@@ -31,6 +31,8 @@ https://tomotaday.github.io/tomotayomu/app/kakuyomu/kakuyomu_write.html?request_
 
 ## 2. Shortcutの画面確認記録（2026-11-14）
 
+対象Shortcut名：**とよむ←カクヨム作品登録**。名称はショートカット一覧の表示枠に収まるよう、「ともたよむ」ではなく短い「とよむ」を使用する。
+
 利用者から提供されたiPhoneショートカット画面で、以下のアクションを確認した。
 
 | 順序 | アクション | 確認できた設定 |
