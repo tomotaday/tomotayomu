@@ -499,3 +499,15 @@
 - コード反映：commit `d9f6ebc084f2f0390a994ab83264daa997428b8b`。
 - 未確認：JavaScript構文テスト、本番iPhoneでの本棚再読み込み、3,601件のカード表示。コード反映を実機確認済みとは扱わない。
 - 本変更は `index.html` の読込判定のみ。IndexedDB、localStorage、作品レコード、読書位置、しおり、Shortcut連携は変更していない。
+
+
+## 2026-11-14：カクヨム・note連携対応（v3.8.1基準）
+
+- アプリ基準版を `v3.8.1【2026/11/14】`「カクヨム・note連携対応版」として確定。
+- ルート `index.html` のブラウザタイトル・トップ表示を更新。commit `80d6eb19e1cb7e939e8523ea255a6dfa07d32fef`。
+- カクヨム専用ShortcutによるActions起動・完了待ち・検証・新DB登録をiPhone実機で確認。187/187話の取得、作品登録、カードリンク・しおり、既存作品の重複登録拒否を確認。
+- noteしおり受信処理を、登録済み全マガジン目次との照合方式に変更。記事キーが一意に一致した場合だけ対象作品の `bookmarkUrl` を新DBへ保存し、成功後に一時受信キー `tomotaYomu_pending_note_bookmark_v1` を削除する。未一致・複数一致・目次取得失敗では保存しない。
+- noteの一意一致ケースはiPhone実機で確認。作品カードの続きリンクと進捗表示94/106話を確認。異常系3ケースは専用テストページでシミュレーション確認済み。本番異常系は未実施。
+- note bookmark test page `experiment/note-bookmark/index.html` は確認後に削除。commit `265bb4637251f7571336a175d61aa803885dfee9`。既存 `experiment/bookmark/` は維持。
+- 写真PDF01〜12はユーザーがプロジェクト添付およびゴミ箱から削除したと報告。GitHub資料室を正本として扱い、以後PDFの再確認を前提としない。
+- この作業で本番IndexedDB/localStorageの初期化・削除、GitHub ActionsやShortcutの変更は行っていない。noteの一時受信キーは成功時の処理でのみ削除される。
