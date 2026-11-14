@@ -16,7 +16,7 @@
 | 新DB | 現行作品データの正本 | `tomotaYomuWorksDB` version 2。詳細はDB構成資料 |
 | 新DBの作品登録 | なろう・note・カクヨムを新DBへ保存する経路を確認 | 最新件数は実機診断で再確認。過去の3,600件を固定値にしない |
 | 旧DB | 保全中 | `tomotaYomuDB` は通常本体から切り離し済み。削除・ストア削除は未承認 |
-| カクヨム登録 | 専用ShortcutからActions起動・完了待ち・検証・新DB登録まで実装 | 2026-11-14、187/187話の取得、登録、カードリンク、しおりを実機確認 |
+| カクヨム登録 | 専用ShortcutからActions起動・完了待ち・検証・新DB登録まで実装 | 2026-11-14、Shortcut画面の主要アクション・inputs対応を画像確認。187/187話の取得、登録、カードリンク、しおりを実機確認 |
 | カクヨム作品編集 | 新DB読み書き | DOM ID重複修正後、編集・保存を実機確認 |
 | カクヨム作者ハンドル | 初回取得・保存に対応 | `author.name` を@なしで保存。表示上の@と区別 |
 | カクヨム・note専用棚の並び順 | 最終更新日順へコード変更済み | commit `5a1020b`。実機で最新順・反転の最終確認が残る |
@@ -33,13 +33,15 @@
 
 ## 3. カクヨムの現行仕様
 
-- 専用ShortcutがUUID形式のrequest_idを発行し、作品URLとともにGitHub Actions `kakuyomu-toc.yml` を起動する。
+- 専用Shortcutは共有シートのURLを変数 `work_url` に設定し、キーチェーンの `GitHub_PAT` を `token` として取得（未登録時は入力を求めて保存）する。
+- `Generate UUID` でrequest_idを生成し、GitHub APIへPOST。`ref=main`、`inputs.work_url` は変数 `work_url`、`inputs.request_id` は生成UUID。
 - Shortcutは `app/kakuyomu/kakuyomu_write.html?request_id={UUID}` を開く。
 - Workflowが作品メタデータと目次を取得・検証し、request_idに対応する結果JSONを公開する。
 - 登録ページは5秒間隔で最大60回（最大約5分）結果を確認する。これは段階処理ではなく完了待ちのポーリング。
 - 検証成功後、登録ページで内容・登録先を確認し、明示操作で新DB `tomotaYomuWorksDB/works` に登録する。
 - 作品IDは `kakuyomu:{work_id}`。作者ハンドルは@なしで `authorId` に保存する。
 - あらすじは初回取得。既存作品の自動再取得・上書きは現行仕様にない。必要なら編集画面で手動修正。
+- 登録専用Shortcutの画面確認記録は技術記録に掲載。HTTPヘッダ詳細などスクリーンショットで見えない設定は未確認。
 - 既存Shortcut「とよむ+しおり」は変更しない。
 
 詳細：[`カクヨム登録・しおりガイド`](guides/kakuyomu_guide.html) / [技術記録](kakuyomu-toc-registration-investigation.md)
