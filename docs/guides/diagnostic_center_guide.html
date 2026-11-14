@@ -6,152 +6,119 @@
 <meta name="theme-color" content="#f6f3ed">
 <title>判定センター運用・判定基準ガイド｜ともたよむ 資料室</title>
 <style>
-:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195;--ok:#e8f3e9;--warn:#fff3d9;--future:#f0edf8;--blue:#eaf0fb}
+:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195;--ok:#e8f3e9;--warn:#fff3d9}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.7}
-main{width:min(100%,780px);margin:auto;padding:22px 16px 52px}h1{font-size:24px;line-height:1.35;margin:8px 0}h2{font-size:19px;margin:27px 0 8px;border-bottom:1px solid var(--line);padding-bottom:5px}h3{font-size:16px;margin:17px 0 5px}.lead,.muted{color:var(--muted)}.card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:14px;margin:12px 0}.current{background:var(--ok)}.warn{background:var(--warn)}.future{background:var(--future)}.blue{background:var(--blue)}.flow{padding-left:1.35em}.flow li{margin:6px 0}.code{display:block;overflow-wrap:anywhere;background:#f0eee9;border-radius:8px;padding:9px;font-family:ui-monospace,monospace;font-size:13px}.small{font-size:13px}.back{color:inherit}table{width:100%;border-collapse:collapse;font-size:14px}th,td{border:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}th{background:#f0eee9}code{overflow-wrap:anywhere}
+main{width:min(100%,780px);margin:auto;padding:22px 16px 52px}h1{font-size:24px;line-height:1.35;margin:8px 0}h2{font-size:19px;margin:27px 0 8px;border-bottom:1px solid var(--line);padding-bottom:5px}h3{font-size:16px;margin:17px 0 5px}.lead,.muted{color:var(--muted)}.card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:14px;margin:12px 0}.current{background:var(--ok)}.warn{background:var(--warn)}.flow{padding-left:1.35em}.flow li{margin:6px 0}.small{font-size:13px}table{width:100%;border-collapse:collapse;font-size:14px}th,td{border:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}th{background:#f0eee9}code{overflow-wrap:anywhere}.back{color:inherit}
 </style>
 </head>
 <body><main>
 <a class="back" href="../../index.html">← ともたよむ本棚へ戻る</a>
 <h1>🧭 判定センター 運用・判定基準ガイド</h1>
-<p class="lead">判定センターの設置目的、確認項目、判定の考え方、安全方針、現在の実装範囲をまとめた運用資料。</p>
+<p class="lead">本棚作品のNコード抽出、API照会、作者Atom取得失敗の確認に使う診断ページの運用と安全方針。</p>
 
 <section class="card current">
-<strong>現行設置｜2026/11/07 作成・整理</strong>
-<p class="small">画面：<code>tools/diagnostic/ncode_extract.html</code><br>本棚の管理作業とは分離した「運用管理・診断」機能。判定結果・確認記録は診断ページを開いたブラウザのlocalStorageに保存する。</p>
+<strong>現行構成｜2026/11/14確認</strong>
+<p>画面：<code>tools/diagnostic/ncode_extract.html</code></p>
+<p>作品データは新DB <code>tomotaYomuWorksDB</code> version 2 の <code>works</code> を読み取る。DBが存在しない場合や構造が想定外の場合は処理を中止し、DBを新規作成しない。</p>
 <p><a href="../../tools/diagnostic/ncode_extract.html">判定センターを開く ↗</a></p>
 </section>
 
 <h2>1. 設置目的</h2>
-<p>本棚に登録された作品や作者について、API・Atomから取得できない原因を調べ、実際にWEBページを確認するための診断窓口。API取得失敗をそのまま削除・退会と断定せず、人が確認して記録する。</p>
 <ul>
-<li>作者Atomの取得失敗と、作品APIの生存確認を分けて扱う。</li>
-<li>作者の状態を確認したうえで、その作者IDに関連する本棚作品を照合する。</li>
-<li>本棚全作品をまとめて照会し、確認が必要なNコードを抽出する。</li>
-<li>検索除外リストとの照合結果を表示し、未検出理由の切り分けを助ける。</li>
-<li>WEBで確認した記録を残す。ただし作品削除などの実処理は行わない。</li>
+<li>新DBに登録されたなろう作品からNコードを抽出し、形式不正・重複等を確認する。</li>
+<li>通常API・R18 APIで作品の取得可否を調べる。</li>
+<li>検索除外リストと照合し、未検出を分類する。</li>
+<li>作者Atomの取得失敗を確認し、作者ページを人が確認した結果を記録する。</li>
+<li>作者に関連する本棚作品を確認する。診断結果だけで作品・作者を自動削除しない。</li>
 </ul>
 
-<h2>2. 設置場所と対象データ</h2>
+<h2>2. 保存先・参照先</h2>
 <table>
-<tr><th>項目</th><th>内容</th></tr>
-<tr><td>画面ファイル</td><td><code>tools/diagnostic/ncode_extract.html</code></td></tr>
-<tr><td>本棚DB</td><td><code>tomotaYomuDB</code> の <code>shelf_placement</code>・<code>works_cache</code>・作者照合時の <code>authors</code> を読み取り</td></tr>
-<tr><td>判定記録</td><td>ブラウザのlocalStorage（診断専用キー）</td></tr>
-<tr><td>Atom入力</td><td><code>data/atom/author-feeds.json</code> の最新公開結果</td></tr>
-<tr><td>検索除外照合</td><td>現行ページはlocalStorageの <code>tomotaYomu_search_excluded_ncodes_v1</code> を読み取る</td></tr>
+<tr><th>項目</th><th>現行コードでの接続</th></tr>
+<tr><td>作品DB</td><td><code>tomotaYomuWorksDB</code> v2 / <code>works</code>。<code>site === "narou"</code> の作品を抽出。</td></tr>
+<tr><td>検索除外</td><td>localStorage <code>tomotaYomu_search_excluded_ncodes_v1</code> を読み取り。</td></tr>
+<tr><td>全件判定の進捗</td><td>localStorage <code>tomotaYomu_diagnostic_fullcheck_v1</code>。</td></tr>
+<tr><td>作者確認記録</td><td>localStorage <code>tomotaYomu_diagnostic_atom_audit_v1</code>。</td></tr>
+<tr><td>作品確認記録</td><td>localStorage <code>tomotaYomu_diagnostic_work_audit_v1</code>。</td></tr>
+<tr><td>Atom入力</td><td>公開JSON <code>data/atom/author-feeds.json</code>。</td></tr>
 </table>
-<p class="small">検索除外リストの正本はともたよむ本体側にある。現行診断ページの照合入力は上記localStorageキーを参照する実装なので、正本との同期・一致は別途確認対象。診断ページから検索除外リストを書き換えない。</p>
+<p class="small">診断進捗・確認記録は診断ページを開いたブラウザのlocalStorageに保存される。別ブラウザ・別端末とは自動同期しない。判定センターは旧DBの <code>shelf_placement</code> / <code>works_cache</code> / <code>authors</code> を現行作品の正本として使用しない。</p>
 
-<h2>3. 判定センターの構成項目</h2>
-<h3>① 本棚からNコードを抽出</h3>
+<h2>3. 主な機能</h2>
+<h3>① 新DBからNコードを抽出</h3>
 <ul>
-<li>既存のIndexedDBを読み取り専用で開く。</li>
-<li><code>shelf_placement</code> と <code>works_cache</code> を読み、Nコードを抽出・重複除去する。実際のAPI照会対象は、両方のストアに存在するNコード。</li>
-<li>配置側にだけ存在するコード、作品キャッシュ側にだけ存在するコード、形式不正の件数を分けて表示する。</li>
-<li>抽出結果の先頭20件・全件を確認、コピーできる。</li>
+<li>既存DB <code>tomotaYomuWorksDB</code> を開き、<code>works</code> を読み取る。</li>
+<li><code>site === "narou"</code> の作品から <code>workId</code> を取り出す。</li>
+<li>形式不正・重複を分けて集計する。作品レコードの追加・変更・削除は行わない。</li>
+<li>DBが存在しない場合、IndexedDBの一覧を確認できないブラウザ、DB versionやstoreが想定外の場合は安全のため停止する。</li>
 </ul>
 <h3>② API一括判定（試験）</h3>
-<p>抽出した照会対象Nコードの先頭最大1,000件を対象に、通常APIとR18 APIで照会する試験機能。全件判定とは別の、先頭部分で動作を確認するための機能。</p>
+<p>抽出したNコードの先頭最大1,000件を対象に、通常APIとR18 APIで照会する試験機能。</p>
 <h3>③ 全件判定（再開対応）</h3>
 <ul>
-<li>全Nコードを100件単位に分割して照会する。</li>
-<li>通常APIで見つからなかったコードだけをR18 APIへ照会する。</li>
-<li>100件単位の完了結果をブラウザ内に一時保存し、中断時は同じNコード一覧で再開できる。</li>
-<li>全件完了後、件数集計と判定結果一覧を表示する。詳細一覧は折りたたみ表示。</li>
+<li>100件単位に分けて照会する。</li>
+<li>通常APIで見つからなかったコードをR18 APIでも照会する。</li>
+<li>途中結果を診断専用localStorageへ保存し、同じ対象一覧で再開できる。</li>
+<li>進捗の消去操作は診断専用の一時進捗だけを対象とする。作品DBの削除ではない。</li>
 </ul>
 <h3>④ Atom取得失敗の確認</h3>
 <ul>
-<li>最新のAtom取得結果JSONを読み、作者またはフィードが失敗した作者を表示する。</li>
-<li>作者ID・全年齢/R18区分・作品Atom/活動報告AtomのHTTP状態を表示する。</li>
-<li>WEB作者ページを開き、目視確認後に「作者退会確認済」を記録する。</li>
+<li>公開Atom JSONから取得失敗した作者・フィードを表示する。</li>
+<li>作者ページを開き、人が目視確認した結果を診断専用localStorageへ記録する。</li>
 </ul>
-<h3>⑤ 作者に関連する本棚作品</h3>
+<h3>⑤ 作者に関連する作品の確認</h3>
 <ul>
-<li>IndexedDBの <code>authors</code> と <code>works_cache</code> を読み取り、作者IDと全年齢/R18区分を照合して関連作品を抽出する。</li>
-<li>該当作品のタイトル・Nコード・判定結果をカード表示する。</li>
-<li>作品WEBページを開いて確認できる。</li>
-<li>条件を満たす未検出作品について「削除確認済（未実施）」を記録できる。</li>
+<li>新DB <code>works</code> を読み、作者ID・作者種別等で関連作品を抽出する。</li>
+<li>作品ページを開いて確認し、必要に応じて「削除確認済（未実施）」を記録する。</li>
+<li>確認記録は削除処理を実行しない。</li>
 </ul>
 
-<h2>4. 作品APIの判定基準</h2>
+<h2>4. API判定の考え方</h2>
 <table>
 <tr><th>結果</th><th>意味・扱い</th></tr>
 <tr><td>通常API取得</td><td>通常APIで取得できた。API上で存在を確認できた状態。</td></tr>
-<tr><td>R18 API取得</td><td>通常APIでは見つからず、R18 APIで取得できた。R18 API側で存在を確認できた状態。</td></tr>
+<tr><td>R18 API取得</td><td>通常APIでは見つからず、R18 APIで取得できた状態。</td></tr>
 <tr><td>検索除外・未検出</td><td>通常API・R18 APIの両方で未検出、かつ検索除外リストに登録されている。削除を意味しない。</td></tr>
-<tr><td>要確認・未検出</td><td>通常API・R18 APIの両方で未検出、かつ検索除外リストに登録されていない。WEBでの確認が必要。</td></tr>
+<tr><td>要確認・未検出</td><td>両APIで未検出、かつ検索除外リストにない。WEBでの確認が必要。</td></tr>
 </table>
 <section class="card warn">
-<strong>重要：API未検出 ＝ 作品削除ではない</strong>
-<p>検索除外、公開状態の変化、API側の一時的な問題、取得条件など複数の可能性がある。APIの未検出だけで削除確定にしない。通信エラー・応答形式不正・件数不一致は「未検出」とせず、判定を中断して再確認する。</p>
+<strong>API未検出 ＝ 作品削除ではない</strong>
+<p>検索除外、公開状態の変化、API側の一時的な問題、取得条件など複数の可能性がある。通信エラー・応答形式不正・件数不一致は未検出とせず、判定を中断して再確認する。</p>
 </section>
 
-<h2>5. Atom・作者の判定基準</h2>
-<ul>
-<li>Atom取得失敗は「フィードを取得できなかった」という事実であり、作者退会の確定ではない。</li>
-<li>HTTP 404も、それだけで退会確定にしない。作者ページをWEBで開いて表示内容を確認する。</li>
-<li>作者ページで退会表示を目視確認した場合に限り、「作者退会確認済」を記録する。</li>
-<li>作者退会確認後、その作者IDに紐づく本棚作品を照合する。</li>
-</ul>
-<p>例：2026/11/07の実機確認では、作者ID <code>X2602BO</code>（R18）の作品Atom・活動報告AtomがHTTP 404となり、WEB確認後に作者退会確認済の記録が行われた。</p>
-
-<h2>6. WEB確認と確認済みボタン</h2>
+<h2>5. 作者・作品のWEB確認</h2>
 <ol class="flow">
-<li>カードのWEB確認ボタンから、対象の作者ページまたは作品ページを開く。</li>
-<li>WEBページを人が目視し、取得失敗の原因・削除表示の有無などを確認する。</li>
-<li>確認できた場合だけ、該当する確認済みボタンを押して記録する。</li>
-<li>記録後は確認ボタンをグレー表示・無効化し、二重操作を防ぐ。</li>
+<li>カードのWEB確認ボタンから対象ページを開く。</li>
+<li>ページを人が目視し、取得失敗や削除表示の有無を確認する。</li>
+<li>確認できた場合だけ該当する確認済みボタンを押す。</li>
+<li>確認記録は同じブラウザのlocalStorageに保存され、表示上の二重操作防止に使われる。</li>
 </ol>
 <ul>
-<li>作者カード：作者退会確認済の記録後、「取得失敗を確認する」ボタンを無効化する。</li>
-<li>作品カード：削除確認済（未実施）の記録後、「作品を確認する」ボタンを無効化する。</li>
+<li>Atom取得失敗は、作者退会の確定ではない。</li>
+<li>HTTP 404だけで退会確定にしない。作者ページを実際に開いて確認する。</li>
+<li>「削除確認済（未実施）」は人による確認記録であり、削除処理の実行を意味しない。</li>
 </ul>
-<p class="small">ボタンの無効化は診断記録に基づく表示制御。WEBページの状態を自動監視・再検証するものではない。記録は同じブラウザのlocalStorageに保存される。</p>
 
-<h2>7. 安全方針・変更禁止事項</h2>
+<h2>6. 安全方針</h2>
 <section class="card current">
-<strong>判定センターの大原則</strong>
 <ul>
-<li>本棚のIndexedDBは読み取り専用。新規作成・追加・更新・削除をしない。</li>
-<li>本体の <code>index.html</code> に診断処理を持ち込まない。入口リンク以外の本体機能を改変しない。</li>
-<li>Atom本番処理・GitHub Actionsの取得処理を変更しない。</li>
-<li>検索除外リストを診断ページから変更しない。</li>
-<li>作品・作者を自動削除しない。</li>
-<li>「削除確認済（未実施）」は人がWEBで確認した記録であり、削除処理を実行した意味ではない。</li>
-<li>判定結果・確認記録は診断専用領域に保存し、本棚の正本データと分離する。</li>
+<li>作品DB <code>tomotaYomuWorksDB</code> は読み取り専用で開く。作品・棚の追加・変更・削除をしない。</li>
+<li>診断専用の進捗・確認記録だけをlocalStorageへ保存する。</li>
+<li>検索除外リストは読み取り専用。診断ページから正本を書き換えない。</li>
+<li>作者・作品を自動削除しない。</li>
+<li>判定結果だけを根拠に本棚データを変更しない。</li>
+<li>本体・Shortcut・GitHub Actionsの入力形式を診断目的で変更しない。</li>
 </ul>
 </section>
 
-<h2>8. 2026/11/07 実機確認時の表示例</h2>
-<p>全件判定の画面で次の集計が表示された。これはその時点の実行結果例であり、固定値や今後の判定基準ではない。</p>
-<table>
-<tr><th>項目</th><th>件数</th></tr>
-<tr><td>入力</td><td>3,396件</td></tr>
-<tr><td>通常API取得</td><td>1,154件</td></tr>
-<tr><td>R18 API取得</td><td>2,206件</td></tr>
-<tr><td>検索除外・未検出</td><td>32件</td></tr>
-<tr><td>要確認・未検出</td><td>4件</td></tr>
-</table>
+<h2>7. 実機確認の記録</h2>
+<p>2026/11/10、iPhone / Braveで新DBからなろう作品3,596件を抽出し、形式不正0件・重複Nコード0件を確認した記録がある。これは当時の実機確認値であり、現在のDB件数を固定するものではない。</p>
+<p class="small">現行ページのコードと本資料が食い違う場合は、まずコードを読み取り確認し、実機での再確認が必要な点を分けて記録する。</p>
 
-<h2>9. 現在の実装範囲と今後の確認事項</h2>
-<h3>実装済み（コード上）</h3>
+<h2>8. 関連資料</h2>
 <ul>
-<li>既存本棚DBからのNコード抽出・集計</li>
-<li>通常API→R18 APIの順での照会</li>
-<li>100件単位の全件判定・一時保存・再開</li>
-<li>検索除外リストとの照合・未検出分類</li>
-<li>Atom取得失敗作者の表示、作者ページ確認、退会確認記録</li>
-<li>作者に関連する本棚作品の表示、作品ページ確認、削除確認済（未実施）の記録</li>
-<li>判定結果一覧の折りたたみ、確認済みボタンの無効化</li>
+<li><a href="../database-structure.html">DB構成表・接続一覧</a></li>
+<li><a href="../data-store-usage-inventory.md">保存先・画面利用関係</a></li>
+<li><a href="backup_restore_guide.html">バックアップ・復元ガイド</a></li>
 </ul>
-<h3>引き続き確認・検討する項目</h3>
-<ul>
-<li>検索除外リストの正本と診断ページが読むlocalStorageデータの同期・一致確認。</li>
-<li>作者退会確認後に表示される関連作品の全件照合と、作品カードの操作条件。</li>
-<li>診断記録を端末変更・ブラウザ変更後も参照する必要があるか。現状は同一ブラウザ内の保存。</li>
-<li>閲覧可能／要再確認／閲覧不能の疑い／判定不能といった、より細かなWEB確認結果の分類は今後の設計候補。現行コードの確定済み判定区分とは区別する。</li>
-</ul>
-<p class="small">この資料は2026/11/07時点の設計方針と実装コードを整理したもの。実機での動作確認が完了した項目は、確認日と結果を追記して更新する。</p>
-
 </main></body></html>
