@@ -34,6 +34,8 @@ button:disabled{opacity:.5}
 <section class="card">
 <h2>1. 取得結果</h2>
 <div id="tocStatus" class="status" aria-live="polite">取得結果を確認しています…</div>
+<button id="importInfoButton" type="button">作品情報を取り込む</button>
+<p class="small">目次の取得結果を先に確認できます。作品情報は必要なときに取り込んでください。</p>
 <div id="tocSummary" class="summary" hidden></div>
 <details id="episodeDetails" hidden>
 <summary>目次の内容を確認</summary>
@@ -73,15 +75,24 @@ function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open
 function readAll(db,store){return new Promise((resolve,reject)=>{const out=[],req=db.transaction(store,"readonly").objectStore(store).openCursor();req.onsuccess=()=>{const c=req.result;if(c){out.push(c.value);c.continue()}else resolve(out)};req.onerror=()=>reject(req.error||new Error(store+"読込失敗"))})}
 async function loadDraft(){
  const raw=sessionStorage.getItem(DRAFT_KEY);
- if(!raw)throw new Error("登録用の作品情報がありません。作品情報の解析ページから進んでください。");
+ if(!raw)return null;
  const value=JSON.parse(raw);
  if(!value||!validId(value.workId)||!/^https:\/\/kakuyomu\.jp\/works\/\d+/.test(value.url||""))throw new Error("登録用データの作品IDまたはURLが不正です。");
  if(value.workId!==String((value.url.match(/\/works\/(\d+)/)||[])[1]||""))throw new Error("作品IDとURLが一致しません。");
  return value;
 }
+function applyDraft(value){
+ draft=value;
+ $("workId").value=value.workId;$("workUrl").value=value.url;
+ $("title").value=value.title||"";$("author").value=value.author||"";
+ $("authorHandle").value=value.handle||"";$("synopsis").value=value.synopsis||"";
+ $("tags").value=Array.isArray(value.tags)?value.tags.join("\n"):"";
+ $("status").value=value.status||"";$("characterCount").value=value.characterCount||"";
+ $("updatedAt").value=value.updatedAt||"";
+}
 async function loadAndVerify(){
- const q=getQuery(),requestId=String(q.get("request_id")||""),workId=String(q.get("work_id")||"");
- if(!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(requestId)||!validId(workId))throw new Error("request_idまたはwork_idが指定されていません。");
+ const q=getQuery(),requestId=String(q.get("request_id")||"");
+ if(!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(requestId))throw new Error("request_idが指定されていません。");
  const base="https://raw.githubusercontent.com/tomotaday/tomotayomu/main/";
  let result=null,lastHttp=0;
  for(let attempt=0;attempt<60;attempt++){
@@ -99,7 +110,9 @@ async function loadAndVerify(){
  if(!result)throw new Error("目次取得結果が5分以内に公開されませんでした（HTTP "+lastHttp+"）。");
  if(result.request_id!==requestId)throw new Error("取得結果のrequest_idが一致しません。");
  if(result.status!=="success")throw new Error("目次取得に失敗しています："+String(result.error||"理由不明"));
- if(String(result.work_id)!==workId)throw new Error("取得結果の作品IDが一致しません。");
+ const workId=String(result.work_id||"");
+ if(!validId(workId))throw new Error("取得結果の作品IDが不正です。");
+ if(draft&&String(draft.workId)!==workId)throw new Error("作品情報と取得結果の作品IDが一致しません。");
  const expectedTocPath="data/kakuyomu-toc-requests/"+requestId+".toc.json";
  if(result.toc_path!==expectedTocPath)throw new Error("今回のリクエストに対応する目次ファイルではありません。");
  const tocRes=await fetch(base+expectedTocPath+"?ts="+Date.now(),{cache:"no-store"});
@@ -114,20 +127,24 @@ async function loadAndVerify(){
 }
 async function init(){
  try{
+  // 先にGitHub Actionsの取得結果を読み込む。作品情報draftは必須にしない。
   draft=await loadDraft();
-  $("workId").value=draft.workId;$("workUrl").value=draft.url;
-  $("title").value=draft.title||"";$("author").value=draft.author||"";
-  $("authorHandle").value=draft.handle||"";$("synopsis").value=draft.synopsis||"";
-  $("tags").value=Array.isArray(draft.tags)?draft.tags.join("\n"):"";
-  $("status").value=draft.status||"";$("characterCount").value=draft.characterCount||"";
-  $("updatedAt").value=draft.updatedAt||"";
   toc=await loadAndVerify();
+  const requestId=getQuery().get("request_id");
   $("tocSummary").hidden=false;
-  $("tocSummary").textContent="作品："+(toc.title||draft.title)+"\n作品ID："+toc.work_id+"\n総話数："+toc.episodes.length.toLocaleString("ja-JP")+"話\nrequest_id："+getQuery().get("request_id")+"\n検証：公表話数・抽出件数・連番・重複IDの確認済み";
+  $("tocSummary").textContent="作品："+(toc.title||(draft&&draft.title)||"作品情報未取込")+"\n作品ID："+toc.work_id+"\n総話数："+toc.episodes.length.toLocaleString("ja-JP")+"話\nrequest_id："+requestId+"\n検証：公表話数・抽出件数・連番・重複IDの確認済み";
   $("totalCount").textContent=toc.episodes.length.toLocaleString("ja-JP")+"話（TOC JSON確定値）";
   $("episodeDetails").hidden=false;
   $("episodeList").replaceChildren(...toc.episodes.map(ep=>{const li=document.createElement("li");li.textContent=ep.title||("第"+ep.number+"話");return li;}));
   showStatus("tocStatus","✅ 目次取得結果と作品ID・話数を照合しました。","good");
+
+  if(draft)applyDraft(draft);
+  else{
+   $("workId").value=String(toc.work_id);
+   $("workUrl").value="https://kakuyomu.jp/works/"+String(toc.work_id);
+   showStatus("saveStatus","作品情報はまだ取り込まれていません。下の「作品情報を取り込む」から進んでください。");
+  }
+
   const db=await openDB();
   try{
    const shelves=await readAll(db,"shelves");
@@ -135,48 +152,19 @@ async function init(){
    $("targetShelf").textContent=targetShelf?String(targetShelf.shelf_name||"指定本棚")+"（本棚管理で選択中）":"未分類（通常棚に登録先チェックなし）";
    dbReady=true;
   }finally{db.close()}
-  if(!$("title").value.trim()||!$("author").value.trim())throw new Error("作品タイトルと作者名は必須です。");
-  $("saveButton").disabled=false;
+
+  $("importInfoButton").addEventListener("click",()=>{
+   location.href="../../kakuyomu_add.html?request_id="+encodeURIComponent(requestId)+"&work_id="+encodeURIComponent(toc.work_id);
+  });
+  const ready=!!draft&&!!$("title").value.trim()&&!!$("author").value.trim()&&dbReady;
+  $("saveButton").disabled=!ready;
+  if(draft&&!ready)showStatus("saveStatus","作品タイトルと作者名を確認してください。");
  }catch(e){
-  showStatus("tocStatus","⚠️ 登録準備を完了できませんでした。\n"+e.message,"bad");
+  showStatus("tocStatus","⚠️ 目次を表示できませんでした。\n"+e.message,"bad");
   $("saveButton").disabled=true;
+  $("importInfoButton").disabled=true;
  }
 }
-$("saveButton").addEventListener("click",async()=>{
- if(saving||!dbReady||!toc||!draft)return;
- saving=true;$("saveButton").disabled=true;
- let db;
- try{
-  const id="kakuyomu:"+draft.workId;
-  db=await openDB();
-  const exists=await new Promise((resolve,reject)=>{const req=db.transaction("works","readonly").objectStore("works").get(id);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error||new Error("重複確認失敗"))});
-  if(exists)throw new Error("この作品は既に新DBに登録されています。既存データは変更していません。");
-  const title=$("title").value.trim(),author=$("author").value.trim();
-  if(!title||!author)throw new Error("作品タイトルと作者名は必須です。");
-  const tags=$("tags").value.split(/[\n,、]+/).map(x=>x.trim()).filter(Boolean);
-  const now=new Date().toISOString();
-  const item={
-   id,site:"kakuyomu",workId:draft.workId,title,authorName:author,authorId:$("authorHandle").value.trim(),
-   url:draft.url,shelfId:String(targetShelf?.shelf_id||""),
-   updatedAt:$("updatedAt").value.trim(),status:$("status").value.trim(),
-   episodeCount:toc.episodes.length,
-   reading:{position:null,isRead:null},
-   bookmark:{url:"",episodeId:"",position:0},
-   siteData:{synopsis:$("synopsis").value.trim(),tags,characterCount:Number($("characterCount").value)||0,
-    kakuyomuToc:{workId:toc.work_id,publicEpisodeCount:toc.episodes.length,extractedCount:toc.episodes.length},
-    legacyFields:{id:draft.workId,title,author,authorHandle:$("authorHandle").value.trim(),url:draft.url,
-     synopsis:$("synopsis").value.trim(),tags,status:$("status").value.trim(),
-     episodeCount:toc.episodes.length,characterCount:Number($("characterCount").value)||0,
-     updatedAt:$("updatedAt").value.trim(),shelfId:String(targetShelf?.shelf_id||""),site:"kakuyomu",createdAt:now}
-   }
-  };
-  await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite");tx.objectStore("works").add(item);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存失敗"));tx.onabort=()=>reject(tx.error||new Error("保存中止"))});
-  sessionStorage.removeItem(DRAFT_KEY);
-  showStatus("saveStatus","✅ 新DBへ登録しました。\n"+title+"\n総話数："+toc.episodes.length+"話\n本棚へ戻ります…","good");
-  setTimeout(()=>location.href="../../index.html",900);
- }catch(e){showStatus("saveStatus","⚠️ 登録できませんでした。\n"+e.message,"bad");$("saveButton").disabled=false}
- finally{if(db)db.close();saving=false}
-});
 init();
 </script>
 </body>
