@@ -25,6 +25,12 @@ button:disabled{opacity:.45}
 .work-title{font-weight:700}.work-meta{font-size:13px;color:var(--muted);margin-top:3px}
 details{margin-top:8px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f4f6fa;border-radius:9px;padding:12px;font-size:12px;max-height:420px;overflow:auto}
 code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px}
+.audit-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}
+.audit-table th,.audit-table td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+.audit-table th{background:#f4f6fa;position:sticky;top:0}
+.audit-wrap{overflow-x:auto}
+.audit-key{font-weight:700;min-width:150px}
+.audit-example{max-width:300px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -67,6 +73,15 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
 </section>
 
 <section class="panel">
+  <h2>4. データ項目の一次調査</h2>
+  <p>LabDB内の10作品を読み取り専用で調べ、項目の出現数・値の型・サンプルを集計します。</p>
+  <p class="small">この調査は表示用の集計だけを行います。元レコード・LabDBへの書き込みや変換は行いません。</p>
+  <button id="auditButton" type="button">10作品の項目を調査</button>
+  <div id="auditStatus" class="small" aria-live="polite">まだ調査していません。</div>
+  <div id="auditResult"></div>
+</section>
+
+<section class="panel">
   <h2>3. 取り込んだ作品</h2>
   <div id="works"><p class="muted">まだサンプルはありません。</p></div>
 </section>
@@ -88,6 +103,9 @@ const statusNode = document.getElementById("status");
 const countNode = document.getElementById("count");
 const dbStatusNode = document.getElementById("dbStatus");
 const worksNode = document.getElementById("works");
+const auditButton = document.getElementById("auditButton");
+const auditStatusNode = document.getElementById("auditStatus");
+const auditResultNode = document.getElementById("auditResult");
 
 let dbPromise = null;
 
@@ -222,6 +240,96 @@ async function refreshWorks() {
   }
 }
 
+function describeValue(value) {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "array";
+  return typeof value;
+}
+
+function collectFieldStats(records) {
+  const stats = new Map();
+  function visit(value, path, workIndex) {
+    if (!path) return;
+    if (!stats.has(path)) stats.set(path, { count: 0, types: new Set(), examples: new Set() });
+    const item = stats.get(path);
+    item.count++;
+    item.types.add(describeValue(value));
+    if (item.examples.size < 3) {
+      let sample;
+      try {
+        sample = typeof value === "string" ? value : JSON.stringify(value);
+      } catch {
+        sample = String(value);
+      }
+      if (sample !== undefined) item.examples.add(String(sample).slice(0, 110));
+    }
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      for (const [key, child] of Object.entries(value)) {
+        visit(child, path ? path + "." + key : key, workIndex);
+      }
+    } else if (Array.isArray(value)) {
+      for (let i = 0; i < value.length; i++) {
+        visit(value[i], path + "[]", workIndex);
+      }
+    }
+  }
+  records.forEach((record, index) => visit(record, "", index));
+  return [...stats.entries()].sort((a, b) => a[0].localeCompare(b[0], "ja"));
+}
+
+async function runFieldAudit() {
+  auditButton.disabled = true;
+  auditStatusNode.textContent = "10作品を読み取り中…";
+  auditResultNode.replaceChildren();
+  try {
+    const db = await openLabDB();
+    const tx = db.transaction(LAB_STORE_NAME, "readonly");
+    const records = await requestToPromise(tx.objectStore(LAB_STORE_NAME).getAll());
+    if (!records.length) {
+      auditStatusNode.textContent = "調査対象がありません。先に10作品を取り込んでください。";
+      return;
+    }
+    const stats = collectFieldStats(records);
+    const wrap = document.createElement("div");
+    wrap.className = "audit-wrap";
+    const table = document.createElement("table");
+    table.className = "audit-table";
+    const thead = document.createElement("thead");
+    const headRow = document.createElement("tr");
+    for (const label of ["項目パス", "出現数", "値の型", "値の例（最大3件）"]) {
+      const th = document.createElement("th");
+      th.textContent = label;
+      headRow.append(th);
+    }
+    thead.append(headRow);
+    const tbody = document.createElement("tbody");
+    for (const [path, item] of stats) {
+      const row = document.createElement("tr");
+      const keyCell = document.createElement("td");
+      keyCell.className = "audit-key";
+      keyCell.textContent = path;
+      const countCell = document.createElement("td");
+      countCell.textContent = item.count + " / " + records.length;
+      const typeCell = document.createElement("td");
+      typeCell.textContent = [...item.types].join(", ");
+      const exampleCell = document.createElement("td");
+      exampleCell.className = "audit-example";
+      exampleCell.textContent = [...item.examples].join(" ｜ ");
+      row.append(keyCell, countCell, typeCell, exampleCell);
+      tbody.append(row);
+    }
+    table.append(thead, tbody);
+    wrap.append(table);
+    auditResultNode.append(wrap);
+    auditStatusNode.textContent = records.length + "作品を調査しました。項目数：" + stats.length + "。元データは変更していません。";
+  } catch (error) {
+    auditStatusNode.textContent = "調査エラー：" + error.message;
+  } finally {
+    auditButton.disabled = false;
+  }
+}
+
+auditButton.addEventListener("click", runFieldAudit);
 importButton.addEventListener("click", importSamples);
 refreshButton.addEventListener("click", refreshWorks);
 refreshWorks();
