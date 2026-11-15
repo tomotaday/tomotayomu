@@ -31,6 +31,13 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
 .audit-wrap{overflow-x:auto}
 .audit-key{font-weight:700;min-width:150px}
 .audit-example{max-width:300px;color:var(--muted)}
+.preview-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px;margin:10px 0}
+.preview-card h3{font-size:17px;line-height:1.45;margin:5px 0 7px}
+.preview-meta{font-size:12px;color:var(--muted)}
+.preview-author{font-size:13px;margin:5px 0}
+.preview-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.preview-actions a{display:inline-block;padding:7px 10px;border:1px solid var(--line);border-radius:8px;color:var(--accent);text-decoration:none;font-size:13px}
+.preview-error{border:1px solid #e5a3a3;background:#fff1f1;border-radius:8px;padding:10px;margin:8px 0;color:#9b1c1c}
 </style>
 </head>
 <body>
@@ -73,6 +80,15 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
 </section>
 
 <section class="panel">
+  <h2>5. 作品カード実験</h2>
+  <p>LabDBのworksレコードを加工せず、そのまま実験用カードへ渡します。本番DB・本番カードには接続しません。</p>
+  <p class="small">現在のworksの項目を直接参照します。表示上のエラーや不足項目を確認するための試作です。</p>
+  <button id="previewButton" type="button">現在のworksでカードを表示</button>
+  <div id="previewStatus" class="small" aria-live="polite">まだ表示していません。</div>
+  <div id="previewCards"></div>
+</section>
+
+<section class="panel">
   <h2>4. データ項目の一次調査</h2>
   <p>LabDB内の10作品を読み取り専用で調べ、項目の出現数・値の型・サンプルを集計します。</p>
   <p class="small">この調査は表示用の集計だけを行います。元レコード・LabDBへの書き込みや変換は行いません。</p>
@@ -108,6 +124,9 @@ const auditButton = document.getElementById("auditButton");
 const copyAuditButton = document.getElementById("copyAuditButton");
 const auditStatusNode = document.getElementById("auditStatus");
 const auditResultNode = document.getElementById("auditResult");
+const previewButton = document.getElementById("previewButton");
+const previewStatusNode = document.getElementById("previewStatus");
+const previewCardsNode = document.getElementById("previewCards");
 let latestAuditRows = [];
 
 let dbPromise = null;
@@ -272,6 +291,105 @@ async function copyAuditResults() {
   }
 }
 
+function renderRawWorkCard(work) {
+  const card = document.createElement("article");
+  card.className = "preview-card";
+  const meta = document.createElement("div");
+  meta.className = "preview-meta";
+  meta.textContent = [work.status || "状態不明", work.updatedAt || "更新日不明", work.shelfId ? "棚：" + work.shelfId : "棚未設定"].join(" ｜ ");
+
+  const title = document.createElement("h3");
+  title.textContent = work.title || "（タイトルなし）";
+
+  const author = document.createElement("div");
+  author.className = "preview-author";
+  author.textContent = "作者：" + (work.authorName || "（作者名なし）");
+
+  const synopsis = document.createElement("p");
+  synopsis.textContent = work.synopsis || "あらすじなし";
+
+  const bookmark = work.bookmark;
+  const total = Number(work.episodeCount) || 0;
+  const isRead = bookmark === "R";
+  const hasNumberBookmark = typeof bookmark === "number" && Number.isFinite(bookmark);
+  const bookmarkLabel = isRead ? "読了" : hasNumberBookmark ? "しおり " + bookmark + "/" + (total || "—") + "話" : "しおり未設定";
+  const bookmarkLine = document.createElement("div");
+  bookmarkLine.className = "preview-meta";
+  bookmarkLine.textContent = bookmarkLabel;
+
+  const actions = document.createElement("div");
+  actions.className = "preview-actions";
+  const workLink = document.createElement("a");
+  workLink.textContent = "作品を開く";
+  workLink.href = work.url || "#";
+  workLink.target = "_blank";
+  workLink.rel = "noopener";
+  const resumeLink = document.createElement("a");
+  resumeLink.textContent = isRead ? "読了済み" : hasNumberBookmark ? "続きから" : "未読・最初から";
+  resumeLink.href = hasNumberBookmark && bookmark > 0 ? String(work.url || "#") + bookmark + "/" : String(work.url || "#");
+  resumeLink.target = "_blank";
+  resumeLink.rel = "noopener";
+  actions.append(workLink, resumeLink);
+
+  const details = document.createElement("details");
+  const summary = document.createElement("summary");
+  summary.textContent = "このカードが参照したworks項目";
+  const fields = document.createElement("pre");
+  fields.textContent = JSON.stringify({
+    id: work.id,
+    site: work.site,
+    workId: work.workId,
+    title: work.title,
+    authorName: work.authorName,
+    status: work.status,
+    updatedAt: work.updatedAt,
+    episodeCount: work.episodeCount,
+    bookmark: work.bookmark,
+    url: work.url,
+    synopsis: work.synopsis
+  }, null, 2);
+  details.append(summary, fields);
+  card.append(meta, title, author, synopsis, bookmarkLine, actions, details);
+  return card;
+}
+
+async function renderRawWorksPreview() {
+  previewButton.disabled = true;
+  previewCardsNode.replaceChildren();
+  previewStatusNode.textContent = "LabDBのworksを読み込み中…";
+  try {
+    const db = await openLabDB();
+    const tx = db.transaction(LAB_STORE_NAME, "readonly");
+    const records = await requestToPromise(tx.objectStore(LAB_STORE_NAME).getAll());
+    records.sort((a, b) => String(a.workId).localeCompare(String(b.workId)));
+    if (!records.length) {
+      previewStatusNode.textContent = "LabDBに作品がありません。先に10作品を取り込んでください。";
+      return;
+    }
+    let made = 0;
+    const errors = [];
+    for (const work of records) {
+      try {
+        previewCardsNode.append(renderRawWorkCard(work));
+        made++;
+      } catch (error) {
+        errors.push(String(work.workId || work.id || "ID不明") + "：" + error.message);
+        const box = document.createElement("div");
+        box.className = "preview-error";
+        box.textContent = "カード生成エラー：" + errors[errors.length - 1];
+        previewCardsNode.append(box);
+      }
+    }
+    previewStatusNode.textContent = made + " / " + records.length + "作品を表示しました。" +
+      (errors.length ? " カード生成エラー：" + errors.length + "件" : " カード生成時のJavaScriptエラーはありません。") +
+      " 元のworksレコードは変更していません。";
+  } catch (error) {
+    previewStatusNode.textContent = "表示エラー：" + error.message;
+  } finally {
+    previewButton.disabled = false;
+  }
+}
+
 function describeValue(value) {
   if (value === null) return "null";
   if (Array.isArray(value)) return "array";
@@ -374,6 +492,7 @@ async function runFieldAudit() {
 
 auditButton.addEventListener("click", runFieldAudit);
 copyAuditButton.addEventListener("click", copyAuditResults);
+previewButton.addEventListener("click", renderRawWorksPreview);
 importButton.addEventListener("click", importSamples);
 refreshButton.addEventListener("click", refreshWorks);
 refreshWorks();
