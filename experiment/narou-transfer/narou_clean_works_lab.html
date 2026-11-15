@@ -18,6 +18,7 @@ button{border:0;border-radius:10px;padding:12px 16px;background:var(--accent);co
 .index-card-preview .author,.index-card-preview .ncode{font-size:13px;color:#555}
 .index-card-preview .author{display:flex;align-items:center;gap:6px;min-width:0}
 .index-card-preview .authorName{flex:1;min-width:0}
+.index-card-preview .shelfIdLine{font-size:12px;color:#777;margin-top:5px;overflow-wrap:anywhere}
 .index-card-preview .siteBadge{display:inline-block;flex:0 0 60px;width:60px;margin-left:auto;padding:1px 7px;border-radius:999px;font-size:11px;line-height:1.5;font-weight:700;text-align:center;white-space:nowrap;box-sizing:border-box}
 .index-card-preview .siteBadge-narou{background:#DDF3E7;color:#278454}
 .index-card-preview details{margin-top:9px;font-size:13px}
@@ -48,11 +49,12 @@ function renderCard(work){
 const card=document.createElement("article");card.className="card";
 const isR18=work.siteData?.isR18===true, ncode=String(work.workId||"").toLowerCase();
 const url=(isR18?"https://novel18.syosetu.com/":"https://ncode.syosetu.com/")+ncode+"/";
-card.innerHTML='<div class="meta"><span class="lastUpdated"></span> ｜ <span class="status"></span></div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="siteBadge siteBadge-narou">なろう</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank"></a></div>';
+card.innerHTML='<div class="meta"><span class="lastUpdated"></span> ｜ <span class="status"></span></div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="siteBadge siteBadge-narou">なろう</span></div><div class="shelfIdLine"></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank"></a></div>';
 card.querySelector(".lastUpdated").textContent=work.updatedAt||"更新日なし";
 card.querySelector(".status").textContent=work.status||"状態不明";
 card.querySelector("h2").textContent=work.title||"タイトルなし";
 card.querySelector(".authorName").textContent=work.authorName||"作者情報なし";
+card.querySelector(".shelfIdLine").textContent="棚ID："+(work.shelfId||"＜未設定＞");
 card.querySelector(".synopsis").textContent=work.synopsis||"あらすじなし";
 card.querySelector(".workLink").href=url;
 const resume=card.querySelector(".resumeLink"), mark=isR18?"　®️":"", total=Number(work.episodeCount||0), bookmark=work.bookmark;
@@ -66,7 +68,7 @@ pre.textContent=[
 "title: "+(work.title??"＜なし＞"),"authorName: "+(work.authorName??"＜なし＞"),
 "updatedAt: "+(work.updatedAt??"＜なし＞"),"status: "+(work.status??"＜なし＞"),
 "episodeCount: "+(work.episodeCount??"＜なし＞"),"synopsis: "+(work.synopsis?"あり":"＜なし＞"),
-"bookmark: "+(work.bookmark??"＜なし＞"),"siteData.isR18: "+String(work.siteData?.isR18),
+"bookmark: "+(work.bookmark??"＜なし＞"),"shelfId: "+(work.shelfId??"＜なし＞"),"siteData.isR18: "+String(work.siteData?.isR18),
 "reading: "+(Object.hasOwn(work,"reading")?"残存":"削除済み"),
 "siteData.legacyFields: "+(Object.hasOwn(work.siteData||{},"legacyFields")?"残存":"削除済み"),
 "旧名 writer: "+(Object.hasOwn(work,"writer")?"あり":"なし"),
