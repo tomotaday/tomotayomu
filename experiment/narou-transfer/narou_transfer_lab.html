@@ -464,6 +464,10 @@ async function runNarouR18FallbackFetch() {
     if (ncodes.length > 10) throw new Error("今回の研究バッチは安全のため10作品までです。");
 
     const saved = await requestToPromise(db.transaction(LAB_API_STORE_NAME, "readonly").objectStore(LAB_API_STORE_NAME).getAll());
+    const normalSaved = saved.filter(record => record.source === "narou-novel-api");
+    if (!normalSaved.length) {
+      throw new Error("通常APIの保存済みデータが確認できません。先に①通常APIを実行し、取得データを保存してください。");
+    }
     const alreadyFetched = new Set(saved.map(record => String(record.ncode || record.id || "").toLowerCase()));
     const pending = ncodes.filter(code => !alreadyFetched.has(code));
     if (!pending.length) {
