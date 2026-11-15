@@ -93,7 +93,7 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
   <h2>2. LabDBの状態</h2>
   <div class="summary">
     <div class="stat"><span class="small">保存作品数</span><strong id="count">—</strong></div>
-    <div class="stat"><span class="small">DBバージョン</span><strong>5</strong></div>
+    <div class="stat"><span class="small">DBバージョン</span><strong>6</strong></div>
     <div class="stat"><span class="small">整理版作品数</span><strong id="cleanCount">—</strong></div>
   </div>
   <p id="dbStatus" class="small">DB確認中…</p>
@@ -143,7 +143,7 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
 "use strict";
 
 const LAB_DB_NAME = "tomotaYomuNarouTranslatorLabDB";
-const LAB_DB_VERSION = 5;
+const LAB_DB_VERSION = 6;
 const LAB_STORE_NAME = "sourceWorks";
 const LAB_CLEAN_STORE_NAME = "cleanWorks";
 const LAB_SHELF_STORE_NAME = "labShelves";
@@ -182,14 +182,15 @@ function openLabDB() {
     const request = indexedDB.open(LAB_DB_NAME, LAB_DB_VERSION);
     request.onupgradeneeded = () => {
       const db = request.result;
-      if (db.objectStoreNames.contains(LAB_STORE_NAME)) {
-        db.deleteObjectStore(LAB_STORE_NAME);
-      }
+      // 既存ストアは削除しない。過去の実験データを保持する。
       if (!db.objectStoreNames.contains(LAB_CLEAN_STORE_NAME)) {
         db.createObjectStore(LAB_CLEAN_STORE_NAME, { keyPath: "id" });
       }
       if (!db.objectStoreNames.contains(LAB_SHELF_STORE_NAME)) {
         db.createObjectStore(LAB_SHELF_STORE_NAME, { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains(LAB_API_STORE_NAME)) {
+        db.createObjectStore(LAB_API_STORE_NAME, { keyPath: "id" });
       }
     };
     request.onsuccess = () => {
