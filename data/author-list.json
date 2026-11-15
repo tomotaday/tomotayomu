@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "source": "tomotaYomuDB.authors",
-  "exported_at": "2026-11-12T21:17:33.138Z",
-  "author_count": 776,
+  "exported_at": "2026-11-15T20:46:39.215Z",
+  "author_count": 778,
   "authors": [
     {
       "author_id": "23291",
@@ -258,6 +258,10 @@
     },
     {
       "author_id": "1170047",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1228944",
       "author_type": "normal"
     },
     {
@@ -1206,6 +1210,10 @@
     },
     {
       "author_id": "X2650Y",
+      "author_type": "r18"
+    },
+    {
+      "author_id": "X2680P",
       "author_type": "r18"
     },
     {
