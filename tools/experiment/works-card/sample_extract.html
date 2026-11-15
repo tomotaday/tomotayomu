@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ともたよむ｜実験用8作品抽出</title>
+<title>ともたよむ｜実験用10作品抽出</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;color:#17345f}
 *{box-sizing:border-box}body{margin:0;background:#f2f5fa;line-height:1.6}
@@ -18,7 +18,7 @@ ul{padding-left:22px}.small{font-size:13px;color:#586579}
 </head>
 <body>
 <main>
-<h1>実験用サンプル抽出｜8作品</h1>
+<h1>実験用サンプル抽出｜10作品</h1>
 <p class="small">本番DBから指定したなろう作品だけを読み取り、実験用JSONを書き出します。</p>
 <section class="panel warning">
 <strong>安全仕様</strong>
@@ -26,7 +26,7 @@ ul{padding-left:22px}.small{font-size:13px;color:#586579}
 <li>本番DBは読み取り専用で開きます。</li>
 <li>DBの追加・更新・削除、localStorageへのアクセスは行いません。</li>
 <li>DBの新規作成やバージョン変更が必要な場合は中止します。</li>
-<li>抽出対象は下記8件のみです。</li>
+<li>抽出対象は下記10件のみです。</li>
 </ul>
 </section>
 <section class="panel">
@@ -39,9 +39,11 @@ ul{padding-left:22px}.small{font-size:13px;color:#586579}
 <li>N2611LU — 短編・未読</li>
 <li>N6515LE — 短編・読了</li>
 <li>N0175GW — R18</li>
-<li>N8433EB — 本棚未所属</li>
+<li>N8433EB — 本棚未所属・文字数／投稿日あり
+<li>N0370LQ — 完結・しおりあり（非R18候補）</li>
+<li>N1713HI — 追加確認用</li>
 </ul>
-<button id="extract" type="button">8作品を読み取り・JSON保存</button>
+<button id="extract" type="button">10作品を読み取り・JSON保存</button>
 </section>
 <section class="panel"><strong>処理結果</strong><pre id="status">待機中。本番DBにはまだ接続していません。</pre></section>
 </main>
@@ -49,7 +51,7 @@ ul{padding-left:22px}.small{font-size:13px;color:#586579}
 "use strict";
 const DB_NAME="tomotaYomuWorksDB";
 const DB_VERSION=2;
-const CODES=["N0566GY","N6106LC","N1437II","N4858HO","N2611LU","N6515LE","N0175GW","N8433EB"];
+const CODES=["N0566GY","N6106LC","N1437II","N4858HO","N2611LU","N6515LE","N0175GW","N8433EB","N0370LQ","N1713HI"];
 const $=id=>document.getElementById(id);
 function fail(message){throw new Error(message);}
 async function openExistingReadonly(){
@@ -90,7 +92,7 @@ function downloadJson(data){
  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json;charset=utf-8"});
  const url=URL.createObjectURL(blob);
  const a=document.createElement("a");
- a.href=url;a.download="tomotayomu-lab-samples-8works.json";
+ a.href=url;a.download="tomotayomu-lab-samples-10works.json";
  document.body.appendChild(a);a.click();a.remove();
  setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
@@ -122,7 +124,7 @@ async function extract(){
   await txDone;
   const payload={format:"tomotayomu-lab-samples",formatVersion:1,exportedAt:new Date().toISOString(),source:{database:DB_NAME,version:db.version,mode:"readonly"},works:records,shelves:selectedShelves};
   downloadJson(payload);
-  $("status").textContent="抽出成功：作品 "+records.length+"件／参照棚 "+selectedShelves.length+"件\n対象Nコード："+CODES.join(", ")+"\n本番DBへの書き込み：なし\nlocalStorageへのアクセス：なし\n保存ファイル：tomotayomu-lab-samples-8works.json";
+  $("status").textContent="抽出成功：作品 "+records.length+"件／参照棚 "+selectedShelves.length+"件\n対象Nコード："+CODES.join(", ")+"\n本番DBへの書き込み：なし\nlocalStorageへのアクセス：なし\n保存ファイル：tomotayomu-lab-samples-10works.json";
  }catch(error){
   $("status").textContent="抽出中止： "+error.message+"\nJSONは保存していません。\n本番DBへの書き込み：なし";
  }finally{
