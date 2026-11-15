@@ -445,7 +445,7 @@ function renderRawWorkCard(work) {
   card.dataset.r18 = (work.siteData?.isR18 === true || work.siteData?.legacyFields?.__r18 === true) ? "1" : "";
   card.dataset.noveltype = "";
 
-  card.innerHTML = '<div class="meta"><span class="newMark" hidden>🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span></div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="searchExcludedMark" aria-label="検索除外" hidden>🚫</span><span class="siteBadge siteBadge-narou">なろう</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから　📖 未読 / —話</a></div>';
+  card.innerHTML = '<div class="meta"><span class="newMark" hidden>🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> <span class="shelfId"></span></div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="searchExcludedMark" aria-label="検索除外" hidden>🚫</span><span class="siteBadge siteBadge-narou">なろう</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから　📖 未読 / —話</a></div>';
 
   // INDEXのupdateCardが参照する項目名を、そのままraw worksに対して読む。
   // ここでwriter/story/general_lastup等を補完しないことが実験の目的。
@@ -459,6 +459,7 @@ function renderRawWorkCard(work) {
   card.dataset.totalEpisodes = work.episodeCount ?? "";
   card.querySelector(".lastUpdated").textContent = work.updatedAt || "—";
   card.querySelector(".status").textContent = work.status || "状態不明";
+  card.querySelector(".shelfId").textContent = work.shelfId || "";
   card.querySelector(".synopsis").textContent = work.synopsis || "あらすじなし";
 
   const isR18 = card.dataset.r18 === "1";
@@ -492,9 +493,6 @@ function renderRawWorkCard(work) {
   const managementBody = document.createElement("div");
   const ncodeLine = document.createElement("p");
   ncodeLine.textContent = "Nコード：" + (ncode || "＜なし＞");
-  const shelfLine = document.createElement("p");
-  shelfLine.className = "small";
-  shelfLine.textContent = "本棚ID：" + (work.shelfId || "未設定");
   const managementActions = document.createElement("div");
   managementActions.className = "actions";
   const moveButton = document.createElement("button");
@@ -514,7 +512,7 @@ function renderRawWorkCard(work) {
   const managementNote = document.createElement("p");
   managementNote.className = "small";
   managementNote.textContent = "※ 操作対象はLabDBの整理版cleanWorksのみです。";
-  managementBody.append(ncodeLine, shelfLine, managementActions, managementNote);
+  managementBody.append(ncodeLine, managementActions, managementNote);
   management.append(managementSummary, managementBody);
   card.append(management);
 
