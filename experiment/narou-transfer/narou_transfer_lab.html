@@ -155,6 +155,7 @@ const previewButton = document.getElementById("previewButton");
 const previewStatusNode = document.getElementById("previewStatus");
 const previewCardsNode = document.getElementById("previewCards");
 let latestAuditRows = [];
+let labShelfIdSet = new Set();
 
 let dbPromise = null;
 
@@ -459,7 +460,7 @@ function renderRawWorkCard(work) {
   card.dataset.totalEpisodes = work.episodeCount ?? "";
   card.querySelector(".lastUpdated").textContent = work.updatedAt || "—";
   card.querySelector(".status").textContent = work.status || "状態不明";
-  card.querySelector(".shelfId").textContent = work.shelfId || "";
+  card.querySelector(".shelfId").textContent = work.shelfId ? (labShelfIdSet.has(work.shelfId) ? "\u{1F4CC}" : work.shelfId) : "";
   card.querySelector(".synopsis").textContent = work.synopsis || "あらすじなし";
 
   const isR18 = card.dataset.r18 === "1";
@@ -548,6 +549,8 @@ async function renderRawWorksPreview() {
   previewStatusNode.textContent = "LabDBの整理版worksを読み込み中…";
   try {
     const db = await openLabDB();
+    const shelves = await getLabShelves();
+    labShelfIdSet = new Set(shelves.map(shelf => shelf.id));
     const tx = db.transaction(LAB_CLEAN_STORE_NAME, "readonly");
     const records = await requestToPromise(tx.objectStore(LAB_CLEAN_STORE_NAME).getAll());
     records.sort((a, b) => String(a.workId).localeCompare(String(b.workId)));
