@@ -103,7 +103,7 @@ async function addShelf(){
   // 新しい棚IDは shelf01 形式の連番。既存IDは変更せず、数値IDの最大値+1を発行する。
   const usedIds=new Set(shelves.map(v=>getId(v)).filter(Boolean));
   const maxNumber=shelves.reduce((max,v)=>{
-    const match=getId(v).match(/^shelf(\\d+)$/i);
+    const match=getId(v).match(/^shelf(\d+)$/i);
     return match?Math.max(max,Number(match[1])):max;
   },0);
   let nextNumber=maxNumber+1;
