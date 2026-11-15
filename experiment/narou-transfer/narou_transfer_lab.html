@@ -66,7 +66,7 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
   <p class="eyebrow">DEVELOPMENT LAB / ISOLATED DATABASE</p>
   <h1>🧪 なろうトランスファー Lab</h1>
   <p>なろう作品データの変換設計を行うための独立実験室です。</p>
-  <p class="small">段階：実験環境の土台づくり。変換処理はまだ実装していません。</p>
+  <p class="small">段階：共通worksの日付2項目と作品カード表示を確認する実験。</p>
 </header>
 
 <section class="notice">
@@ -113,7 +113,7 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
   <h2>4. データ項目の一次調査</h2>
   <p>LabDB内の10作品を読み取り専用で調べ、項目の出現数・値の型・サンプルを集計します。</p>
   <p class="small">この調査は表示用の集計だけを行います。元レコードは変更しません。</p>
-  <div class="warning"><strong>重複項目の整理</strong><br>取り込み時に updatedAt を lastPublishedAt へ統一し、reading と siteData.legacyFields を除いて整理版 cleanWorks へ直接保存します。</div>
+  <div class="warning"><strong>重複項目の整理</strong><br>日付項目は publishedAt（初回登録日）と lastPublishedAt（最終更新日）の2項目を保持します。旧 updatedAt は lastPublishedAt へ移行し、reading と siteData.legacyFields は除いて整理版 cleanWorks へ保存します。</div>
   
   <div id="cleanStatus" class="small" aria-live="polite">まだ整理していません。</div>
   <button id="auditButton" type="button">10作品の項目を調査</button>
@@ -237,10 +237,14 @@ async function importSamples() {
       if (previous) {
         if (previous.shelfId !== undefined) work.shelfId = previous.shelfId;
         if (previous.searchExcluded !== undefined) work.searchExcluded = previous.searchExcluded;
+        if (previous.publishedAt !== undefined) work.publishedAt = previous.publishedAt;
         if (previous.lastPublishedAt !== undefined) work.lastPublishedAt = previous.lastPublishedAt;
       }
-      // 最終更新日の正式項目は lastPublishedAt。旧 updatedAt は移行して保持しない。
+      // 日付項目は publishedAt（初回登録日）と lastPublishedAt（最終更新日）の2項目を必ず保持する。
+      // 旧 updatedAt は lastPublishedAt へ移行し、旧項目名は残さない。
       if (work.lastPublishedAt === undefined && work.updatedAt !== undefined) work.lastPublishedAt = work.updatedAt;
+      if (work.publishedAt === undefined || work.publishedAt === null) work.publishedAt = "";
+      if (work.lastPublishedAt === undefined || work.lastPublishedAt === null) work.lastPublishedAt = "";
       delete work.updatedAt;
       delete work.reading;
       if (work.siteData && typeof work.siteData === "object") delete work.siteData.legacyFields;
@@ -277,13 +281,20 @@ async function migrateLabUpdateDateField(db) {
     const request = store.getAll();
     request.onsuccess = () => {
       for (const work of request.result || []) {
-        if (work.lastPublishedAt === undefined && work.updatedAt !== undefined) {
-          work.lastPublishedAt = work.updatedAt;
+        let changed = false;
+        if (work.lastPublishedAt === undefined || work.lastPublishedAt === null) {
+          work.lastPublishedAt = work.updatedAt ?? "";
+          changed = true;
+        }
+        if (work.publishedAt === undefined || work.publishedAt === null) {
+          work.publishedAt = "";
+          changed = true;
         }
         if (Object.prototype.hasOwnProperty.call(work, "updatedAt")) {
           delete work.updatedAt;
-          store.put(work);
+          changed = true;
         }
+        if (changed) store.put(work);
       }
     };
     tx.oncomplete = resolve;
@@ -472,7 +483,7 @@ function renderRawWorkCard(work) {
   card.dataset.r18 = (work.siteData?.isR18 === true || work.siteData?.legacyFields?.__r18 === true) ? "1" : "";
   card.dataset.noveltype = "";
 
-  card.innerHTML = '<div class="meta"><span class="newMark" hidden>🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> <span class="shelfId"></span></div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="searchExcludedMark" aria-label="検索除外" hidden>🚫</span><span class="siteBadge siteBadge-narou">なろう</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから　📖 未読 / —話</a></div>';
+  card.innerHTML = '<div class="meta"><span class="newMark" hidden>🆙 </span><span class="publishedAt">初回登録：—</span> ｜ <span class="lastUpdated">最終更新：—</span> ｜ <span class="status">—</span> <span class="shelfId"></span></div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="searchExcludedMark" aria-label="検索除外" hidden>🚫</span><span class="siteBadge siteBadge-narou">なろう</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから　📖 未読 / —話</a></div>';
 
   // INDEXのupdateCardが参照する項目名を、そのままraw worksに対して読む。
   // ここでwriter/story/general_lastup等を補完しないことが実験の目的。
@@ -482,9 +493,11 @@ function renderRawWorkCard(work) {
   const authorEl = card.querySelector(".authorName");
   if (authorEl) authorEl.textContent = work.authorName || "作者情報なし";
   card.querySelector(".searchExcludedMark").hidden = !Boolean(work.searchExcluded);
+  card.dataset.publishedAt = work.publishedAt || "";
   card.dataset.lastUpdated = work.lastPublishedAt || "";
   card.dataset.totalEpisodes = work.episodeCount ?? "";
-  card.querySelector(".lastUpdated").textContent = work.lastPublishedAt || "—";
+  card.querySelector(".publishedAt").textContent = "初回登録：" + (work.publishedAt || "—");
+  card.querySelector(".lastUpdated").textContent = "最終更新：" + (work.lastPublishedAt || "—");
   card.querySelector(".status").textContent = work.status || "状態不明";
   card.querySelector(".shelfId").textContent = work.shelfId ? String(work.shelfId) : "";
   card.querySelector(".synopsis").textContent = work.synopsis || "あらすじなし";
@@ -551,14 +564,16 @@ function renderRawWorkCard(work) {
   const checks = [
     ["title", work.title],
     ["authorName", work.authorName],
-    ["lastPublishedAt", work.lastPublishedAt],
+    ["publishedAt（初回登録日）", work.publishedAt],
+    ["lastPublishedAt（最終更新日）", work.lastPublishedAt],
     ["status", work.status],
     ["synopsis", work.synopsis],
     ["episodeCount", work.episodeCount],
     ["bookmark（新設計）", work.bookmark],
     ["workId（works項目）", work.workId],
     ["authorName（works項目）", work.authorName],
-    ["lastPublishedAt（works項目）", work.lastPublishedAt],
+    ["publishedAt（works項目・初回登録日）", work.publishedAt],
+    ["lastPublishedAt（works項目・最終更新日）", work.lastPublishedAt],
     ["episodeCount（works項目）", work.episodeCount],
     ["synopsis（works項目）", work.synopsis]
   ];
