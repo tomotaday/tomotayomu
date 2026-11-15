@@ -487,7 +487,7 @@ function renderRawWorkCard(work) {
   card.dataset.r18 = (work.siteData?.isR18 === true || work.siteData?.legacyFields?.__r18 === true) ? "1" : "";
   card.dataset.noveltype = "";
 
-  card.innerHTML = '<div class="meta"><span class="newMark" hidden>🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span></div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="siteBadge siteBadge-narou">なろう</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから　📖 未読 / —話</a></div>';
+  card.innerHTML = '<div class="meta"><span class="newMark" hidden>🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span></div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="searchExcludedMark" aria-label="検索除外" hidden>🚫</span><span class="siteBadge siteBadge-narou">なろう</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから　📖 未読 / —話</a></div>';
 
   // INDEXのupdateCardが参照する項目名を、そのままraw worksに対して読む。
   // ここでwriter/story/general_lastup等を補完しないことが実験の目的。
@@ -496,6 +496,7 @@ function renderRawWorkCard(work) {
   if (titleEl) titleEl.textContent = work.title || "（タイトルなし）";
   const authorEl = card.querySelector(".authorName");
   if (authorEl) authorEl.textContent = work.authorName || "作者情報なし";
+  card.querySelector(".searchExcludedMark").hidden = !Boolean(work.searchExcluded);
   card.dataset.lastUpdated = work.updatedAt || "";
   card.dataset.totalEpisodes = work.episodeCount ?? "";
   card.querySelector(".lastUpdated").textContent = work.updatedAt || "—";
@@ -549,7 +550,8 @@ function renderRawWorkCard(work) {
   const deleteButton = document.createElement("button");
   deleteButton.type = "button";
   deleteButton.textContent = "削除";
-  deleteButton.addEventListener("click", () => deleteLabCleanWork(work.id));
+  deleteButton.disabled = true;
+  deleteButton.title = "本番仕様に合わせた表示のみ。削除機能はありません。";
   managementActions.append(moveButton, excludedButton, deleteButton);
   const managementNote = document.createElement("p");
   managementNote.className = "small";
