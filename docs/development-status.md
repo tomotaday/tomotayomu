@@ -160,3 +160,14 @@
 - 初期検証資料は、なろう10作品のサンプルJSON。カクヨム3作品・note2作品のサンプルは別資料として保持し、今回のなろうLabには混ぜない。
 - この段階では実験ページ・LabDBをまだ作成していない。本番コード・本番データ・Shortcut・GitHub Actionsへの変更は行っていない。
 - 詳細・未確定事項・手順は `narou-translator-lab.md` を正本とする。
+
+
+## 2026-11-15：なろう通訳レジスターLabの実験環境を作成
+
+- `experiment/narou-translator/narou_translator_lab.html` を作成。
+- 独立DB `tomotaYomuNarouTranslatorLabDB` v1 / `sourceWorks` を実装。選択したサンプルJSONの10作品を変換せず保存する初期環境。
+- JSON形式・10件・なろう作品・ID重複等を保存前に検証し、1トランザクションで登録する。作品一覧と元JSONを画面で確認できる。
+- `experiment/narou-translator/README.md` に安全境界・使い方・次工程を記録。
+- コード上、本番DB・旧DB・Atom DB・Memo DB・localStorage・sessionStorage・API・Shortcut・Actionsへの接続なしを確認。
+- GitHub PagesのiPhone実機確認とサンプル10件の実取込は未実施。完了扱いにせず、次工程で実機確認する。
+- 詳細は `narou-translator-lab.md` の「実験環境の初期実装」を参照。
