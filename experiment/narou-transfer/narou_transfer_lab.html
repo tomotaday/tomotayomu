@@ -113,8 +113,8 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
   <h2>4. データ項目の一次調査</h2>
   <p>LabDB内の10作品を読み取り専用で調べ、項目の出現数・値の型・サンプルを集計します。</p>
   <p class="small">この調査は表示用の集計だけを行います。元レコードは変更しません。</p>
-  <div class="warning"><strong>重複項目の整理</strong><br>原本 sourceWorks は残したまま、reading と siteData.legacyFields を除いた整理版を cleanWorks に作成します。元データは削除・上書きしません。</div>
-  <button id="cleanButton" type="button">重複項目を除いた整理版を作成</button>
+  <div class="warning"><strong>重複項目の整理</strong><br>取り込み時に reading と siteData.legacyFields を除き、整理版 cleanWorks へ直接保存します。整理前データは保持しません。</div>
+  
   <div id="cleanStatus" class="small" aria-live="polite">まだ整理していません。</div>
   <button id="auditButton" type="button">10作品の項目を調査</button>
   <button id="copyAuditButton" type="button" disabled>調査結果をコピー</button>
@@ -134,7 +134,7 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
 "use strict";
 
 const LAB_DB_NAME = "tomotaYomuNarouTranslatorLabDB";
-const LAB_DB_VERSION = 3;
+const LAB_DB_VERSION = 4;
 const LAB_STORE_NAME = "sourceWorks";
 const LAB_CLEAN_STORE_NAME = "cleanWorks";
 const LAB_SHELF_STORE_NAME = "labShelves";
@@ -171,8 +171,8 @@ function openLabDB() {
     const request = indexedDB.open(LAB_DB_NAME, LAB_DB_VERSION);
     request.onupgradeneeded = () => {
       const db = request.result;
-      if (!db.objectStoreNames.contains(LAB_STORE_NAME)) {
-        db.createObjectStore(LAB_STORE_NAME, { keyPath: "id" });
+      if (db.objectStoreNames.contains(LAB_STORE_NAME)) {
+        db.deleteObjectStore(LAB_STORE_NAME);
       }
       if (!db.objectStoreNames.contains(LAB_CLEAN_STORE_NAME)) {
         db.createObjectStore(LAB_CLEAN_STORE_NAME, { keyPath: "id" });
@@ -230,18 +230,29 @@ async function importSamples() {
     const rawText = await file.text();
     const data = parseAndValidate(rawText);
     const db = await openLabDB();
-    await new Promise((resolve, reject) => {
-      const tx = db.transaction(LAB_STORE_NAME, "readwrite");
-      const store = tx.objectStore(LAB_STORE_NAME);
-      for (const work of data.works) {
-        // Source snapshot: preserve the uploaded sample record without normalization.
-        store.put(work);
+    const existingTx = db.transaction(LAB_CLEAN_STORE_NAME, "readonly");
+    const existing = await requestToPromise(existingTx.objectStore(LAB_CLEAN_STORE_NAME).getAll());
+    const existingById = new Map(existing.map(work => [work.id, work]));
+    const cleaned = data.works.map(source => {
+      const work = structuredClone(source);
+      const previous = existingById.get(work.id);
+      if (previous) {
+        if (previous.shelfId !== undefined) work.shelfId = previous.shelfId;
+        if (previous.searchExcluded !== undefined) work.searchExcluded = previous.searchExcluded;
       }
-      tx.oncomplete = resolve;
-      tx.onerror = () => reject(tx.error || new Error("保存に失敗しました"));
-      tx.onabort = () => reject(tx.error || new Error("保存が中断されました"));
+      delete work.reading;
+      if (work.siteData && typeof work.siteData === "object") delete work.siteData.legacyFields;
+      return work;
     });
-    setStatus(data.works.length + "作品をLabDBへ保存しました。元データは変換していません。");
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(LAB_CLEAN_STORE_NAME, "readwrite");
+      const store = tx.objectStore(LAB_CLEAN_STORE_NAME);
+      for (const work of cleaned) store.put(work);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error || new Error("整理版の保存に失敗しました"));
+      tx.onabort = () => reject(tx.error || new Error("整理版の保存が中断されました"));
+    });
+    setStatus(cleaned.length + "作品を整理版cleanWorksへ保存しました。整理前データは保持しません。");
     await refreshWorks();
   } catch (error) {
     setStatus("取り込み失敗：" + error.message, true);
@@ -260,13 +271,13 @@ function requestToPromise(request) {
 async function refreshWorks() {
   try {
     const db = await openLabDB();
-    const tx = db.transaction(LAB_STORE_NAME, "readonly");
-    const records = await requestToPromise(tx.objectStore(LAB_STORE_NAME).getAll());
+    const tx = db.transaction(LAB_CLEAN_STORE_NAME, "readonly");
+    const records = await requestToPromise(tx.objectStore(LAB_CLEAN_STORE_NAME).getAll());
     records.sort((a, b) => String(a.workId).localeCompare(String(b.workId)));
     countNode.textContent = String(records.length);
     const cleanCount = await requestToPromise(db.transaction(LAB_CLEAN_STORE_NAME, "readonly").objectStore(LAB_CLEAN_STORE_NAME).count());
     cleanCountNode.textContent = String(cleanCount);
-    dbStatusNode.textContent = "接続先：" + LAB_DB_NAME + " / ストア：" + LAB_STORE_NAME + "（読み取り専用で一覧表示）";
+    dbStatusNode.textContent = "接続先：" + LAB_DB_NAME + " / ストア：cleanWorks（整理版）";
     worksNode.replaceChildren();
     if (records.length === 0) {
       const empty = document.createElement("p");
@@ -286,7 +297,7 @@ async function refreshWorks() {
       meta.textContent = [work.workId, work.status || "状態不明", "全" + (work.episodeCount ?? "不明") + "話"].join(" ・ ");
       const details = document.createElement("details");
       const summary = document.createElement("summary");
-      summary.textContent = "元レコードJSONを確認";
+      summary.textContent = "整理版JSONを確認";
       const pre = document.createElement("pre");
       pre.textContent = JSON.stringify(work, null, 2);
       details.append(summary, pre);
@@ -300,55 +311,7 @@ async function refreshWorks() {
 }
 
 async function createCleanWorks() {
-  cleanButton.disabled = true;
-  cleanStatusNode.textContent = "原本を読み込み、整理版を作成中…";
-  try {
-    const db = await openLabDB();
-    const sourceTx = db.transaction(LAB_STORE_NAME, "readonly");
-    const sourceRecords = await requestToPromise(sourceTx.objectStore(LAB_STORE_NAME).getAll());
-    if (!sourceRecords.length) {
-      cleanStatusNode.textContent = "元作品がありません。先に10作品を取り込んでください。";
-      return;
-    }
-    const existingTx = db.transaction(LAB_CLEAN_STORE_NAME, "readonly");
-    const existingRecords = await requestToPromise(existingTx.objectStore(LAB_CLEAN_STORE_NAME).getAll());
-    const existingById = new Map(existingRecords.map(work => [work.id, work]));
-    const cleaned = sourceRecords.map(source => {
-      const work = structuredClone(source);
-      const previous = existingById.get(work.id);
-      if (previous) {
-        if (previous.shelfId !== undefined) work.shelfId = previous.shelfId;
-        if (previous.searchExcluded !== undefined) work.searchExcluded = previous.searchExcluded;
-      }
-      delete work.reading;
-      if (work.siteData && typeof work.siteData === "object") {
-        delete work.siteData.legacyFields;
-      }
-      return work;
-    });
-    await new Promise((resolve, reject) => {
-      const tx = db.transaction(LAB_CLEAN_STORE_NAME, "readwrite");
-      const store = tx.objectStore(LAB_CLEAN_STORE_NAME);
-      store.clear();
-      for (const work of cleaned) store.put(work);
-      tx.oncomplete = resolve;
-      tx.onerror = () => reject(tx.error || new Error("整理版の保存に失敗しました"));
-      tx.onabort = () => reject(tx.error || new Error("整理版の保存が中断されました"));
-    });
-    const checkTx = db.transaction(LAB_CLEAN_STORE_NAME, "readonly");
-    const checkRecords = await requestToPromise(checkTx.objectStore(LAB_CLEAN_STORE_NAME).getAll());
-    const invalid = checkRecords.filter(work =>
-      Object.prototype.hasOwnProperty.call(work, "reading") ||
-      Object.prototype.hasOwnProperty.call(work.siteData || {}, "legacyFields")
-    );
-    if (invalid.length) throw new Error("整理後も削除対象が残っています：" + invalid.length + "件");
-    cleanCountNode.textContent = String(checkRecords.length);
-    cleanStatusNode.textContent = checkRecords.length + "作品の整理版を作成しました。reading と siteData.legacyFields は整理版から除外済み。原本 sourceWorks はそのままです。";
-  } catch (error) {
-    cleanStatusNode.textContent = "整理版の作成エラー：" + error.message;
-  } finally {
-    cleanButton.disabled = false;
-  }
+  cleanStatusNode.textContent = "整理前ストアは廃止済みです。取り込み時に整理版cleanWorksへ直接保存します。";
 }
 
 async function copyAuditResults() {
@@ -667,8 +630,8 @@ async function runFieldAudit() {
   auditResultNode.replaceChildren();
   try {
     const db = await openLabDB();
-    const tx = db.transaction(LAB_STORE_NAME, "readonly");
-    const records = await requestToPromise(tx.objectStore(LAB_STORE_NAME).getAll());
+    const tx = db.transaction(LAB_CLEAN_STORE_NAME, "readonly");
+    const records = await requestToPromise(tx.objectStore(LAB_CLEAN_STORE_NAME).getAll());
     if (!records.length) {
       auditStatusNode.textContent = "調査対象がありません。先に10作品を取り込んでください。";
       return;
