@@ -35,6 +35,7 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
 .preview-card h3{font-size:17px;line-height:1.45;margin:5px 0 7px}
 .preview-meta{font-size:12px;color:var(--muted)}
 .preview-author{font-size:13px;margin:5px 0}
+.preview-synopsis{white-space:pre-wrap;color:var(--muted);margin:7px 0}
 .preview-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .preview-actions a{display:inline-block;padding:7px 10px;border:1px solid var(--line);border-radius:8px;color:var(--accent);text-decoration:none;font-size:13px}
 .preview-error{border:1px solid #e5a3a3;background:#fff1f1;border-radius:8px;padding:10px;margin:8px 0;color:#9b1c1c}
@@ -305,8 +306,13 @@ function renderRawWorkCard(work) {
   author.className = "preview-author";
   author.textContent = "作者：" + (work.authorName || "（作者名なし）");
 
+  const synopsisDetails = document.createElement("details");
+  const synopsisSummary = document.createElement("summary");
+  synopsisSummary.textContent = "あらすじを読む";
   const synopsis = document.createElement("p");
+  synopsis.className = "preview-synopsis";
   synopsis.textContent = work.synopsis || "あらすじなし";
+  synopsisDetails.append(synopsisSummary, synopsis);
 
   const bookmark = work.bookmark;
   const total = Number(work.episodeCount) || 0;
@@ -349,7 +355,7 @@ function renderRawWorkCard(work) {
     synopsis: work.synopsis
   }, null, 2);
   details.append(summary, fields);
-  card.append(meta, title, author, synopsis, bookmarkLine, actions, details);
+  card.append(meta, title, author, synopsisDetails, bookmarkLine, actions, details);
   return card;
 }
 
