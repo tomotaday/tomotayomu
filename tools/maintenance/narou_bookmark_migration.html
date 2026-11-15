@@ -54,6 +54,8 @@ function getPlan(w){
  const oldBookmark=w.bookmark;
  const reading=w.reading&&typeof w.reading==="object"?w.reading:{};
  const shortStory=String(w.siteData?.noveltype??"").trim()==="2";
+ const bookmarkPosition=oldBookmark&&typeof oldBookmark==="object"&&!Array.isArray(oldBookmark)?oldBookmark.position:oldBookmark;
+ const readingPosition=reading.position;
  const changes=[];
  let nextBookmark=oldBookmark;
  let hasNextBookmark=Object.prototype.hasOwnProperty.call(w,"bookmark");
@@ -64,15 +66,15 @@ function getPlan(w){
   if(oldBookmark!==nextBookmark||(!hasNextBookmark&&Object.prototype.hasOwnProperty.call(w,"bookmark")))changes.push("短編bookmark整理");
  }else{
   if(oldBookmark==="R"){anomaly="短編以外にbookmark=R";return {skip:true,anomaly,changes:[]}}
-  const nums=[oldBookmark,reading.position].filter(isPositiveNumber);
+  const nums=[bookmarkPosition,readingPosition].filter(isPositiveNumber);
   if(nums.length){nextBookmark=Math.max(...nums);hasNextBookmark=true}
   else{nextBookmark=undefined;hasNextBookmark=false}
   if(oldBookmark!==nextBookmark||(!hasNextBookmark&&Object.prototype.hasOwnProperty.call(w,"bookmark")))changes.push("bookmark統合");
  }
- const nextReading=reading&&typeof reading==="object"?{...reading}:{};
+ const nextReading={...reading};
  if(isZero(nextReading.position)){delete nextReading.position;changes.push("reading.positionの0を削除")}
  const readingChanged=JSON.stringify(nextReading)!==JSON.stringify(reading);
- return {skip:false,anomaly,changes,oldBookmark,nextBookmark,hasNextBookmark,nextReading,readingChanged};
+ return {skip:false,anomaly,changes,oldBookmark,bookmarkPosition,readingPosition,nextBookmark,hasNextBookmark,nextReading,readingChanged,shortStory};
 }
 function formatValue(v){return v===undefined?"（未設定）":JSON.stringify(v)}
 function scan(works){
@@ -80,7 +82,7 @@ function scan(works){
  let zeroBookmark=0,zeroReading=0,changed=0,shortRead=0,anomaly=0,skipped=0;
  previewRows=narou.map(w=>{
   const p=getPlan(w);
-  if(isZero(w.bookmark))zeroBookmark++;
+  if(isZero(w.bookmark)||isZero(w.bookmark?.position))zeroBookmark++;
   if(isZero(w.reading?.position))zeroReading++;
   if(p.anomaly){anomaly++;skipped++;return {id:w.id,workId:w.workId,plan:p}}
   if(p.changes.length||p.readingChanged)changed++;
@@ -101,7 +103,7 @@ function showSummary(s){
   "確認が必要な異常（短編以外のR）："+s.anomaly,
   "",
   "変更予定の内訳（先頭100件）:",
-  ...previewRows.filter(x=>!x.plan.skip&&(x.plan.changes.length||x.plan.readingChanged)).slice(0,100).map(x=>x.workId+" : bookmark "+formatValue(x.plan.oldBookmark)+" → "+formatValue(x.plan.hasNextBookmark?x.plan.nextBookmark:undefined)+(x.plan.readingChanged?" / reading.positionの0を削除":"")),
+  ...previewRows.filter(x=>!x.plan.skip&&(x.plan.changes.length||x.plan.readingChanged)).slice(0,100).map(x=>x.workId+" : bookmark.position="+formatValue(x.plan.bookmarkPosition)+" / reading.position="+formatValue(x.plan.readingPosition)+" → 採用bookmark="+formatValue(x.plan.hasNextBookmark?x.plan.nextBookmark:undefined)+(x.plan.shortStory?"（短編："+(x.plan.nextBookmark==="R"?"読了":"未読")+"）":"")+(x.plan.readingChanged?" / reading.positionの0を削除":"")),
   ...(s.anomaly?["","異常データ（変更対象外）:",...previewRows.filter(x=>x.plan.anomaly).map(x=>x.workId+" : "+x.plan.anomaly)]:[])
  ].join("\n");
 }
