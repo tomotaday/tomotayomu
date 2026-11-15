@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f5f7fb">
-<title>なろう通訳レジスター Lab｜ともたよむ</title>
+<title>なろうトランスファー Lab｜ともたよむ</title>
 <style>
 :root{color-scheme:light;--bg:#f4f6fa;--panel:#fff;--ink:#202633;--muted:#667085;--line:#d9e0ea;--accent:#315d9b;--safe:#e9f5ee;--warn:#fff4df}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.6}
@@ -31,7 +31,7 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
 <main>
 <header>
   <p class="eyebrow">DEVELOPMENT LAB / ISOLATED DATABASE</p>
-  <h1>🧪 なろう通訳レジスター Lab</h1>
+  <h1>🧪 なろうトランスファー Lab</h1>
   <p>なろう作品データの変換設計を行うための独立実験室です。</p>
   <p class="small">段階：実験環境の土台づくり。変換処理はまだ実装していません。</p>
 </header>
@@ -39,7 +39,7 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
 <section class="notice">
   <strong>安全境界</strong>
   <ul>
-    <li>使用するDB：<code>tomotaYomuNarouTranslatorLabDB</code> のみ</li>
+    <li>使用するDB：<code>tomotaYomuNarouTransferLabDB</code> のみ</li>
     <li>本番DB <code>tomotaYomuWorksDB</code>・旧DBには接続しません。</li>
     <li>localStorage・sessionStorage・Shortcut・GitHub Actionsを使用しません。</li>
     <li>なろうAPIなど外部サイトへ通信しません。</li>
@@ -77,7 +77,7 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
 <script>
 "use strict";
 
-const LAB_DB_NAME = "tomotaYomuNarouTranslatorLabDB";
+const LAB_DB_NAME = "tomotaYomuNarouTransferLabDB";
 const LAB_DB_VERSION = 1;
 const LAB_STORE_NAME = "sourceWorks";
 
