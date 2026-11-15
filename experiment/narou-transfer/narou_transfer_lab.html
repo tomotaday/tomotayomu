@@ -372,9 +372,10 @@ async function copyAuditResults() {
 async function getLabShelves() {
   const db = await openLabDB();
   const readTx = db.transaction([LAB_SHELF_STORE_NAME, LAB_CLEAN_STORE_NAME], "readonly");
-  const shelves = await requestToPromise(readTx.objectStore(LAB_SHELF_STORE_NAME).getAll());
+  const shelvesRequest = readTx.objectStore(LAB_SHELF_STORE_NAME).getAll();
+  const worksRequest = readTx.objectStore(LAB_CLEAN_STORE_NAME).getAll();
+  const [shelves, works] = await Promise.all([requestToPromise(shelvesRequest), requestToPromise(worksRequest)]);
   if (shelves.length) return shelves.sort((a,b)=>(a.order||999)-(b.order||999));
-  const works = await requestToPromise(readTx.objectStore(LAB_CLEAN_STORE_NAME).getAll());
   const ids = [...new Set(works.map(w => String(w.shelfId || "").trim()).filter(Boolean))];
   const initial = ids.map((id,index)=>({id,name:"元の棚 "+id,order:index+1}));
   initial.push({id:"lab-unclassified",name:"未分類",order:999});
