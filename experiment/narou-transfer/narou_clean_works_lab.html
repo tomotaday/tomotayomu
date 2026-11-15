@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ja"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f7fb"><title>整理版works専用カード実験｜ともたよむ</title>
+<style>
+:root{color-scheme:light;--bg:#f4f6fa;--panel:#fff;--ink:#202633;--muted:#667085;--line:#d9e0ea;--accent:#315d9b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.6}
+main{width:min(900px,100%);margin:auto;padding:20px 15px 48px}header,.panel,.notice{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:16px;margin:14px 0}
+.eyebrow{font-size:12px;letter-spacing:.08em;color:var(--muted);font-weight:700}h1{font-size:22px;line-height:1.35;margin:5px 0 8px}h2{font-size:18px;margin:0 0 10px}
+p{margin:7px 0}.small{font-size:13px;color:var(--muted)}.notice{background:#e9f5ee;border-color:#c8e4d2}
+button{border:0;border-radius:10px;padding:12px 16px;background:var(--accent);color:white;font-size:15px;font-weight:700;margin:10px 8px 0 0}
+#status{min-height:2em;font-weight:600;color:var(--muted)}
+/* INDEXなろう作品カードの実験用複製 */
+.index-card-preview .card{background:#fffdf9;border:1px solid #aaa195;border-radius:12px;padding:13px;margin:10px 0;color:#252525}
+.index-card-preview .meta{font-size:12px;color:#555;margin-bottom:8px}
+.index-card-preview .newMark{font-size:12px}
+.index-card-preview h2{font-size:15px;line-height:1.45;font-weight:700;margin:0 0 4px}
+.index-card-preview .author,.index-card-preview .ncode{font-size:13px;color:#555}
+.index-card-preview .author{display:flex;align-items:center;gap:6px;min-width:0}
+.index-card-preview .authorName{flex:1;min-width:0}
+.index-card-preview .siteBadge{display:inline-block;flex:0 0 60px;width:60px;margin-left:auto;padding:1px 7px;border-radius:999px;font-size:11px;line-height:1.5;font-weight:700;text-align:center;white-space:nowrap;box-sizing:border-box}
+.index-card-preview .siteBadge-narou{background:#DDF3E7;color:#278454}
+.index-card-preview details{margin-top:9px;font-size:13px}
+.index-card-preview summary{cursor:pointer}
+.index-card-preview .synopsis{white-space:pre-wrap;color:#555;margin:7px 0}
+.index-card-preview .actions{display:flex;gap:10px;margin-top:12px;font-size:13px;flex-wrap:wrap}
+.index-card-preview .actions a{color:inherit;text-decoration:none;border-bottom:1px solid #aaa}
+.index-card-preview .cardDiagnostic{margin-top:10px;border-top:1px dashed #aaa195;padding-top:7px;font-size:12px;color:#555}
+.index-card-preview .cardDiagnostic pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f4f1eb;border-radius:8px;padding:9px;font-size:11px;max-height:260px;overflow:auto}
+.index-card-preview .missingField{color:#a33;font-weight:700}
+</style></head><body><main>
+<header><p class="eyebrow">CLEAN WORKS / READ ONLY</p><h1>🧪 整理版works専用カード実験</h1>
+<p>重複項目を除いた cleanWorks だけを読み込む専用ページです。</p>
+<p class="small">このページは cleanWorks を読み取り専用で開きます。sourceWorks の読み込み・書き込み・削除は行いません。</p></header>
+<section class="notice"><strong>接続先</strong><p><code>tomotaYomuNarouTranslatorLabDB</code> / <code>cleanWorks</code></p>
+<p class="small">整理版がまだ作成されていない場合は、元の実験ラボで作成してください。</p></section>
+<section class="panel"><h2>整理版の読み込み</h2><p id="status" aria-live="polite">cleanWorksを確認しています…</p>
+<button id="reloadButton" type="button">整理版を再読み込み</button><div id="cards" class="index-card-preview"></div></section>
+</main>
+<script>
+"use strict";
+const DB_NAME="tomotaYomuNarouTranslatorLabDB", DB_VERSION=2, STORE_NAME="cleanWorks";
+const statusNode=document.getElementById("status"), cardsNode=document.getElementById("cards"), reloadButton=document.getElementById("reloadButton");
+function openCleanDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,DB_VERSION);
+req.onsuccess=()=>{const db=req.result;db.onversionchange=()=>db.close();if(!db.objectStoreNames.contains(STORE_NAME)){db.close();reject(new Error("cleanWorksストアがありません。元の実験ラボで整理版を作成してください。"));return;}resolve(db);};
+req.onerror=()=>reject(req.error||new Error("LabDBを開けません"));req.onblocked=()=>reject(new Error("LabDBが別のタブで使用中です"));});}
+function renderCard(work){
+const card=document.createElement("article");card.className="card";
+const isR18=work.siteData?.isR18===true, ncode=String(work.workId||"").toLowerCase();
+const url=(isR18?"https://novel18.syosetu.com/":"https://ncode.syosetu.com/")+ncode+"/";
+card.innerHTML='<div class="meta"><span class="lastUpdated"></span> ｜ <span class="status"></span></div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="siteBadge siteBadge-narou">なろう</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank"></a></div>';
+card.querySelector(".lastUpdated").textContent=work.updatedAt||"更新日なし";
+card.querySelector(".status").textContent=work.status||"状態不明";
+card.querySelector("h2").textContent=work.title||"タイトルなし";
+card.querySelector(".authorName").textContent=work.authorName||"作者情報なし";
+card.querySelector(".synopsis").textContent=work.synopsis||"あらすじなし";
+card.querySelector(".workLink").href=url;
+const resume=card.querySelector(".resumeLink"), mark=isR18?"　®️":"", total=Number(work.episodeCount||0), bookmark=work.bookmark;
+if(bookmark==="R"){resume.textContent="読了済み"+mark;resume.href=url;}
+else if(typeof bookmark==="number"&&Number.isFinite(bookmark)){resume.textContent="続き📖 "+bookmark+"/"+(total||"—")+"話"+mark;resume.href=bookmark>0?url+bookmark+"/":url;}
+else{resume.textContent="続き📖 未読 / "+(total||"—")+"話"+mark;resume.href=url;}
+const details=document.createElement("details");details.className="cardDiagnostic";
+const summary=document.createElement("summary");summary.textContent="整理版データの項目を確認";
+const pre=document.createElement("pre");
+pre.textContent=[
+"title: "+(work.title??"＜なし＞"),"authorName: "+(work.authorName??"＜なし＞"),
+"updatedAt: "+(work.updatedAt??"＜なし＞"),"status: "+(work.status??"＜なし＞"),
+"episodeCount: "+(work.episodeCount??"＜なし＞"),"synopsis: "+(work.synopsis?"あり":"＜なし＞"),
+"bookmark: "+(work.bookmark??"＜なし＞"),"siteData.isR18: "+String(work.siteData?.isR18),
+"reading: "+(Object.hasOwn(work,"reading")?"残存":"削除済み"),
+"siteData.legacyFields: "+(Object.hasOwn(work.siteData||{},"legacyFields")?"残存":"削除済み"),
+"旧名 writer: "+(Object.hasOwn(work,"writer")?"あり":"なし"),
+"旧名 general_lastup: "+(Object.hasOwn(work,"general_lastup")?"あり":"なし"),
+"旧名 story: "+(Object.hasOwn(work,"story")?"あり":"なし")
+].join("\n");
+details.append(summary,pre);card.append(details);return card;}
+async function loadCleanWorks(){reloadButton.disabled=true;cardsNode.replaceChildren();statusNode.textContent="整理版cleanWorksを読み込み中…";let db;
+try{db=await openCleanDB();const tx=db.transaction(STORE_NAME,"readonly"),req=tx.objectStore(STORE_NAME).getAll();
+const records=await new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error("整理版を読み込めません"));});
+records.sort((a,b)=>String(a.workId).localeCompare(String(b.workId)));
+if(!records.length){statusNode.textContent="cleanWorksは空です。元の実験ラボで整理版を作成してください。";return;}
+for(const work of records)cardsNode.append(renderCard(work));
+statusNode.textContent="cleanWorksから "+records.length+"作品を表示中（読み取り専用）。";
+}catch(error){statusNode.textContent="読み込みエラー："+error.message;}
+finally{if(db)db.close();reloadButton.disabled=false;}}
+reloadButton.addEventListener("click",loadCleanWorks);loadCleanWorks();
+</script></body></html>
