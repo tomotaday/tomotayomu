@@ -75,7 +75,7 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
     <li>使用するDB：<code>tomotaYomuNarouTranslatorLabDB</code> のみ</li>
     <li>本番DB <code>tomotaYomuWorksDB</code>・旧DBには接続しません。</li>
     <li>localStorage・sessionStorage・Shortcut・GitHub Actionsを使用しません。</li>
-    <li>なろうAPIなど外部サイトへ通信しません。</li>
+    <li>外部通信は、利用者がAPI一括取得ボタンを押した場合のなろうAPIへの読み取りだけです。</li>
     <li>選択したサンプルJSONを原形のままLabDBへ保存します。変換・本番登録はしません。</li>
   </ul>
 </section>
@@ -825,7 +825,8 @@ async function runFieldAudit() {
 
 auditButton.addEventListener("click", runFieldAudit);
 copyAuditButton.addEventListener("click", copyAuditResults);
-previewButton.addEventListener("click", renderRawWorksPreview);\napiFetchButton.addEventListener("click", runNarouApiBatchFetch);
+previewButton.addEventListener("click", renderRawWorksPreview);
+apiFetchButton.addEventListener("click", runNarouApiBatchFetch);
 importButton.addEventListener("click", importSamples);
 refreshButton.addEventListener("click", refreshWorks);
 refreshWorks();
