@@ -310,8 +310,16 @@ async function createCleanWorks() {
       cleanStatusNode.textContent = "元作品がありません。先に10作品を取り込んでください。";
       return;
     }
+    const existingTx = db.transaction(LAB_CLEAN_STORE_NAME, "readonly");
+    const existingRecords = await requestToPromise(existingTx.objectStore(LAB_CLEAN_STORE_NAME).getAll());
+    const existingById = new Map(existingRecords.map(work => [work.id, work]));
     const cleaned = sourceRecords.map(source => {
       const work = structuredClone(source);
+      const previous = existingById.get(work.id);
+      if (previous) {
+        if (previous.shelfId !== undefined) work.shelfId = previous.shelfId;
+        if (previous.searchExcluded !== undefined) work.searchExcluded = previous.searchExcluded;
+      }
       delete work.reading;
       if (work.siteData && typeof work.siteData === "object") {
         delete work.siteData.legacyFields;
