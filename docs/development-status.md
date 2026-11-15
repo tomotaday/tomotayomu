@@ -26,7 +26,7 @@
 
 ## 2. 現在の優先作業
 
-1. なろう通常作品の通訳レジスターLabを設計・検証する。現行 `register.html` は保護し、独立LabDBで理想形を追究する。詳細は [なろう通訳レジスター Lab 設計記録](narou-translator-lab.md)。
+1. なろう作品のトランスファーLabを独立LabDBで検証する。現行 `register.html`・本番DB・Shortcutは保護する。共通worksの日付2項目とカード表示はコード確認済み、iPhone実機確認待ち。詳細は [なろうトランスファー Lab 設計記録](narou-translator-lab.md) と [Lab README](../experiment/narou-transfer/README.md)。
 2. なろうカードの読書状態を `reading` から整理済み `bookmark` へ切り替える作業は未着手。
 3. 必要に応じてINDEXの資料室リンクをiPhone実機でタップ確認する。
 
@@ -116,7 +116,8 @@
 - [バックアップ・復元ガイド](guides/backup_restore_guide.html)
 - [判定センター運用ガイド](guides/diagnostic_center_guide.html)
 - [なろう登録・更新・復旧ガイド](guides/narou_register_guide.html)
-- [なろう通訳レジスター Lab 設計記録](narou-translator-lab.md)
+- [なろうトランスファー Lab 設計記録](narou-translator-lab.md)
+- [なろうトランスファー Lab README](../experiment/narou-transfer/README.md)
 - [カクヨム登録・しおりガイド](guides/kakuyomu_guide.html)
 - [note登録・更新・復旧ガイド](guides/note_magazine_guide.html)
 - [カクヨム登録・目次取得の技術記録](kakuyomu-toc-registration-investigation.html)
@@ -171,3 +172,16 @@
 - コード上、本番DB・旧DB・Atom DB・Memo DB・localStorage・sessionStorage・API・Shortcut・Actionsへの接続なしを確認。
 - GitHub PagesのiPhone実機確認とサンプル10件の実取込は未実施。完了扱いにせず、次工程で実機確認する。
 - 詳細は `narou-translator-lab.md` の「実験環境の初期実装」を参照。
+
+
+## 2026-11-15：なろうトランスファーLabの日付項目・作品カード整備
+
+- 共通worksの日付項目を `publishedAt`（初回登録日）と `lastPublishedAt`（最終更新日）の2つに整理。値の取得可否とは独立して、項目枠を保持する方針を確定。
+- Labの新規取込・既存レコード移行で2項目を保持し、旧 `updatedAt` は `lastPublishedAt` へ移行して削除する処理を実装。
+- なろう作品カードに「初回登録」「最終更新」の2欄を追加。値がない場合は `—` を表示。項目診断にも2項目を追加。
+- 対象ファイル：`experiment/narou-transfer/narou_transfer_lab.html`
+- commit：`6a199cfcfb5fca89dcaadf69c738d41b9d8fa54e`
+- GitHubから更新後ファイルを再取得し、項目保持・移行・カード表示・診断のコードを確認済み。
+- **iPhone実機での更新後DB確認・10作品診断・カード表示は未確認。** 実機確認が終わるまでは完了扱いしない。
+- 本番 `register.html`、INDEX、本番DB、Shortcut、GitHub Actionsへの変更なし。
+- 詳細は [なろうトランスファー Lab 設計記録](narou-translator-lab.md) を正本とする。
