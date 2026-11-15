@@ -26,7 +26,7 @@
 
 ## 2. 現在の優先作業
 
-1. ともたよむ23への引継書を作成する。
+1. なろう通常作品の通訳レジスターLabを設計・検証する。現行 `register.html` は保護し、独立LabDBで理想形を追究する。詳細は [なろう通訳レジスター Lab 設計記録](narou-translator-lab.md)。
 2. なろうカードの読書状態を `reading` から整理済み `bookmark` へ切り替える作業は未着手。
 3. 必要に応じてINDEXの資料室リンクをiPhone実機でタップ確認する。
 
@@ -116,6 +116,7 @@
 - [バックアップ・復元ガイド](guides/backup_restore_guide.html)
 - [判定センター運用ガイド](guides/diagnostic_center_guide.html)
 - [なろう登録・更新・復旧ガイド](guides/narou_register_guide.html)
+- [なろう通訳レジスター Lab 設計記録](narou-translator-lab.md)
 - [カクヨム登録・しおりガイド](guides/kakuyomu_guide.html)
 - [note登録・更新・復旧ガイド](guides/note_magazine_guide.html)
 - [カクヨム登録・目次取得の技術記録](kakuyomu-toc-registration-investigation.html)
@@ -146,3 +147,16 @@
 - INDEXの運用管理用棚からのリンクは、ともたがiPhone実機で確認済み。今回のAtom取込（手動）ボタンの反応確認も、この導線確認の過程で発生した。資料内部の相対リンク全件を実機でタップしたという意味ではない。
 - INDEXの「Atom取込（手動）」は通常運用上の重複操作としてメニューから除外。関連クリックイベント処理は保存先インベントリに削除候補として記録した。自動取込関数は現役のため削除しない。
 - 資料室整備は一区切りとし、今後は新しい調査結果・実装変更が発生した資料だけを更新する。旧DB保全・復元試験は別工程として保留する。
+
+
+## 2026-11-15：なろう通常作品 通訳レジスターLabの開始
+
+- ともたとの合意により、なろう通常作品の取得データを共通 `works` 形式へ変換する仕組みを、独立した実験環境で設計・検証する。
+- 実験ページ名は `narou_translator_lab.html`。`_lab` は開発・実験中の識別子であり、本番導入時に外す想定。最終名称・配置・Shortcut URL切替は完成後に判断する。
+- 入口はショートカットURL、通訳ページはデータを永続保存しない通過点、作品データの出口・保存先は `works` のみとする。通訳ページを作品情報の正本・参照先にしない。
+- 実験は独立LabDBで行い、本番DB・本番localStorage・現行Shortcut・本番カード表示を変更しない。現行 `register.html` は本番経路として保護し、読み取り・参考対象とする。
+- 2026-11-15に現行 `register.html` を読み取り専用で確認。API取得データはページ内変数 `fetchedWork` に保持され、登録先確認に `shelves`、重複確認に `works` を読み、新規レコードを `works.add(record)` で登録する。確認したコード内に作品情報をsessionStorage/localStorageへ永続保存する処理は見当たらない。
+- 現行コードでは共通項目への変換が一部にとどまり、取得データ全体を `siteData.legacyFields` に保持している。共通項目への具体的な変換ルールは未確定。API項目・欠損・値の意味を確認してから決める。
+- 初期検証資料は、なろう10作品のサンプルJSON。カクヨム3作品・note2作品のサンプルは別資料として保持し、今回のなろうLabには混ぜない。
+- この段階では実験ページ・LabDBをまだ作成していない。本番コード・本番データ・Shortcut・GitHub Actionsへの変更は行っていない。
+- 詳細・未確定事項・手順は `narou-translator-lab.md` を正本とする。
