@@ -102,7 +102,7 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
 
 <section class="panel">
   <h2>5. 作品カード実験</h2>
-  <p>本番INDEXのなろう作品カードを複製し、LabDBのworksレコードを加工せずに渡します。本番DB・本番カードには接続しません。</p>
+  <p>本番INDEXのなろう作品カードを複製し、LabDBの整理版cleanWorksレコードを加工せずに渡します。本番DB・本番カードには接続しません。</p>
   <p class="small">表示欄が空になる箇所や、カード側が要求する項目との違いを確認します。カード内の操作は表示確認用で、作品データの変更はできません。</p>
   <button id="previewButton" type="button">現在のworksでカードを表示</button>
   <div id="previewStatus" class="small" aria-live="polite">まだ表示していません。</div>
@@ -454,11 +454,11 @@ async function renderRawWorksPreview() {
   previewStatusNode.textContent = "LabDBのworksを読み込み中…";
   try {
     const db = await openLabDB();
-    const tx = db.transaction(LAB_STORE_NAME, "readonly");
-    const records = await requestToPromise(tx.objectStore(LAB_STORE_NAME).getAll());
+    const tx = db.transaction(LAB_CLEAN_STORE_NAME, "readonly");
+    const records = await requestToPromise(tx.objectStore(LAB_CLEAN_STORE_NAME).getAll());
     records.sort((a, b) => String(a.workId).localeCompare(String(b.workId)));
     if (!records.length) {
-      previewStatusNode.textContent = "LabDBに作品がありません。先に10作品を取り込んでください。";
+      previewStatusNode.textContent = "整理版cleanWorksに作品がありません。先に重複項目を除いた整理版を作成してください。";
       return;
     }
     let made = 0;
@@ -475,7 +475,7 @@ async function renderRawWorksPreview() {
         previewCardsNode.append(box);
       }
     }
-    previewStatusNode.textContent = made + " / " + records.length + "作品を表示しました。" +
+    previewStatusNode.textContent = "整理版cleanWorks：" + made + " / " + records.length + "作品を表示しました。" +
       (errors.length ? " カード生成エラー：" + errors.length + "件" : " カード生成時のJavaScriptエラーはありません。") +
       " 空欄・不足項目は各カードの「カードの参照項目・不足確認」で調べられます。元のworksレコードは変更していません。";
   } catch (error) {
