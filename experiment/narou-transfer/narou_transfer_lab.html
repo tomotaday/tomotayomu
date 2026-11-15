@@ -77,6 +77,7 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
   <p>LabDB内の10作品を読み取り専用で調べ、項目の出現数・値の型・サンプルを集計します。</p>
   <p class="small">この調査は表示用の集計だけを行います。元レコード・LabDBへの書き込みや変換は行いません。</p>
   <button id="auditButton" type="button">10作品の項目を調査</button>
+  <button id="copyAuditButton" type="button" disabled>調査結果をコピー</button>
   <div id="auditStatus" class="small" aria-live="polite">まだ調査していません。</div>
   <div id="auditResult"></div>
 </section>
@@ -104,8 +105,10 @@ const countNode = document.getElementById("count");
 const dbStatusNode = document.getElementById("dbStatus");
 const worksNode = document.getElementById("works");
 const auditButton = document.getElementById("auditButton");
+const copyAuditButton = document.getElementById("copyAuditButton");
 const auditStatusNode = document.getElementById("auditStatus");
 const auditResultNode = document.getElementById("auditResult");
+let latestAuditRows = [];
 
 let dbPromise = null;
 
@@ -240,6 +243,35 @@ async function refreshWorks() {
   }
 }
 
+async function copyAuditResults() {
+  if (!latestAuditRows.length) {
+    auditStatusNode.textContent = "先に項目調査を実行してください。";
+    return;
+  }
+  const tsv = latestAuditRows
+    .map(row => row.map(value => String(value).replace(/[\\t\\r\\n]+/g, " ")).join("\\t"))
+    .join("\\n");
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(tsv);
+    } else {
+      const helper = document.createElement("textarea");
+      helper.value = tsv;
+      helper.setAttribute("readonly", "");
+      helper.style.position = "fixed";
+      helper.style.opacity = "0";
+      document.body.append(helper);
+      helper.select();
+      const copied = document.execCommand("copy");
+      helper.remove();
+      if (!copied) throw new Error("コピー機能を利用できません");
+    }
+    auditStatusNode.textContent = "調査結果をコピーしました。Excelやメモに貼り付けできます。";
+  } catch (error) {
+    auditStatusNode.textContent = "コピーできませんでした：" + error.message;
+  }
+}
+
 function describeValue(value) {
   if (value === null) return "null";
   if (Array.isArray(value)) return "array";
@@ -291,6 +323,16 @@ async function runFieldAudit() {
       return;
     }
     const stats = collectFieldStats(records);
+    latestAuditRows = [["項目パス", "出現数", "値の型", "値の例（最大3件）"]];
+    for (const [path, item] of stats) {
+      latestAuditRows.push([
+        path,
+        item.count + " / " + records.length,
+        [...item.types].join(", "),
+        [...item.examples].join(" ｜ ")
+      ]);
+    }
+    copyAuditButton.disabled = false;
     const wrap = document.createElement("div");
     wrap.className = "audit-wrap";
     const table = document.createElement("table");
@@ -331,6 +373,7 @@ async function runFieldAudit() {
 }
 
 auditButton.addEventListener("click", runFieldAudit);
+copyAuditButton.addEventListener("click", copyAuditResults);
 importButton.addEventListener("click", importSamples);
 refreshButton.addEventListener("click", refreshWorks);
 refreshWorks();
