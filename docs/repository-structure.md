@@ -47,6 +47,7 @@
 | `docs/guides/` | `narou_register_guide.html` | なろう登録ガイド |
 | `docs/guides/` | `note_magazine_guide.html` | noteマガジン登録ガイド |
 | `docs/` | `repository-structure.md` | 本ファイル。リポジトリ構成表 |
+| `docs/` | `narou-translator-lab.md` | なろう通常作品の通訳レジスターLab設計・検証記録 |
 | `docs/` | `database-structure.md` / `database-structure.html` | DB構成表・接続一覧 |
 
 ## 4. data（アプリ参照データ）
@@ -335,3 +336,11 @@ GitHub main上の主要な現行画面13ファイルをコード検索し、旧D
 - カラー工房・本棚管理・手動登録ページ等にはlocalStorageの読み書きがあるが、これらは旧DBの直接参照とは別にキー単位の用途確認が必要。
 
 この検索結果は対象13ファイルの直接文字列検索であり、動的に組み立てられたDB名、Shortcut、外部サービス、古いHTML・退避コード、ブラウザ内に残るデータの参照有無まで否定するものではない。旧DB削除の最終判断には、Shortcutの参照先とバックアップ復元確認も必要。
+
+
+### 2026-11-15 なろう通訳レジスターLab資料の追加
+
+- `docs/narou-translator-lab.md` を新規作成。なろう通常作品の通訳レジスターを独立LabDBで設計・検証する方針、現行 `register.html` のコード確認結果、未確定事項、開発手順を記録した。
+- `docs/development-status.md` から本資料へリンクし、現在の優先作業に追加した。
+- `docs/data-store-usage-inventory.md` に現行 `register.html` の取得・読み取り・書き込み・一時保持の確認結果を追記した。
+- 今回は資料のみ更新。実験ページ `narou_translator_lab.html` は未作成。本番 `register.html`、本番DB、localStorage、Shortcut、GitHub Actionsは変更していない。
