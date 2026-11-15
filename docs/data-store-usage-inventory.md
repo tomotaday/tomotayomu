@@ -38,6 +38,17 @@ DB：`tomotaYomuWorksDB` version 2
 | 本棚管理 | `works` / `shelves` | `works.shelfId` / `shelves` | `app/shelf/shelf_manager.html` |
 | 作者管理 | `works` | `works` の作者関連フィールド | `app/author/author.html` |
 | なろう登録 | `shelves`、既存作品確認に `works` | `works` | `register.html` |
+
+#### なろう通常作品登録ページ `register.html`（2026-11-15コード再確認）
+
+- 入口：URLクエリの `ncode` または `code`。現行ガイドではショートカットからNコードを渡す。
+- 取得：なろう通常APIを先に呼び、取得できない場合はR18 APIを確認。取得結果はページ内変数 `fetchedWork` に保持する。
+- 読み取り：登録先決定のため `shelves`、重複確認のため `works` を読む。
+- 書き込み：新規作品レコードを `works.add(record)` で登録。既存作品は上書きしない。
+- 中間保存：確認したコード内に、作品情報をsessionStorage/localStorageへ永続保存する処理は見当たらない。ページ内変数で一時保持している。
+- 変換：共通項目の一部を設定し、取得APIデータ全体を `siteData.legacyFields` に保持している。共通項目への変換不足・欠損状況の詳細は `narou-translator-lab.md` で調査する。
+- 今後の実験：`register.html` は現行本番経路として保護し、`narou_translator_lab.html` と独立LabDBで変換設計を検証する。実験中は本番DB・本番localStorage・Shortcutを変更しない。
+
 | 手動登録・検索除外作品管理 | `works` / `shelves` | `works` | `app/register/work_add.html` |
 | 検索除外作品の既存情報編集 | 対象の `works` レコード | `works` | `app/register/search_excluded_edit.html` |
 | あらすじ補完 | 対象の `works` レコード | `works.synopsis` / `siteData.legacyFields` | `app/shelf/synopsis_repair.html` |
