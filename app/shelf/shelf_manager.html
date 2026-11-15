@@ -30,6 +30,16 @@ button{border:1px solid #c8c0b5;border-radius:8px;background:transparent;padding
 .workTitle{font-size:14px;font-weight:600}.workMeta{font-size:11px;color:#888;margin-top:2px}
 .empty{font-size:13px;color:#999}.more{font-size:12px;color:#777;margin-top:8px}
 .hint{font-size:12px;color:#777;margin:14px 2px}
+.idPanel{background:#fffdf9;border:1px solid #c8c0b5;border-radius:10px;padding:11px 12px;margin:0 0 14px}
+.idPanelTitle{font-size:14px;font-weight:700;margin-bottom:8px}
+#idSummary{font-size:11px;font-weight:400;color:#777;margin-left:5px}
+.idList{display:flex;flex-direction:column;gap:5px}
+.idItem{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;padding:5px 0;border-top:1px solid #eee7de}
+.idItem:first-child{border-top:0}
+.idName{color:#555;min-width:0;overflow-wrap:anywhere}
+.idValue{font-family:ui-monospace,SFMono-Regular,monospace;font-size:12px;overflow-wrap:anywhere}
+.idType{font-size:10px;white-space:nowrap;border:1px solid #c8c0b5;border-radius:5px;padding:2px 5px;color:#666}
+.idType.other{border-color:#d49a65;color:#965b26;background:#fff8ef}
 </style>
 </head>
 <body>
@@ -41,6 +51,10 @@ button{border:1px solid #c8c0b5;border-radius:8px;background:transparent;padding
 <div class="source">データ源：tomotaYomuWorksDB → shelves / works　｜　CSV再読込なし</div>
 <div class="toolbar"><button id="addBtn" type="button">➕ 本棚を追加</button><button id="saveBtn" type="button">表示順を保存</button><button id="resetBtn" type="button">初期順に戻す</button></div>
 <div id="status">IndexedDBから棚情報を読み込み中…</div>
+<section id="shelfIdPanel" class="idPanel" aria-label="棚ID一覧">
+  <div class="idPanelTitle">🔎 棚ID一覧 <span id="idSummary"></span></div>
+  <div id="shelfIdList" class="idList">棚情報を読み込み中…</div>
+</section>
 <div id="shelfList"></div>
 <div class="hint">➕で本棚を追加できます。棚をタップすると中身を確認できます。☰ は並べ替え用です。棚名はその場で変更できます。通常棚の「📥登録先」で新規登録先を指定します。通常棚にチェックがない場合は、未分類が自動的に登録先になります。登録先は棚名ではなく固定IDに紐づきます。空棚には削除ボタンが表示されます。</div>
 </main>
@@ -60,6 +74,31 @@ function shelfText(v){if(!v)return "";const direct=v.shelf_name??v.name??v.title
 function core(raw){const s=String(raw||"").replace(/[🟠🔵🌀🎈📚⏰]/g,"").replace(/\s+/g,"");if(s.includes("読書中"))return"読書中";if(s.includes("未分類"))return"未分類";for(const k of DESIRED_ORDER.slice(1))if(s.includes(k)||s.includes(k.replace("〜","-")))return k;return""}
 function label(c){if(c==="読書中")return"🟠読書中";if(c==="更新待ち")return"⏰更新待ち";if(c==="未分類")return"未分類";return c?"🎈"+c:"（未使用）"}
 function getId(v){return String(v?.shelf_id??"").trim()}
+function renderShelfIds(){
+ const list=document.getElementById("shelfIdList");
+ const summary=document.getElementById("idSummary");
+ if(!list||!summary)return;
+ list.innerHTML="";
+ const sorted=shelves.slice().sort((a,b)=>{
+   const an=getId(a),bn=getId(b);
+   const am=an.match(/^shelf(\d+)$/i),bm=bn.match(/^shelf(\d+)$/i);
+   if(am&&bm)return Number(am[1])-Number(bm[1]);
+   if(am)return -1;if(bm)return 1;
+   return an.localeCompare(bn);
+ });
+ const numbered=sorted.filter(v=>/^shelf\d+$/i.test(getId(v))).length;
+ const other=sorted.length-numbered;
+ summary.textContent="全"+sorted.length+"棚 / 連番形式 "+numbered+" / 連番以外 "+other;
+ if(!sorted.length){list.textContent="棚マスターに棚がありません。";return}
+ sorted.forEach(v=>{
+   const id=getId(v),isNumbered=/^shelf\d+$/i.test(id);
+   const item=document.createElement("div");item.className="idItem";
+   const name=document.createElement("span");name.className="idName";name.textContent=shelfText(v)||"（棚名なし）";
+   const value=document.createElement("code");value.className="idValue";value.textContent=id||"（IDなし）";
+   const type=document.createElement("span");type.className="idType"+(isNumbered?"":" other");type.textContent=isNumbered?"連番":"連番以外";
+   item.append(name,value,type);list.appendChild(item);
+ });
+}
 function placementShelf(v){return String(v?.shelf_id??v?.shelfId??"").trim()}
 function placementN(v){return String(v?.ncode??v?.Ncode??"").trim().toUpperCase()}
 function workN(v){return String(v?.workId??v?.ncode??"").replace(/^narou:/i,"").trim().toUpperCase()}
@@ -82,6 +121,7 @@ function setOrderInitial(){
  rows=[];const seen=new Set();order.forEach(k=>{const r=lookup.get(k);if(r&&!seen.has(k)){rows.push(r);seen.add(k)}});[...systems,...customs].forEach(r=>{if(!seen.has(r.key)){rows.push(r);seen.add(r.key)}});
 }
 function render(){
+ renderShelfIds();
  const list=document.getElementById("shelfList");list.innerHTML="";
  rows.forEach((r,i)=>{const el=document.createElement("div");el.className="row"+(r.kind==="system"?" systemRow":"");el.dataset.index=String(i);
  const id=r.kind==="shelf"?getId(r.shelf):"",name=r.kind==="system"?r.name:(shelfText(r.shelf)||label(r.core||core(shelfText(r.shelf)))),count=r.kind==="shelf"?(countMap.get(id)||0):0,unclassifiedActive=!shelves.some(v=>v&&v.work_add_target===true);
