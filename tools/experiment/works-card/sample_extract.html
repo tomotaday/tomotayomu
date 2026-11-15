@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ともたよむ｜実験用8作品抽出</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;color:#17345f}
+*{box-sizing:border-box}body{margin:0;background:#f2f5fa;line-height:1.6}
+main{max-width:720px;margin:auto;padding:18px 14px 40px}
+h1{font-size:23px;margin:0 0 8px}.panel{background:white;border:1px solid #cbd5e1;border-radius:14px;padding:14px;margin:12px 0}
+.warning{border-left:4px solid #d97706;background:#fffaf0}
+button{font:inherit;border:0;border-radius:10px;background:#17458a;color:white;padding:12px 16px;font-weight:700;width:100%}
+button:disabled{opacity:.45}
+#status{white-space:pre-wrap;overflow-wrap:anywhere;background:#eef2f8;border-radius:9px;padding:10px;font-size:13px}
+ul{padding-left:22px}.small{font-size:13px;color:#586579}
+</style>
+</head>
+<body>
+<main>
+<h1>実験用サンプル抽出｜8作品</h1>
+<p class="small">本番DBから指定したなろう作品だけを読み取り、実験用JSONを書き出します。</p>
+<section class="panel warning">
+<strong>安全仕様</strong>
+<ul>
+<li>本番DBは読み取り専用で開きます。</li>
+<li>DBの追加・更新・削除、localStorageへのアクセスは行いません。</li>
+<li>DBの新規作成やバージョン変更が必要な場合は中止します。</li>
+<li>抽出対象は下記8件のみです。</li>
+</ul>
+</section>
+<section class="panel">
+<strong>抽出対象</strong>
+<ul>
+<li>N0566GY — 連載中・未読</li>
+<li>N6106LC — 連載中・しおりあり</li>
+<li>N1437II — 完結・未読</li>
+<li>N4858HO — 完結・しおりあり</li>
+<li>N2611LU — 短編・未読</li>
+<li>N6515LE — 短編・読了</li>
+<li>N0175GW — R18</li>
+<li>N8433EB — 本棚未所属</li>
+</ul>
+<button id="extract" type="button">8作品を読み取り・JSON保存</button>
+</section>
+<section class="panel"><strong>処理結果</strong><pre id="status">待機中。本番DBにはまだ接続していません。</pre></section>
+</main>
+<script>
+"use strict";
+const DB_NAME="tomotaYomuWorksDB";
+const DB_VERSION=2;
+const CODES=["N0566GY","N6106LC","N1437II","N4858HO","N2611LU","N6515LE","N0175GW","N8433EB"];
+const $=id=>document.getElementById(id);
+function fail(message){throw new Error(message);}
+async function openExistingReadonly(){
+ if(!indexedDB.databases)fail("既存DBの有無を安全に確認できないため中止しました。");
+ const dbList=await indexedDB.databases();
+ const info=dbList.find(x=>x.name===DB_NAME);
+ if(!info)fail("本番DBが見つかりません。DBの新規作成は行いません。");
+ if(info.version!==DB_VERSION)fail("本番DBのバージョンが想定外です。確認のため中止しました。");
+ return await new Promise((resolve,reject)=>{
+  const req=indexedDB.open(DB_NAME);
+  req.onupgradeneeded=()=>{req.transaction.abort();reject(new Error("DB更新が必要になったため中止しました。"));};
+  req.onerror=()=>reject(req.error||new Error("DBを開けません。"));
+  req.onblocked=()=>reject(new Error("別タブがDBを使用中です。"));
+  req.onsuccess=()=>{
+   const db=req.result;
+   if(db.version!==DB_VERSION||!db.objectStoreNames.contains("works")||!db.objectStoreNames.contains("shelves")){
+    db.close();reject(new Error("DB構造が想定外のため中止しました。"));return;
+   }
+   resolve(db);
+  };
+ });
+}
+function getByCode(index,code){
+ return new Promise((resolve,reject)=>{
+  const req=index.getAll(code);
+  req.onsuccess=()=>resolve((req.result||[]).filter(r=>r.site==="narou"&&String(r.workId||"").toUpperCase()===code));
+  req.onerror=()=>reject(req.error||new Error(code+" の読み込みに失敗"));
+ });
+}
+function getShelves(store){
+ return new Promise((resolve,reject)=>{
+  const req=store.getAll();
+  req.onsuccess=()=>resolve(req.result||[]);
+  req.onerror=()=>reject(req.error||new Error("棚マスターの読み込みに失敗"));
+ });
+}
+function downloadJson(data){
+ const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json;charset=utf-8"});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+ a.href=url;a.download="tomotayomu-lab-samples-8works.json";
+ document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+async function extract(){
+ const button=$("extract");button.disabled=true;
+ $("status").textContent="本番DBを読み取り専用で開いています…";
+ let db;
+ try{
+  db=await openExistingReadonly();
+  const tx=db.transaction(["works","shelves"],"readonly");
+  const worksStore=tx.objectStore("works");
+  if(!worksStore.indexNames.contains("workId"))fail("workId indexが見つからないため中止しました。");
+  const index=worksStore.index("workId");
+  const records=[];
+  for(const code of CODES){
+   const matches=await getByCode(index,code);
+   if(matches.length!==1)fail(code+" は1件に特定できません（該当 "+matches.length+" 件）。JSONは作成しません。");
+   records.push(matches[0]);
+  }
+  const shelfIds=[...new Set(records.map(r=>String(r.shelfId||"")).filter(Boolean))];
+  const shelves=await getShelves(tx.objectStore("shelves"));
+  const selectedShelves=shelves.filter(s=>shelfIds.includes(String(s.shelf_id||"")));
+  if(selectedShelves.length!==shelfIds.length)fail("作品が参照する棚マスターをすべて特定できません。JSONは作成しません。");
+  await new Promise((resolve,reject)=>{
+   tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("読み取りトランザクションに失敗"));tx.onabort=()=>reject(tx.error||new Error("読み取りトランザクションが中止されました"));
+  });
+  const payload={format:"tomotayomu-lab-samples",formatVersion:1,exportedAt:new Date().toISOString(),source:{database:DB_NAME,version:db.version,mode:"readonly"},works:records,shelves:selectedShelves};
+  downloadJson(payload);
+  $("status").textContent="抽出成功：作品 "+records.length+"件／参照棚 "+selectedShelves.length+"件\n対象Nコード："+CODES.join(", ")+"\n本番DBへの書き込み：なし\nlocalStorageへのアクセス：なし\n保存ファイル：tomotayomu-lab-samples-8works.json";
+ }catch(error){
+  $("status").textContent="抽出中止： "+error.message+"\nJSONは保存していません。\n本番DBへの書き込み：なし";
+ }finally{
+  if(db)db.close();
+  button.disabled=false;
+ }
+}
+$("extract").addEventListener("click",extract);
+</script>
+</body>
+</html>
