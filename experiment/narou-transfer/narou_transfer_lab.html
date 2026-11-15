@@ -452,26 +452,7 @@ async function openLabShelfPicker(workId, host) {
         await updateLabCleanWork(workId,record=>{record.shelfId=select.value;});
       }catch(error){previewStatusNode.textContent="本棚移動エラー："+error.message;save.disabled=false;}
     });
-    const create=document.createElement("button");
-    create.type="button";create.textContent="新しい棚を追加";
-    create.addEventListener("click",async()=>{
-      const name=prompt("新しい棚の名前を入力してください");
-      if(!name||!name.trim())return;
-      try{
-        const db=await openLabDB();
-        const all=await requestToPromise(db.transaction(LAB_SHELF_STORE_NAME,"readonly").objectStore(LAB_SHELF_STORE_NAME).getAll());
-        const next=all.reduce((m,v)=>Math.max(m,Number(String(v.id).match(/(\\d+)$/)?.[1]||0)),0)+1;
-        const id="lab-shelf"+String(next).padStart(2,"0");
-        await new Promise((resolve,reject)=>{
-          const tx=db.transaction(LAB_SHELF_STORE_NAME,"readwrite");
-          tx.objectStore(LAB_SHELF_STORE_NAME).put({id,name:name.trim(),order:next});
-          tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("棚を追加できません"));
-        });
-        await renderRawWorksPreview();
-        previewStatusNode.textContent="新しい棚「"+name.trim()+"」をLabDBに追加しました。もう一度「本棚を移動」を押してください。";
-      }catch(error){previewStatusNode.textContent="棚の追加エラー："+error.message;}
-    });
-    wrap.append(label,select,save,create);
+    wrap.append(label,select,save);
     host.append(wrap);
   }catch(error){previewStatusNode.textContent="棚の読み込みエラー："+error.message;}
 }
