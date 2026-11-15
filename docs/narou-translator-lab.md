@@ -19,7 +19,7 @@
 2. **通訳ページは通過点。** 取得・変換・登録に必要な処理を行うが、作品データを永続保存しない。
 3. **出口は `works` のみ。** 変換後の作品レコードを作品DBの `works` へ登録する。通訳ページや別の中間保存先を作品情報の正本・参照先にしない。
 4. **変換ルールはサイト別に明確化する。** なろう固有の取得形式・値を確認し、共通項目へ変換する。無理な共通化はしない。
-5. **実験は本番から隔離する。** 実験用ページ `narou_translator_lab.html` と独立したLabDBを使い、本番DB・本番localStorage・現行Shortcutの実データ経路を変更しない。
+5. **実験は本番から隔離する。** 実験用ページ `narou_transfer_lab.html` と独立したLabDBを使い、本番DB・本番localStorage・現行Shortcutの実データ経路を変更しない。
 6. **現行本番ページは保護する。** 既存 `register.html` は現行登録経路として残し、調査・参照対象とする。実験中は変更しない。
 7. **実現可能性を先に確かめる。** API取得可否、データの有無、変換方法、実行環境、処理負荷を確認し、実行できない要件を積み上げない。
 8. **本番導入時に名称を整理する。** `_lab` は開発・実験中の識別子。本番導入時は外す想定だが、最終ファイル名・配置・Shortcut URLの切替は完成後に判断する。
@@ -106,8 +106,8 @@
 
 ### 作成したファイル
 
-- `experiment/narou-translator/narou_translator_lab.html`
-- `experiment/narou-translator/README.md`
+- `experiment/narou-transfer/narou_transfer_lab.html`
+- `experiment/narou-transfer/README.md`
 
 ### LabDB
 
@@ -143,3 +143,48 @@
 - 変換処理：未着手。
 
 実機確認前に「実験環境の動作確認済み」と扱わない。次はiPhoneでページを開き、サンプルJSONを選択してLabDBへ取り込み、10件の一覧と詳細を照合する。
+
+
+## 10. トランスファーLabの現行実装・日付項目（2026-11-15）
+
+### 現在の実験ページとDB
+
+- 実験ページ：`experiment/narou-transfer/narou_transfer_lab.html`
+- LabDB：`tomotaYomuNarouTranslatorLabDB` version 4
+- 使用ストア：`cleanWorks`、`labShelves`
+- 旧 `sourceWorks` ストアはDB version 4への更新時に削除済み。
+- 本番DB `tomotaYomuWorksDB` には接続しない。実験対象はLabDBのみ。
+
+### 共通worksの日付項目（仕様確定）
+
+| 項目 | 意味 | 扱い |
+|---|---|---|
+| `publishedAt` | 初回登録日 | 値を取得できない場合も空文字で項目を保持 |
+| `lastPublishedAt` | 最終更新日 | 値を取得できない場合も空文字で項目を保持 |
+
+- 旧 `updatedAt` は最終更新日の旧項目名として扱い、値があれば `lastPublishedAt` へ移行して削除する。
+- `publishedAt` と `lastPublishedAt` は、API取得可否とは独立して共通worksの項目枠として維持する。
+- APIから値を取得できるか、値の意味がサイトごとに一致するかは別途検証事項。項目枠の存在を取得成功と混同しない。
+
+### 作品カード
+
+- Labのなろう作品カードに「初回登録」「最終更新」の2欄を追加。
+- 初回登録は `publishedAt`、最終更新は `lastPublishedAt` を参照。
+- 値がない場合は `—` を表示する。
+- 項目診断にも両方のworks項目を追加。
+
+### コード確認記録
+
+- 2026-11-15、Lab HTMLを更新。commit：`6a199cfcfb5fca89dcaadf69c738d41b9d8fa54e`
+- 更新後のGitHubファイルを再取得し、次を確認した。
+  - 新規取込時に `publishedAt` と `lastPublishedAt` の項目枠を確保する。
+  - 既存レコードの `publishedAt` と `lastPublishedAt` を保持する。
+  - 旧 `updatedAt` を `lastPublishedAt` へ移行する。
+  - 既存LabDBレコードにも2項目を補完する移行処理がある。
+  - カード表示と項目診断が2項目を参照する。
+- **コード確認済み。iPhone実機での更新・カード表示・10作品診断は未確認。**
+- 実機確認が終わるまでは完成・実機確認済みと扱わない。
+
+### 安全境界
+
+今回変更したのは `experiment/narou-transfer/narou_transfer_lab.html` のみ。なろう本番登録ページ、INDEX、本番DB、Shortcut、GitHub Actionsは変更していない。
