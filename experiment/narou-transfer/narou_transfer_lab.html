@@ -113,7 +113,7 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
   <h2>4. データ項目の一次調査</h2>
   <p>LabDB内の10作品を読み取り専用で調べ、項目の出現数・値の型・サンプルを集計します。</p>
   <p class="small">この調査は表示用の集計だけを行います。元レコードは変更しません。</p>
-  <div class="warning"><strong>重複項目の整理</strong><br>取り込み時に reading と siteData.legacyFields を除き、整理版 cleanWorks へ直接保存します。整理前データは保持しません。</div>
+  <div class="warning"><strong>重複項目の整理</strong><br>取り込み時に updatedAt を lastPublishedAt へ統一し、reading と siteData.legacyFields を除いて整理版 cleanWorks へ直接保存します。</div>
   
   <div id="cleanStatus" class="small" aria-live="polite">まだ整理していません。</div>
   <button id="auditButton" type="button">10作品の項目を調査</button>
@@ -237,7 +237,11 @@ async function importSamples() {
       if (previous) {
         if (previous.shelfId !== undefined) work.shelfId = previous.shelfId;
         if (previous.searchExcluded !== undefined) work.searchExcluded = previous.searchExcluded;
+        if (previous.lastPublishedAt !== undefined) work.lastPublishedAt = previous.lastPublishedAt;
       }
+      // 最終更新日の正式項目は lastPublishedAt。旧 updatedAt は移行して保持しない。
+      if (work.lastPublishedAt === undefined && work.updatedAt !== undefined) work.lastPublishedAt = work.updatedAt;
+      delete work.updatedAt;
       delete work.reading;
       if (work.siteData && typeof work.siteData === "object") delete work.siteData.legacyFields;
       return work;
@@ -266,9 +270,32 @@ function requestToPromise(request) {
   });
 }
 
+async function migrateLabUpdateDateField(db) {
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(LAB_CLEAN_STORE_NAME, "readwrite");
+    const store = tx.objectStore(LAB_CLEAN_STORE_NAME);
+    const request = store.getAll();
+    request.onsuccess = () => {
+      for (const work of request.result || []) {
+        if (work.lastPublishedAt === undefined && work.updatedAt !== undefined) {
+          work.lastPublishedAt = work.updatedAt;
+        }
+        if (Object.prototype.hasOwnProperty.call(work, "updatedAt")) {
+          delete work.updatedAt;
+          store.put(work);
+        }
+      }
+    };
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error || new Error("最終更新日項目の移行に失敗しました"));
+    tx.onabort = () => reject(tx.error || new Error("最終更新日項目の移行が中断されました"));
+  });
+}
+
 async function refreshWorks() {
   try {
     const db = await openLabDB();
+    await migrateLabUpdateDateField(db);
     const tx = db.transaction(LAB_CLEAN_STORE_NAME, "readonly");
     const records = await requestToPromise(tx.objectStore(LAB_CLEAN_STORE_NAME).getAll());
     records.sort((a, b) => String(a.workId).localeCompare(String(b.workId)));
@@ -455,9 +482,9 @@ function renderRawWorkCard(work) {
   const authorEl = card.querySelector(".authorName");
   if (authorEl) authorEl.textContent = work.authorName || "作者情報なし";
   card.querySelector(".searchExcludedMark").hidden = !Boolean(work.searchExcluded);
-  card.dataset.lastUpdated = work.updatedAt || "";
+  card.dataset.lastUpdated = work.lastPublishedAt || "";
   card.dataset.totalEpisodes = work.episodeCount ?? "";
-  card.querySelector(".lastUpdated").textContent = work.updatedAt || "—";
+  card.querySelector(".lastUpdated").textContent = work.lastPublishedAt || "—";
   card.querySelector(".status").textContent = work.status || "状態不明";
   card.querySelector(".shelfId").textContent = work.shelfId ? String(work.shelfId) : "";
   card.querySelector(".synopsis").textContent = work.synopsis || "あらすじなし";
@@ -524,14 +551,14 @@ function renderRawWorkCard(work) {
   const checks = [
     ["title", work.title],
     ["authorName", work.authorName],
-    ["updatedAt", work.updatedAt],
+    ["lastPublishedAt", work.lastPublishedAt],
     ["status", work.status],
     ["synopsis", work.synopsis],
     ["episodeCount", work.episodeCount],
     ["bookmark（新設計）", work.bookmark],
     ["workId（works項目）", work.workId],
     ["authorName（works項目）", work.authorName],
-    ["updatedAt（works項目）", work.updatedAt],
+    ["lastPublishedAt（works項目）", work.lastPublishedAt],
     ["episodeCount（works項目）", work.episodeCount],
     ["synopsis（works項目）", work.synopsis]
   ];
