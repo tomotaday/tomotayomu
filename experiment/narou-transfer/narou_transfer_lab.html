@@ -422,10 +422,36 @@ function renderRawWorkCard(work) {
     resume.href = workUrl;
   }
 
+  // 現行本番INDEXに合わせた「詳細を開く」領域。
+  // Labは表示・データ構造の実験室なので、管理ボタンは見た目のみ（操作不可）。
+  const management = document.createElement("details");
+  management.className = "cardDiagnostic";
+  const managementSummary = document.createElement("summary");
+  managementSummary.textContent = "詳細を開く";
+  const managementBody = document.createElement("div");
+  const ncodeLine = document.createElement("p");
+  ncodeLine.textContent = "Nコード：" + (ncode || "＜なし＞");
+  const managementActions = document.createElement("div");
+  managementActions.className = "actions";
+  for (const label of ["本棚を移動", "🔎 検索除外にする", "削除"]) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = label;
+    button.disabled = true;
+    button.title = "Labの表示確認用です。管理操作はまだ実装していません。";
+    managementActions.append(button);
+  }
+  const managementNote = document.createElement("p");
+  managementNote.className = "small";
+  managementNote.textContent = "※ 管理操作は表示確認用です。LabDBの作品データは変更しません。";
+  managementBody.append(ncodeLine, managementActions, managementNote);
+  management.append(managementSummary, managementBody);
+  card.append(management);
+
   const diagnostic = document.createElement("details");
   diagnostic.className = "cardDiagnostic";
   const diagnosticSummary = document.createElement("summary");
-  diagnosticSummary.textContent = "カードの参照項目・不足確認";
+  diagnosticSummary.textContent = "整理版データの項目を確認";
   const diagnosticPre = document.createElement("pre");
   const checks = [
     ["title", work.title],
