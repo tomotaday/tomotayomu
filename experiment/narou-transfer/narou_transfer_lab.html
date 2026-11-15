@@ -353,14 +353,15 @@ function renderRawWorkCard(work) {
   const resume = card.querySelector(".resumeLink");
   const hasNumberBookmark = typeof bookmark === "number" && Number.isFinite(bookmark);
   const isRead = bookmark === "R";
+  const r18Mark = isR18 ? "　®️" : "";
   if (isRead) {
-    resume.textContent = "読了済み";
+    resume.textContent = "読了済み" + r18Mark;
     resume.href = workUrl;
   } else if (hasNumberBookmark) {
-    resume.textContent = "続き📖" + bookmark + "/" + (total || "—") + "話";
+    resume.textContent = "続き📖" + bookmark + "/" + (total || "—") + "話" + r18Mark;
     resume.href = bookmark > 0 ? workUrl + bookmark + "/" : workUrl;
   } else {
-    resume.textContent = "続き📖📝記録なし / " + (total || "—") + "話";
+    resume.textContent = "続き📖📝記録なし / " + (total || "—") + "話" + r18Mark;
     resume.href = workUrl;
   }
 
