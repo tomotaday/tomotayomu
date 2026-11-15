@@ -49,7 +49,7 @@ button{border:1px solid #c8c0b5;border-radius:8px;background:transparent;padding
 <h1>📚 本棚管理</h1>
 <div class="note">既存のIndexedDBを読み込み、本棚の構成・表示順を管理します。</div>
 <div class="source">データ源：tomotaYomuWorksDB → shelves / works　｜　CSV再読込なし</div>
-<div class="toolbar"><button id="addBtn" type="button">➕ 本棚を追加</button><button id="saveBtn" type="button">表示順を保存</button><button id="resetBtn" type="button">初期順に戻す</button></div>
+<div class="toolbar"><button id="addBtn" type="button">➕ 本棚を追加</button><button id="saveBtn" type="button">表示順を保存</button><button id="resetBtn" type="button">初期順に戻す</button><button id="normalizeIdsBtn" type="button">🔢 ランダムIDを連番に整理</button></div>
 <div id="status">IndexedDBから棚情報を読み込み中…</div>
 <section id="shelfIdPanel" class="idPanel" aria-label="棚ID一覧">
   <div class="idPanelTitle">🔎 棚ID一覧 <span id="idSummary"></span></div>
@@ -131,6 +131,66 @@ function render(){
  if(r.kind==="shelf"){const active=r.shelf.work_add_target===true;const targetBtn=document.createElement("button");targetBtn.className="deleteBtn";targetBtn.type="button";targetBtn.textContent=active?"📥登録先✓":"📥登録先";targetBtn.style.borderColor=active?"#4b8b67":"#c8c0b5";targetBtn.addEventListener("click",e=>{e.stopPropagation();setWorkAddTarget(id,name)});head.appendChild(targetBtn)}else if(r.key==="system:unclassified"){const mark=document.createElement("span");mark.className="deleteBtn";mark.textContent=unclassifiedActive?"📥登録先✓":"未分類";mark.style.borderColor=unclassifiedActive?"#4b8b67":"#c8c0b5";head.appendChild(mark)}if(r.kind==="shelf"&&count===0){const del=document.createElement("button");del.className="deleteBtn";del.type="button";del.textContent="🗑削除";del.addEventListener("click",e=>{e.stopPropagation();deleteEmptyShelf(id,name)});head.appendChild(del)}
  head.appendChild(ord);const body=document.createElement("div");body.className="body";const sid=document.createElement("div");sid.className="shelfId";sid.textContent=r.kind==="system"?"固定システム棚。名称変更・削除はできません。":"shelf_id："+id;body.appendChild(sid);const note=document.createElement("div");note.className="empty";note.textContent=r.kind==="system"?"棚の位置だけを変更します。機能や作品の所属判定は変更しません。":(count?"作品情報を表示するには棚をタップしてください。":"この棚に所属する作品はありません");body.appendChild(note);el.append(head,body);h.addEventListener("pointerdown",startDrag);if(r.kind==="shelf")head.addEventListener("click",async e=>{if(e.target===h||e.target.closest("button")||e.target.closest("input"))return;const opening=!el.classList.contains("open");el.classList.toggle("open");if(opening&&count)await loadShelfWorks(id,body)});list.appendChild(el);
  });
+}
+async function normalizeRandomShelfIds(){
+ const mapping=[
+  {oldId:"shelf_07a0b1f3f9c9",newId:"shelf16",name:"わ行"},
+  {oldId:"shelf_1caddde5522eb",newId:"shelf17",name:"削除"},
+  {oldId:"shelf_cfcd536f3b56",newId:"shelf18",name:"ら行"},
+  {oldId:"shelf_ded1af671fd0",newId:"shelf19",name:"退会"}
+ ];
+ const status=document.getElementById("status");
+ const byId=new Map(shelves.map(v=>[getId(v),v]));
+ const missing=mapping.filter(m=>!byId.has(m.oldId));
+ if(missing.length){status.textContent="中止：対象棚が見つかりません："+missing.map(m=>m.name).join("、");return}
+ const targets=new Set(mapping.map(m=>m.newId));
+ const conflicts=mapping.filter(m=>byId.has(m.newId)&&!targets.has(m.newId));
+ if(conflicts.length){status.textContent="中止：変更先IDが既に使われています："+conflicts.map(m=>m.newId).join("、");return}
+ const detail=mapping.map(m=>m.name+"："+m.oldId+" → "+m.newId).join("\\n");
+ if(!confirm("次の4棚のIDを変更します。\\n\\n"+detail+"\\n\\n棚マスターと所属作品のworks.shelfIdを同じトランザクションで更新します。\\n棚名・作品データ・表示順は変更しません。\\n実行前のバックアップは済んでいますか？"))return;
+ try{
+  status.textContent="棚IDと作品の紐づけを更新中…";
+  const tx=db.transaction([STORES.shelves,STORES.works],"readwrite");
+  const shelfStore=tx.objectStore(STORES.shelves);
+  const workStore=tx.objectStore(STORES.works);
+  const changedCounts=new Map(mapping.map(m=>[m.oldId,0]));
+  mapping.forEach(m=>{
+   const row={...byId.get(m.oldId),shelf_id:m.newId};
+   shelfStore.delete(m.oldId);
+   shelfStore.put(row);
+  });
+  const cursorReq=workStore.openCursor();
+  cursorReq.onsuccess=()=>{
+   const cursor=cursorReq.result;
+   if(!cursor)return;
+   const work=cursor.value;
+   const match=mapping.find(m=>String(work?.shelfId||"")===m.oldId);
+   if(match){
+    cursor.update({...work,shelfId:match.newId});
+    changedCounts.set(match.oldId,changedCounts.get(match.oldId)+1);
+   }
+   cursor.continue();
+  };
+  cursorReq.onerror=()=>{try{tx.abort()}catch(e){}};
+  await new Promise((resolve,reject)=>{
+   tx.oncomplete=resolve;
+   tx.onerror=()=>reject(tx.error||new Error("更新に失敗しました"));
+   tx.onabort=()=>reject(tx.error||new Error("更新を中止しました"));
+  });
+  let saved=[];
+  try{saved=JSON.parse(localStorage.getItem(MIXED_ORDER_KEY)||"[]");if(!Array.isArray(saved))saved=[]}catch(e){saved=[]}
+  const keyMap=new Map(mapping.map(m=>["custom:"+m.oldId,"custom:"+m.newId]));
+  localStorage.setItem(MIXED_ORDER_KEY,JSON.stringify(saved.map(k=>keyMap.get(k)||k)));
+  shelves=await readAll(STORES.shelves);
+  const workRows=await readAll(STORES.works);
+  placements=workRows.map(w=>({ncode:workN(w),shelf_id:String(w.shelfId||"")}));
+  buildIndexes();
+  setOrderInitial();
+  render();
+  status.textContent="完了：4棚のIDを連番に統一。所属作品も更新しました。 "+mapping.map(m=>m.name+" "+changedCounts.get(m.oldId)+"作品").join(" / ");
+ }catch(e){
+  status.textContent="ID整理に失敗しました："+e.message+"（トランザクションは中止・ロールバックされています）";
+ }
 }
 async function addShelf(){
   const name=prompt("新しい本棚名を入力してください。","仮保存");
@@ -256,7 +316,7 @@ async function init(){
 }
 document.getElementById("addBtn").addEventListener("click",()=>addShelf());
 document.getElementById("saveBtn").addEventListener("click",()=>save().catch(e=>document.getElementById("status").textContent="保存失敗："+e.message));
-document.getElementById("resetBtn").addEventListener("click",resetOrder);init();
+document.getElementById("resetBtn").addEventListener("click",resetOrder);document.getElementById("normalizeIdsBtn").addEventListener("click",normalizeRandomShelfIds);init();
 </script>
 </body>
 </html>
