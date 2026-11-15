@@ -39,6 +39,25 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
 .preview-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .preview-actions a{display:inline-block;padding:7px 10px;border:1px solid var(--line);border-radius:8px;color:var(--accent);text-decoration:none;font-size:13px}
 .preview-error{border:1px solid #e5a3a3;background:#fff1f1;border-radius:8px;padding:10px;margin:8px 0;color:#9b1c1c}
+
+/* INDEXなろう作品カードの実験用複製 */
+.index-card-preview .card{background:#fffdf9;border:1px solid #aaa195;border-radius:12px;padding:13px;margin:10px 0;color:#252525}
+.index-card-preview .meta{font-size:12px;color:#555;margin-bottom:8px}
+.index-card-preview .newMark{font-size:12px}
+.index-card-preview h2{font-size:15px;line-height:1.45;font-weight:700;margin:0 0 4px}
+.index-card-preview .author,.index-card-preview .ncode{font-size:13px;color:#555}
+.index-card-preview .author{display:flex;align-items:center;gap:6px;min-width:0}
+.index-card-preview .authorName{flex:1;min-width:0}
+.index-card-preview .siteBadge{display:inline-block;flex:0 0 60px;width:60px;margin-left:auto;padding:1px 7px;border-radius:999px;font-size:11px;line-height:1.5;font-weight:700;text-align:center;white-space:nowrap;box-sizing:border-box}
+.index-card-preview .siteBadge-narou{background:#DDF3E7;color:#278454}
+.index-card-preview details{margin-top:9px;font-size:13px}
+.index-card-preview summary{cursor:pointer}
+.index-card-preview .synopsis{white-space:pre-wrap;color:#555;margin:7px 0}
+.index-card-preview .actions{display:flex;gap:10px;margin-top:12px;font-size:13px;flex-wrap:wrap}
+.index-card-preview .actions a{color:inherit;text-decoration:none;border-bottom:1px solid #aaa}
+.index-card-preview .cardDiagnostic{margin-top:10px;border-top:1px dashed #aaa195;padding-top:7px;font-size:12px;color:#555}
+.index-card-preview .cardDiagnostic pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f4f1eb;border-radius:8px;padding:9px;font-size:11px;max-height:260px;overflow:auto}
+.index-card-preview .missingField{color:#a33;font-weight:700}
 </style>
 </head>
 <body>
@@ -82,11 +101,11 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
 
 <section class="panel">
   <h2>5. 作品カード実験</h2>
-  <p>LabDBのworksレコードを加工せず、そのまま実験用カードへ渡します。本番DB・本番カードには接続しません。</p>
-  <p class="small">現在のworksの項目を直接参照します。表示上のエラーや不足項目を確認するための試作です。</p>
+  <p>本番INDEXのなろう作品カードを複製し、LabDBのworksレコードを加工せずに渡します。本番DB・本番カードには接続しません。</p>
+  <p class="small">表示欄が空になる箇所や、カード側が要求する項目との違いを確認します。カード内の操作は表示確認用で、作品データの変更はできません。</p>
   <button id="previewButton" type="button">現在のworksでカードを表示</button>
   <div id="previewStatus" class="small" aria-live="polite">まだ表示していません。</div>
-  <div id="previewCards"></div>
+  <div id="previewCards" class="index-card-preview"></div>
 </section>
 
 <section class="panel">
@@ -293,72 +312,84 @@ async function copyAuditResults() {
 }
 
 function renderRawWorkCard(work) {
+  // 本番INDEXのNarouカード構造を複製。work自体には項目を追加・変換しない。
   const card = document.createElement("article");
-  card.className = "preview-card";
-  const meta = document.createElement("div");
-  meta.className = "preview-meta";
-  meta.textContent = [work.status || "状態不明", work.updatedAt || "更新日不明", work.shelfId ? "棚：" + work.shelfId : "棚未設定"].join(" ｜ ");
+  card.className = "card";
+  const ncode = String(work.workId || "").toUpperCase();
+  card.dataset.ncode = ncode;
+  card.dataset.r18 = (work.siteData?.isR18 === true || work.siteData?.legacyFields?.__r18 === true) ? "1" : "";
+  card.dataset.noveltype = "";
 
-  const title = document.createElement("h3");
-  title.textContent = work.title || "（タイトルなし）";
+  card.innerHTML = '<div class="meta"><span class="newMark" hidden>🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span></div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="siteBadge siteBadge-narou">なろう</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから　📖 未読 / —話</a></div>';
 
-  const author = document.createElement("div");
-  author.className = "preview-author";
-  author.textContent = "作者：" + (work.authorName || "（作者名なし）");
+  // INDEXのupdateCardが参照する項目名を、そのままraw worksに対して読む。
+  // ここでwriter/story/general_lastup等を補完しないことが実験の目的。
+  const n = String(work.ncode || card.dataset.ncode).toUpperCase();
+  const titleEl = card.querySelector("h2");
+  if (titleEl && work.title) titleEl.textContent = work.title;
+  const authorEl = card.querySelector(".authorName");
+  if (authorEl && work.writer) authorEl.textContent = work.writer;
 
-  const synopsisDetails = document.createElement("details");
-  const synopsisSummary = document.createElement("summary");
-  synopsisSummary.textContent = "あらすじを読む";
-  const synopsis = document.createElement("p");
-  synopsis.className = "preview-synopsis";
-  synopsis.textContent = work.synopsis || "あらすじなし";
-  synopsisDetails.append(synopsisSummary, synopsis);
+  card.dataset.lastUpdated = work.general_lastup || "";
+  card.dataset.totalEpisodes = work.general_all_no || "";
+  card.querySelector(".lastUpdated").textContent = work.general_lastup || "—";
+  if (Object.prototype.hasOwnProperty.call(work,"end") ||
+      Object.prototype.hasOwnProperty.call(work,"novel_type") ||
+      Object.prototype.hasOwnProperty.call(work,"noveltype")) {
+    if (String(work.noveltype ?? "").trim() === "2") card.querySelector(".status").textContent = "🟣 短編";
+    else if (String(work.end) === "0") card.querySelector(".status").textContent = "🔵 完結";
+    else if (String(work.end) === "1") card.querySelector(".status").textContent = "🟢 連載中";
+    else card.querySelector(".status").textContent = "状態不明";
+  }
+  card.querySelector(".synopsis").textContent = work.story || "あらすじなし";
 
+  const isR18 = card.dataset.r18 === "1";
+  const workUrl = (isR18 ? "https://novel18.syosetu.com/" : "https://ncode.syosetu.com/") + n.toLowerCase() + "/";
+  card.querySelector(".workLink").href = workUrl;
+
+  // 新設計のしおりだけを参照。既存の読書位置キャッシュや本番DBは使わない。
   const bookmark = work.bookmark;
-  const total = Number(work.episodeCount) || 0;
-  const isRead = bookmark === "R";
+  const total = Number(work.general_all_no || 0);
+  const resume = card.querySelector(".resumeLink");
   const hasNumberBookmark = typeof bookmark === "number" && Number.isFinite(bookmark);
-  const bookmarkLabel = isRead ? "読了" : hasNumberBookmark ? "しおり " + bookmark + "/" + (total || "—") + "話" : "しおり未設定";
-  const bookmarkLine = document.createElement("div");
-  bookmarkLine.className = "preview-meta";
-  bookmarkLine.textContent = bookmarkLabel;
+  const isRead = bookmark === "R";
+  if (isRead) {
+    resume.textContent = "読了済み";
+    resume.href = workUrl;
+  } else if (hasNumberBookmark) {
+    resume.textContent = "続き📖" + bookmark + "/" + (total || "—") + "話";
+    resume.href = bookmark > 0 ? workUrl + bookmark + "/" : workUrl;
+  } else {
+    resume.textContent = "続き📖📝記録なし / " + (total || "—") + "話";
+    resume.href = workUrl;
+  }
 
-  const actions = document.createElement("div");
-  actions.className = "preview-actions";
-  const workLink = document.createElement("a");
-  workLink.textContent = "作品を開く";
-  workLink.href = work.url || "#";
-  workLink.target = "_blank";
-  workLink.rel = "noopener";
-  const resumeLink = document.createElement("a");
-  resumeLink.textContent = isRead ? "読了済み" : hasNumberBookmark ? "続きから" : "未読・最初から";
-  resumeLink.href = hasNumberBookmark && bookmark > 0 ? String(work.url || "#") + bookmark + "/" : String(work.url || "#");
-  resumeLink.target = "_blank";
-  resumeLink.rel = "noopener";
-  actions.append(workLink, resumeLink);
-
-  const details = document.createElement("details");
-  const summary = document.createElement("summary");
-  summary.textContent = "このカードが参照したworks項目";
-  const fields = document.createElement("pre");
-  fields.textContent = JSON.stringify({
-    id: work.id,
-    site: work.site,
-    workId: work.workId,
-    title: work.title,
-    authorName: work.authorName,
-    status: work.status,
-    updatedAt: work.updatedAt,
-    episodeCount: work.episodeCount,
-    bookmark: work.bookmark,
-    url: work.url,
-    synopsis: work.synopsis
-  }, null, 2);
-  details.append(summary, fields);
-  card.append(meta, title, author, synopsisDetails, bookmarkLine, actions, details);
+  const diagnostic = document.createElement("details");
+  diagnostic.className = "cardDiagnostic";
+  const diagnosticSummary = document.createElement("summary");
+  diagnosticSummary.textContent = "カードの参照項目・不足確認";
+  const diagnosticPre = document.createElement("pre");
+  const checks = [
+    ["title", work.title],
+    ["writer（INDEX期待）", work.writer],
+    ["general_lastup（INDEX期待）", work.general_lastup],
+    ["end / noveltype / novel_type（INDEX期待）", work.end ?? work.noveltype ?? work.novel_type],
+    ["story（INDEX期待）", work.story],
+    ["general_all_no（INDEX期待）", work.general_all_no],
+    ["bookmark（新設計）", work.bookmark],
+    ["workId（works項目）", work.workId],
+    ["authorName（works項目）", work.authorName],
+    ["updatedAt（works項目）", work.updatedAt],
+    ["episodeCount（works項目）", work.episodeCount],
+    ["synopsis（works項目）", work.synopsis]
+  ];
+  diagnosticPre.textContent = checks.map(([key,value]) =>
+    key + " : " + (value === undefined ? "＜項目なし＞" : value === null ? "null" : String(value))
+  ).join("\n");
+  diagnostic.append(diagnosticSummary, diagnosticPre);
+  card.append(diagnostic);
   return card;
 }
-
 async function renderRawWorksPreview() {
   previewButton.disabled = true;
   previewCardsNode.replaceChildren();
@@ -388,7 +419,7 @@ async function renderRawWorksPreview() {
     }
     previewStatusNode.textContent = made + " / " + records.length + "作品を表示しました。" +
       (errors.length ? " カード生成エラー：" + errors.length + "件" : " カード生成時のJavaScriptエラーはありません。") +
-      " 元のworksレコードは変更していません。";
+      " 空欄・不足項目は各カードの「カードの参照項目・不足確認」で調べられます。元のworksレコードは変更していません。";
   } catch (error) {
     previewStatusNode.textContent = "表示エラー：" + error.message;
   } finally {
