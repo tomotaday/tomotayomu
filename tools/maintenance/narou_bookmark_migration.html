@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>なろう bookmark 整理</title>
+<style>
+:root{color-scheme:light dark;font-family:system-ui,-apple-system,sans-serif}
+body{max-width:760px;margin:0 auto;padding:20px;line-height:1.6}
+h1{font-size:1.35rem}button{font:inherit;padding:12px 16px;margin:6px 6px 6px 0;border:0;border-radius:9px;background:#2563eb;color:white}
+button:disabled{opacity:.45}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:color-mix(in srgb,CanvasText 8%,Canvas);padding:12px;border-radius:8px}
+.note{opacity:.8;font-size:.92rem}#status{font-weight:600}
+</style>
+</head>
+<body>
+<h1>なろう作品 bookmark 整理</h1>
+<p>対象は <code>tomotaYomuWorksDB</code> の <code>site === "narou"</code> のみ。作品カードや他サイトのデータは変更しません。</p>
+<p class="note">先に作品ストア全件のバックアップをダウンロードし、その後に整理を実行します。実行前の確認用ページです。</p>
+<div>
+<button id="scan">現状を確認</button>
+<button id="backup" disabled>作品データをバックアップ</button>
+<button id="apply" disabled>bookmarkを整理する</button>
+</div>
+<p id="status">未確認</p>
+<pre id="report">「現状を確認」を押してください。</pre>
+<script>
+"use strict";
+const DB_NAME="tomotaYomuWorksDB";
+const DB_VERSION=2;
+let previewRows=[];
+let backupReady=false;
+let scanSummary=null;
+const $=id=>document.getElementById(id);
+function openDB(){
+ return new Promise((resolve,reject)=>{
+  const req=indexedDB.open(DB_NAME);
+  req.onupgradeneeded=()=>{req.transaction.abort();reject(new Error("DBの更新が必要なため中止しました"))};
+  req.onsuccess=()=>{const db=req.result;if(db.version!==DB_VERSION||!db.objectStoreNames.contains("works")){db.close();reject(new Error("DB構造が想定外です"))}else resolve(db)};
+  req.onerror=()=>reject(req.error||new Error("DBを開けません"));
+  req.onblocked=()=>reject(new Error("DBが別画面で使用中です"));
+ });
+}
+function readWorks(db){
+ return new Promise((resolve,reject)=>{
+  const tx=db.transaction("works","readonly"),req=tx.objectStore("works").getAll();
+  req.onsuccess=()=>resolve(req.result||[]);
+  req.onerror=()=>reject(req.error||new Error("作品データを読めません"));
+  tx.onerror=()=>reject(tx.error||new Error("読込に失敗しました"));
+ });
+}
+function isPositiveNumber(v){return typeof v==="number"&&Number.isFinite(v)&&Number.isInteger(v)&&v>0}
+function isZero(v){return typeof v==="number"&&v===0}
+function getPlan(w){
+ const oldBookmark=w.bookmark;
+ const reading=w.reading&&typeof w.reading==="object"?w.reading:{};
+ const shortStory=String(w.siteData?.noveltype??"").trim()==="2";
+ const changes=[];
+ let nextBookmark=oldBookmark;
+ let hasNextBookmark=Object.prototype.hasOwnProperty.call(w,"bookmark");
+ let anomaly="";
+ if(shortStory){
+  if(oldBookmark==="R"||reading.isRead===true){nextBookmark="R";hasNextBookmark=true}
+  else{nextBookmark=undefined;hasNextBookmark=false}
+  if(oldBookmark!==nextBookmark||(!hasNextBookmark&&Object.prototype.hasOwnProperty.call(w,"bookmark")))changes.push("短編bookmark整理");
+ }else{
+  if(oldBookmark==="R"){anomaly="短編以外にbookmark=R";return {skip:true,anomaly,changes:[]}}
+  const nums=[oldBookmark,reading.position].filter(isPositiveNumber);
+  if(nums.length){nextBookmark=Math.max(...nums);hasNextBookmark=true}
+  else{nextBookmark=undefined;hasNextBookmark=false}
+  if(oldBookmark!==nextBookmark||(!hasNextBookmark&&Object.prototype.hasOwnProperty.call(w,"bookmark")))changes.push("bookmark統合");
+ }
+ const nextReading=reading&&typeof reading==="object"?{...reading}:{};
+ if(isZero(nextReading.position)){delete nextReading.position;changes.push("reading.positionの0を削除")}
+ const readingChanged=JSON.stringify(nextReading)!==JSON.stringify(reading);
+ return {skip:false,anomaly,changes,oldBookmark,nextBookmark,hasNextBookmark,nextReading,readingChanged};
+}
+function formatValue(v){return v===undefined?"（未設定）":JSON.stringify(v)}
+function scan(works){
+ const narou=works.filter(w=>w.site==="narou");
+ let zeroBookmark=0,zeroReading=0,changed=0,shortRead=0,anomaly=0,skipped=0;
+ previewRows=narou.map(w=>{
+  const p=getPlan(w);
+  if(isZero(w.bookmark))zeroBookmark++;
+  if(isZero(w.reading?.position))zeroReading++;
+  if(p.anomaly){anomaly++;skipped++;return {id:w.id,workId:w.workId,plan:p}}
+  if(p.changes.length||p.readingChanged)changed++;
+  if(String(w.siteData?.noveltype??"").trim()==="2"&&(w.reading?.isRead===true||w.bookmark==="R"))shortRead++;
+  return {id:w.id,workId:w.workId,plan:p};
+ });
+ scanSummary={total:works.length,narou:narou.length,zeroBookmark,zeroReading,changed,shortRead,anomaly,skipped};
+ return scanSummary;
+}
+function showSummary(s){
+ $("report").textContent=[
+  "作品ストア総数："+s.total,
+  "なろう作品："+s.narou,
+  "bookmarkの数値0："+s.zeroBookmark,
+  "reading.positionの数値0："+s.zeroReading,
+  "変更予定の作品："+s.changed,
+  "短編の読了（R）予定："+s.shortRead,
+  "確認が必要な異常（短編以外のR）："+s.anomaly,
+  "",
+  "変更予定の内訳（先頭100件）:",
+  ...previewRows.filter(x=>!x.plan.skip&&(x.plan.changes.length||x.plan.readingChanged)).slice(0,100).map(x=>x.workId+" : bookmark "+formatValue(x.plan.oldBookmark)+" → "+formatValue(x.plan.hasNextBookmark?x.plan.nextBookmark:undefined)+(x.plan.readingChanged?" / reading.positionの0を削除":"")),
+  ...(s.anomaly?["","異常データ（変更対象外）:",...previewRows.filter(x=>x.plan.anomaly).map(x=>x.workId+" : "+x.plan.anomaly)]:[])
+ ].join("\n");
+}
+$("scan").addEventListener("click",async()=>{
+ $("status").textContent="確認中…";$("backup").disabled=true;$("apply").disabled=true;backupReady=false;
+ try{const db=await openDB();let rows;try{rows=await readWorks(db)}finally{db.close()}const s=scan(rows);showSummary(s);$("status").textContent="確認完了。内容を確認してバックアップしてください。";$("backup").disabled=false}
+ catch(e){$("status").textContent="エラー："+e.message}
+});
+$("backup").addEventListener("click",async()=>{
+ $("status").textContent="バックアップ作成中…";
+ try{const db=await openDB();let rows;try{rows=await readWorks(db)}finally{db.close()}
+  const blob=new Blob([JSON.stringify({createdAt:new Date().toISOString(),db:DB_NAME,version:DB_VERSION,store:"works",records:rows},null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="tomotaYomuWorksDB-works-backup-"+new Date().toISOString().replace(/[:.]/g,"-")+".json";a.click();URL.revokeObjectURL(url);
+  backupReady=true;$("apply").disabled=false;$("status").textContent="バックアップを作成しました。ダウンロードされたファイルを確認してから整理を実行してください。";
+ }catch(e){$("status").textContent="バックアップ失敗："+e.message}
+});
+$("apply").addEventListener("click",async()=>{
+ if(!backupReady){$("status").textContent="先にバックアップしてください";return}
+ if(!confirm("バックアップファイルを保存したことを確認しましたか？\nなろう作品のbookmarkとreading.positionの0を整理します。実行しますか？"))return;
+ $("status").textContent="整理中…";$("apply").disabled=true;
+ try{
+  const db=await openDB();
+  try{
+   await new Promise((resolve,reject)=>{
+    const tx=db.transaction("works","readwrite"),store=tx.objectStore("works"),req=store.getAll();
+    req.onsuccess=()=>{
+     for(const w of req.result||[]){
+      if(w.site!=="narou")continue;
+      const p=getPlan(w);
+      if(p.skip)continue;
+      if(p.hasNextBookmark)w.bookmark=p.nextBookmark;else delete w.bookmark;
+      if(p.readingChanged)w.reading=p.nextReading;
+      store.put(w);
+     }
+    };
+    req.onerror=()=>{try{tx.abort()}catch(e){};reject(req.error||new Error("作品データを読み込めません"))};
+    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存に失敗しました"));tx.onabort=()=>reject(tx.error||new Error("保存を中止しました"));
+   });
+  }finally{db.close()}
+  $("status").textContent="整理完了。再確認しています…";
+  const verifyDB=await openDB();let rows;try{rows=await readWorks(verifyDB)}finally{verifyDB.close()}
+  const remaining=rows.filter(w=>w.site==="narou"&&(isZero(w.bookmark)||isZero(w.reading?.position)));
+  $("status").textContent=remaining.length===0?"整理完了。bookmark・reading.positionの0は残っていません。":"整理後の確認で0が残っています："+remaining.length+"件";
+  const s=scan(rows);showSummary(s);
+ }catch(e){$("status").textContent="エラー："+e.message+"。バックアップを保管してください。";$("apply").disabled=false}
+});
+</script>
+</body>
+</html>
