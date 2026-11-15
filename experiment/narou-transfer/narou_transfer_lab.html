@@ -368,6 +368,122 @@ async function copyAuditResults() {
   }
 }
 
+
+async function getLabShelves() {
+  const db = await openLabDB();
+  const readTx = db.transaction([LAB_SHELF_STORE_NAME, LAB_CLEAN_STORE_NAME], "readonly");
+  const shelves = await requestToPromise(readTx.objectStore(LAB_SHELF_STORE_NAME).getAll());
+  if (shelves.length) return shelves.sort((a,b)=>(a.order||999)-(b.order||999));
+  const works = await requestToPromise(readTx.objectStore(LAB_CLEAN_STORE_NAME).getAll());
+  const ids = [...new Set(works.map(w => String(w.shelfId || "").trim()).filter(Boolean))];
+  const initial = ids.map((id,index)=>({id,name:"元の棚 "+id,order:index+1}));
+  initial.push({id:"lab-unclassified",name:"未分類",order:999});
+  await new Promise((resolve,reject)=>{
+    const tx=db.transaction(LAB_SHELF_STORE_NAME,"readwrite");
+    const store=tx.objectStore(LAB_SHELF_STORE_NAME);
+    for(const shelf of initial) store.put(shelf);
+    tx.oncomplete=resolve;
+    tx.onerror=()=>reject(tx.error||new Error("ラボ棚の初期化に失敗しました"));
+    tx.onabort=()=>reject(tx.error||new Error("ラボ棚の初期化が中断されました"));
+  });
+  return initial;
+}
+
+async function updateLabCleanWork(workId, updater) {
+  const db=await openLabDB();
+  const tx=db.transaction(LAB_CLEAN_STORE_NAME,"readwrite");
+  const store=tx.objectStore(LAB_CLEAN_STORE_NAME);
+  const request=store.get(workId);
+  request.onsuccess=()=>{
+    if(!request.result) return;
+    const record=request.result;
+    updater(record);
+    store.put(record);
+  };
+  await new Promise((resolve,reject)=>{
+    tx.oncomplete=resolve;
+    tx.onerror=()=>reject(tx.error||new Error("LabDBの更新に失敗しました"));
+    tx.onabort=()=>reject(tx.error||new Error("LabDBの更新が中断されました"));
+  });
+  await renderRawWorksPreview();
+}
+
+async function openLabShelfPicker(workId, host) {
+  try {
+    const shelves=await getLabShelves();
+    const old=host.querySelector(".lab-shelf-picker");
+    if(old){old.remove();return;}
+    const wrap=document.createElement("div");
+    wrap.className="lab-shelf-picker";
+    wrap.style.cssText="margin-top:10px;padding:10px;background:#eef3fb;border-radius:9px";
+    const label=document.createElement("label");
+    label.textContent="移動先の棚";
+    const select=document.createElement("select");
+    select.style.cssText="display:block;width:100%;padding:10px;border:1px solid #9aaac0;border-radius:8px;background:white";
+    for(const shelf of shelves){
+      const option=document.createElement("option");
+      option.value=shelf.id;
+      option.textContent=shelf.name+"（"+shelf.id+"）";
+      select.append(option);
+    }
+    const current=await (async()=>{
+      const db=await openLabDB();
+      return requestToPromise(db.transaction(LAB_CLEAN_STORE_NAME,"readonly").objectStore(LAB_CLEAN_STORE_NAME).get(workId));
+    })();
+    if(current?.shelfId && shelves.some(v=>v.id===current.shelfId)) select.value=current.shelfId;
+    const save=document.createElement("button");
+    save.type="button";save.textContent="この棚へ移動";
+    save.addEventListener("click",async()=>{
+      save.disabled=true;
+      try{
+        await updateLabCleanWork(workId,record=>{record.shelfId=select.value;});
+      }catch(error){previewStatusNode.textContent="本棚移動エラー："+error.message;save.disabled=false;}
+    });
+    const create=document.createElement("button");
+    create.type="button";create.textContent="新しい棚を追加";
+    create.addEventListener("click",async()=>{
+      const name=prompt("新しい棚の名前を入力してください");
+      if(!name||!name.trim())return;
+      try{
+        const db=await openLabDB();
+        const all=await requestToPromise(db.transaction(LAB_SHELF_STORE_NAME,"readonly").objectStore(LAB_SHELF_STORE_NAME).getAll());
+        const next=all.reduce((m,v)=>Math.max(m,Number(String(v.id).match(/(\\d+)$/)?.[1]||0)),0)+1;
+        const id="lab-shelf"+String(next).padStart(2,"0");
+        await new Promise((resolve,reject)=>{
+          const tx=db.transaction(LAB_SHELF_STORE_NAME,"readwrite");
+          tx.objectStore(LAB_SHELF_STORE_NAME).put({id,name:name.trim(),order:next});
+          tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("棚を追加できません"));
+        });
+        await renderRawWorksPreview();
+        previewStatusNode.textContent="新しい棚「"+name.trim()+"」をLabDBに追加しました。もう一度「本棚を移動」を押してください。";
+      }catch(error){previewStatusNode.textContent="棚の追加エラー："+error.message;}
+    });
+    wrap.append(label,select,save,create);
+    host.append(wrap);
+  }catch(error){previewStatusNode.textContent="棚の読み込みエラー："+error.message;}
+}
+
+async function toggleLabSearchExcluded(workId) {
+  try{
+    await updateLabCleanWork(workId,record=>{record.searchExcluded=!Boolean(record.searchExcluded);});
+    previewStatusNode.textContent="検索除外状態をLabDBの整理版に保存しました。";
+  }catch(error){previewStatusNode.textContent="検索除外の更新エラー："+error.message;}
+}
+
+async function deleteLabCleanWork(workId) {
+  if(!confirm("この作品をLabDBの整理版cleanWorksから削除します。原本sourceWorksは残ります。よろしいですか？"))return;
+  try{
+    const db=await openLabDB();
+    await new Promise((resolve,reject)=>{
+      const tx=db.transaction(LAB_CLEAN_STORE_NAME,"readwrite");
+      tx.objectStore(LAB_CLEAN_STORE_NAME).delete(workId);
+      tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("削除に失敗しました"));
+    });
+    await renderRawWorksPreview();
+    previewStatusNode.textContent="整理版cleanWorksから削除しました。原本sourceWorksは保持されています。";
+  }catch(error){previewStatusNode.textContent="削除エラー："+error.message;}
+}
+
 function renderRawWorkCard(work) {
   // 本番INDEXのNarouカード構造を複製。work自体には項目を追加・変換しない。
   const card = document.createElement("article");
