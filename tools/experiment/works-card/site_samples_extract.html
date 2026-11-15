@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ともたよむ｜カクヨム・note実データ抽出</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;color:#17345f}
+*{box-sizing:border-box}body{margin:0;background:#f2f5fa;line-height:1.6}
+main{max-width:720px;margin:auto;padding:18px 14px 40px}
+h1{font-size:22px;margin:0 0 8px}.panel{background:white;border:1px solid #cbd5e1;border-radius:14px;padding:14px;margin:12px 0}
+.warning{border-left:4px solid #d97706;background:#fffaf0}
+button{font:inherit;border:0;border-radius:10px;background:#17458a;color:white;padding:12px 16px;font-weight:700;width:100%}
+button:disabled{opacity:.45}#status{white-space:pre-wrap;overflow-wrap:anywhere;background:#eef2f8;border-radius:9px;padding:10px;font-size:13px}
+.small{font-size:13px;color:#586579}ul{padding-left:22px}
+</style>
+</head>
+<body>
+<main>
+<h1>カクヨム・note実データ抽出</h1>
+<p class="small">本番DBのworksストアから、カクヨムとnoteのレコードだけを読み取り専用で抽出します。</p>
+<section class="panel warning">
+<strong>安全仕様</strong>
+<ul>
+<li>tomotaYomuWorksDB v2を読み取り専用で開きます。</li>
+<li>作品レコードを更新・追加・削除しません。</li>
+<li>localStorageにはアクセスしません。</li>
+<li>本番DBの新規作成・バージョン変更は行いません。</li>
+<li>抽出対象はsiteがkakuyomuまたはnoteのレコードだけです。</li>
+</ul>
+</section>
+<section class="panel">
+<strong>抽出対象の確認</strong>
+<ul>
+<li>カクヨム：既知の作品ID 1177354054891965415 を含む全レコード</li>
+<li>note：マガジンID m8a34f89ccce0 を含む全レコード</li>
+<li>上記以外のカクヨム・noteレコードも、件数と内容を確認するため一緒に抽出します。</li>
+</ul>
+<button id="extract" type="button">カクヨム・noteを読み取り・JSON保存</button>
+</section>
+<section class="panel"><strong>処理結果</strong><pre id="status">待機中。本番DBにはまだ接続していません。</pre></section>
+</main>
+<script>
+"use strict";
+const DB_NAME="tomotaYomuWorksDB";
+const DB_VERSION=2;
+const KAKUYOMU_ID="1177354054891965415";
+const NOTE_MAGAZINE_ID="m8a34f89ccce0";
+const $=id=>document.getElementById(id);
+function fail(message){throw new Error(message);}
+async function openExistingReadonly(){
+ if(!indexedDB.databases)fail("既存DBの有無を安全に確認できないため中止しました。");
+ const list=await indexedDB.databases();
+ const info=list.find(x=>x.name===DB_NAME);
+ if(!info)fail("本番DBが見つかりません。DBの新規作成は行いません。");
+ if(info.version!==DB_VERSION)fail("本番DBのバージョンが想定外です。確認のため中止しました。");
+ return await new Promise((resolve,reject)=>{
+  const req=indexedDB.open(DB_NAME);
+  req.onupgradeneeded=()=>{req.transaction.abort();reject(new Error("DB更新が必要になったため中止しました。"));};
+  req.onerror=()=>reject(req.error||new Error("DBを開けません。"));
+  req.onblocked=()=>reject(new Error("別タブがDBを使用中です。"));
+  req.onsuccess=()=>{
+   const db=req.result;
+   if(db.version!==DB_VERSION||!db.objectStoreNames.contains("works")){
+    db.close();reject(new Error("DB構造が想定外のため中止しました。"));return;
+   }
+   resolve(db);
+  };
+ });
+}
+function readAll(store){
+ return new Promise((resolve,reject)=>{
+  const req=store.getAll();
+  req.onsuccess=()=>resolve(req.result||[]);
+  req.onerror=()=>reject(req.error||new Error("worksの読み込みに失敗"));
+ });
+}
+function downloadJson(data){
+ const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json;charset=utf-8"});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+ a.href=url;a.download="tomotayomu-lab-samples-kakuyomu-note.json";
+ document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+async function extract(){
+ const button=$("extract");button.disabled=true;
+ $("status").textContent="本番DBを読み取り専用で開いています…";
+ let db;
+ try{
+  db=await openExistingReadonly();
+  const tx=db.transaction("works","readonly");
+  const done=new Promise((resolve,reject)=>{
+   tx.oncomplete=resolve;
+   tx.onerror=()=>reject(tx.error||new Error("読み取りトランザクションに失敗"));
+   tx.onabort=()=>reject(tx.error||new Error("読み取りトランザクションが中止されました"));
+  });
+  const rowsPromise=readAll(tx.objectStore("works"));
+  const rows=await rowsPromise;
+  const kakuyomu=rows.filter(w=>w.site==="kakuyomu");
+  const note=rows.filter(w=>w.site==="note");
+  const selected=[...kakuyomu,...note];
+  if(!kakuyomu.length)fail("カクヨムの作品レコードが見つかりません。JSONは作成しません。");
+  if(!note.length)fail("noteのレコードが見つかりません。JSONは作成しません。");
+  await done;
+  const payload={
+   format:"tomotayomu-lab-samples-kakuyomu-note",
+   formatVersion:1,
+   exportedAt:new Date().toISOString(),
+   source:{database:DB_NAME,version:db.version,mode:"readonly"},
+   selection:{knownKakuyomuWorkId:KAKUYOMU_ID,noteMagazineId:NOTE_MAGAZINE_ID},
+   counts:{kakuyomu:kakuyomu.length,note:note.length,total:selected.length},
+   works:selected
+  };
+  downloadJson(payload);
+  const kMatch=kakuyomu.filter(w=>String(w.workId||"").includes(KAKUYOMU_ID)||String(w.id||"").includes(KAKUYOMU_ID));
+  const nMatch=note.filter(w=>String(w.workId||"").includes(NOTE_MAGAZINE_ID)||String(w.id||"").includes(NOTE_MAGAZINE_ID));
+  $("status").textContent=
+   "抽出成功：カクヨム "+kakuyomu.length+"件／note "+note.length+"件\n"+
+   "既知カクヨムIDとの一致："+kMatch.length+"件\n"+
+   "noteマガジンIDとの一致："+nMatch.length+"件\n"+
+   "本番DBへの書き込み：なし\nlocalStorageへのアクセス：なし\n"+
+   "保存ファイル：tomotayomu-lab-samples-kakuyomu-note.json";
+ }catch(error){
+  $("status").textContent="抽出中止："+error.message+"\nJSONは保存していません。\n本番DBへの書き込み：なし";
+ }finally{
+  if(db)db.close();
+  button.disabled=false;
+ }
+}
+$("extract").addEventListener("click",extract);
+</script>
+</body>
+</html>
