@@ -75,7 +75,7 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
     <li>使用するDB：<code>tomotaYomuNarouTranslatorLabDB</code> のみ</li>
     <li>本番DB <code>tomotaYomuWorksDB</code>・旧DBには接続しません。</li>
     <li>localStorage・sessionStorage・Shortcut・GitHub Actionsを使用しません。</li>
-    <li>外部通信は、利用者がAPI一括取得ボタンを押した場合のなろうAPIへの読み取りだけです。</li>
+    <li>外部通信は、利用者がAPI取得ボタンを押した場合のなろう通常API・R18 APIへの読み取りだけです。</li>
     <li>選択したサンプルJSONを原形のままLabDBへ保存します。変換・本番登録はしません。</li>
   </ul>
 </section>
@@ -104,7 +104,8 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
   <h2>6. なろうAPI一括取得（研究用）</h2>
   <p>LabDBのcleanWorksからNコードを読み取り、なろうAPIの全項目を一括取得します。取得した生データは専用ストアへ保存し、worksは変更しません。</p>
   <p class="small">通常APIのみ。最大10作品を1リクエストで取得します。APIから返らない作品は未取得として記録します。</p>
-  <button id="apiFetchButton" type="button">10作品のAPIデータを取得</button>
+  <button id="apiFetchButton" type="button">① 通常APIで10作品を取得</button>
+  <button id="apiR18FetchButton" type="button">② 通常API未取得作品をR18 APIで取得</button>
   <div id="apiFetchStatus" class="small" aria-live="polite">まだ取得していません。</div>
   <div id="apiFetchResult"></div>
 </section>
@@ -165,6 +166,7 @@ const previewButton = document.getElementById("previewButton");
 const previewStatusNode = document.getElementById("previewStatus");
 const previewCardsNode = document.getElementById("previewCards");
 const apiFetchButton = document.getElementById("apiFetchButton");
+const apiR18FetchButton = document.getElementById("apiR18FetchButton");
 const apiFetchStatusNode = document.getElementById("apiFetchStatus");
 const apiFetchResultNode = document.getElementById("apiFetchResult");
 let latestAuditRows = [];
@@ -361,7 +363,7 @@ async function refreshWorks() {
 }
 
 
-async function fetchNarouApiJsonp(ncodes) {
+async function fetchNarouApiJsonp(ncodes, apiBaseUrl = "https://api.syosetu.com/novelapi/api/") {
   return new Promise((resolve, reject) => {
     const callbackName = "tomotaNarouApiCallback_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
     const script = document.createElement("script");
@@ -395,7 +397,7 @@ async function fetchNarouApiJsonp(ncodes) {
       callback: callbackName,
       lim: String(ncodes.length)
     });
-    script.src = "https://api.syosetu.com/novelapi/api/?" + params.toString();
+    script.src = apiBaseUrl + "?" + params.toString();
     document.head.append(script);
   });
 }
@@ -447,6 +449,67 @@ async function runNarouApiBatchFetch() {
     apiFetchStatusNode.textContent = "API取得エラー：" + error.message;
   } finally {
     apiFetchButton.disabled = false;
+  }
+}
+
+async function runNarouR18FallbackFetch() {
+  apiR18FetchButton.disabled = true;
+  apiFetchStatusNode.textContent = "LabDBの通常API取得済みデータを確認しています…";
+  apiFetchResultNode.replaceChildren();
+  try {
+    const db = await openLabDB();
+    const works = await requestToPromise(db.transaction(LAB_CLEAN_STORE_NAME, "readonly").objectStore(LAB_CLEAN_STORE_NAME).getAll());
+    const ncodes = [...new Set(works.map(work => String(work.workId || "").trim().toLowerCase()).filter(code => /^[nＮ][0-9a-z]+$/i.test(code)))];
+    if (!ncodes.length) throw new Error("有効なNコードが見つかりません。");
+    if (ncodes.length > 10) throw new Error("今回の研究バッチは安全のため10作品までです。");
+
+    const saved = await requestToPromise(db.transaction(LAB_API_STORE_NAME, "readonly").objectStore(LAB_API_STORE_NAME).getAll());
+    const alreadyFetched = new Set(saved.map(record => String(record.ncode || record.id || "").toLowerCase()));
+    const pending = ncodes.filter(code => !alreadyFetched.has(code));
+    if (!pending.length) {
+      apiFetchStatusNode.textContent = "通常APIまたはR18 APIの取得済みデータが全作品分あります。追加取得はありません。";
+      return;
+    }
+
+    apiFetchStatusNode.textContent = "通常API未取得の" + pending.length + "作品だけをR18 APIで取得中…";
+    const response = await fetchNarouApiJsonp(pending, "https://api.syosetu.com/novel18api/api/");
+    if (!Array.isArray(response)) throw new Error("R18 API応答が配列形式ではありません。");
+    const allcount = response.find(item => item && Object.prototype.hasOwnProperty.call(item, "allcount"))?.allcount ?? null;
+    const records = response.filter(item => item && typeof item === "object" && item.ncode);
+    const returned = new Map(records.map(record => [String(record.ncode).toLowerCase(), record]));
+    const fetchedAt = new Date().toISOString();
+
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(LAB_API_STORE_NAME, "readwrite");
+      const store = tx.objectStore(LAB_API_STORE_NAME);
+      for (const ncode of pending) {
+        const record = returned.get(ncode);
+        if (record) store.put({ id: ncode, ncode: record.ncode, fetchedAt, source: "narou-novel18-api", raw: record });
+      }
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error || new Error("R18 API生データの保存に失敗しました"));
+      tx.onabort = () => reject(tx.error || new Error("R18 API生データの保存が中断されました"));
+    });
+
+    const missing = pending.filter(code => !returned.has(code));
+    apiFetchStatusNode.textContent = "R18 API応答：" + records.length + "作品 / 対象：" + pending.length + "作品 / allcount：" + (allcount ?? "不明") + "。取得できた生データを専用ストアへ保存しました。";
+    const list = document.createElement("ul");
+    for (const ncode of pending) {
+      const li = document.createElement("li");
+      li.textContent = ncode.toUpperCase() + (returned.has(ncode) ? "：R18 API取得成功（全項目）" : "：R18 API応答なし");
+      list.append(li);
+    }
+    apiFetchResultNode.append(list);
+    if (missing.length) {
+      const note = document.createElement("p");
+      note.className = "small";
+      note.textContent = "R18 APIでも未取得：" + missing.map(code => code.toUpperCase()).join("、");
+      apiFetchResultNode.append(note);
+    }
+  } catch (error) {
+    apiFetchStatusNode.textContent = "R18 API取得エラー：" + error.message;
+  } finally {
+    apiR18FetchButton.disabled = false;
   }
 }
 
@@ -827,6 +890,7 @@ auditButton.addEventListener("click", runFieldAudit);
 copyAuditButton.addEventListener("click", copyAuditResults);
 previewButton.addEventListener("click", renderRawWorksPreview);
 apiFetchButton.addEventListener("click", runNarouApiBatchFetch);
+apiR18FetchButton.addEventListener("click", runNarouR18FallbackFetch);
 importButton.addEventListener("click", importSamples);
 refreshButton.addEventListener("click", refreshWorks);
 refreshWorks();
