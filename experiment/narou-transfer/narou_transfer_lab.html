@@ -93,7 +93,7 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
   <h2>2. LabDBの状態</h2>
   <div class="summary">
     <div class="stat"><span class="small">保存作品数</span><strong id="count">—</strong></div>
-    <div class="stat"><span class="small">DBバージョン</span><strong>2</strong></div>
+    <div class="stat"><span class="small">DBバージョン</span><strong>3</strong></div>
     <div class="stat"><span class="small">整理版作品数</span><strong id="cleanCount">—</strong></div>
   </div>
   <p id="dbStatus" class="small">DB確認中…</p>
@@ -134,9 +134,10 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
 "use strict";
 
 const LAB_DB_NAME = "tomotaYomuNarouTranslatorLabDB";
-const LAB_DB_VERSION = 2;
+const LAB_DB_VERSION = 3;
 const LAB_STORE_NAME = "sourceWorks";
 const LAB_CLEAN_STORE_NAME = "cleanWorks";
+const LAB_SHELF_STORE_NAME = "labShelves";
 
 const fileInput = document.getElementById("sampleFile");
 const importButton = document.getElementById("importButton");
@@ -175,6 +176,9 @@ function openLabDB() {
       }
       if (!db.objectStoreNames.contains(LAB_CLEAN_STORE_NAME)) {
         db.createObjectStore(LAB_CLEAN_STORE_NAME, { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains(LAB_SHELF_STORE_NAME)) {
+        db.createObjectStore(LAB_SHELF_STORE_NAME, { keyPath: "id" });
       }
     };
     request.onsuccess = () => {
@@ -498,24 +502,16 @@ function renderRawWorkCard(work) {
 
   // INDEXのupdateCardが参照する項目名を、そのままraw worksに対して読む。
   // ここでwriter/story/general_lastup等を補完しないことが実験の目的。
-  const n = String(work.ncode || card.dataset.ncode).toUpperCase();
+  const n = String(work.workId || card.dataset.ncode).toUpperCase();
   const titleEl = card.querySelector("h2");
-  if (titleEl && work.title) titleEl.textContent = work.title;
+  if (titleEl) titleEl.textContent = work.title || "（タイトルなし）";
   const authorEl = card.querySelector(".authorName");
-  if (authorEl && work.writer) authorEl.textContent = work.writer;
-
-  card.dataset.lastUpdated = work.general_lastup || "";
-  card.dataset.totalEpisodes = work.general_all_no || "";
-  card.querySelector(".lastUpdated").textContent = work.general_lastup || "—";
-  if (Object.prototype.hasOwnProperty.call(work,"end") ||
-      Object.prototype.hasOwnProperty.call(work,"novel_type") ||
-      Object.prototype.hasOwnProperty.call(work,"noveltype")) {
-    if (String(work.noveltype ?? "").trim() === "2") card.querySelector(".status").textContent = "🟣 短編";
-    else if (String(work.end) === "0") card.querySelector(".status").textContent = "🔵 完結";
-    else if (String(work.end) === "1") card.querySelector(".status").textContent = "🟢 連載中";
-    else card.querySelector(".status").textContent = "状態不明";
-  }
-  card.querySelector(".synopsis").textContent = work.story || "あらすじなし";
+  if (authorEl) authorEl.textContent = work.authorName || "作者情報なし";
+  card.dataset.lastUpdated = work.updatedAt || "";
+  card.dataset.totalEpisodes = work.episodeCount ?? "";
+  card.querySelector(".lastUpdated").textContent = work.updatedAt || "—";
+  card.querySelector(".status").textContent = work.status || "状態不明";
+  card.querySelector(".synopsis").textContent = work.synopsis || "あらすじなし";
 
   const isR18 = card.dataset.r18 === "1";
   const workUrl = (isR18 ? "https://novel18.syosetu.com/" : "https://ncode.syosetu.com/") + n.toLowerCase() + "/";
@@ -523,7 +519,7 @@ function renderRawWorkCard(work) {
 
   // 新設計のしおりだけを参照。既存の読書位置キャッシュや本番DBは使わない。
   const bookmark = work.bookmark;
-  const total = Number(work.general_all_no || 0);
+  const total = Number(work.episodeCount || 0);
   const resume = card.querySelector(".resumeLink");
   const hasNumberBookmark = typeof bookmark === "number" && Number.isFinite(bookmark);
   const isRead = bookmark === "R";
@@ -548,20 +544,28 @@ function renderRawWorkCard(work) {
   const managementBody = document.createElement("div");
   const ncodeLine = document.createElement("p");
   ncodeLine.textContent = "Nコード：" + (ncode || "＜なし＞");
+  const shelfLine = document.createElement("p");
+  shelfLine.className = "small";
+  shelfLine.textContent = "本棚ID：" + (work.shelfId || "未設定");
   const managementActions = document.createElement("div");
   managementActions.className = "actions";
-  for (const label of ["本棚を移動", "🔎 検索除外にする", "削除"]) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = label;
-    button.disabled = true;
-    button.title = "Labの表示確認用です。管理操作はまだ実装していません。";
-    managementActions.append(button);
-  }
+  const moveButton = document.createElement("button");
+  moveButton.type = "button";
+  moveButton.textContent = "本棚を移動";
+  moveButton.addEventListener("click", () => openLabShelfPicker(work.id, managementBody));
+  const excludedButton = document.createElement("button");
+  excludedButton.type = "button";
+  excludedButton.textContent = work.searchExcluded ? "🔎 検索除外を解除" : "🔎 検索除外にする";
+  excludedButton.addEventListener("click", () => toggleLabSearchExcluded(work.id));
+  const deleteButton = document.createElement("button");
+  deleteButton.type = "button";
+  deleteButton.textContent = "削除";
+  deleteButton.addEventListener("click", () => deleteLabCleanWork(work.id));
+  managementActions.append(moveButton, excludedButton, deleteButton);
   const managementNote = document.createElement("p");
   managementNote.className = "small";
-  managementNote.textContent = "※ 管理操作は表示確認用です。LabDBの作品データは変更しません。";
-  managementBody.append(ncodeLine, managementActions, managementNote);
+  managementNote.textContent = "※ 操作対象はLabDBの整理版cleanWorksのみです。";
+  managementBody.append(ncodeLine, shelfLine, managementActions, managementNote);
   management.append(managementSummary, managementBody);
   card.append(management);
 
@@ -572,11 +576,11 @@ function renderRawWorkCard(work) {
   const diagnosticPre = document.createElement("pre");
   const checks = [
     ["title", work.title],
-    ["writer（INDEX期待）", work.writer],
-    ["general_lastup（INDEX期待）", work.general_lastup],
-    ["end / noveltype / novel_type（INDEX期待）", work.end ?? work.noveltype ?? work.novel_type],
-    ["story（INDEX期待）", work.story],
-    ["general_all_no（INDEX期待）", work.general_all_no],
+    ["authorName", work.authorName],
+    ["updatedAt", work.updatedAt],
+    ["status", work.status],
+    ["synopsis", work.synopsis],
+    ["episodeCount", work.episodeCount],
     ["bookmark（新設計）", work.bookmark],
     ["workId（works項目）", work.workId],
     ["authorName（works項目）", work.authorName],
