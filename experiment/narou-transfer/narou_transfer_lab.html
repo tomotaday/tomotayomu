@@ -93,7 +93,7 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
   <h2>2. LabDBの状態</h2>
   <div class="summary">
     <div class="stat"><span class="small">保存作品数</span><strong id="count">—</strong></div>
-    <div class="stat"><span class="small">DBバージョン</span><strong>3</strong></div>
+    <div class="stat"><span class="small">DBバージョン</span><strong>4</strong></div>
     <div class="stat"><span class="small">整理版作品数</span><strong id="cleanCount">—</strong></div>
   </div>
   <p id="dbStatus" class="small">DB確認中…</p>
@@ -145,8 +145,6 @@ const refreshButton = document.getElementById("refreshButton");
 const statusNode = document.getElementById("status");
 const countNode = document.getElementById("count");
 const cleanCountNode = document.getElementById("cleanCount");
-const cleanButton = document.getElementById("cleanButton");
-const cleanStatusNode = document.getElementById("cleanStatus");
 const dbStatusNode = document.getElementById("dbStatus");
 const worksNode = document.getElementById("works");
 const auditButton = document.getElementById("auditButton");
@@ -310,9 +308,6 @@ async function refreshWorks() {
   }
 }
 
-async function createCleanWorks() {
-  cleanStatusNode.textContent = "整理前ストアは廃止済みです。取り込み時に整理版cleanWorksへ直接保存します。";
-}
 
 async function copyAuditResults() {
   if (!latestAuditRows.length) {
@@ -552,14 +547,14 @@ function renderRawWorkCard(work) {
 async function renderRawWorksPreview() {
   previewButton.disabled = true;
   previewCardsNode.replaceChildren();
-  previewStatusNode.textContent = "LabDBのworksを読み込み中…";
+  previewStatusNode.textContent = "LabDBの整理版worksを読み込み中…";
   try {
     const db = await openLabDB();
     const tx = db.transaction(LAB_CLEAN_STORE_NAME, "readonly");
     const records = await requestToPromise(tx.objectStore(LAB_CLEAN_STORE_NAME).getAll());
     records.sort((a, b) => String(a.workId).localeCompare(String(b.workId)));
     if (!records.length) {
-      previewStatusNode.textContent = "整理版cleanWorksに作品がありません。先に重複項目を除いた整理版を作成してください。";
+      previewStatusNode.textContent = "整理版cleanWorksに作品がありません。先にサンプルJSONを取り込んでください。";
       return;
     }
     let made = 0;
@@ -687,7 +682,6 @@ async function runFieldAudit() {
 }
 
 auditButton.addEventListener("click", runFieldAudit);
-cleanButton.addEventListener("click", createCleanWorks);
 copyAuditButton.addEventListener("click", copyAuditResults);
 previewButton.addEventListener("click", renderRawWorksPreview);
 importButton.addEventListener("click", importSamples);
