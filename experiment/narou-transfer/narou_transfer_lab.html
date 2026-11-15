@@ -111,6 +111,16 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
 </section>
 
 <section class="panel">
+  <h2>7. なろうAPI生データの確認</h2>
+  <p>apiRawResponsesから通常API・R18 APIの保存済み生データを読み取り、項目の出現数・型・値の例を比較します。</p>
+  <p class="small">読み取り専用です。APIへの再通信、データの更新・削除、cleanWorksへの変更は行いません。</p>
+  <button id="apiAuditButton" type="button">保存済みAPIデータを調査</button>
+  <button id="copyApiAuditButton" type="button" disabled>API調査結果をコピー</button>
+  <div id="apiAuditStatus" class="small" aria-live="polite">まだ調査していません。</div>
+  <div id="apiAuditResult"></div>
+</section>
+
+<section class="panel">
   <h2>5. 作品カード実験</h2>
   <p>本番INDEXのなろう作品カードを複製し、LabDBの整理版cleanWorksレコードを加工せずに渡します。本番DB・本番カードには接続しません。</p>
   <p class="small">表示欄が空になる箇所や、カード側が要求する項目との違いを確認します。カード内の操作は表示確認用で、作品データの変更はできません。</p>
@@ -169,6 +179,11 @@ const apiFetchButton = document.getElementById("apiFetchButton");
 const apiR18FetchButton = document.getElementById("apiR18FetchButton");
 const apiFetchStatusNode = document.getElementById("apiFetchStatus");
 const apiFetchResultNode = document.getElementById("apiFetchResult");
+const apiAuditButton = document.getElementById("apiAuditButton");
+const copyApiAuditButton = document.getElementById("copyApiAuditButton");
+const apiAuditStatusNode = document.getElementById("apiAuditStatus");
+const apiAuditResultNode = document.getElementById("apiAuditResult");
+let latestApiAuditRows = [];
 let latestAuditRows = [];
 
 let dbPromise = null;
@@ -514,6 +529,132 @@ async function runNarouR18FallbackFetch() {
     apiFetchStatusNode.textContent = "R18 API取得エラー：" + error.message;
   } finally {
     apiR18FetchButton.disabled = false;
+  }
+}
+
+async function runApiRawAudit() {
+  apiAuditButton.disabled = true;
+  apiAuditStatusNode.textContent = "保存済みAPI生データを読み取り中…";
+  apiAuditResultNode.replaceChildren();
+  latestApiAuditRows = [["API種別", "Nコード", "項目パス", "出現数", "値の型", "値の例（最大3件）"]];
+  try {
+    const db = await openLabDB();
+    const tx = db.transaction(LAB_API_STORE_NAME, "readonly");
+    const saved = await requestToPromise(tx.objectStore(LAB_API_STORE_NAME).getAll());
+    if (!saved.length) {
+      apiAuditStatusNode.textContent = "apiRawResponsesに保存データがありません。先にAPI取得を実行してください。";
+      return;
+    }
+    const groups = [
+      { source: "narou-novel-api", label: "通常API" },
+      { source: "narou-novel18-api", label: "R18 API" }
+    ];
+    const summary = document.createElement("div");
+    summary.className = "summary";
+    for (const group of groups) {
+      const records = saved.filter(item => item.source === group.source && item.raw && typeof item.raw === "object");
+      const stat = document.createElement("div");
+      stat.className = "stat";
+      const label = document.createElement("span");
+      label.className = "small";
+      label.textContent = group.label + " 保存数";
+      const value = document.createElement("strong");
+      value.textContent = String(records.length);
+      stat.append(label, value);
+      summary.append(stat);
+      if (!records.length) continue;
+      const codes = document.createElement("p");
+      codes.className = "small";
+      codes.textContent = group.label + "：" + records.map(item => String(item.ncode || item.id || "").toUpperCase()).join("、");
+      apiAuditResultNode.append(codes);
+      const stats = collectFieldStats(records.map(item => item.raw));
+      const heading = document.createElement("h3");
+      heading.textContent = group.label + " 項目一覧（" + records.length + "作品）";
+      apiAuditResultNode.append(heading);
+      const wrap = document.createElement("div");
+      wrap.className = "audit-wrap";
+      const table = document.createElement("table");
+      table.className = "audit-table";
+      const head = document.createElement("tr");
+      for (const labelText of ["項目パス", "出現数", "値の型", "値の例（最大3件）"]) {
+        const th = document.createElement("th");
+        th.textContent = labelText;
+        head.append(th);
+      }
+      const thead = document.createElement("thead");
+      thead.append(head);
+      const tbody = document.createElement("tbody");
+      for (const [path, item] of stats) {
+        const row = document.createElement("tr");
+        const values = [
+          path,
+          item.count + " / " + records.length,
+          [...item.types].join(", "),
+          [...item.examples].join(" ｜ ")
+        ];
+        values.forEach((value, index) => {
+          const cell = document.createElement("td");
+          if (index === 0) cell.className = "audit-key";
+          if (index === 3) cell.className = "audit-example";
+          cell.textContent = value;
+          row.append(cell);
+        });
+        tbody.append(row);
+        latestApiAuditRows.push([group.label, "", path, item.count + " / " + records.length, [...item.types].join(", "), [...item.examples].join(" ｜ ")]);
+      }
+      table.append(thead, tbody);
+      wrap.append(table);
+      apiAuditResultNode.append(wrap);
+      for (const record of records) {
+        const details = document.createElement("details");
+        const summaryLine = document.createElement("summary");
+        summaryLine.textContent = String(record.ncode || record.id || "Nコード不明").toUpperCase() + " の生JSONを確認";
+        const pre = document.createElement("pre");
+        pre.textContent = JSON.stringify(record.raw, null, 2);
+        details.append(summaryLine, pre);
+        apiAuditResultNode.append(details);
+      }
+    }
+    apiAuditResultNode.prepend(summary);
+    latestApiAuditRows.unshift(["API種別", "Nコード", "項目パス", "出現数", "値の型", "値の例（最大3件）"]);
+    for (const record of saved) {
+      latestApiAuditRows.push([record.source || "種別不明", String(record.ncode || record.id || "").toUpperCase(), "＜作品レコード＞", Object.keys(record.raw || {}).length + "項目", "object", "fetchedAt=" + (record.fetchedAt || "")]);
+    }
+    copyApiAuditButton.disabled = false;
+    apiAuditStatusNode.textContent = "保存済み" + saved.length + "件を読み取りました。元データは変更していません。";
+  } catch (error) {
+    apiAuditStatusNode.textContent = "API生データ調査エラー：" + error.message;
+  } finally {
+    apiAuditButton.disabled = false;
+  }
+}
+
+async function copyApiAuditResults() {
+  if (!latestApiAuditRows.length) {
+    apiAuditStatusNode.textContent = "先にAPI生データ調査を実行してください。";
+    return;
+  }
+  const tsv = latestApiAuditRows
+    .map(row => row.map(value => String(value).replace(/[\\t\\r\\n]+/g, " ")).join("\\t"))
+    .join("\\n");
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(tsv);
+    } else {
+      const helper = document.createElement("textarea");
+      helper.value = tsv;
+      helper.setAttribute("readonly", "");
+      helper.style.position = "fixed";
+      helper.style.opacity = "0";
+      document.body.append(helper);
+      helper.select();
+      const copied = document.execCommand("copy");
+      helper.remove();
+      if (!copied) throw new Error("コピー機能を利用できません");
+    }
+    apiAuditStatusNode.textContent = "API調査結果をコピーしました。Excelやメモに貼り付けできます。";
+  } catch (error) {
+    apiAuditStatusNode.textContent = "コピーできませんでした：" + error.message;
   }
 }
 
@@ -890,6 +1031,8 @@ async function runFieldAudit() {
   }
 }
 
+apiAuditButton.addEventListener("click", runApiRawAudit);
+copyApiAuditButton.addEventListener("click", copyApiAuditResults);
 auditButton.addEventListener("click", runFieldAudit);
 copyAuditButton.addEventListener("click", copyAuditResults);
 previewButton.addEventListener("click", renderRawWorksPreview);
