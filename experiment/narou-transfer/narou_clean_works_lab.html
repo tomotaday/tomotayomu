@@ -12,7 +12,8 @@ button{border:0;border-radius:10px;padding:12px 16px;background:var(--accent);co
 #status{min-height:2em;font-weight:600;color:var(--muted)}
 /* INDEXなろう作品カードの実験用複製 */
 .index-card-preview .card{background:#fffdf9;border:1px solid #aaa195;border-radius:12px;padding:13px;margin:10px 0;color:#252525}
-.index-card-preview .meta{font-size:12px;color:#555;margin-bottom:8px}
+.index-card-preview .meta{font-size:12px;color:#555;margin-bottom:8px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.index-card-preview .shelfIdInline{margin-left:auto;color:#777;font-size:11px;overflow-wrap:anywhere;text-align:right}
 .index-card-preview .newMark{font-size:12px}
 .index-card-preview h2{font-size:15px;line-height:1.45;font-weight:700;margin:0 0 4px}
 .index-card-preview .author,.index-card-preview .ncode{font-size:13px;color:#555}
@@ -49,12 +50,12 @@ function renderCard(work){
 const card=document.createElement("article");card.className="card";
 const isR18=work.siteData?.isR18===true, ncode=String(work.workId||"").toLowerCase();
 const url=(isR18?"https://novel18.syosetu.com/":"https://ncode.syosetu.com/")+ncode+"/";
-card.innerHTML='<div class="meta"><span class="lastUpdated"></span> ｜ <span class="status"></span></div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="siteBadge siteBadge-narou">なろう</span></div><div class="shelfIdLine"></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank"></a></div>';
+card.innerHTML='<div class="meta"><span class="lastUpdated"></span> ｜ <span class="status"></span><span class="shelfIdInline"></span></div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="siteBadge siteBadge-narou">なろう</span></div><div class="shelfIdLine"></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank"></a></div>';
 card.querySelector(".lastUpdated").textContent=work.updatedAt||"更新日なし";
 card.querySelector(".status").textContent=work.status||"状態不明";
+card.querySelector(".shelfIdInline").textContent="棚ID："+(work.shelfId||"＜未設定＞");
 card.querySelector("h2").textContent=work.title||"タイトルなし";
 card.querySelector(".authorName").textContent=work.authorName||"作者情報なし";
-card.querySelector(".shelfIdLine").textContent="棚ID："+(work.shelfId||"＜未設定＞");
 card.querySelector(".synopsis").textContent=work.synopsis||"あらすじなし";
 card.querySelector(".workLink").href=url;
 const resume=card.querySelector(".resumeLink"), mark=isR18?"　®️":"", total=Number(work.episodeCount||0), bookmark=work.bookmark;
