@@ -104,19 +104,22 @@ async function extract(){
   const worksStore=tx.objectStore("works");
   if(!worksStore.indexNames.contains("workId"))fail("workId indexが見つからないため中止しました。");
   const index=worksStore.index("workId");
-  const records=[];
-  for(const code of CODES){
-   const matches=await getByCode(index,code);
-   if(matches.length!==1)fail(code+" は1件に特定できません（該当 "+matches.length+" 件）。JSONは作成しません。");
-   records.push(matches[0]);
-  }
-  const shelfIds=[...new Set(records.map(r=>String(r.shelfId||"")).filter(Boolean))];
-  const shelves=await getShelves(tx.objectStore("shelves"));
-  const selectedShelves=shelves.filter(s=>shelfIds.includes(String(s.shelf_id||"")));
-  if(selectedShelves.length!==shelfIds.length)fail("作品が参照する棚マスターをすべて特定できません。JSONは作成しません。");
-  await new Promise((resolve,reject)=>{
+  const txDone=new Promise((resolve,reject)=>{
    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("読み取りトランザクションに失敗"));tx.onabort=()=>reject(tx.error||new Error("読み取りトランザクションが中止されました"));
   });
+  // IndexedDBのトランザクションが自動終了する前に、必要な読み取り要求をまとめて登録する。
+  const recordPromises=CODES.map(code=>getByCode(index,code));
+  const shelvesPromise=getShelves(tx.objectStore("shelves"));
+  const [matchesArray,shelves]=await Promise.all([Promise.all(recordPromises),shelvesPromise]);
+  const records=[];
+  matchesArray.forEach((matches,i)=>{
+   if(matches.length!==1)fail(CODES[i]+" は1件に特定できません（該当 "+matches.length+" 件）。JSONは作成しません。");
+   records.push(matches[0]);
+  });
+  const shelfIds=[...new Set(records.map(r=>String(r.shelfId||"")).filter(Boolean))];
+  const selectedShelves=shelves.filter(s=>shelfIds.includes(String(s.shelf_id||"")));
+  if(selectedShelves.length!==shelfIds.length)fail("作品が参照する棚マスターをすべて特定できません。JSONは作成しません。");
+  await txDone;
   const payload={format:"tomotayomu-lab-samples",formatVersion:1,exportedAt:new Date().toISOString(),source:{database:DB_NAME,version:db.version,mode:"readonly"},works:records,shelves:selectedShelves};
   downloadJson(payload);
   $("status").textContent="抽出成功：作品 "+records.length+"件／参照棚 "+selectedShelves.length+"件\n対象Nコード："+CODES.join(", ")+"\n本番DBへの書き込み：なし\nlocalStorageへのアクセス：なし\n保存ファイル：tomotayomu-lab-samples-8works.json";
