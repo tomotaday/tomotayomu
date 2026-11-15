@@ -93,11 +93,20 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
   <h2>2. LabDBの状態</h2>
   <div class="summary">
     <div class="stat"><span class="small">保存作品数</span><strong id="count">—</strong></div>
-    <div class="stat"><span class="small">DBバージョン</span><strong>4</strong></div>
+    <div class="stat"><span class="small">DBバージョン</span><strong>5</strong></div>
     <div class="stat"><span class="small">整理版作品数</span><strong id="cleanCount">—</strong></div>
   </div>
   <p id="dbStatus" class="small">DB確認中…</p>
   <button id="refreshButton" type="button">保存内容を再読込</button>
+</section>
+
+<section class="panel">
+  <h2>6. なろうAPI一括取得（研究用）</h2>
+  <p>LabDBのcleanWorksからNコードを読み取り、なろうAPIの全項目を一括取得します。取得した生データは専用ストアへ保存し、worksは変更しません。</p>
+  <p class="small">通常APIのみ。最大10作品を1リクエストで取得します。APIから返らない作品は未取得として記録します。</p>
+  <button id="apiFetchButton" type="button">10作品のAPIデータを取得</button>
+  <div id="apiFetchStatus" class="small" aria-live="polite">まだ取得していません。</div>
+  <div id="apiFetchResult"></div>
 </section>
 
 <section class="panel">
@@ -134,10 +143,11 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
 "use strict";
 
 const LAB_DB_NAME = "tomotaYomuNarouTranslatorLabDB";
-const LAB_DB_VERSION = 4;
+const LAB_DB_VERSION = 5;
 const LAB_STORE_NAME = "sourceWorks";
 const LAB_CLEAN_STORE_NAME = "cleanWorks";
 const LAB_SHELF_STORE_NAME = "labShelves";
+const LAB_API_STORE_NAME = "apiRawResponses";
 
 const fileInput = document.getElementById("sampleFile");
 const importButton = document.getElementById("importButton");
@@ -154,6 +164,9 @@ const auditResultNode = document.getElementById("auditResult");
 const previewButton = document.getElementById("previewButton");
 const previewStatusNode = document.getElementById("previewStatus");
 const previewCardsNode = document.getElementById("previewCards");
+const apiFetchButton = document.getElementById("apiFetchButton");
+const apiFetchStatusNode = document.getElementById("apiFetchStatus");
+const apiFetchResultNode = document.getElementById("apiFetchResult");
 let latestAuditRows = [];
 
 let dbPromise = null;
@@ -346,6 +359,95 @@ async function refreshWorks() {
   }
 }
 
+
+async function fetchNarouApiJsonp(ncodes) {
+  return new Promise((resolve, reject) => {
+    const callbackName = "tomotaNarouApiCallback_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
+    const script = document.createElement("script");
+    let settled = false;
+    const cleanup = () => {
+      delete window[callbackName];
+      script.remove();
+      clearTimeout(timeoutId);
+    };
+    const timeoutId = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new Error("API応答が時間内に届きませんでした"));
+    }, 30000);
+    window[callbackName] = data => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(data);
+    };
+    script.onerror = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new Error("APIへの接続に失敗しました"));
+    };
+    const params = new URLSearchParams({
+      ncode: ncodes.join("-"),
+      out: "jsonp",
+      callback: callbackName,
+      lim: String(ncodes.length)
+    });
+    script.src = "https://api.syosetu.com/novelapi/api/?" + params.toString();
+    document.head.append(script);
+  });
+}
+
+async function runNarouApiBatchFetch() {
+  apiFetchButton.disabled = true;
+  apiFetchStatusNode.textContent = "LabDBからNコードを読み込んでいます…";
+  apiFetchResultNode.replaceChildren();
+  try {
+    const db = await openLabDB();
+    const works = await requestToPromise(db.transaction(LAB_CLEAN_STORE_NAME, "readonly").objectStore(LAB_CLEAN_STORE_NAME).getAll());
+    const ncodes = [...new Set(works.map(work => String(work.workId || "").trim().toLowerCase()).filter(code => /^[nＮ][0-9a-z]+$/i.test(code)))];
+    if (!ncodes.length) throw new Error("有効なNコードが見つかりません。");
+    if (ncodes.length > 10) throw new Error("今回の研究バッチは安全のため10作品までです。");
+    apiFetchStatusNode.textContent = ncodes.length + "作品を一括取得中…";
+    const response = await fetchNarouApiJsonp(ncodes);
+    if (!Array.isArray(response)) throw new Error("API応答が配列形式ではありません。");
+    const allcount = response.find(item => item && Object.prototype.hasOwnProperty.call(item, "allcount"))?.allcount ?? null;
+    const records = response.filter(item => item && typeof item === "object" && item.ncode);
+    const returned = new Map(records.map(record => [String(record.ncode).toLowerCase(), record]));
+    const fetchedAt = new Date().toISOString();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(LAB_API_STORE_NAME, "readwrite");
+      const store = tx.objectStore(LAB_API_STORE_NAME);
+      for (const ncode of ncodes) {
+        const record = returned.get(ncode);
+        if (record) store.put({ id: ncode, ncode: record.ncode, fetchedAt, source: "narou-novel-api", raw: record });
+      }
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error || new Error("API生データの保存に失敗しました"));
+      tx.onabort = () => reject(tx.error || new Error("API生データの保存が中断されました"));
+    });
+    const missing = ncodes.filter(ncode => !returned.has(ncode));
+    apiFetchStatusNode.textContent = "API応答：" + records.length + "作品 / 指定：" + ncodes.length + "作品 / allcount：" + (allcount ?? "不明") + "。取得できた生データを専用ストアへ保存しました。worksは変更していません。";
+    const list = document.createElement("ul");
+    for (const ncode of ncodes) {
+      const li = document.createElement("li");
+      li.textContent = ncode.toUpperCase() + (returned.has(ncode) ? "：取得成功（全項目）" : "：API応答なし");
+      list.append(li);
+    }
+    apiFetchResultNode.append(list);
+    if (missing.length) {
+      const note = document.createElement("p");
+      note.className = "small";
+      note.textContent = "未取得：" + missing.map(code => code.toUpperCase()).join("、") + "。検索除外・削除・API未掲載などの可能性があります。";
+      apiFetchResultNode.append(note);
+    }
+  } catch (error) {
+    apiFetchStatusNode.textContent = "API取得エラー：" + error.message;
+  } finally {
+    apiFetchButton.disabled = false;
+  }
+}
 
 async function copyAuditResults() {
   if (!latestAuditRows.length) {
@@ -722,7 +824,7 @@ async function runFieldAudit() {
 
 auditButton.addEventListener("click", runFieldAudit);
 copyAuditButton.addEventListener("click", copyAuditResults);
-previewButton.addEventListener("click", renderRawWorksPreview);
+previewButton.addEventListener("click", renderRawWorksPreview);\napiFetchButton.addEventListener("click", runNarouApiBatchFetch);
 importButton.addEventListener("click", importSamples);
 refreshButton.addEventListener("click", refreshWorks);
 refreshWorks();
