@@ -249,27 +249,28 @@ function describeValue(value) {
 function collectFieldStats(records) {
   const stats = new Map();
   function visit(value, path, workIndex) {
-    if (!path) return;
-    if (!stats.has(path)) stats.set(path, { count: 0, types: new Set(), examples: new Set() });
-    const item = stats.get(path);
-    item.count++;
-    item.types.add(describeValue(value));
-    if (item.examples.size < 3) {
-      let sample;
-      try {
-        sample = typeof value === "string" ? value : JSON.stringify(value);
-      } catch {
-        sample = String(value);
+    if (path) {
+      if (!stats.has(path)) stats.set(path, { count: 0, types: new Set(), examples: new Set() });
+      const item = stats.get(path);
+      item.count++;
+      item.types.add(describeValue(value));
+      if (item.examples.size < 3) {
+        let sample;
+        try {
+          sample = typeof value === "string" ? value : JSON.stringify(value);
+        } catch {
+          sample = String(value);
+        }
+        if (sample !== undefined) item.examples.add(String(sample).slice(0, 110));
       }
-      if (sample !== undefined) item.examples.add(String(sample).slice(0, 110));
     }
     if (value && typeof value === "object" && !Array.isArray(value)) {
       for (const [key, child] of Object.entries(value)) {
         visit(child, path ? path + "." + key : key, workIndex);
       }
     } else if (Array.isArray(value)) {
-      for (let i = 0; i < value.length; i++) {
-        visit(value[i], path + "[]", workIndex);
+      for (const child of value) {
+        visit(child, path ? path + "[]" : "[]", workIndex);
       }
     }
   }
