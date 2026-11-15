@@ -521,7 +521,7 @@ function renderRawWorkCard(work) {
     resume.textContent = "続き📖" + bookmark + "/" + (total || "—") + "話" + r18Mark;
     resume.href = bookmark > 0 ? workUrl + bookmark + "/" : workUrl;
   } else {
-    resume.textContent = "続き📖📝記録なし / " + (total || "—") + "話" + r18Mark;
+    resume.textContent = "続き📖未読 / " + (total || "—") + "話" + r18Mark;
     resume.href = workUrl;
   }
 
