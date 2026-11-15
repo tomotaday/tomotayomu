@@ -487,3 +487,85 @@
 - noteの一意一致ケースはiPhone実機で確認。作品カードの続きリンクと進捗表示94/106話を確認。異常系3ケースは専用テストページでシミュレーション確認済み。本番異常系は未実施。
 - note bookmark test page `experiment/note-bookmark/index.html` は確認後に削除。commit `265bb4637251f7571336a175d61aa803885dfee9`。既存 `experiment/bookmark/` は維持。
 - この作業で本番IndexedDB/localStorageの初期化・削除、GitHub ActionsやShortcutの変更は行っていない。noteの一時受信キーは成功時の処理でのみ削除される。
+
+
+---
+
+## 2026-11-15 なろう作品bookmarkデータ整理（実機完了）
+
+### 目的・対象
+
+- 対象DB：`tomotaYomuWorksDB` version 2
+- 対象Object Store：`works`
+- 対象レコード：`site === "narou"` の通常・R18作品
+- 対象項目：作品レコードの `bookmark`。既存 `reading` はbookmarkの数値比較元として読み取り、`reading.position === 0` のみ削除。他のreading情報は保持。
+- 現行カードはまだbookmarkを参照していないため、今回の作業ではINDEX・カード表示・カード処理コードを変更していない。Kakuyomu / noteのbookmarkには触れていない。
+
+### 合意した保存形式
+
+| bookmark | 意味 |
+|---|---|
+| 未設定 | 未読 |
+| 文字列 `"R"` | 短編の読了 |
+| 正の整数 | 連載・完結作品のしおり位置 |
+
+- `0` は未読を意味しない。bookmarkに残さず、未読は値なしで表す。
+- 連載・完結作品は `bookmark.position` と `reading.position` の有効な正の整数を比較し、大きい方をbookmarkへ残す。
+- 短編は `reading.isRead === true` または既存bookmarkが `"R"` なら `"R"`。それ以外は未設定。
+- 短編以外の `"R"` は異常として変更対象から除外する。
+- `reading.position === 0` はプロパティを削除し、`reading.isRead` など他のreading情報は保持する。
+- 過去のしおり位置が多少ずれる可能性は許容し、正確な位置の完全再現より、今後の単純で保守しやすい構造を優先する。
+
+### 実行ページ・修正履歴
+
+- 専用ページ：`tools/maintenance/narou_bookmark_migration.html`
+- GitHub Pages：`https://tomotaday.github.io/tomotayomu/tools/maintenance/narou_bookmark_migration.html`
+- 初回プレビュー確認後、bookmarkが `{"position":数値}` 形式の場合に数値を取り出して比較対象に含める必要があることを発見。
+- プレビューに `bookmark.position` / `reading.position` / 採用bookmark値を表示するよう修正。bookmark側・reading側の大きい方を採用する比較処理も修正。
+- 修正commit：`b4f47f7630bfb290ed4e9f5bc2ba399b2343b372`
+- 修正後の画面で比較表示を確認し、ともたの判断で実行へ進んだ。
+
+### 実行前の現状確認（iPhone / Brave）
+
+| 項目 | 結果 |
+|---|---:|
+| 作品ストア総数 | 3,602 |
+| なろう作品 | 3,597 |
+| bookmarkの数値0 | 0 |
+| reading.positionの数値0 | 0 |
+| 変更予定の作品 | 3,507 |
+| 短編の読了（R）予定 | 70 |
+| 短編以外のR（要確認異常） | 0 |
+
+プレビューは変更予定の先頭100件のみを表示する仕様。実行処理は先頭100件に限定されず、worksストア全件を読み込み、なろう作品全件を処理する。
+
+### バックアップ・実行・事後確認
+
+- 実行前にユーザーが作品ストア全件のJSONバックアップをダウンロードしたことを確認。
+- ユーザー操作で「bookmarkを整理する」を実行。
+- 実行後、worksストア全件を再読込して再確認した画面結果：
+
+| 項目 | 実行後 |
+|---|---:|
+| 作品ストア総数 | 3,602 |
+| なろう作品 | 3,597 |
+| bookmarkの数値0 | 0 |
+| reading.positionの数値0 | 0 |
+| 変更予定の作品 | 0 |
+| 短編の読了（R） | 70 |
+| 短編以外のR（要確認異常） | 0 |
+
+- 実行後の「変更予定の作品 0」は、再走査時点で追加の整理対象が残っていないことを示す。
+- 短編読了70件は処理後も保持された読了件数であり、未処理件数ではない。
+- 全件再走査でbookmark・reading.positionの数値0残存なし、短編以外のR異常なしを確認。今回のbookmarkデータ整理は実機完了。
+- バックアップの正確なファイル名・端末内保存先は本記録では未確認。
+
+### 現在の状態・次工程
+
+1. なろう作品のbookmarkデータ整理：**実機完了**。
+2. 現行カードの読書状態参照先：引き続き `works.reading`。今回変更していない。
+3. bookmarkをカードへ接続する実装：未着手。
+4. reading廃止：未着手。カード切替・参照経路監査が済むまで保持する。
+5. 旧DB・localStorage・GitHub Actions・Shortcut・Kakuyomu/noteデータ：今回の作業対象外で、変更していない。
+6. 今後、カード切替後に `reading` の参照・書き込みが残っていないことを確認してから、readingの廃止可否を別途判断する。
+
