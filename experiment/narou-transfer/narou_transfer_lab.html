@@ -249,8 +249,8 @@ async function copyAuditResults() {
     return;
   }
   const tsv = latestAuditRows
-    .map(row => row.map(value => String(value).replace(/[\\t\\r\\n]+/g, " ")).join("\\t"))
-    .join("\\n");
+    .map(row => row.map(value => String(value).replace(/[\t\r\n]+/g, " ")).join("\t"))
+    .join("\n");
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       await navigator.clipboard.writeText(tsv);
