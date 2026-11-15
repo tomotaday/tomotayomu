@@ -344,3 +344,10 @@ GitHub main上の主要な現行画面13ファイルをコード検索し、旧D
 - `docs/development-status.md` から本資料へリンクし、現在の優先作業に追加した。
 - `docs/data-store-usage-inventory.md` に現行 `register.html` の取得・読み取り・書き込み・一時保持の確認結果を追記した。
 - 今回は資料のみ更新。実験ページ `narou_translator_lab.html` は未作成。本番 `register.html`、本番DB、localStorage、Shortcut、GitHub Actionsは変更していない。
+
+
+### 2026-11-15 なろう通訳レジスターLab追加
+
+- `experiment/narou-translator/narou_translator_lab.html`：なろう10作品サンプルを独立LabDBへ原形保存し、一覧・詳細を確認する実験ページ。
+- `experiment/narou-translator/README.md`：安全境界・使い方・開発段階。
+- LabDBは `tomotaYomuNarouTranslatorLabDB` v1。iPhone実機確認・実取込は未実施。
