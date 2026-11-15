@@ -150,6 +150,7 @@ Object Store：`items`（keyPath `id`、index `parentId`）
 | `app/register/search_excluded_compare.html` | localStorage `tomotaYomu_search_excluded_ncodes_v1` | なし。取得失敗Nコードと検索除外リストを照合し、結果を画面表示。コピー操作時のみクリップボードへ出力 |
 | `tools/diagnostic/bookmark_migration_audit.html` | 新DB `tomotaYomuWorksDB/works`（既存DBの存在・version 2・ストア構造を確認後、readonlyで全件取得）。カクヨム目次JSON・note目次JSON | なし。旧DB・localStorage・他DBには接続しない。作品レコードと目次の照合結果を画面表示 |
 | `tools/diagnostic/work_shelf_id_check.html` | 新DB `tomotaYomuWorksDB/works`（既存DBを確認後、readonlyで指定Nコードの1件を取得） | なし。localStorage・他DBには接続しない |
+| `experiment/narou-translator/narou_translator_lab.html` | 独立IndexedDB `tomotaYomuNarouTranslatorLabDB` v1 / `sourceWorks` | 利用者が選択した10作品サンプルJSONを原形保存し、一覧・詳細を表示。本番DB・localStorage・sessionStorage・外部通信なし |
 | `tools/diagnostic/ncode_batch_test.html` | localStorage `tomotaYomu_search_excluded_ncodes_v1`（一括判定時のみ読み取り）、小説家になろう通常API・R18 API | なし。API取得結果と検索除外リストを照合して画面表示。IndexedDB・GitHub Actions・Shortcutには接続しない |
 
 ## 6. 運用上の原則
