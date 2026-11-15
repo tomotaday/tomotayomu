@@ -100,3 +100,46 @@
 - DB構造：`database-structure.md`
 - 保存先・画面利用関係：`data-store-usage-inventory.md`
 - なろう登録・更新・復旧ガイド：`guides/narou_register_guide.html`
+
+
+## 9. 実験環境の初期実装（2026-11-15）
+
+### 作成したファイル
+
+- `experiment/narou-translator/narou_translator_lab.html`
+- `experiment/narou-translator/README.md`
+
+### LabDB
+
+- DB名：`tomotaYomuNarouTranslatorLabDB`
+- version：1
+- Object Store：`sourceWorks`
+- keyPath：`id`
+- 保存対象：選択したサンプルJSON内の作品レコードを、変換せず原形のまま保存する。
+
+### ページの機能
+
+- 利用者がファイル選択したJSONを読み込む。
+- `format` / `formatVersion` / 作品数10件 / なろうサイト / 必須ID・タイトル / ID重複を検証する。
+- 検証成功後、10件を1トランザクションでLabDBへ保存する。
+- 保存件数・作品一覧・各レコードのJSONを画面で確認する。
+- 同一IDの再取込は追加重複を作らず、対象レコードを更新する。
+
+### 安全境界（コード確認）
+
+- 接続するIndexedDB名は `tomotaYomuNarouTranslatorLabDB` のみ。
+- 本番DB・旧DB・Atom DB・Memo DBへの接続コードなし。
+- localStorage / sessionStorageへのアクセスコードなし。
+- 外部API・Shortcut・GitHub Actionsへの通信コードなし。
+- 本番 `register.html` への変更なし。
+- 本番DBへの書き込み・変換後の本番登録機能なし。
+
+### 現在の確認状態
+
+- GitHub mainへのファイル作成：完了。
+- コード上の隔離構造：実装済み。
+- iPhone Brave/SafariでのGitHub Pages実機確認：未実施。
+- サンプルJSONの実取込・10件照合：未実施。
+- 変換処理：未着手。
+
+実機確認前に「実験環境の動作確認済み」と扱わない。次はiPhoneでページを開き、サンプルJSONを選択してLabDBへ取り込み、10件の一覧と詳細を照合する。
