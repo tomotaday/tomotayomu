@@ -93,7 +93,8 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
   <h2>2. LabDBの状態</h2>
   <div class="summary">
     <div class="stat"><span class="small">保存作品数</span><strong id="count">—</strong></div>
-    <div class="stat"><span class="small">DBバージョン</span><strong>1</strong></div>
+    <div class="stat"><span class="small">DBバージョン</span><strong>2</strong></div>
+    <div class="stat"><span class="small">整理版作品数</span><strong id="cleanCount">—</strong></div>
   </div>
   <p id="dbStatus" class="small">DB確認中…</p>
   <button id="refreshButton" type="button">保存内容を再読込</button>
@@ -111,7 +112,10 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
 <section class="panel">
   <h2>4. データ項目の一次調査</h2>
   <p>LabDB内の10作品を読み取り専用で調べ、項目の出現数・値の型・サンプルを集計します。</p>
-  <p class="small">この調査は表示用の集計だけを行います。元レコード・LabDBへの書き込みや変換は行いません。</p>
+  <p class="small">この調査は表示用の集計だけを行います。元レコードは変更しません。</p>
+  <div class="warning"><strong>重複項目の整理</strong><br>原本 sourceWorks は残したまま、reading と siteData.legacyFields を除いた整理版を cleanWorks に作成します。元データは削除・上書きしません。</div>
+  <button id="cleanButton" type="button">重複項目を除いた整理版を作成</button>
+  <div id="cleanStatus" class="small" aria-live="polite">まだ整理していません。</div>
   <button id="auditButton" type="button">10作品の項目を調査</button>
   <button id="copyAuditButton" type="button" disabled>調査結果をコピー</button>
   <div id="auditStatus" class="small" aria-live="polite">まだ調査していません。</div>
@@ -130,14 +134,18 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
 "use strict";
 
 const LAB_DB_NAME = "tomotaYomuNarouTranslatorLabDB";
-const LAB_DB_VERSION = 1;
+const LAB_DB_VERSION = 2;
 const LAB_STORE_NAME = "sourceWorks";
+const LAB_CLEAN_STORE_NAME = "cleanWorks";
 
 const fileInput = document.getElementById("sampleFile");
 const importButton = document.getElementById("importButton");
 const refreshButton = document.getElementById("refreshButton");
 const statusNode = document.getElementById("status");
 const countNode = document.getElementById("count");
+const cleanCountNode = document.getElementById("cleanCount");
+const cleanButton = document.getElementById("cleanButton");
+const cleanStatusNode = document.getElementById("cleanStatus");
 const dbStatusNode = document.getElementById("dbStatus");
 const worksNode = document.getElementById("works");
 const auditButton = document.getElementById("auditButton");
@@ -164,6 +172,9 @@ function openLabDB() {
       const db = request.result;
       if (!db.objectStoreNames.contains(LAB_STORE_NAME)) {
         db.createObjectStore(LAB_STORE_NAME, { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains(LAB_CLEAN_STORE_NAME)) {
+        db.createObjectStore(LAB_CLEAN_STORE_NAME, { keyPath: "id" });
       }
     };
     request.onsuccess = () => {
@@ -249,6 +260,8 @@ async function refreshWorks() {
     const records = await requestToPromise(tx.objectStore(LAB_STORE_NAME).getAll());
     records.sort((a, b) => String(a.workId).localeCompare(String(b.workId)));
     countNode.textContent = String(records.length);
+    const cleanCount = await requestToPromise(db.transaction(LAB_CLEAN_STORE_NAME, "readonly").objectStore(LAB_CLEAN_STORE_NAME).count());
+    cleanCountNode.textContent = String(cleanCount);
     dbStatusNode.textContent = "接続先：" + LAB_DB_NAME + " / ストア：" + LAB_STORE_NAME + "（読み取り専用で一覧表示）";
     worksNode.replaceChildren();
     if (records.length === 0) {
@@ -279,6 +292,50 @@ async function refreshWorks() {
   } catch (error) {
     dbStatusNode.textContent = "DB確認エラー：" + error.message;
     setStatus("LabDBを読み込めませんでした。", true);
+  }
+}
+
+async function createCleanWorks() {
+  cleanButton.disabled = true;
+  cleanStatusNode.textContent = "原本を読み込み、整理版を作成中…";
+  try {
+    const db = await openLabDB();
+    const sourceTx = db.transaction(LAB_STORE_NAME, "readonly");
+    const sourceRecords = await requestToPromise(sourceTx.objectStore(LAB_STORE_NAME).getAll());
+    if (!sourceRecords.length) {
+      cleanStatusNode.textContent = "元作品がありません。先に10作品を取り込んでください。";
+      return;
+    }
+    const cleaned = sourceRecords.map(source => {
+      const work = structuredClone(source);
+      delete work.reading;
+      if (work.siteData && typeof work.siteData === "object") {
+        delete work.siteData.legacyFields;
+      }
+      return work;
+    });
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(LAB_CLEAN_STORE_NAME, "readwrite");
+      const store = tx.objectStore(LAB_CLEAN_STORE_NAME);
+      store.clear();
+      for (const work of cleaned) store.put(work);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error || new Error("整理版の保存に失敗しました"));
+      tx.onabort = () => reject(tx.error || new Error("整理版の保存が中断されました"));
+    });
+    const checkTx = db.transaction(LAB_CLEAN_STORE_NAME, "readonly");
+    const checkRecords = await requestToPromise(checkTx.objectStore(LAB_CLEAN_STORE_NAME).getAll());
+    const invalid = checkRecords.filter(work =>
+      Object.prototype.hasOwnProperty.call(work, "reading") ||
+      Object.prototype.hasOwnProperty.call(work.siteData || {}, "legacyFields")
+    );
+    if (invalid.length) throw new Error("整理後も削除対象が残っています：" + invalid.length + "件");
+    cleanCountNode.textContent = String(checkRecords.length);
+    cleanStatusNode.textContent = checkRecords.length + "作品の整理版を作成しました。reading と siteData.legacyFields は整理版から除外済み。原本 sourceWorks はそのままです。";
+  } catch (error) {
+    cleanStatusNode.textContent = "整理版の作成エラー：" + error.message;
+  } finally {
+    cleanButton.disabled = false;
   }
 }
 
@@ -529,6 +586,7 @@ async function runFieldAudit() {
 }
 
 auditButton.addEventListener("click", runFieldAudit);
+cleanButton.addEventListener("click", createCleanWorks);
 copyAuditButton.addEventListener("click", copyAuditResults);
 previewButton.addEventListener("click", renderRawWorksPreview);
 importButton.addEventListener("click", importSamples);
