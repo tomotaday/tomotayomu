@@ -100,7 +100,15 @@ async function addShelf(){
   const nameKey=value=>String(value||"").replace(/[🟠🔵🌀🎈📚⏰🔎✍️🗄️⚙️]/gu,"").replace(/\s+/g,"").trim();
   const key=nameKey(newName);
   if(SYSTEM_SHELVES.some(v=>nameKey(v.name)===key)||shelves.some(v=>nameKey(shelfText(v))===key)){document.getElementById("status").textContent="同名の本棚があります：「"+newName+"」";return}
-  const id="shelf_"+crypto.randomUUID().replace(/-/g,"").slice(0,12);
+  // 新しい棚IDは shelf01 形式の連番。既存IDは変更せず、数値IDの最大値+1を発行する。
+  const usedIds=new Set(shelves.map(v=>getId(v)).filter(Boolean));
+  const maxNumber=shelves.reduce((max,v)=>{
+    const match=getId(v).match(/^shelf(\\d+)$/i);
+    return match?Math.max(max,Number(match[1])):max;
+  },0);
+  let nextNumber=maxNumber+1;
+  let id="";
+  do{id="shelf"+String(nextNumber++).padStart(2,"0")}while(usedIds.has(id));
   const maxOrder=shelves.reduce((m,v)=>Math.max(m,Number(v.display_order)||0),0);
   const row={shelf_id:id,shelf_name:newName,display_order:maxOrder+1};
   try{
