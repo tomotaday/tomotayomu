@@ -144,10 +144,10 @@ async function normalizeRandomShelfIds(){
  const missing=mapping.filter(m=>!byId.has(m.oldId));
  if(missing.length){status.textContent="中止：対象棚が見つかりません："+missing.map(m=>m.name).join("、");return}
  const targets=new Set(mapping.map(m=>m.newId));
- const conflicts=mapping.filter(m=>byId.has(m.newId)&&!targets.has(m.newId));
+ const conflicts=mapping.filter(m=>byId.has(m.newId));
  if(conflicts.length){status.textContent="中止：変更先IDが既に使われています："+conflicts.map(m=>m.newId).join("、");return}
- const detail=mapping.map(m=>m.name+"："+m.oldId+" → "+m.newId).join("\\n");
- if(!confirm("次の4棚のIDを変更します。\\n\\n"+detail+"\\n\\n棚マスターと所属作品のworks.shelfIdを同じトランザクションで更新します。\\n棚名・作品データ・表示順は変更しません。\\n実行前のバックアップは済んでいますか？"))return;
+ const detail=mapping.map(m=>m.name+"："+m.oldId+" → "+m.newId).join("\n");
+ if(!confirm("次の4棚のIDを変更します。\n\n"+detail+"\n\n棚マスターと所属作品のworks.shelfIdを同じトランザクションで更新します。\n棚名・作品データ・表示順は変更しません。\n実行前のバックアップは済んでいますか？"))return;
  try{
   status.textContent="棚IDと作品の紐づけを更新中…";
   const tx=db.transaction([STORES.shelves,STORES.works],"readwrite");
