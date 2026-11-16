@@ -1,11 +1,19 @@
 {
   "schema_version": 1,
   "source": "tomotaYomuDB.authors",
-  "exported_at": "2026-11-16T09:52:01.072Z",
-  "author_count": 800,
+  "exported_at": "2026-11-16T15:02:31.237Z",
+  "author_count": 1000,
   "authors": [
     {
+      "author_id": "11772",
+      "author_type": "normal"
+    },
+    {
       "author_id": "13776",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "17935",
       "author_type": "normal"
     },
     {
@@ -14,6 +22,10 @@
     },
     {
       "author_id": "27455",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "29302",
       "author_type": "normal"
     },
     {
@@ -33,6 +45,14 @@
       "author_type": "normal"
     },
     {
+      "author_id": "75936",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "78504",
+      "author_type": "normal"
+    },
+    {
       "author_id": "78537",
       "author_type": "normal"
     },
@@ -49,7 +69,15 @@
       "author_type": "normal"
     },
     {
+      "author_id": "108548",
+      "author_type": "normal"
+    },
+    {
       "author_id": "131652",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "134843",
       "author_type": "normal"
     },
     {
@@ -61,7 +89,15 @@
       "author_type": "normal"
     },
     {
+      "author_id": "152073",
+      "author_type": "normal"
+    },
+    {
       "author_id": "157016",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "159769",
       "author_type": "normal"
     },
     {
@@ -73,11 +109,27 @@
       "author_type": "normal"
     },
     {
+      "author_id": "163288",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "163731",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "166159",
+      "author_type": "normal"
+    },
+    {
       "author_id": "168966",
       "author_type": "normal"
     },
     {
       "author_id": "170524",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "171877",
       "author_type": "normal"
     },
     {
@@ -90,6 +142,10 @@
     },
     {
       "author_id": "177440",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "183325",
       "author_type": "normal"
     },
     {
@@ -109,7 +165,19 @@
       "author_type": "normal"
     },
     {
+      "author_id": "191109",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "193421",
+      "author_type": "normal"
+    },
+    {
       "author_id": "199141",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "201926",
       "author_type": "normal"
     },
     {
@@ -117,7 +185,23 @@
       "author_type": "normal"
     },
     {
+      "author_id": "215867",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "218376",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "221568",
+      "author_type": "normal"
+    },
+    {
       "author_id": "223037",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "227731",
       "author_type": "normal"
     },
     {
@@ -129,7 +213,19 @@
       "author_type": "normal"
     },
     {
+      "author_id": "238604",
+      "author_type": "normal"
+    },
+    {
       "author_id": "244768",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "245050",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "249964",
       "author_type": "normal"
     },
     {
@@ -137,7 +233,15 @@
       "author_type": "normal"
     },
     {
+      "author_id": "257783",
+      "author_type": "normal"
+    },
+    {
       "author_id": "259222",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "268643",
       "author_type": "normal"
     },
     {
@@ -149,7 +253,15 @@
       "author_type": "normal"
     },
     {
+      "author_id": "293518",
+      "author_type": "normal"
+    },
+    {
       "author_id": "302754",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "328201",
       "author_type": "normal"
     },
     {
@@ -161,7 +273,47 @@
       "author_type": "normal"
     },
     {
+      "author_id": "356468",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "357496",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "359148",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "360743",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "376906",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "391568",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "396614",
+      "author_type": "normal"
+    },
+    {
       "author_id": "413031",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "421671",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "423980",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "424573",
       "author_type": "normal"
     },
     {
@@ -169,7 +321,31 @@
       "author_type": "normal"
     },
     {
+      "author_id": "433096",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "433400",
+      "author_type": "normal"
+    },
+    {
       "author_id": "442062",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "457891",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "460387",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "461819",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "464518",
       "author_type": "normal"
     },
     {
@@ -177,7 +353,47 @@
       "author_type": "normal"
     },
     {
+      "author_id": "468167",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "474112",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "482947",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "486336",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "490789",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "496462",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "501644",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "549352",
+      "author_type": "normal"
+    },
+    {
       "author_id": "549788",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "552553",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "562950",
       "author_type": "normal"
     },
     {
@@ -189,11 +405,35 @@
       "author_type": "normal"
     },
     {
+      "author_id": "573800",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "590376",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "593566",
+      "author_type": "normal"
+    },
+    {
       "author_id": "604627",
       "author_type": "normal"
     },
     {
       "author_id": "606799",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "622024",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "625518",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "633417",
       "author_type": "normal"
     },
     {
@@ -205,7 +445,23 @@
       "author_type": "normal"
     },
     {
+      "author_id": "649038",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "657462",
+      "author_type": "normal"
+    },
+    {
       "author_id": "676550",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "678467",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "688642",
       "author_type": "normal"
     },
     {
@@ -221,7 +477,23 @@
       "author_type": "normal"
     },
     {
+      "author_id": "711990",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "713378",
+      "author_type": "normal"
+    },
+    {
       "author_id": "718040",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "727930",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "731419",
       "author_type": "normal"
     },
     {
@@ -233,7 +505,23 @@
       "author_type": "normal"
     },
     {
+      "author_id": "773478",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "780182",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "792858",
+      "author_type": "normal"
+    },
+    {
       "author_id": "806170",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "832899",
       "author_type": "normal"
     },
     {
@@ -241,11 +529,35 @@
       "author_type": "normal"
     },
     {
+      "author_id": "849861",
+      "author_type": "normal"
+    },
+    {
       "author_id": "851881",
       "author_type": "normal"
     },
     {
+      "author_id": "868374",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "884091",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "895929",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "899307",
+      "author_type": "normal"
+    },
+    {
       "author_id": "901920",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "902467",
       "author_type": "normal"
     },
     {
@@ -257,11 +569,35 @@
       "author_type": "normal"
     },
     {
+      "author_id": "924696",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "941738",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "945668",
+      "author_type": "normal"
+    },
+    {
       "author_id": "957377",
       "author_type": "normal"
     },
     {
+      "author_id": "960530",
+      "author_type": "normal"
+    },
+    {
       "author_id": "992240",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "994131",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1013481",
       "author_type": "normal"
     },
     {
@@ -270,6 +606,14 @@
     },
     {
       "author_id": "1028210",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1029718",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1031582",
       "author_type": "normal"
     },
     {
@@ -285,7 +629,35 @@
       "author_type": "normal"
     },
     {
+      "author_id": "1082810",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1084696",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1086168",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1090346",
+      "author_type": "normal"
+    },
+    {
       "author_id": "1099972",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1135755",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1137474",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1153365",
       "author_type": "normal"
     },
     {
@@ -293,11 +665,35 @@
       "author_type": "normal"
     },
     {
+      "author_id": "1165275",
+      "author_type": "normal"
+    },
+    {
       "author_id": "1170047",
       "author_type": "normal"
     },
     {
+      "author_id": "1185864",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1186918",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1189601",
+      "author_type": "normal"
+    },
+    {
       "author_id": "1196604",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1203335",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1218221",
       "author_type": "normal"
     },
     {
@@ -309,7 +705,19 @@
       "author_type": "normal"
     },
     {
+      "author_id": "1248483",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1251226",
+      "author_type": "normal"
+    },
+    {
       "author_id": "1261853",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1281198",
       "author_type": "normal"
     },
     {
@@ -325,6 +733,10 @@
       "author_type": "normal"
     },
     {
+      "author_id": "1294733",
+      "author_type": "normal"
+    },
+    {
       "author_id": "1299506",
       "author_type": "normal"
     },
@@ -333,7 +745,31 @@
       "author_type": "normal"
     },
     {
+      "author_id": "1305105",
+      "author_type": "normal"
+    },
+    {
       "author_id": "1315524",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1331504",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1335672",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1339485",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1342199",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1347077",
       "author_type": "normal"
     },
     {
@@ -345,7 +781,15 @@
       "author_type": "normal"
     },
     {
+      "author_id": "1360614",
+      "author_type": "normal"
+    },
+    {
       "author_id": "1362792",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1364053",
       "author_type": "normal"
     },
     {
@@ -357,11 +801,19 @@
       "author_type": "normal"
     },
     {
+      "author_id": "1379155",
+      "author_type": "normal"
+    },
+    {
       "author_id": "1381513",
       "author_type": "normal"
     },
     {
       "author_id": "1407185",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1438299",
       "author_type": "normal"
     },
     {
@@ -377,6 +829,14 @@
       "author_type": "normal"
     },
     {
+      "author_id": "1453302",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1464919",
+      "author_type": "normal"
+    },
+    {
       "author_id": "1466857",
       "author_type": "normal"
     },
@@ -385,7 +845,35 @@
       "author_type": "normal"
     },
     {
+      "author_id": "1483690",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1487962",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1492069",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1506554",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1513009",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1528460",
+      "author_type": "normal"
+    },
+    {
       "author_id": "1533134",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1557442",
       "author_type": "normal"
     },
     {
@@ -393,11 +881,43 @@
       "author_type": "normal"
     },
     {
+      "author_id": "1574082",
+      "author_type": "normal"
+    },
+    {
       "author_id": "1578716",
       "author_type": "normal"
     },
     {
+      "author_id": "1581533",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1585676",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1590710",
+      "author_type": "normal"
+    },
+    {
       "author_id": "1593142",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1616632",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1616658",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1622485",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1627442",
       "author_type": "normal"
     },
     {
@@ -409,7 +929,39 @@
       "author_type": "normal"
     },
     {
+      "author_id": "1664678",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1678016",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1678681",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1679058",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1680851",
+      "author_type": "normal"
+    },
+    {
       "author_id": "1685811",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1692554",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1695861",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1731616",
       "author_type": "normal"
     },
     {
@@ -417,7 +969,19 @@
       "author_type": "normal"
     },
     {
+      "author_id": "1741634",
+      "author_type": "normal"
+    },
+    {
       "author_id": "1753889",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1755056",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1756736",
       "author_type": "normal"
     },
     {
@@ -429,6 +993,10 @@
       "author_type": "normal"
     },
     {
+      "author_id": "1779477",
+      "author_type": "normal"
+    },
+    {
       "author_id": "1795597",
       "author_type": "normal"
     },
@@ -437,7 +1005,27 @@
       "author_type": "normal"
     },
     {
+      "author_id": "1814403",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1818749",
+      "author_type": "normal"
+    },
+    {
       "author_id": "1826746",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1827050",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1833130",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1838080",
       "author_type": "normal"
     },
     {
@@ -445,7 +1033,23 @@
       "author_type": "normal"
     },
     {
+      "author_id": "1846461",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1853506",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1857817",
+      "author_type": "normal"
+    },
+    {
       "author_id": "1869215",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1885181",
       "author_type": "normal"
     },
     {
@@ -457,6 +1061,18 @@
       "author_type": "normal"
     },
     {
+      "author_id": "1923602",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1926782",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1930475",
+      "author_type": "normal"
+    },
+    {
       "author_id": "1940225",
       "author_type": "normal"
     },
@@ -465,7 +1081,23 @@
       "author_type": "normal"
     },
     {
+      "author_id": "1950957",
+      "author_type": "normal"
+    },
+    {
       "author_id": "1952664",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1956603",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1958424",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "1964744",
       "author_type": "normal"
     },
     {
@@ -477,7 +1109,35 @@
       "author_type": "normal"
     },
     {
+      "author_id": "2007166",
+      "author_type": "normal"
+    },
+    {
       "author_id": "2009095",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2011274",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2015789",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2016864",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2019209",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2052375",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2062332",
       "author_type": "normal"
     },
     {
@@ -485,7 +1145,27 @@
       "author_type": "normal"
     },
     {
+      "author_id": "2078366",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2078692",
+      "author_type": "normal"
+    },
+    {
       "author_id": "2086822",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2110401",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2117184",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2125160",
       "author_type": "normal"
     },
     {
@@ -493,7 +1173,15 @@
       "author_type": "normal"
     },
     {
+      "author_id": "2142002",
+      "author_type": "normal"
+    },
+    {
       "author_id": "2147993",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2155101",
       "author_type": "normal"
     },
     {
@@ -501,7 +1189,39 @@
       "author_type": "normal"
     },
     {
+      "author_id": "2160956",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2169514",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2181581",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2183377",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2189487",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2193552",
+      "author_type": "normal"
+    },
+    {
       "author_id": "2218257",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2222597",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2225972",
       "author_type": "normal"
     },
     {
@@ -513,11 +1233,31 @@
       "author_type": "normal"
     },
     {
+      "author_id": "2236861",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2249453",
+      "author_type": "normal"
+    },
+    {
       "author_id": "2255295",
       "author_type": "normal"
     },
     {
+      "author_id": "2256734",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2291555",
+      "author_type": "normal"
+    },
+    {
       "author_id": "2315022",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2322683",
       "author_type": "normal"
     },
     {
@@ -526,6 +1266,10 @@
     },
     {
       "author_id": "2331732",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2333002",
       "author_type": "normal"
     },
     {
@@ -541,11 +1285,63 @@
       "author_type": "normal"
     },
     {
+      "author_id": "2372319",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2383267",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2405308",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2413424",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2416507",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2424867",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2430560",
+      "author_type": "normal"
+    },
+    {
       "author_id": "2439454",
       "author_type": "normal"
     },
     {
+      "author_id": "2439707",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2448784",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2504149",
+      "author_type": "normal"
+    },
+    {
       "author_id": "2510698",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2521204",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2536165",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2566900",
       "author_type": "normal"
     },
     {
@@ -562,6 +1358,10 @@
     },
     {
       "author_id": "2612530",
+      "author_type": "normal"
+    },
+    {
+      "author_id": "2717608",
       "author_type": "normal"
     },
     {
