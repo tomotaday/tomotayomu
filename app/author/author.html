@@ -6,13 +6,13 @@
 <title>ともたよむ｜作者管理</title>
 <style>
 body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;margin:0;padding:16px;line-height:1.45;background:#fafafa;color:#222}
-h1{font-size:20px;margin:0 0 2px} h2{font-size:17px;margin:18px 0 8px} p{margin:5px 0 10px;color:#666}
-.top{position:sticky;top:0;background:#fafafa;padding:0 0 8px;z-index:5}.quickNav{display:flex;gap:8px;margin:8px 0 2px}.quickNav a{flex:1;text-align:center;background:#e8f3eb;color:#176b2c;font-weight:600;padding:9px 6px;font-size:13px}.quickNav span{display:inline-block;margin-left:4px;font-variant-numeric:tabular-nums}
-.version{font-size:12px;color:#888;margin-bottom:10px}.notice{background:#fff8d8;border-radius:10px;padding:11px;margin:10px 0}
+h1{font-size:20px;margin:0 0 2px} h2{font-size:17px;margin:12px 0 7px} p{margin:3px 0 7px;color:#666}
+.top{position:sticky;top:0;background:#fafafa;padding:0 0 5px;z-index:5}.top>p{margin:2px 0 5px}.version{margin-bottom:5px}.quickNav{display:flex;gap:8px;margin:5px 0 1px}.quickNav a{flex:1;text-align:center;background:#e8f3eb;color:#176b2c;font-weight:600;padding:9px 6px;font-size:13px}.quickNav span{display:inline-block;margin-left:4px;font-variant-numeric:tabular-nums}
+.version{font-size:12px;color:#888;margin-bottom:10px}.notice{background:#fff8d8;border-radius:10px;padding:8px 10px;margin:6px 0}
 .card,.authorBlock{background:#fff;border:1px solid #ddd;border-radius:12px;padding:13px;margin:9px 0}
 .title{font-size:16px;font-weight:600;margin-bottom:5px}.writer{font-size:14px;color:#666;margin-bottom:9px}.meta{font-size:13px;color:#666}
 a,button{display:inline-block;padding:9px 12px;border-radius:8px;background:#eee;color:#111;text-decoration:none;border:0;font-size:14px}
-summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;flex-wrap:wrap;margin:5px 0}.summaryStat .badge{padding:5px 8px;font-size:12px}
 .badge{background:#fff;border:1px solid #ddd;border-radius:9px;padding:7px 9px;font-size:13px}
 .authorSync{margin-top:12px}.authorSync h2{font-size:17px}.authorSync .stat{margin:8px 0}.authorSync button{background:#176b2c;color:white;font-weight:600;padding:12px 14px}.authorSync button:disabled{opacity:.55}.authorSync .meta{margin:8px 0;color:#555}
 .authorName{font-weight:600}.authorId{font-family:ui-monospace,monospace;font-size:13px;color:#555}
@@ -33,9 +33,7 @@ summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;
 </div>
 
 <div id="notice" class="notice">作者ページURLを受け取ると、全年齢・R18を自動判定して登録します。</div>
-<div class="stat">
-<div class="badge">未登録・全年齢：<span id="normalCount">--</span></div>
-<div class="badge">未登録・R18：<span id="r18Count">--</span></div>
+<div class="stat summaryStat">
 <div class="badge">作者ID付き作品：<span id="linkedCount">--</span></div>
 <div class="badge">登録作者：<span id="authorCount">--</span></div>
 </div>
@@ -112,8 +110,6 @@ async function render(){
   const r18=works.filter(w=>w&&w.ncode&&w.__r18===true);
   const normalUnlinked=normal.filter(w=>!linkedSet.has(ncode(w.ncode))).length;
   const r18Unlinked=r18.filter(w=>!linkedSet.has(ncode(w.ncode))).length;
-  document.getElementById("normalCount").textContent=normalUnlinked;
-  document.getElementById("r18Count").textContent=r18Unlinked;
   document.getElementById("normalJumpCount").textContent=normalUnlinked;
   document.getElementById("r18JumpCount").textContent=r18Unlinked;
   document.getElementById("linkedCount").textContent=works.filter(w=>linkedSet.has(ncode(w.ncode))).length;
