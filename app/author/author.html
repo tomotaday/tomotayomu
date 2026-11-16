@@ -7,7 +7,7 @@
 <style>
 body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;margin:0;padding:16px;line-height:1.45;background:#fafafa;color:#222}
 h1{font-size:20px;margin:0 0 2px} h2{font-size:17px;margin:18px 0 8px} p{margin:5px 0 10px;color:#666}
-.top{position:sticky;top:0;background:#fafafa;padding-bottom:8px;z-index:2}
+.top{position:sticky;top:0;background:#fafafa;padding:0 0 8px;z-index:5}.quickNav{display:flex;gap:8px;margin:8px 0 2px}.quickNav a{flex:1;text-align:center;background:#e8f3eb;color:#176b2c;font-weight:600;padding:9px 6px;font-size:13px}.quickNav span{display:inline-block;margin-left:4px;font-variant-numeric:tabular-nums}
 .version{font-size:12px;color:#888;margin-bottom:10px}.notice{background:#fff8d8;border-radius:10px;padding:11px;margin:10px 0}
 .card,.authorBlock{background:#fff;border:1px solid #ddd;border-radius:12px;padding:13px;margin:9px 0}
 .title{font-size:16px;font-weight:600;margin-bottom:5px}.writer{font-size:14px;color:#666;margin-bottom:9px}.meta{font-size:13px;color:#666}
@@ -24,17 +24,29 @@ summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;
 
 <div class="top">
 <h1>ともたよむ｜作者管理</h1>
-<div class="version">作者登録・五十音整理・GitHub送信</div>
-<p>作者登録からAtom更新用の作者一覧送信までを管理します。</p>
+<div class="version">作者登録・未登録作品の確認</div>
+<p>未登録作品から作者ページを開き、共有シートで作者を登録します。</p>
+<nav class="quickNav" aria-label="未登録作品へ移動">
+<a href="#normalSection">全年齢の未登録 <span id="normalJumpCount">--</span></a>
+<a href="#r18Section">R18の未登録 <span id="r18JumpCount">--</span></a>
+</nav>
 </div>
 
-<div id="notice" class="notice">作者ページURLを受け取ると、全年齢・R18を自動判定して登録します。全年齢作者のふりがなは公式APIから自動取得し、五十音順に整理します。</div>
+<div id="notice" class="notice">作者ページURLを受け取ると、全年齢・R18を自動判定して登録します。</div>
 <div class="stat">
 <div class="badge">未登録・全年齢：<span id="normalCount">--</span></div>
 <div class="badge">未登録・R18：<span id="r18Count">--</span></div>
 <div class="badge">作者ID付き作品：<span id="linkedCount">--</span></div>
 <div class="badge">登録作者：<span id="authorCount">--</span></div>
 </div>
+<h2 id="normalSection">未登録作品｜全年齢</h2><div id="normalList"></div>
+<h2 id="r18Section">未登録作品｜R18</h2><div id="r18List"></div>
+
+<details>
+<summary>📚 整理状況を見る</summary>
+<div id="authors"></div>
+</details>
+
 <div class="authorSync card">
 <h2 style="margin-top:0">GitHub作者一覧</h2>
 <div class="stat">
@@ -44,18 +56,8 @@ summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;
 </div>
 <p id="syncStatus" class="meta">GitHubの保存済み作者一覧と照合しています…</p>
 <div class="stat"><button id="copyAuthors" type="button">📋 ① JSONコピー</button><button id="downloadAuthors" type="button">💾 JSON保存</button><button id="launchAtomUpdate" type="button">📡 ② Atom更新</button></div>
-<textarea id="authorsJsonOutput" rows="5" readonly placeholder="JSONコピーまたは保存を実行すると、作者一覧JSONをここに表示します。" style="box-sizing:border-box;width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font:12px/1.4 ui-monospace,monospace;background:#fff"></textarea>
 <p class="small">IndexedDBの最新作者一覧をJSONコピー・保存できます。Atom更新は従来どおり「ともたよむ Atom更新」ショートカットから実行します。送信完了はGitHub Actionsの結果で確認します。</p>
 </div>
-
-<details>
-<summary>📚 整理状況を見る</summary>
-<div id="authors"></div>
-</details>
-
-
-<h2>未登録作品｜全年齢</h2><div id="normalList"></div>
-<h2>未登録作品｜R18</h2><div id="r18List"></div>
 
 <script>
 const VERSION="3.1.0.13";
@@ -108,8 +110,12 @@ async function render(){
   const linkedSet=new Set(linkedRows.map(a=>ncode(a.ncode)));
   const normal=works.filter(w=>w&&w.ncode&&w.__r18!==true);
   const r18=works.filter(w=>w&&w.ncode&&w.__r18===true);
-  document.getElementById("normalCount").textContent=normal.filter(w=>!linkedSet.has(ncode(w.ncode))).length;
-  document.getElementById("r18Count").textContent=r18.filter(w=>!linkedSet.has(ncode(w.ncode))).length;
+  const normalUnlinked=normal.filter(w=>!linkedSet.has(ncode(w.ncode))).length;
+  const r18Unlinked=r18.filter(w=>!linkedSet.has(ncode(w.ncode))).length;
+  document.getElementById("normalCount").textContent=normalUnlinked;
+  document.getElementById("r18Count").textContent=r18Unlinked;
+  document.getElementById("normalJumpCount").textContent=normalUnlinked;
+  document.getElementById("r18JumpCount").textContent=r18Unlinked;
   document.getElementById("linkedCount").textContent=works.filter(w=>linkedSet.has(ncode(w.ncode))).length;
   const groups=new Map();
   linkedRows.forEach(a=>{
@@ -279,6 +285,8 @@ async function handleIncoming(){
     const r=await processAuthor(authorUrl);
     notice.textContent="✅ 作者登録完了｜"+r.authorName+"｜"+r.info.id+"｜"+(r.info.type==="r18"?"R18":"全年齢")+"｜作者API "+r.apiCount+"作品｜本棚照合 "+r.hitCount+"作品｜今回の新規紐付け "+r.added+"作品";
     history.replaceState({},document.title,location.pathname);await render();
+    const nextSection=document.getElementById(r.info.type==="r18"?"r18Section":"normalSection");
+    setTimeout(()=>nextSection?.scrollIntoView({behavior:"smooth",block:"start"}),120);
   }catch(e){notice.textContent="⚠️ 作者登録失敗｜"+e.message+"｜データは変更していません。"}
 }
 function formatJapanDateTime(value){
@@ -320,7 +328,6 @@ async function copyAuthorsJson(){
   btn.disabled=true;
   try{
     const payload=await buildAuthorsJson(),json=JSON.stringify(payload);
-    document.getElementById("authorsJsonOutput").value=JSON.stringify(payload,null,2);
     await navigator.clipboard.writeText(json);
     status.textContent="作者"+payload.author_count+"人分のJSONをコピーしました。続けて「② Atom更新」を押してください。";
   }catch(e){
@@ -333,7 +340,6 @@ async function downloadAuthorsJson(){
   try{
     const payload=await buildAuthorsJson();
     const json=JSON.stringify(payload,null,2)+"\n";
-    document.getElementById("authorsJsonOutput").value=JSON.stringify(payload,null,2);
     const blob=new Blob([json],{type:"application/json;charset=utf-8"});
     const url=URL.createObjectURL(blob),a=document.createElement("a");
     a.href=url;a.download="tomotayomu-author-list.json";a.click();
