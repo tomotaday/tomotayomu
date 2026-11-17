@@ -343,7 +343,7 @@ works（作品情報の正本）
 | `keyword` | 全年齢・R18の両APIに存在 | **仕様確定：共通worksの `keywords` に文字列配列として取り込む** |
 | `biggenre`・`genre` | 全年齢APIに存在 | **方針確定：共通worksの単一 `genres` 配列に、元項目を識別できる形で格納する** |
 | `nocgenre` | R18 APIに存在 | **方針確定：共通worksの単一 `genres` 配列に、元項目を識別できる形で格納する** |
-| `length` | 両APIに存在 | `characterCount` へ取り込むか |
+| `length` | 両APIに存在 | **方針確定：共通worksに取り込まない（単なる文字数であり、現時点で利用目的がないため）** |
 | `time` | 両APIに存在 | 取り込むか |
 | `novelupdated_at` | 両APIに存在 | 取り込むか |
 | `updated_at` | 両APIに存在 | 取り込むか |
@@ -370,7 +370,7 @@ works（作品情報の正本）
 | `keyword` | **仕様確定：共通worksの `keywords` に文字列配列として取り込む** |
 | ジャンル（全年齢 `biggenre`・`genre`／R18 `nocgenre`） | APIに存在することを確認。共通worksへ取り込むか未決定 |
 | 属性フラグ | APIに存在することを確認。共通化・採用範囲未決定 |
-| `length` → `characterCount` | 対応候補。採用未決定 |
+| `length` → `characterCount` | **方針確定：取り込まない** |
 | `time` | 採否未決定 |
 | `novelupdated_at`・`updated_at` | 両APIに存在。採否未決定 |
 | `isstop`・`gensaku`・`kaiwaritu`・`sasie_cnt` | 採否未決定 |
