@@ -242,13 +242,13 @@ works（作品情報の正本）
 | `authorId` | `userid` | APIに項目なし | 全年齢はAPI値。R18は作者登録等で手動登録した値を維持。取得できないIDを推測しない |
 | `publishedAt` | `general_firstup` | `general_firstup` | 初回掲載日 |
 | `lastPublishedAt` | `general_lastup` | `general_lastup` | 最新話更新日 |
-| `characterCount` | `length` | `length` | 文字数。既存項目へ値を入れる |
+| `characterCount` | `length` | `length` | APIに存在することを確認。共通worksへ取り込むかは未決定 |
 | `episodeCount` | `general_all_no` | `general_all_no` | 全話数。API由来情報として更新 |
-| `keyword` | `keyword` | `keyword` | 両APIに存在。共通項目として保持 |
+| `keyword` | `keyword` | `keyword` | 両APIに存在することを確認。共通worksへ取り込むかは未決定 |
 | `status` | `novel_type`＋`end` | `novel_type`＋`end` | 両API共通の判定条件で「短編」「完結」「連載中」に変換 |
-| `genres.categories` | `biggenre`・`genre` | `nocgenre` | サイトごとの分類体系・元コードを失わず、共通のジャンル入れ物へ格納 |
-| `genres.attributes` | 属性フラグ | 属性フラグ | BL・GL・残酷描写・異世界転生・異世界転移等を共通属性として格納 |
-| `authorKana` / `authorKanaFirst` / `authorKanaChecked` | 取得経路が別途あり得る | 取得経路が別途あり得る | 現在の値を消さない。流れ込んできた値は受け取る。Transferで無理に取得する仕組みは追加せず、ゆったり見守る |
+| ジャンル項目 | `biggenre`・`genre` | `nocgenre` | APIに存在することを確認。共通worksへ取り込むか・共通構造は未決定 |
+| 属性フラグ | `isbl`・`isgl`・`iszankoku`・`istensei`・`istenni`等 | 同左 | APIに存在することを確認。共通worksへの取り込み・整理方法は未決定 |
+| `authorKana` / `authorKanaFirst` / `authorKanaChecked` | APIの今回のサンプルでは確認できず | APIの今回のサンプルでは確認できず | 現在の値を消さない。別経路から流れ込んだ値は受け取る。Transferで取得機能を追加せず、ゆったり見守る |
 
 #### statusの判定
 
@@ -278,18 +278,29 @@ works（作品情報の正本）
 - 配列要素の最終的な詳細スキーマと属性フラグの完全な対応表は、実データを照合してから確定する。
 - `isr15` の採否・格納方法は未確定。現時点で確定項目として扱わない。
 
-### 11-4. worksに取り込まないAPI項目（決定済み）
+### 11-4. API項目の採否
+
+#### 取り込まないことを確認済み
 
 | API項目 | 扱い | 理由 |
 |---|---|---|
-| `time` | 取り込まない | 読了時間は不要 |
-| `novelupdated_at` | 取り込まない | 初回掲載日でも最新話更新日でもない |
-| `updated_at` | 取り込まない | API側の更新・確認日時は不要 |
-| `isstop` | 取り込まない | 不要と決定 |
-| `gensaku` | 取り込まない | 不要と決定 |
-| ポイント・評価・ブックマーク数・感想数・レビュー数等 | 取り込まない | 不要と決定 |
-| `kaiwaritu` | 取り込まない | 不要と決定 |
-| `sasie_cnt` | 取り込まない | 不要と決定 |
+| ポイント・評価・ブックマーク数・感想数・レビュー数等 | 取り込まない | ともたが不要と判断 |
+
+#### APIに存在することは確認済みだが、採否未決定
+
+| API項目 | 確認内容 | 未決定事項 |
+|---|---|---|
+| `keyword` | 全年齢・R18の両APIに存在 | 共通worksへ取り込むか |
+| `biggenre`・`genre` | 全年齢APIに存在 | 共通worksへ取り込むか、R18の分類とどう共通化するか |
+| `nocgenre` | R18 APIに存在 | 全年齢ジャンルとどう共通化するか |
+| `length` | 両APIに存在 | `characterCount` へ取り込むか |
+| `time` | 両APIに存在 | 取り込むか |
+| `novelupdated_at` | 両APIに存在 | 取り込むか |
+| `updated_at` | 両APIに存在 | 取り込むか |
+| `isstop`・`gensaku` | API項目として確認対象 | 採否 |
+| `kaiwaritu`・`sasie_cnt` | API項目として確認対象 | 採否 |
+
+※「APIにある」「worksへ取り込む」「取り込まない」は別々の判断として記録する。採否が決まるまでは、除外確定リストに入れない。
 
 ### 11-5. API情報とともたよむ独自情報の更新権限
 
@@ -305,10 +316,17 @@ works（作品情報の正本）
 
 | 項目 | 状態 |
 |---|---|
-| `genres.categories` の各要素の詳細スキーマ | 大枠合意済み。元分類・コードの保持方法を実データで最終確認 |
-| `genres.attributes` の全フラグ対応表 | 大枠合意済み。API実データと表示名を照合して確定 |
+| `keyword` | 両APIに存在することを確認。共通worksへ取り込むか未決定 |
+| ジャンル（全年齢 `biggenre`・`genre`／R18 `nocgenre`） | APIに存在することを確認。共通worksへ取り込むか未決定 |
+| 属性フラグ | APIに存在することを確認。共通化・採用範囲未決定 |
+| `length` → `characterCount` | 対応候補。採用未決定 |
+| `time` | 採否未決定 |
+| `novelupdated_at`・`updated_at` | 両APIに存在。採否未決定 |
+| `isstop`・`gensaku`・`kaiwaritu`・`sasie_cnt` | 採否未決定 |
+| `genres.categories` の詳細スキーマ | 共通化を採用するかも含め未決定 |
+| `genres.attributes` の全フラグ対応表 | 共通化を採用するかも含め未決定 |
 | `isr15` | 採否・格納方法は未決定 |
-| `publishedAt` | 項目対応は決定済み。実際のAPI値をLabで取り込み、既存空欄が補完されることを検証 |
+| `publishedAt` | `general_firstup` との対応は記録済み。実際のAPI値をLabで取り込み、既存空欄が補完されることを検証 |
 | `authorId`（R18） | APIに項目なし。手動作者登録情報との結合・維持方法をLabで検証 |
 | `authorKana` 一式 | 値が流入したら受け取り、既存値は保護。取得方法の追加は保留 |
 | `url` | Shortcutから受け取る元URLを丸ごと保存する経路を検証 |
