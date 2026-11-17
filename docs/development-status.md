@@ -1,6 +1,6 @@
 # ともたよむ 開発状況インデックス
 
-最終確認日：2026-11-15  
+最終確認日：2026-11-17  
 対象リポジトリ：tomotaday/tomotayomu  
 対象ブランチ：main  
 アプリ基準版：v3.8.1【2026/11/14】  
@@ -185,3 +185,22 @@
 - **iPhone実機での更新後DB確認・10作品診断・カード表示は未確認。** 実機確認が終わるまでは完了扱いしない。
 - 本番 `register.html`、INDEX、本番DB、Shortcut、GitHub Actionsへの変更なし。
 - 詳細は [なろうトランスファー Lab 設計記録](narou-translator-lab.md) を正本とする。
+
+
+## 2026-11-17：なろうTransfer／Translatorの共通works変換方針
+
+- WEBサイト → iOSショートカットで元URLを受け取る → サイト別TranslatorでAPIデータを取得・共通形式へ変換 → 共通worksへ渡す → 作品カードがworksを参照、という全体経路を整理。
+- Transferは受け渡し全体、Translatorはサイト固有データを共通works形式へ変換する処理、Registerは変換済みデータを本棚へ登録する最終処理として役割を整理。
+- なろうTranslatorは全年齢API・R18 APIの項目名の違いを吸収し、同じ意味の情報を共通works項目へ統一する。
+- `id` はともたよむ専用の一意キー。APIから取り込まず、既存作品の更新時も変更しない。作品IDは `workId`、作者IDは `authorId` と分ける。
+- 元URLはShortcutから受け取り、生成・加工せず丸ごと保持する。
+- ステータスは全年齢・R18共通で `novel_type` と `end` を使い、「短編」「完結」「連載中」の3種類に変換する。
+- 日付は `publishedAt`（`general_firstup`：初回掲載日）と `lastPublishedAt`（`general_lastup`：最新話更新日）の2項目だけを使用する。
+- 文字数 `length` は既存の `characterCount` へ、全話数 `general_all_no` は `episodeCount` へ、作者名 `writer` は `authorName` へ統一する。
+- ジャンルは共通 `genres`（`categories` / `attributes`）にまとめ、全年齢の `biggenre`・`genre` とR18の `nocgenre`、各作品属性を保持する。内部の詳細スキーマ・`isr15` の扱いは未確定。
+- API由来情報はAPIを正とし、ともたよむ独自情報（内部ID、本棚、しおり、検索除外、手動登録情報等）はAPIで上書きしない。APIに項目がない場合は既存値を維持し、空値・nullは項目ごとに扱いを決める。
+- `time`、`novelupdated_at`、`updated_at`、`isstop`、`gensaku`、ポイント・評価系等は取り込まない。
+- 作者かな情報は、現在値を消さず、別経路から流入した場合は受け取る。Transferで無理に取得する仕組みは追加しない。
+- Translatorページには「何を、何から、どの共通形式へ変換するページか」を常設説明し、対応表・除外項目・更新履歴を残す。
+- 詳細な項目対応・変換規則・未確定事項は [なろうトランスファー Lab 設計記録](narou-translator-lab.md) を正本とする。
+- 今回は資料室の設計記録のみ更新。Labコード、本番DB、本番登録経路、Shortcut、GitHub Actionsは変更していない。
