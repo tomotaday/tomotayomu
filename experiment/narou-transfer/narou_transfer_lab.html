@@ -122,6 +122,17 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
 </section>
 
 <section class="panel">
+  <h2>8. Translator変換プレビュー（読み取り専用）</h2>
+  <p>保存済みAPI生データを、なろうTranslatorで共通works形式へ変換した結果を確認します。cleanWorksとの照合はNコードで行い、既存のともたよむ管理情報を引き継ぎます。</p>
+  <p class="small">変換はメモリ上だけで実行します。LabDBへの保存・更新、本番DBへの接続、Shortcut・GitHub Actionsの実行はありません。</p>
+  <div class="warning"><strong>変換時の注意</strong><br>id・URL・棚・しおり・検索除外・手動登録済み作者IDなどは既存値を保持します。APIにないURLは作りません。R18 APIにuseridがない場合、作者IDは既存の手動登録値を維持します。</div>
+  <button id="translatorPreviewButton" type="button">保存済みAPIデータを共通worksへ変換してプレビュー</button>
+  <button id="copyTranslatorPreviewButton" type="button" disabled>変換結果をまとめてコピー</button>
+  <div id="translatorPreviewStatus" class="small" aria-live="polite">まだ変換していません。</div>
+  <div id="translatorPreviewResult"></div>
+</section>
+
+<section class="panel">
   <h2>5. 作品カード実験</h2>
   <p>本番INDEXのなろう作品カードを複製し、LabDBの整理版cleanWorksレコードを加工せずに渡します。本番DB・本番カードには接続しません。</p>
   <p class="small">表示欄が空になる箇所や、カード側が要求する項目との違いを確認します。カード内の操作は表示確認用で、作品データの変更はできません。</p>
@@ -185,6 +196,11 @@ const copyApiAuditButton = document.getElementById("copyApiAuditButton");
 const copyAllApiRawButton = document.getElementById("copyAllApiRawButton");
 const apiAuditStatusNode = document.getElementById("apiAuditStatus");
 const apiAuditResultNode = document.getElementById("apiAuditResult");
+const translatorPreviewButton = document.getElementById("translatorPreviewButton");
+const copyTranslatorPreviewButton = document.getElementById("copyTranslatorPreviewButton");
+const translatorPreviewStatusNode = document.getElementById("translatorPreviewStatus");
+const translatorPreviewResultNode = document.getElementById("translatorPreviewResult");
+let latestTranslatorPreview = null;
 let latestApiAuditRows = [];
 let latestAuditRows = [];
 
@@ -720,6 +736,239 @@ async function copyAllApiRawResponses() {
   }
 }
 
+// なろうAPI → ともたよむ共通works。純粋変換関数として扱い、DBへの書き込みは行わない。
+const NAROU_GENRE_SOURCE_FIELDS = [
+  "biggenre", "genre", "nocgenre",
+  "isr15", "isbl", "isgl", "iszankoku", "istensei", "istenni"
+];
+
+function hasApiValue(value) {
+  return value !== undefined && value !== null &&
+    !(typeof value === "string" && value.trim() === "");
+}
+
+function applyApiField(target, targetKey, raw, sourceKey, diagnostics) {
+  if (!Object.prototype.hasOwnProperty.call(raw, sourceKey)) return;
+  if (!hasApiValue(raw[sourceKey])) {
+    diagnostics.push(sourceKey + "：空値のため既存値を保持");
+    return;
+  }
+  target[targetKey] = raw[sourceKey];
+}
+
+function translateNarouToCommonWork(raw, existingWork = null, originalUrl = null) {
+  const diagnostics = [];
+  const work = existingWork ? structuredClone(existingWork) : { site: "narou" };
+  const ncode = String(raw?.ncode || raw?.Ncode || "").trim().toUpperCase();
+  if (!ncode) {
+    diagnostics.push("NコードがないためworkIdを確定できません");
+  } else {
+    work.site = "narou";
+    work.workId = ncode;
+  }
+
+  applyApiField(work, "title", raw, "title", diagnostics);
+  applyApiField(work, "synopsis", raw, "story", diagnostics);
+  applyApiField(work, "authorName", raw, "writer", diagnostics);
+  applyApiField(work, "publishedAt", raw, "general_firstup", diagnostics);
+  applyApiField(work, "lastPublishedAt", raw, "general_lastup", diagnostics);
+  applyApiField(work, "episodeCount", raw, "general_all_no", diagnostics);
+
+  if (Object.prototype.hasOwnProperty.call(raw, "userid") && hasApiValue(raw.userid)) {
+    work.authorId = raw.userid;
+  } else if (!existingWork?.authorId) {
+    diagnostics.push("authorId：APIに有効なuseridがないため未設定（作者名から推定しない）");
+  } else {
+    diagnostics.push("authorId：既存の作者IDを保持");
+  }
+
+  if (Object.prototype.hasOwnProperty.call(raw, "keyword")) {
+    if (hasApiValue(raw.keyword)) {
+      work.keywords = String(raw.keyword).trim().split(/\s+/u).filter(Boolean);
+    } else {
+      diagnostics.push("keyword：空値のため既存keywordsを保持");
+    }
+  }
+
+  const novelType = raw.novel_type;
+  const end = raw.end;
+  if (novelType === 2) {
+    work.status = "短編";
+  } else if (novelType === 1 && end === 0) {
+    work.status = "完結";
+  } else if (novelType === 1 && end === 1) {
+    work.status = "連載中";
+  } else {
+    diagnostics.push("status：novel_type/endの組合せが想定外のため既存値を保持");
+  }
+
+  const oldGenres = Array.isArray(work.genres) ? structuredClone(work.genres) : [];
+  const oldBySource = new Map(oldGenres.filter(item => item && typeof item.source === "string").map(item => [item.source, item]));
+  const nextGenres = [];
+  for (const source of NAROU_GENRE_SOURCE_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(raw, source) && hasApiValue(raw[source])) {
+      nextGenres.push({ source, value: raw[source] });
+    } else if (oldBySource.has(source)) {
+      nextGenres.push(oldBySource.get(source));
+    }
+  }
+  const knownSet = new Set(NAROU_GENRE_SOURCE_FIELDS);
+  for (const item of oldGenres) {
+    if (!item || !knownSet.has(item.source)) nextGenres.push(item);
+  }
+  if (nextGenres.length || NAROU_GENRE_SOURCE_FIELDS.some(key => Object.prototype.hasOwnProperty.call(raw, key))) {
+    work.genres = nextGenres;
+  }
+  const unknownFlags = Object.keys(raw).filter(key => /^is[a-z0-9_]+$/i.test(key) && !knownSet.has(key));
+  if (unknownFlags.length) diagnostics.push("未採用の属性候補：" + unknownFlags.join("、") + "（10件の標本で確認した項目だけを採用）");
+
+  if (existingWork?.url) {
+    work.url = existingWork.url;
+  } else if (hasApiValue(originalUrl)) {
+    work.url = originalUrl;
+  } else {
+    delete work.url;
+    diagnostics.push("url：Shortcutからの元URL未連携のため未設定（URLは生成しない）");
+  }
+
+  // ともたよむ側の管理情報はAPI値で上書きしない。新規レコードにはIDを捏造しない。
+  if (existingWork) {
+    for (const key of ["id", "shelfId", "bookmark", "searchExcluded", "authorKana", "authorKanaFirst", "authorKanaChecked"]) {
+      if (Object.prototype.hasOwnProperty.call(existingWork, key)) work[key] = structuredClone(existingWork[key]);
+    }
+  } else {
+    delete work.id;
+  }
+
+  if (!work.id) diagnostics.push("id：ともたよむ側で採番する項目のため、このプレビューでは未設定");
+  return { work, diagnostics };
+}
+
+async function runTranslatorPreview() {
+  translatorPreviewButton.disabled = true;
+  copyTranslatorPreviewButton.disabled = true;
+  translatorPreviewResultNode.replaceChildren();
+  translatorPreviewStatusNode.textContent = "保存済みAPIデータとcleanWorksを読み取り中…";
+  latestTranslatorPreview = null;
+  try {
+    const db = await openLabDB();
+    const tx = db.transaction([LAB_API_STORE_NAME, LAB_CLEAN_STORE_NAME], "readonly");
+    const apiRequest = tx.objectStore(LAB_API_STORE_NAME).getAll();
+    const cleanRequest = tx.objectStore(LAB_CLEAN_STORE_NAME).getAll();
+    const [savedApi, cleanWorks] = await Promise.all([
+      requestToPromise(apiRequest), requestToPromise(cleanRequest)
+    ]);
+    if (!savedApi.length) throw new Error("apiRawResponsesに保存済みAPIデータがありません。");
+    const existingByNcode = new Map(cleanWorks.map(work => [
+      String(work.workId || "").trim().toUpperCase(), work
+    ]));
+    const records = savedApi
+      .filter(item => item && item.raw && typeof item.raw === "object")
+      .sort((a,b) => String(a.ncode || a.id).localeCompare(String(b.ncode || b.id)));
+    const converted = records.map(record => {
+      const ncode = String(record.raw.ncode || record.ncode || record.id || "").trim().toUpperCase();
+      const existing = existingByNcode.get(ncode) || null;
+      const result = translateNarouToCommonWork(record.raw, existing);
+      return {
+        apiSource: record.source,
+        ncode,
+        matchedExisting: Boolean(existing),
+        diagnostics: result.diagnostics,
+        work: result.work
+      };
+    });
+    latestTranslatorPreview = {
+      format: "tomotayomu-narou-translator-preview",
+      version: 1,
+      generatedAt: new Date().toISOString(),
+      readOnly: true,
+      count: converted.length,
+      records: converted
+    };
+
+    const summary = document.createElement("div");
+    summary.className = "summary";
+    const matched = converted.filter(item => item.matchedExisting).length;
+    const stats = [
+      ["変換件数", converted.length],
+      ["既存作品と照合", matched],
+      ["新規扱い", converted.length - matched]
+    ];
+    for (const [label, value] of stats) {
+      const box = document.createElement("div");
+      box.className = "stat";
+      const caption = document.createElement("span");
+      caption.className = "small";
+      caption.textContent = label;
+      const strong = document.createElement("strong");
+      strong.textContent = String(value);
+      box.append(caption, strong);
+      summary.append(box);
+    }
+    translatorPreviewResultNode.append(summary);
+
+    for (const item of converted) {
+      const article = document.createElement("article");
+      article.className = "preview-card";
+      const heading = document.createElement("h3");
+      heading.textContent = item.ncode + "｜" + (item.work.title || "タイトル未設定");
+      const meta = document.createElement("p");
+      meta.className = "preview-meta";
+      meta.textContent = (item.apiSource === "narou-novel18-api" ? "R18 API" : "通常API") +
+        " ・ " + (item.matchedExisting ? "既存cleanWorksと照合" : "既存cleanWorksなし");
+      const pre = document.createElement("pre");
+      pre.textContent = JSON.stringify(item.work, null, 2);
+      article.append(heading, meta, pre);
+      if (item.diagnostics.length) {
+        const note = document.createElement("details");
+        const summaryNode = document.createElement("summary");
+        summaryNode.textContent = "確認事項 " + item.diagnostics.length + "件";
+        const list = document.createElement("ul");
+        for (const message of item.diagnostics) {
+          const li = document.createElement("li");
+          li.textContent = message;
+          list.append(li);
+        }
+        note.append(summaryNode, list);
+        article.append(note);
+      }
+      translatorPreviewResultNode.append(article);
+    }
+    copyTranslatorPreviewButton.disabled = false;
+    translatorPreviewStatusNode.textContent =
+      converted.length + "作品を変換しました。読み取り専用のプレビューです。LabDBへの書き込みは行っていません。";
+  } catch (error) {
+    translatorPreviewStatusNode.textContent = "変換プレビューエラー：" + error.message;
+  } finally {
+    translatorPreviewButton.disabled = false;
+  }
+}
+
+async function copyTranslatorPreview() {
+  if (!latestTranslatorPreview) return;
+  const text = JSON.stringify(latestTranslatorPreview, null, 2);
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const helper = document.createElement("textarea");
+      helper.value = text;
+      helper.setAttribute("readonly", "");
+      helper.style.position = "fixed";
+      helper.style.opacity = "0";
+      document.body.append(helper);
+      helper.select();
+      const copied = document.execCommand("copy");
+      helper.remove();
+      if (!copied) throw new Error("コピー機能を利用できません");
+    }
+    translatorPreviewStatusNode.textContent = latestTranslatorPreview.count +
+      "作品分の変換結果をコピーしました。LabDBは変更していません。";
+  } catch (error) {
+    translatorPreviewStatusNode.textContent = "コピーできませんでした：" + error.message;
+  }
+}
+
 async function copyAuditResults() {
   if (!latestAuditRows.length) {
     auditStatusNode.textContent = "先に項目調査を実行してください。";
@@ -1093,6 +1342,8 @@ async function runFieldAudit() {
   }
 }
 
+translatorPreviewButton.addEventListener("click", runTranslatorPreview);
+copyTranslatorPreviewButton.addEventListener("click", copyTranslatorPreview);
 apiAuditButton.addEventListener("click", runApiRawAudit);
 copyApiAuditButton.addEventListener("click", copyApiAuditResults);
 copyAllApiRawButton.addEventListener("click", copyAllApiRawResponses);
