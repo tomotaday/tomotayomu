@@ -274,11 +274,21 @@ works（作品情報の正本）
 | `lastPublishedAt` | `general_lastup` | `general_lastup` | 最新話更新日 |
 | `characterCount` | `length` | `length` | APIに存在することを確認。共通worksへ取り込むかは未決定 |
 | `episodeCount` | `general_all_no` | `general_all_no` | 全話数。API由来情報として更新 |
-| `keyword` | `keyword` | `keyword` | 両APIに存在することを確認。共通worksへ取り込むかは未決定 |
+| `keywords` | `keyword` | `keyword` | 両APIの空白区切り文字列を分割し、文字列配列として共通worksへ取り込む（仕様確定） |
 | `status` | `novel_type`＋`end` | `novel_type`＋`end` | 両API共通の判定条件で「短編」「完結」「連載中」に変換 |
 | ジャンル項目 | `biggenre`・`genre` | `nocgenre` | APIに存在することを確認。共通worksへ取り込むか・共通構造は未決定 |
 | 属性フラグ | `isbl`・`isgl`・`iszankoku`・`istensei`・`istenni`等 | 同左 | APIに存在することを確認。共通worksへの取り込み・整理方法は未決定 |
 | `authorKana` / `authorKanaFirst` / `authorKanaChecked` | APIの今回のサンプルでは確認できず | APIの今回のサンプルでは確認できず | 現在の値を消さない。別経路から流れ込んだ値は受け取る。Transferで取得機能を追加せず、ゆったり見守る |
+
+
+
+#### キーワードの変換（2026-11-17 仕様確定）
+
+- 全年齢API・R18 APIの `keyword` を共通worksの `keywords` に取り込む。
+- APIの `keyword` は空白区切りの文字列であるため、空白で分割して文字列配列に変換する。
+- 例：`"異世界転生 白い結婚 美貌の公爵家"` → `["異世界転生", "白い結婚", "美貌の公爵家"]`
+- API側の項目名 `keyword` と、共通works側の項目名 `keywords` を区別する。
+- 空文字・null・空白のみの場合の扱い、および区切り文字が空白以外で現れた場合の扱いは、実データで確認して別途定義する。
 
 #### statusの判定
 
@@ -316,11 +326,11 @@ works（作品情報の正本）
 |---|---|---|
 | ポイント・評価・ブックマーク数・感想数・レビュー数等 | 取り込まない | ともたが不要と判断 |
 
-#### APIに存在することは確認済みだが、採否未決定
+#### APIに存在することを確認済みの項目と採否
 
 | API項目 | 確認内容 | 未決定事項 |
 |---|---|---|
-| `keyword` | 全年齢・R18の両APIに存在 | 共通worksへ取り込むか |
+| `keyword` | 全年齢・R18の両APIに存在 | **仕様確定：共通worksの `keywords` に文字列配列として取り込む** |
 | `biggenre`・`genre` | 全年齢APIに存在 | 共通worksへ取り込むか、R18の分類とどう共通化するか |
 | `nocgenre` | R18 APIに存在 | 全年齢ジャンルとどう共通化するか |
 | `length` | 両APIに存在 | `characterCount` へ取り込むか |
@@ -346,7 +356,7 @@ works（作品情報の正本）
 
 | 項目 | 状態 |
 |---|---|
-| `keyword` | 両APIに存在することを確認。共通worksへ取り込むか未決定 |
+| `keyword` | **仕様確定：共通worksの `keywords` に文字列配列として取り込む** |
 | ジャンル（全年齢 `biggenre`・`genre`／R18 `nocgenre`） | APIに存在することを確認。共通worksへ取り込むか未決定 |
 | 属性フラグ | APIに存在することを確認。共通化・採用範囲未決定 |
 | `length` → `characterCount` | 対応候補。採用未決定 |
