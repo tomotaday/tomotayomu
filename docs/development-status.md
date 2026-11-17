@@ -196,10 +196,10 @@
 - 元URLはShortcutから受け取り、生成・加工せず丸ごと保持する。
 - ステータスは全年齢・R18共通で `novel_type` と `end` を使い、「短編」「完結」「連載中」の3種類に変換する。
 - 日付は `publishedAt`（`general_firstup`：初回掲載日）と `lastPublishedAt`（`general_lastup`：最新話更新日）の2項目だけを使用する。
-- 文字数 `length` は既存の `characterCount` へ、全話数 `general_all_no` は `episodeCount` へ、作者名 `writer` は `authorName` へ統一する。
-- ジャンルは共通 `genres`（`categories` / `attributes`）にまとめ、全年齢の `biggenre`・`genre` とR18の `nocgenre`、各作品属性を保持する。内部の詳細スキーマ・`isr15` の扱いは未確定。
+- 全話数 `general_all_no` は `episodeCount`、作者名 `writer` は `authorName` へ統一する。`length` を `characterCount` へ取り込むかは未決定。
+- `keyword`・ジャンル（全年齢 `biggenre` / `genre`、R18 `nocgenre`）・属性フラグはAPIに存在することを確認。共通worksへの採否・共通化方法は未決定。`isr15` も未決定。
 - API由来情報はAPIを正とし、ともたよむ独自情報（内部ID、本棚、しおり、検索除外、手動登録情報等）はAPIで上書きしない。APIに項目がない場合は既存値を維持し、空値・nullは項目ごとに扱いを決める。
-- `time`、`novelupdated_at`、`updated_at`、`isstop`、`gensaku`、ポイント・評価系等は取り込まない。
+- ポイント・評価系は取り込まない方針。`time`、`novelupdated_at`、`updated_at`、`isstop`、`gensaku` 等はAPIにあることを確認した項目も含め、採否未決定。
 - 作者かな情報は、現在値を消さず、別経路から流入した場合は受け取る。Transferで無理に取得する仕組みは追加しない。
 - Translatorページには「何を、何から、どの共通形式へ変換するページか」を常設説明し、対応表・除外項目・更新履歴を残す。
 - 詳細な項目対応・変換規則・未確定事項は [なろうトランスファー Lab 設計記録](narou-translator-lab.md) を正本とする。
