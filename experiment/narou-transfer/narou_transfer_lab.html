@@ -116,6 +116,7 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
   <p class="small">読み取り専用です。APIへの再通信、データの更新・削除、cleanWorksへの変更は行いません。</p>
   <button id="apiAuditButton" type="button">保存済みAPIデータを調査</button>
   <button id="copyApiAuditButton" type="button" disabled>API調査結果をコピー</button>
+  <button id="copyAllApiRawButton" type="button">全作品の生JSONをまとめてコピー</button>
   <div id="apiAuditStatus" class="small" aria-live="polite">まだ調査していません。</div>
   <div id="apiAuditResult"></div>
 </section>
@@ -181,6 +182,7 @@ const apiFetchStatusNode = document.getElementById("apiFetchStatus");
 const apiFetchResultNode = document.getElementById("apiFetchResult");
 const apiAuditButton = document.getElementById("apiAuditButton");
 const copyApiAuditButton = document.getElementById("copyApiAuditButton");
+const copyAllApiRawButton = document.getElementById("copyAllApiRawButton");
 const apiAuditStatusNode = document.getElementById("apiAuditStatus");
 const apiAuditResultNode = document.getElementById("apiAuditResult");
 let latestApiAuditRows = [];
@@ -658,6 +660,66 @@ async function copyApiAuditResults() {
   }
 }
 
+
+async function copyAllApiRawResponses() {
+  copyAllApiRawButton.disabled = true;
+  apiAuditStatusNode.textContent = "通常API・R18 APIの保存済み生JSONを読み込み中…";
+  try {
+    const db = await openLabDB();
+    const tx = db.transaction(LAB_API_STORE_NAME, "readonly");
+    const saved = await requestToPromise(tx.objectStore(LAB_API_STORE_NAME).getAll());
+    const records = saved
+      .filter(item => item && item.raw && typeof item.raw === "object")
+      .sort((a, b) => {
+        const sourceOrder = String(a.source).localeCompare(String(b.source));
+        return sourceOrder || String(a.ncode || a.id || "").localeCompare(String(b.ncode || b.id || ""));
+      })
+      .map(item => ({
+        source: item.source || "",
+        ncode: String(item.ncode || item.id || "").toUpperCase(),
+        fetchedAt: item.fetchedAt || "",
+        raw: item.raw
+      }));
+    if (!records.length) {
+      apiAuditStatusNode.textContent = "コピー対象がありません。先に通常API・R18 APIの取得を実行してください。";
+      return;
+    }
+    const payload = {
+      format: "tomotayomu-lab-api-raw-export",
+      formatVersion: 1,
+      exportedAt: new Date().toISOString(),
+      recordCount: records.length,
+      counts: {
+        normal: records.filter(item => item.source === "narou-novel-api").length,
+        r18: records.filter(item => item.source === "narou-novel18-api").length
+      },
+      records
+    };
+    const json = JSON.stringify(payload, null, 2);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(json);
+    } else {
+      const helper = document.createElement("textarea");
+      helper.value = json;
+      helper.setAttribute("readonly", "");
+      helper.style.position = "fixed";
+      helper.style.opacity = "0";
+      document.body.append(helper);
+      helper.select();
+      const copied = document.execCommand("copy");
+      helper.remove();
+      if (!copied) throw new Error("コピー機能を利用できません");
+    }
+    apiAuditStatusNode.textContent =
+      "通常API " + payload.counts.normal + "作品・R18 API " + payload.counts.r18 +
+      "作品、合計" + records.length + "作品の生JSONをまとめてコピーしました。ここにそのまま貼り付けてください。LabDBは変更していません。";
+  } catch (error) {
+    apiAuditStatusNode.textContent = "一括コピーできませんでした：" + error.message;
+  } finally {
+    copyAllApiRawButton.disabled = false;
+  }
+}
+
 async function copyAuditResults() {
   if (!latestAuditRows.length) {
     auditStatusNode.textContent = "先に項目調査を実行してください。";
@@ -1033,6 +1095,7 @@ async function runFieldAudit() {
 
 apiAuditButton.addEventListener("click", runApiRawAudit);
 copyApiAuditButton.addEventListener("click", copyApiAuditResults);
+copyAllApiRawButton.addEventListener("click", copyAllApiRawResponses);
 auditButton.addEventListener("click", runFieldAudit);
 copyAuditButton.addEventListener("click", copyAuditResults);
 previewButton.addEventListener("click", renderRawWorksPreview);
