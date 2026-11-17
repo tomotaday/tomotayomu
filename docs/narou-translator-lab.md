@@ -347,7 +347,7 @@ works（作品情報の正本）
 | `time` | 両APIに存在 | **方針確定：共通worksに取り込まない（利用目的がないため）** |
 | `novelupdated_at` | 両APIに存在 | **方針確定：取り込まない。共通worksの日付は `publishedAt` と `lastPublishedAt` の2項目に限定する** |
 | `updated_at` | 両APIに存在 | **方針確定：取り込まない。共通worksの日付は `publishedAt` と `lastPublishedAt` の2項目に限定する** |
-| `isstop` | 両APIに存在 | **方針確定：共通worksに取り込まない（更新停止情報は不要）** |\n| `gensaku` | API項目として確認対象 | 採否 |
+| `isstop` | 両APIに存在 | **方針確定：共通worksに取り込まない（更新停止情報は不要）** |\n| `gensaku` | API項目として確認対象 | **方針確定：共通worksに取り込まない（原作情報は不要）** |
 | `kaiwaritu`・`sasie_cnt` | API項目として確認対象 | 採否 |
 
 ※「APIにある」「worksへ取り込む」「取り込まない」は別々の判断として記録する。採否が決まるまでは、除外確定リストに入れない。
@@ -373,7 +373,7 @@ works（作品情報の正本）
 | `length` → `characterCount` | **方針確定：取り込まない** |
 | `time` | **方針確定：取り込まない** |
 | `novelupdated_at`・`updated_at` | **方針確定：取り込まない。日付項目は `publishedAt`・`lastPublishedAt` の2項目に限定** |
-| `isstop` | **方針確定：取り込まない** |\n| `gensaku`・`kaiwaritu`・`sasie_cnt` | 採否未決定 |
+| `isstop` | **方針確定：取り込まない** |\n| `gensaku` | **方針確定：取り込まない** |\n| `kaiwaritu`・`sasie_cnt` | 採否未決定 |
 | `genres.categories` の詳細スキーマ | 共通化を採用するかも含め未決定 |
 | `genres.attributes` の全フラグ対応表 | 共通化を採用するかも含め未決定 |
 | `isr15` | 採否・格納方法は未決定 |
