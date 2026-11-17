@@ -197,7 +197,7 @@
 - ステータスは全年齢・R18共通で `novel_type` と `end` を使い、「短編」「完結」「連載中」の3種類に変換する。
 - 日付は `publishedAt`（`general_firstup`：初回掲載日）と `lastPublishedAt`（`general_lastup`：最新話更新日）の2項目だけを使用する。
 - 全話数 `general_all_no` は `episodeCount`、作者名 `writer` は `authorName` へ統一する。`length` を `characterCount` へ取り込むかは未決定。
-- `keyword`・ジャンル（全年齢 `biggenre` / `genre`、R18 `nocgenre`）・属性フラグはAPIに存在することを確認。共通worksへの採否・共通化方法は未決定。`isr15` も未決定。
+- `keyword` は共通worksの `keywords` に空白分割した文字列配列として取り込む方針を仕様確定（2026-11-17）。ジャンル（全年齢 `biggenre` / `genre`、R18 `nocgenre`）・属性フラグは採否・共通化方法が未決定。`isr15` も未決定。
 - API由来情報はAPIを正とし、ともたよむ独自情報（内部ID、本棚、しおり、検索除外、手動登録情報等）はAPIで上書きしない。APIに項目がない場合は既存値を維持し、空値・nullは項目ごとに扱いを決める。
 - ポイント・評価系は取り込まない方針。`time`、`novelupdated_at`、`updated_at`、`isstop`、`gensaku` 等はAPIにあることを確認した項目も含め、採否未決定。
 - 作者かな情報は、現在値を消さず、別経路から流入した場合は受け取る。Transferで無理に取得する仕組みは追加しない。
