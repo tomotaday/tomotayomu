@@ -459,7 +459,7 @@ Lab画面に「8. Translator変換プレビュー（読み取り専用）」を�
 ## 13. 2026-11-18：Translator変換関数の事前点検
 
 - `translateNarouToCommonWork` のコードを設計表と照合した。
-- `publishedAt`・`lastPublishedAt` は、API値が欠落・nullの場合も共通worksの項目枠を空文字で維持するよう修正。
+- 当時は `publishedAt`・`lastPublishedAt` の空欄時に項目枠を空文字で維持する実装だった。この扱いは2026-11-19の第14節で必須日付エラーへ変更し、旧仕様として扱う。
 - 短編判定を `novel_type === 2 && end === 0` に限定し、設計表と一致させた。
 - 修正commit：`906ed7c6a5304037388fe5d1b7d626fb87b993ab`
 - README記録commit：`2a8985f220f8a7892e6438ec2cb8bdc3429f8570`
@@ -492,5 +492,6 @@ Lab画面に「8. Translator変換プレビュー（読み取り専用）」を�
 - `translateNarouToCommonWork` は `diagnostics` と別に `errors` を返す。
 - 日付エラーはプレビューの作品別エラー欄と全体件数に反映する。
 - 実装commit：`611bc9f7b22750d3ae643f5a06bc8f381ffd0730`（日付変換・エラー判定）
-- 表示仕様commit：`（HTMLの設計表更新後に記録）`
+- 設計表更新commit：`013628ce463e2951b7f76d530775e55d640c2e12`
+- 正規表現修正commit：`24cd9b69ec0c7bd72bf741834884dec651d2c7f8`
 - README・本設計記録を同期。iPhone実機での10作品確認は未実施。
