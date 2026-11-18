@@ -48,6 +48,17 @@ strong.num{font-size:1.5rem}
 <button id="copy" type="button" disabled>全Nコードをコピー</button>
 <div id="copyStatus" class="small"></div>
 </section>
+<section class="panel" id="atomUrlCountPanel">
+<h2>Atom返却URLの件数確認</h2>
+<p class="small">Safariで開いたAtom本文を貼り付け、「作品URLだけ抽出」を押します。作品タイトル・あらすじ等は表示せず、作品URLの件数とURL一覧だけを取り出します。この処理はページ内だけで行い、本棚DB・localStorage・GitHubには保存しません。</p>
+<textarea id="atomRawInput" placeholder="Atomの本文をここに貼り付け"></textarea>
+<button id="extractAtomUrls" type="button">作品URLだけ抽出</button>
+<div id="atomUrlCountStatus" class="status">Atom本文を貼り付けてください。</div>
+<textarea id="atomUrlOnly" readonly placeholder="抽出した作品URLだけを表示します。"></textarea>
+<button id="copyAtomUrls" type="button" disabled>URL一覧をコピー</button>
+<div id="atomUrlCopyStatus" class="small"></div>
+</section>
+
 <section class="panel" id="atomTestPanel">
 <h2>Atom件数上限の検証用Nコード</h2>
 <p class="small">全年齢作品のみを対象にし、既存の検索除外Nコードを除いて、先頭20件・50件・100件をコピーします。作品データと検索除外リストは読み取り専用です。</p>
@@ -712,6 +723,29 @@ async function runCheck() {
     $("runCheck").disabled = false;
   }
 }
+
+$("extractAtomUrls").addEventListener("click", () => {
+  const raw = $("atomRawInput").value;
+  const matches = raw.match(/https?:\\/\\/(?:ncode|novel18)\\.syosetu\\.com\\/[a-z0-9]+\\/?/gi) || [];
+  const urls = [...new Set(matches.map(url => url.replace(/\\/$/, "").toLowerCase() + "/"))];
+  $("atomUrlOnly").value = urls.join("\\n");
+  $("atomUrlCountStatus").textContent = "作品URLを " + urls.length + "件確認しました。" +
+    (matches.length !== urls.length ? "（重複 " + (matches.length - urls.length) + "件を除外）" : "");
+  $("copyAtomUrls").disabled = urls.length === 0;
+  $("atomUrlCopyStatus").textContent = "";
+});
+$("copyAtomUrls").addEventListener("click", async () => {
+  const value = $("atomUrlOnly").value;
+  if (!value) return;
+  try {
+    await navigator.clipboard.writeText(value);
+    $("atomUrlCopyStatus").textContent = "URL一覧をコピーしました。";
+  } catch (_) {
+    $("atomUrlOnly").focus();
+    $("atomUrlOnly").select();
+    $("atomUrlCopyStatus").textContent = "自動コピーできません。選択されたURL一覧を手動でコピーしてください。";
+  }
+});
 
 for (const size of [20, 50, 100]) {
   $("copyAtom" + size).addEventListener("click", async () => {
