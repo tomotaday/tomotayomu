@@ -866,6 +866,9 @@ function translateNarouToCommonWork(raw, existingWork = null, originalUrl = null
   applyApiField(work, "publishedAt", raw, "general_firstup", diagnostics);
   applyApiField(work, "lastPublishedAt", raw, "general_lastup", diagnostics);
   applyApiField(work, "episodeCount", raw, "general_all_no", diagnostics);
+  // 日付項目は取得値の有無にかかわらず、共通worksの項目枠を維持する。
+  if (work.publishedAt === undefined || work.publishedAt === null) work.publishedAt = "";
+  if (work.lastPublishedAt === undefined || work.lastPublishedAt === null) work.lastPublishedAt = "";
 
   if (existingWork?.authorId) {
     // authorIdは初回設定後に固定。通常APIのuseridでも既存値を上書きしない。
@@ -886,7 +889,7 @@ function translateNarouToCommonWork(raw, existingWork = null, originalUrl = null
 
   const novelType = raw.novel_type;
   const end = raw.end;
-  if (novelType === 2) {
+  if (novelType === 2 && end === 0) {
     work.status = "短編";
   } else if (novelType === 1 && end === 0) {
     work.status = "完結";
