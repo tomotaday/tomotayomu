@@ -156,6 +156,11 @@ async function extract() {
   $("copy20").disabled = true;
   $("runCheck").disabled = true;
   $("runFullCheck").disabled = true;
+  atomTestCodes = [];
+  $("atomTestCodes").value = "";
+  $("atomTestStatus").textContent = "全年齢・検索除外条件を確認中…";
+  $("atomTestCopyStatus").textContent = "";
+  for (const size of [20, 50, 100]) $("copyAtom" + size).disabled = true;
   $("checkStatus").textContent = "抽出中…";
   $("checkSummary").textContent = "";
   $("checkResults").replaceChildren();
