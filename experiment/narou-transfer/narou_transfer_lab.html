@@ -849,8 +849,50 @@ function applyApiField(target, targetKey, raw, sourceKey, diagnostics) {
   target[targetKey] = raw[sourceKey];
 }
 
+// なろうAPIの日時はタイムゾーン表記がない場合、日本時間の日時として扱う。
+// Z／UTCオフセット付き日時は実際の時刻をJSTへ変換してから日付を確定する。
+function normalizeNarouDate(value, sourceKey, errors) {
+  if (!hasApiValue(value)) {
+    errors.push(sourceKey + "：必須日付が取得できません");
+    return null;
+  }
+  if (typeof value !== "string") {
+    errors.push(sourceKey + "：日付が文字列ではありません");
+    return null;
+  }
+  const text = value.trim();
+  const match = text.match(/^(\\d{4})-(\\d{2})-(\\d{2})(?:[ T](\\d{2}):(\\d{2})(?::(\\d{2}))?(Z|[+-]\\d{2}:?\\d{2})?)?$/i);
+  if (!match) {
+    errors.push(sourceKey + "：日付形式が不正です（" + text + "）");
+    return null;
+  }
+  const [, y, mo, d, hh = "00", mm = "00", ss = "00", zone = ""] = match;
+  const year = Number(y), month = Number(mo), day = Number(d);
+  const hour = Number(hh), minute = Number(mm), second = Number(ss);
+  const check = new Date(Date.UTC(year, month - 1, day));
+  if (check.getUTCFullYear() !== year || check.getUTCMonth() !== month - 1 ||
+      check.getUTCDate() !== day || hour > 23 || minute > 59 || second > 59) {
+    errors.push(sourceKey + "：実在しない日付または時刻です（" + text + "）");
+    return null;
+  }
+  if (!zone) return y + "/" + mo + "/" + d; // timezoneなしはJSTの壁時計として扱う
+  const normalizedZone = zone.toUpperCase() === "Z" ? "Z" :
+    zone.replace(/([+-]\\d{2})(\\d{2})$/, "$1:$2");
+  const instant = new Date(y + "-" + mo + "-" + d + "T" + hh + ":" + mm + ":" + ss + normalizedZone);
+  if (Number.isNaN(instant.getTime())) {
+    errors.push(sourceKey + "：タイムゾーン付き日時を解釈できません（" + text + "）");
+    return null;
+  }
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit"
+  }).formatToParts(instant);
+  const part = Object.fromEntries(parts.map(item => [item.type, item.value]));
+  return part.year + "/" + part.month + "/" + part.day;
+}
+
 function translateNarouToCommonWork(raw, existingWork = null, originalUrl = null) {
   const diagnostics = [];
+  const errors = [];
   const work = existingWork ? structuredClone(existingWork) : { site: "narou" };
   const ncode = String(raw?.ncode || raw?.Ncode || "").trim().toUpperCase();
   if (!ncode) {
@@ -863,12 +905,12 @@ function translateNarouToCommonWork(raw, existingWork = null, originalUrl = null
   applyApiField(work, "title", raw, "title", diagnostics);
   applyApiField(work, "synopsis", raw, "story", diagnostics);
   applyApiField(work, "authorName", raw, "writer", diagnostics);
-  applyApiField(work, "publishedAt", raw, "general_firstup", diagnostics);
-  applyApiField(work, "lastPublishedAt", raw, "general_lastup", diagnostics);
+  // 必須日付は欠落・空値・不正値をエラーにする。正常値だけYYYY/MM/DDで格納。
+  const publishedAt = normalizeNarouDate(raw?.general_firstup, "general_firstup（初期登録日）", errors);
+  const lastPublishedAt = normalizeNarouDate(raw?.general_lastup, "general_lastup（最新話登録日）", errors);
+  if (publishedAt) work.publishedAt = publishedAt;
+  if (lastPublishedAt) work.lastPublishedAt = lastPublishedAt;
   applyApiField(work, "episodeCount", raw, "general_all_no", diagnostics);
-  // 日付項目は取得値の有無にかかわらず、共通worksの項目枠を維持する。
-  if (work.publishedAt === undefined || work.publishedAt === null) work.publishedAt = "";
-  if (work.lastPublishedAt === undefined || work.lastPublishedAt === null) work.lastPublishedAt = "";
 
   if (existingWork?.authorId) {
     // authorIdは初回設定後に固定。通常APIのuseridでも既存値を上書きしない。
@@ -938,7 +980,7 @@ function translateNarouToCommonWork(raw, existingWork = null, originalUrl = null
   }
 
   if (!work.id) diagnostics.push("id：ともたよむ側で採番する項目のため、このプレビューでは未設定");
-  return { work, diagnostics };
+  return { work, diagnostics, errors };
 }
 
 async function runTranslatorPreview() {
@@ -971,6 +1013,7 @@ async function runTranslatorPreview() {
         ncode,
         matchedExisting: Boolean(existing),
         diagnostics: result.diagnostics,
+        errors: result.errors,
         work: result.work
       };
     });
@@ -988,6 +1031,7 @@ async function runTranslatorPreview() {
     const matched = converted.filter(item => item.matchedExisting).length;
     const stats = [
       ["変換件数", converted.length],
+      ["日付エラー", converted.filter(item => item.errors.length).length],
       ["既存作品と照合", matched],
       ["新規扱い", converted.length - matched]
     ];
@@ -1016,6 +1060,12 @@ async function runTranslatorPreview() {
       const pre = document.createElement("pre");
       pre.textContent = JSON.stringify(item.work, null, 2);
       article.append(heading, meta, pre);
+      if (item.errors.length) {
+        const errorBox = document.createElement("div");
+        errorBox.className = "preview-error";
+        errorBox.textContent = "変換エラー：" + item.errors.join("／");
+        article.append(errorBox);
+      }
       if (item.diagnostics.length) {
         const note = document.createElement("details");
         const summaryNode = document.createElement("summary");
@@ -1032,8 +1082,10 @@ async function runTranslatorPreview() {
       translatorPreviewResultNode.append(article);
     }
     copyTranslatorPreviewButton.disabled = false;
+    const dateErrorCount = converted.filter(item => item.errors.length).length;
     translatorPreviewStatusNode.textContent =
-      converted.length + "作品を変換しました。読み取り専用のプレビューです。LabDBへの書き込みは行っていません。";
+      converted.length + "作品をプレビューしました。日付エラー：" + dateErrorCount +
+      "作品。読み取り専用で、LabDBへの書き込みは行っていません。";
   } catch (error) {
     translatorPreviewStatusNode.textContent = "変換プレビューエラー：" + error.message;
   } finally {
