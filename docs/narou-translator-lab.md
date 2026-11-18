@@ -454,3 +454,14 @@ Lab画面に「8. Translator変換プレビュー（読み取り専用）」を�
 - `experiment/narou-transfer/README.md`：Labの現行構成・操作・安全境界・実機確認手順。
 - `experiment/narou-transfer/narou_transfer_lab.html`：現行Lab実装。
 - READMEと実装の現状が異なる場合は、現行コードを確認したうえで本設計記録とREADMEを同期する。
+
+
+## 13. 2026-11-18：Translator変換関数の事前点検
+
+- `translateNarouToCommonWork` のコードを設計表と照合した。
+- `publishedAt`・`lastPublishedAt` は、API値が欠落・nullの場合も共通worksの項目枠を空文字で維持するよう修正。
+- 短編判定を `novel_type === 2 && end === 0` に限定し、設計表と一致させた。
+- 修正commit：`906ed7c6a5304037388fe5d1b7d626fb87b993ab`
+- README記録commit：`2a8985f220f8a7892e6438ec2cb8bdc3429f8570`
+- この修正は変換関数のみ。LabDBへの保存処理・本番DB・Shortcut・GitHub Actionsは変更していない。
+- **iPhone実機での10作品変換結果は未確認。** 次工程は実機プレビューで、日付項目・status・作者ID・既存管理情報・URL未生成を照合する。
