@@ -115,7 +115,7 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
       <thead><tr><th>対象</th><th>変換ルール</th><th>例</th></tr></thead>
       <tbody>
         <tr><td>作品ID</td><td><code>workId = String(api.ncode).toUpperCase()</code></td><td><code>n1234ab → N1234AB</code></td></tr>
-        <tr><td>キーワード</td><td><code>keywords = keyword.trim().split(/\\s+/)</code>（空要素を除外）</td><td><code>"異世界転生 白い結婚" → ["異世界転生","白い結婚"]</code></td></tr>
+        <tr><td>キーワード</td><td><code>keywords = keyword.trim().split(/\s+/)</code>（空要素を除外）</td><td><code>"異世界転生 白い結婚" → ["異世界転生","白い結婚"]</code></td></tr>
         <tr><td>短編</td><td><code>novel_type === 2 && end === 0</code></td><td><code>status = "短編"</code></td></tr>
         <tr><td>完結</td><td><code>novel_type === 1 && end === 0</code></td><td><code>status = "完結"</code></td></tr>
         <tr><td>連載中</td><td><code>novel_type === 1 && end === 1</code></td><td><code>status = "連載中"</code></td></tr>
