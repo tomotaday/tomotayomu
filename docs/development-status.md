@@ -26,7 +26,7 @@
 
 ## 2. 現在の優先作業
 
-1. なろうAPI＋Atomを組み合わせたTranslator処理を完成させる。APIで作品情報を取得し、APIに含まれない正規作品URLはAtomで補完する。Atomは最大100件単位で取得し、超過分は分割する。既存 `url` を旧URLとして保持したまま `newUrl` を追加し、Atom由来URLの全件取得・検証後にLabの作品カード接続先を `newUrl` へ切り替える。日付表示は通常API8作品・R18 API2作品の10作品で実機確認済み（違和感なし）。Translator全項目の確認、LabDB `works` 保存、カード表示はこれから。詳細は [なろうトランスファー Lab 設計記録](narou-translator-lab.md) と [Lab README](../experiment/narou-transfer/README.md)。
+1. なろうAPI＋Atomを組み合わせたTranslator処理を完成させる。APIで作品情報を取得し、APIに含まれない正規作品URLはAtomで補完する。Atomは最大100件単位で取得し、超過分は分割する。Atomで作品が一致し正規URLを取得できた場合だけ、共通worksの既存 `url` をAtomの返却値で更新する。不一致・取得失敗・URL不正なら既存 `url` を保持する。`newUrl` は新設しない。日付表示は通常API8作品・R18 API2作品の10作品で実機確認済み（違和感なし）。Translator全項目の確認、LabDB `works` 保存、カード表示はこれから。詳細は [なろうトランスファー Lab 設計記録](narou-translator-lab.md) と [Lab README](../experiment/narou-transfer/README.md)。
 2. なろうカードの読書状態を `reading` から整理済み `bookmark` へ切り替える作業は未着手。
 3. 必要に応じてINDEXの資料室リンクをiPhone実機でタップ確認する。
 
