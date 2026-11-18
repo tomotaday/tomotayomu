@@ -184,8 +184,9 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
   <h2>2. LabDBの状態</h2>
   <div class="summary">
     <div class="stat"><span class="small">保存作品数</span><strong id="count">—</strong></div>
-    <div class="stat"><span class="small">DBバージョン</span><strong>6</strong></div>
+    <div class="stat"><span class="small">DBバージョン</span><strong>7</strong></div>
     <div class="stat"><span class="small">整理版作品数</span><strong id="cleanCount">—</strong></div>
+    <div class="stat"><span class="small">共通works保存数</span><strong id="labWorksCount">—</strong></div>
   </div>
   <p id="dbStatus" class="small">DB確認中…</p>
   <button id="refreshButton" type="button">保存内容を再読込</button>
@@ -252,6 +253,17 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
   <div id="translatorPreviewResult"></div>
 </section>
 
+<section class="panel" id="translator-works-panel">
+  <h2>9. Translator結果の保存・共通worksカード表示</h2>
+  <p>API＋Atomで取得した情報をTranslatorで共通worksへ変換し、独立LabDBのworksストアへ保存します。保存後はworksから読み出したデータだけでカードを表示します。</p>
+  <p class="small">保存条件：10作品すべてに変換エラーがなく、既存内部idがあり、Atomから取得したURLがnewUrlに入っていること。urlは旧URLとして保持し、bookmark等の管理情報は変更しません。</p>
+  <div class="warning"><strong>安全確認</strong><br>保存先はtomotaYomuNarouTranslatorLabDBのworksストアだけです。既存ストアは削除・初期化しません。worksストアに既存レコードがある場合は上書きせず、保存を中止します。</div>
+  <button id="saveTranslatorWorksButton" type="button" disabled>Translator結果をworksへ保存</button>
+  <button id="renderTranslatorWorksButton" type="button">保存済みworksからカードを表示</button>
+  <div id="translatorWorksStatus" class="small" aria-live="polite">Atom由来のnewUrlを含む変換結果が準備できたら保存できます。</div>
+  <div id="translatorWorksCards" class="index-card-preview"></div>
+</section>
+
 <div id="status" role="status" aria-live="polite"></div>
 </main>
 
@@ -259,11 +271,12 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
 "use strict";
 
 const LAB_DB_NAME = "tomotaYomuNarouTranslatorLabDB";
-const LAB_DB_VERSION = 6;
+const LAB_DB_VERSION = 7;
 const LAB_STORE_NAME = "sourceWorks";
 const LAB_CLEAN_STORE_NAME = "cleanWorks";
 const LAB_SHELF_STORE_NAME = "labShelves";
 const LAB_API_STORE_NAME = "apiRawResponses";
+const LAB_WORKS_STORE_NAME = "works";
 
 const fileInput = document.getElementById("sampleFile");
 const importButton = document.getElementById("importButton");
@@ -271,6 +284,7 @@ const refreshButton = document.getElementById("refreshButton");
 const statusNode = document.getElementById("status");
 const countNode = document.getElementById("count");
 const cleanCountNode = document.getElementById("cleanCount");
+const labWorksCountNode = document.getElementById("labWorksCount");
 const dbStatusNode = document.getElementById("dbStatus");
 const worksNode = document.getElementById("works");
 const auditButton = document.getElementById("auditButton");
@@ -293,6 +307,10 @@ const translatorPreviewButton = document.getElementById("translatorPreviewButton
 const copyTranslatorPreviewButton = document.getElementById("copyTranslatorPreviewButton");
 const translatorPreviewStatusNode = document.getElementById("translatorPreviewStatus");
 const translatorPreviewResultNode = document.getElementById("translatorPreviewResult");
+const saveTranslatorWorksButton = document.getElementById("saveTranslatorWorksButton");
+const renderTranslatorWorksButton = document.getElementById("renderTranslatorWorksButton");
+const translatorWorksStatusNode = document.getElementById("translatorWorksStatus");
+const translatorWorksCardsNode = document.getElementById("translatorWorksCards");
 let latestTranslatorPreview = null;
 let latestApiAuditRows = [];
 let latestAuditRows = [];
@@ -319,6 +337,9 @@ function openLabDB() {
       }
       if (!db.objectStoreNames.contains(LAB_API_STORE_NAME)) {
         db.createObjectStore(LAB_API_STORE_NAME, { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains(LAB_WORKS_STORE_NAME)) {
+        db.createObjectStore(LAB_WORKS_STORE_NAME, { keyPath: "id" });
       }
     };
     request.onsuccess = () => {
@@ -455,7 +476,9 @@ async function refreshWorks() {
     countNode.textContent = String(records.length);
     const cleanCount = await requestToPromise(db.transaction(LAB_CLEAN_STORE_NAME, "readonly").objectStore(LAB_CLEAN_STORE_NAME).count());
     cleanCountNode.textContent = String(cleanCount);
-    dbStatusNode.textContent = "接続先：" + LAB_DB_NAME + " / ストア：cleanWorks（整理版）";
+    const labWorksCount = await requestToPromise(db.transaction(LAB_WORKS_STORE_NAME, "readonly").objectStore(LAB_WORKS_STORE_NAME).count());
+    labWorksCountNode.textContent = String(labWorksCount);
+    dbStatusNode.textContent = "接続先：" + LAB_DB_NAME + " / ストア：cleanWorks・works（Lab専用）";
     worksNode.replaceChildren();
     if (records.length === 0) {
       const empty = document.createElement("p");
@@ -1091,6 +1114,7 @@ async function runTranslatorPreview() {
       translatorPreviewResultNode.append(article);
     }
     copyTranslatorPreviewButton.disabled = false;
+    saveTranslatorWorksButton.disabled = !canSaveTranslatorPreview(converted);
     const dateErrorCount = converted.filter(item => item.errors.length).length;
     translatorPreviewStatusNode.textContent =
       converted.length + "作品をプレビューしました。日付エラー：" + dateErrorCount +
@@ -1099,6 +1123,127 @@ async function runTranslatorPreview() {
     translatorPreviewStatusNode.textContent = "変換プレビューエラー：" + error.message;
   } finally {
     translatorPreviewButton.disabled = false;
+  }
+}
+
+function canSaveTranslatorPreview(records) {
+  if (!Array.isArray(records) || records.length !== 10) return false;
+  const ids = new Set();
+  for (const item of records) {
+    const work = item?.work;
+    if (!work || item.errors?.length || typeof work.id !== "string" || !work.id.trim()) return false;
+    if (ids.has(work.id)) return false;
+    ids.add(work.id);
+    if (typeof work.newUrl !== "string" || !/^https?:\/\//i.test(work.newUrl)) return false;
+    try {
+      const parsed = new URL(work.newUrl);
+      if (!["http:", "https:"].includes(parsed.protocol)) return false;
+    } catch { return false; }
+  }
+  return true;
+}
+
+async function saveTranslatorPreviewToWorks() {
+  saveTranslatorWorksButton.disabled = true;
+  translatorWorksStatusNode.textContent = "保存条件を確認しています…";
+  try {
+    const records = latestTranslatorPreview?.records;
+    if (!Array.isArray(records)) throw new Error("先にTranslator変換プレビューを実行してください。");
+    if (records.length !== 10) throw new Error("今回の実験は10作品が対象です。現在：" + records.length + "作品");
+    const errors = records.filter(item => item.errors?.length);
+    if (errors.length) throw new Error("変換エラーがある作品が" + errors.length + "件あります。エラー作品は保存しません。");
+    const missing = records.filter(item => !item.work?.newUrl || !item.work?.id);
+    if (missing.length) throw new Error("内部idまたはAtom由来newUrlが未設定の作品があります：" + missing.map(item => item.ncode).join("、"));
+    if (!canSaveTranslatorPreview(records)) throw new Error("保存条件を満たしていません。id重複またはnewUrl形式を確認してください。");
+    const payloads = records.map(item => structuredClone(item.work));
+    const db = await openLabDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(LAB_WORKS_STORE_NAME, "readwrite");
+      const store = tx.objectStore(LAB_WORKS_STORE_NAME);
+      let guardError = null;
+      const countRequest = store.count();
+      countRequest.onsuccess = () => {
+        if (countRequest.result !== 0) {
+          guardError = new Error("worksストアに既存レコードがあります。安全のため上書き保存しません。");
+          tx.abort();
+          return;
+        }
+        for (const work of payloads) store.add(work);
+      };
+      countRequest.onerror = () => { guardError = countRequest.error || new Error("works件数を確認できません"); tx.abort(); };
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(guardError || tx.error || new Error("worksへの保存に失敗しました"));
+      tx.onabort = () => reject(guardError || tx.error || new Error("worksへの保存が中断されました"));
+    });
+    translatorWorksStatusNode.textContent = payloads.length + "作品をLabDBのworksストアへ新規保存しました。既存ストアは変更していません。";
+    await refreshWorks();
+    await renderTranslatorWorksCards();
+  } catch (error) {
+    translatorWorksStatusNode.textContent = "保存中止：" + error.message;
+  } finally {
+    saveTranslatorWorksButton.disabled = !canSaveTranslatorPreview(latestTranslatorPreview?.records);
+  }
+}
+
+async function renderTranslatorWorksCards() {
+  renderTranslatorWorksButton.disabled = true;
+  translatorWorksCardsNode.replaceChildren();
+  translatorWorksStatusNode.textContent = "LabDBのworksストアを読み取り中…";
+  try {
+    const db = await openLabDB();
+    const tx = db.transaction(LAB_WORKS_STORE_NAME, "readonly");
+    const records = await requestToPromise(tx.objectStore(LAB_WORKS_STORE_NAME).getAll());
+    records.sort((a, b) => String(a.workId || "").localeCompare(String(b.workId || "")));
+    if (!records.length) {
+      translatorWorksStatusNode.textContent = "worksストアは空です。Atom URLを含むTranslator結果を保存すると、ここにカードが表示されます。";
+      return;
+    }
+    for (const work of records) {
+      const card = document.createElement("article");
+      card.className = "preview-card";
+      const title = document.createElement("h3");
+      title.textContent = String(work.title || "（タイトルなし）");
+      const meta = document.createElement("p");
+      meta.className = "preview-meta";
+      meta.textContent = [work.workId || "Nコードなし", work.status || "状態不明", "全" + (work.episodeCount ?? "不明") + "話"].join(" ・ ");
+      const author = document.createElement("p");
+      author.className = "preview-author";
+      author.textContent = "作者：" + (work.authorName || "作者情報なし");
+      const synopsis = document.createElement("p");
+      synopsis.className = "preview-synopsis";
+      synopsis.textContent = work.synopsis || "あらすじなし";
+      const dates = document.createElement("p");
+      dates.className = "preview-meta";
+      dates.textContent = "初期登録：" + (work.publishedAt || "—") + " ｜ 最新話登録：" + (work.lastPublishedAt || "—");
+      const actions = document.createElement("div");
+      actions.className = "preview-actions";
+      if (typeof work.newUrl === "string" && /^https?:\/\//i.test(work.newUrl)) {
+        const link = document.createElement("a");
+        link.href = work.newUrl;
+        link.target = "_blank";
+        link.rel = "noopener";
+        link.textContent = "Atom正規URLを開く";
+        actions.append(link);
+      } else {
+        const missing = document.createElement("span");
+        missing.className = "preview-error";
+        missing.textContent = "newUrl未設定：作品リンクは無効";
+        actions.append(missing);
+      }
+      const details = document.createElement("details");
+      const summary = document.createElement("summary");
+      summary.textContent = "worksレコードを確認（urlは旧URL／bookmarkは維持）";
+      const pre = document.createElement("pre");
+      pre.textContent = JSON.stringify(work, null, 2);
+      details.append(summary, pre);
+      card.append(title, meta, author, dates, synopsis, actions, details);
+      translatorWorksCardsNode.append(card);
+    }
+    translatorWorksStatusNode.textContent = "LabDB works：" + records.length + "作品を読み出してカード表示しました。リンクはnewUrlだけを使用しています。";
+  } catch (error) {
+    translatorWorksStatusNode.textContent = "worksカード表示エラー：" + error.message;
+  } finally {
+    renderTranslatorWorksButton.disabled = false;
   }
 }
 
@@ -1522,6 +1667,8 @@ async function runFieldAudit() {
 
 translatorPreviewButton.addEventListener("click", runTranslatorPreview);
 copyTranslatorPreviewButton.addEventListener("click", copyTranslatorPreview);
+saveTranslatorWorksButton.addEventListener("click", saveTranslatorPreviewToWorks);
+renderTranslatorWorksButton.addEventListener("click", renderTranslatorWorksCards);
 apiAuditButton.addEventListener("click", runApiRawAudit);
 copyApiAuditButton.addEventListener("click", copyApiAuditResults);
 copyAllApiRawButton.addEventListener("click", copyAllApiRawResponses);
