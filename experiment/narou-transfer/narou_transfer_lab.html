@@ -774,12 +774,13 @@ function translateNarouToCommonWork(raw, existingWork = null, originalUrl = null
   applyApiField(work, "lastPublishedAt", raw, "general_lastup", diagnostics);
   applyApiField(work, "episodeCount", raw, "general_all_no", diagnostics);
 
-  if (Object.prototype.hasOwnProperty.call(raw, "userid") && hasApiValue(raw.userid)) {
+  if (existingWork?.authorId) {
+    // authorIdは初回設定後に固定。通常APIのuseridでも既存値を上書きしない。
+    diagnostics.push("authorId：既存の作者IDを保持（APIのuseridより優先）");
+  } else if (Object.prototype.hasOwnProperty.call(raw, "userid") && hasApiValue(raw.userid)) {
     work.authorId = raw.userid;
-  } else if (!existingWork?.authorId) {
-    diagnostics.push("authorId：APIに有効なuseridがないため未設定（作者名から推定しない）");
   } else {
-    diagnostics.push("authorId：既存の作者IDを保持");
+    diagnostics.push("authorId：APIに有効なuseridがないため未設定（作者名から推定しない）");
   }
 
   if (Object.prototype.hasOwnProperty.call(raw, "keyword")) {
