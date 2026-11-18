@@ -1,4 +1,4 @@
-# なろう通常作品 通訳レジスター Lab 設計記録
+# なろうトランスファー／Translator Lab 設計記録
 
 最終更新日：2026-11-18  
 対象リポジトリ：tomotaday/tomotayomu  
@@ -377,3 +377,80 @@ API項目の採否・変換方針の設計はここで一区切りとする。�
 - なろうTranslatorページ自体にも「何のデータを、何に変換するページか」を常設表示する。ページ説明・変換対応表・除外項目・更新履歴を残し、実装と資料が食い違わないようにする。
 - カクヨム・note等の他サイトのデータを、なろうAPIの検証データに混ぜない。
 - 警告棚構想は判定センターとの共同開発候補として別管理し、今回のTranslator項目対応表・Lab実験には混ぜない。
+
+
+## 12. 2026-11-18：API生データ監査とTranslator変換プレビュー実装
+
+### 12-1. 現在の実験ページ・DB構成
+
+- 実験ページ：`experiment/narou-transfer/narou_transfer_lab.html`
+- LabDB：`tomotaYomuNarouTranslatorLabDB` version 6
+- Object Store：
+  - `sourceWorks`：初期サンプル原本用ストア。現行Translatorプレビューの入力には使用しない
+  - `cleanWorks`：既存作品との照合に使う整理版データ
+  - `labShelves`：Lab内の棚情報
+  - `apiRawResponses`：通常API・R18 APIの生JSON、API種別、取得日時
+- 旧資料にあるversion 1・version 4の構成説明は当時の履歴。現行構成はversion 6とする。
+
+### 12-2. API生データの実測
+
+- ユーザー提供のAPI生データは通常API8作品・R18 API2作品、合計10作品。
+- 生JSONは `apiRawResponses` に保存し、項目監査と一括コピー機能で内容を確認できる。
+- API生データの取得日時 `fetchedAt` と、API内の `updated_at` は別物として扱う。後者を共通worksの日付へ取り込まない。
+- 属性フラグの現行採用リスト（`isr15`、`isbl`、`isgl`、`iszankoku`、`istensei`、`istenni`）は、この10件の標本で確認できた項目に限る。API全体の網羅リストと断定しない。
+
+### 12-3. Translator変換プレビュー
+
+Lab画面に「8. Translator変換プレビュー（読み取り専用）」を追加した。
+
+- `apiRawResponses` と `cleanWorks` をreadonlyトランザクションで取得する。
+- Nコードで既存cleanWorksを照合する。
+- 純粋変換関数 `translateNarouToCommonWork(raw, existingWork, originalUrl?)` でメモリ上に共通works形式を生成する。
+- 作品ごとの変換結果・照合状況・診断メッセージを表示する。
+- 全作品の変換結果をJSONとして一括コピーできる。
+- 変換プレビュー処理からLabDBへの書き込みは行わない。変換結果をcleanWorksへ保存する処理も未実装。
+
+### 12-4. 現行プレビューの変換内容
+
+| 共通works | API | 実装内容 |
+|---|---|---|
+| `workId` | `ncode` | 大文字化 |
+| `title` | `title` | API値を反映 |
+| `synopsis` | `story` | API値を反映 |
+| `authorName` | `writer` | API値を反映 |
+| `authorId` | 全年齢 `userid` | 既存値があれば保持。既存値がない場合だけ有効なuseridを採用。R18で未取得なら未設定 |
+| `publishedAt` | `general_firstup` | 初回掲載日 |
+| `lastPublishedAt` | `general_lastup` | 最新話更新日 |
+| `episodeCount` | `general_all_no` | 全話数 |
+| `status` | `novel_type`・`end` | 確定済み3パターンを短編／完結／連載中へ変換 |
+| `keywords` | `keyword` | 空白分割して文字列配列化 |
+| `genres` | ジャンル・標本で確認した属性フラグ | `source` と元の `value`・型を保持 |
+
+### 12-5. 既存情報の保護・欠損時の扱い
+
+- 既存作品の内部 `id`、元URL、`shelfId`、`bookmark`、`searchExcluded`、`authorKana`、`authorKanaFirst`、`authorKanaChecked` 等は既存値を保持する。
+- `authorId` は一度値が設定されていれば、通常APIの `userid` が異なる場合でも既存値を保持する。既存値がない初回相当の変換でのみ通常APIの `userid` を採用する。
+- R18 APIに作者IDがない場合は作者名から推測せず、既存作者IDがあれば維持し、なければ未設定とする。
+- API項目が欠落・null・空文字・空白のみの場合は既存値を上書きしない。既存値もなければ未設定のままとする。
+- APIに元URLは含まれない。既存URLがあればそのまま維持し、なければShortcutから渡された元URLがある場合だけ利用する。現在のLabにはShortcutからのURL受け渡しがないため、URLを生成せず診断に表示する。
+- 新規作品の内部 `id` はともたよむ側の採番項目であり、プレビューでは生成しない。
+- `genres` の既存配列に今回の対象外のsourceがある場合は保持する。標本で確認できなかったAPI属性候補は自動追加せず診断する。
+
+### 12-6. コード確認と残作業
+
+- Lab HTML更新：Translator変換プレビュー追加。commit `3b70887291fb17e2683873993b33a0f2fbff05b7`。
+- 追加確認で、既存 `authorId` が通常APIの `userid` によって上書きされないよう修正。commit `3660d4099311b178bab5894932abb2871c1e39cb`。
+- GitHubから更新後HTMLを再取得し、JavaScript構文を確認。
+- 変換関数の単体確認で、既存内部ID・URL・棚・しおり・検索除外・作者ID・作者かな情報の保持、status変換、keywords分割、genresの値型保持を確認。
+- 変換プレビュー関数内にDB書き込み処理がないことをコードで確認。
+- **iPhone実機でのTranslatorプレビュー実行・10作品の出力確認は未実施。**
+- 次はiPhone実機でプレビューを実行し、通常API8件・R18 API2件の出力を実際に確認する。特に既存作者ID、URL、空値時の保持、genres、status、話数を照合する。
+- Shortcutから元URLを渡す接続方法は未実装。URL受け渡しは別工程とし、RegisterはLabに含めない。
+- 本番DB・本番登録ページ・INDEX・Shortcut・GitHub Actionsへの変更なし。
+
+### 12-7. 資料の位置づけ
+
+- 本設計記録：変換方針・項目対応・検証結果の正本。
+- `experiment/narou-transfer/README.md`：Labの現行構成・操作・安全境界・実機確認手順。
+- `experiment/narou-transfer/narou_transfer_lab.html`：現行Lab実装。
+- READMEと実装の現状が異なる場合は、現行コードを確認したうえで本設計記録とREADMEを同期する。
