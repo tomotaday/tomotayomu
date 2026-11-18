@@ -211,3 +211,17 @@
 - `authorId` は初回登録後、通常のAPI更新で変更・削除しない。通常APIの初回 `userid` を使用し、R18は後から作者登録機能で紐付ける。
 - 詳細仕様書の古い未決定表記、`characterCount` の誤った対応、genresの旧構造案、表内のリテラル改行表記を修正。API取り込み項目の設計は一区切りとし、実装・Lab検証は次工程とする。
 
+## 2026-11-18：なろうTranslator変換プレビュー実装
+
+- なろう通常API8作品・R18 API2作品の生JSONをLabDB `apiRawResponses` に保存し、項目監査・全件一括コピー機能を整備。
+- `experiment/narou-transfer/narou_transfer_lab.html` に、共通works形式への読み取り専用Translator変換プレビューを追加。
+- `apiRawResponses` と `cleanWorks` をreadonlyで読み込み、Nコードで照合してメモリ上に変換結果を生成する。プレビュー結果は画面表示・一括コピーのみで、LabDBへ保存しない。
+- 既存の内部ID・URL・棚・しおり・検索除外・作者ID・作者かな情報を保護。特に既存 `authorId` は通常APIの `userid` でも上書きしないよう修正済み。
+- API空値・欠落は既存値を維持。元URLは生成せず、Shortcutからの受け渡しは別工程。RegisterはLab対象外。
+- 変換関数の単体確認・JavaScript構文確認・コード上の読み取り専用確認済み。
+- **iPhone実機での10作品プレビュー確認は未実施。** 実機で出力内容を照合し、必要な修正を行う。
+- READMEと設計記録を現行LabDB version 6・ストア構成・Translator実装に合わせて更新。
+- 対象Lab commit：`3660d4099311b178bab5894932abb2871c1e39cb`（既存作者ID保護修正）
+- 詳細：[なろうトランスファー／Translator Lab 設計記録](narou-translator-lab.md) / [Lab README](../experiment/narou-transfer/README.md)
+- 本番DB・本番登録ページ・INDEX・Shortcut・GitHub Actionsへの変更なし。
+
