@@ -26,7 +26,7 @@
 
 ## 2. 現在の優先作業
 
-1. なろうAPI＋Atomを組み合わせたTranslator処理を完成させる。APIで作品情報を取得し、APIに含まれない正規作品URLはAtomで補完する。Atomは最大100件単位で取得し、超過分は分割する。既存 `url` を旧URLとして保持し、新設する `newUrl` にAtomから取得した正規URLを保存する。全件検証後、Lab作品カードの接続先を `newUrl` へ切り替え、確認後に旧 `url` を削除する。日付表示は通常API8作品・R18 API2作品の10作品で実機確認済み（違和感なし）。Translator全項目の確認、LabDB `works` 保存、カード表示はこれから。詳細は [なろうトランスファー Lab 設計記録](narou-translator-lab.md) と [Lab README](../experiment/narou-transfer/README.md)。
+1. なろうAPI＋Atomを組み合わせたTranslator処理を完成させる。APIで作品情報を取得し、APIに含まれない正規作品URLはAtomで補完する。Atomは最大100件単位で取得し、超過分は分割する。既存 `url` を旧URLとして保持し、新設する `newUrl` にAtomから取得した正規URLを保存する。全件検証後、Lab作品カードの接続先を `newUrl` へ切り替え、確認後に旧 `url` を削除する。日付表示は通常API8作品・R18 API2作品の10作品で実機確認済み（違和感なし）。LabDB version 7の `works` ストアと保存・カード表示UIは追加済み。Atom URL取得と10作品の保存・カード表示はこれから。詳細は [なろうトランスファー Lab 設計記録](narou-translator-lab.md) と [Lab README](../experiment/narou-transfer/README.md)。
 2. なろうカードの読書状態を `reading` から整理済み `bookmark` へ切り替える作業は未着手。
 3. 必要に応じてINDEXの資料室リンクをiPhone実機でタップ確認する。
 
@@ -252,3 +252,16 @@
 - このURL移行はまずLabDB・Lab作品カードだけで実施する。本番DB、本番作品カード、Register、INDEX、既存Shortcut、GitHub Actionsには接続・変更しない。
 - 10作品の日時表示はiPhone実機で確認し、現時点で違和感なし。これは日付表示の確認完了を意味し、Translator全項目・Atom URL・LabDB保存・カード表示までの総合検証が完了した意味ではない。
 - 次の実装単位は、LabDBに独立した `works` ストアを用意し、API生データ＋Atom URLをTranslatorで統合した結果を保存・読出し・カード表示すること。最初の10作品を対象にし、変換エラーのある作品は保存しない。既存の内部ID・しおり・棚情報・作者情報等を保持する。
+
+
+## 2026-11-19：LabDB version 7・worksストアの準備
+
+- `experiment/narou-transfer/narou_transfer_lab.html` を更新し、LabDB `tomotaYomuNarouTranslatorLabDB` をversion 7へ変更。
+- 既存4ストアを削除せず、新たに `works`（keyPath: `id`）を追加する。
+- 第9節にTranslator結果の保存・共通worksカード表示UIを追加。10作品すべてに既存内部 `id` と有効な `newUrl` があり、変換エラーがなく、保存先が空の場合だけ `add` で保存する。既存worksレコードは上書きしない。
+- カード表示はLabDB `works` から読み出し、作品リンクは `newUrl` のみを参照する。旧 `url` と `bookmark` は保持する。
+- 実装commit：`1aed4d06f2c69c69a04d0aa23d241c06f4b74739`。GitHubコード上のストア追加・保護条件を確認。
+- **iPhone実機でのversion 7移行・既存データ保持・新ストア作成確認は未実施。**
+- Atomの既存公開スナップショット `data/atom/author-feeds.json` は直近7日分で、今回の10作品とのNコード一致は2件のみ。スナップショットにない作品をAtom未存在と判断せず、Atom取得方法を別途確認する。
+- 次工程はAtom URLの取得・照合・`newUrl` 格納。その後、Translator結果を `works` へ保存し、カード表示を検証する。
+- 本番DB・本番作品カード・本番本棚・Register・INDEX・Shortcut・GitHub Actionsは変更していない。
