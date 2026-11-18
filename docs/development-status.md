@@ -1,6 +1,6 @@
 # ともたよむ 開発状況インデックス
 
-最終確認日：2026-11-17  
+最終確認日：2026-11-19  
 対象リポジトリ：tomotaday/tomotayomu  
 対象ブランチ：main  
 アプリ基準版：v3.8.1【2026/11/14】  
@@ -26,7 +26,7 @@
 
 ## 2. 現在の優先作業
 
-1. なろう作品のトランスファーLabを独立LabDBで検証する。現行 `register.html`・本番DB・Shortcutは保護する。共通worksの日付2項目とカード表示はコード確認済み、iPhone実機確認待ち。詳細は [なろうトランスファー Lab 設計記録](narou-translator-lab.md) と [Lab README](../experiment/narou-transfer/README.md)。
+1. なろうTranslatorの読み取り専用変換プレビューをiPhone実機で確認する。通常API8作品・R18 API2作品の計10作品について、日付・status・作者ID・URL・既存管理情報・genres等を照合する。必須日付エラー判定とJST書式（`YYYY/MM/DD HH:mm`）はコード確認済み。詳細は [なろうトランスファー Lab 設計記録](narou-translator-lab.md) と [Lab README](../experiment/narou-transfer/README.md)。
 2. なろうカードの読書状態を `reading` から整理済み `bookmark` へ切り替える作業は未着手。
 3. 必要に応じてINDEXの資料室リンクをiPhone実機でタップ確認する。
 
@@ -225,3 +225,16 @@
 - 詳細：[なろうトランスファー／Translator Lab 設計記録](narou-translator-lab.md) / [Lab README](../experiment/narou-transfer/README.md)
 - 本番DB・本番登録ページ・INDEX・Shortcut・GitHub Actionsへの変更なし。
 
+
+
+## 2026-11-19：Translator日付仕様の確定・変換プレビューの次工程
+
+- 共通worksの日付は `publishedAt`（初期登録日）と `lastPublishedAt`（最新話登録日）の2項目に統一する。
+- 保存・表示形式は作品カードに合わせて `YYYY/MM/DD HH:mm`。秒は保持・表示しない。
+- タイムゾーン表記のないなろうAPI日時はJSTの壁時計時刻として扱い、Z／UTCオフセット付き日時はJSTへ変換してから保存する。
+- どちらかの日付が欠落・null・空文字・空白のみ・不正形式・実在しない日時の場合は変換エラーとする。既存の有効値は異常値で消さず、エラー診断は残す。
+- Lab HTMLに必須日付検証・JST正規化・作品別エラーと全体件数の表示を実装。関連commit：`611bc9f7b22750d3ae643f5a06bc8f381ffd0730`、設計表更新 `013628ce463e2951b7f76d530775e55d640c2e12`、正規表現修正 `24cd9b69ec0c7bd72bf741834884dec651d2c7f8`。
+- JavaScript構文・コード確認済み。**iPhone実機での10作品変換結果確認は未実施**。
+- 次工程はGitHub PagesをiPhoneで開き、通常API8作品・R18 API2作品の変換結果、日付、status、作者ID、URL未生成、既存管理情報の保持、genresの元値・型を確認する。
+- 本番DB・本番登録ページ・INDEX・Shortcut・GitHub Actionsへの変更なし。
+- 詳細仕様・実装履歴は `narou-translator-lab.md`、操作・現行構成は `../experiment/narou-transfer/README.md` を正本として参照する。
