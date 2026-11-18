@@ -48,6 +48,17 @@ strong.num{font-size:1.5rem}
 <button id="copy" type="button" disabled>全Nコードをコピー</button>
 <div id="copyStatus" class="small"></div>
 </section>
+<section class="panel" id="atomTestPanel">
+<h2>Atom件数上限の検証用Nコード</h2>
+<p class="small">全年齢作品のみを対象にし、既存の検索除外Nコードを除いて、先頭20件・50件・100件をコピーします。作品データと検索除外リストは読み取り専用です。</p>
+<div id="atomTestStatus" class="status">本棚からNコードを抽出すると、検証用一覧を作成します。</div>
+<button id="copyAtom20" type="button" disabled>全年齢20件をコピー</button>
+<button id="copyAtom50" type="button" disabled>全年齢50件をコピー</button>
+<button id="copyAtom100" type="button" disabled>全年齢100件をコピー</button>
+<textarea id="atomTestCodes" readonly placeholder="検証対象Nコードがここに表示されます。"></textarea>
+<div id="atomTestCopyStatus" class="small"></div>
+</section>
+
 <section class="panel">
 <h2>API一括判定（試験）</h2>
 <p class="small">先頭1000件の動作確認用です。通常API→R18 APIの順で100件ずつ照会します。</p>
@@ -91,6 +102,7 @@ const DB_NAME = "tomotaYomuWorksDB";
 const DB_VERSION = 2;
 const SEARCH_EXCLUDED_KEY = "tomotaYomu_search_excluded_ncodes_v1";
 const API = { normal: "https://api.syosetu.com/novelapi/api/", r18: "https://api.syosetu.com/novel18api/api/" };
+let atomTestCodes = [];
 const $ = id => document.getElementById(id);
 
 async function openExistingDB() {
@@ -163,6 +175,25 @@ async function extract() {
     const duplicateRows = validCodes.length - uniqueCodes.length;
     const targetCodes = uniqueCodes;
 
+    // Atom件数検証用：全年齢作品だけを対象にし、検索除外コードは fail-closed で除外する。
+    let atomExcludedSet = null;
+    let atomTestError = "";
+    try {
+      const excludedRaw = localStorage.getItem(SEARCH_EXCLUDED_KEY);
+      const excludedValues = excludedRaw ? JSON.parse(excludedRaw) : [];
+      if (!Array.isArray(excludedValues)) throw new Error("検索除外リストの保存形式が配列ではありません。");
+      atomExcludedSet = new Set(excludedValues.map(value => String(value).trim().toUpperCase()));
+    } catch (error) {
+      atomTestError = error && error.message ? error.message : String(error);
+    }
+    const normalWorks = narouWorks.filter(work => !isCanonicalR18(work));
+    const normalCodes = [...new Set(normalWorks
+      .map(work => String(work.workId || "").trim().toUpperCase())
+      .filter(code => /^N[0-9A-Z]+$/.test(code)))].sort();
+    atomTestCodes = atomExcludedSet
+      ? normalCodes.filter(code => !atomExcludedSet.has(code))
+      : [];
+
     $("status").textContent =
       "抽出完了。データの変更は行っていません。\n" +
       "DB：" + db.name + "（version " + db.version + "）\n" +
@@ -187,6 +218,16 @@ async function extract() {
     }
     $("preview").textContent = targetCodes.slice(0, 20).join("\n") || "照会対象Nコードは見つかりませんでした。";
     $("allCodes").value = targetCodes.join("\n");
+    $("atomTestCodes").value = atomTestCodes.join("\n");
+    $("atomTestStatus").textContent = atomTestError
+      ? "検証用一覧は作成していません。検索除外リストを読み取れませんでした：" + atomTestError
+      : "全年齢作品 " + normalCodes.length + "件 ／ R18除外 " +
+        (narouWorks.length - normalWorks.length) + "件 ／ 検索除外コード除外 " +
+        (normalCodes.length - atomTestCodes.length) + "件 ／ 検証対象 " +
+        atomTestCodes.length + "件。20・50・100件の各ボタンで先頭からコピーできます。";
+    for (const size of [20, 50, 100]) {
+      $("copyAtom" + size).disabled = !!atomTestError || atomTestCodes.length === 0;
+    }
     $("copy").disabled = targetCodes.length === 0;
     $("copy20").disabled = targetCodes.length === 0;
     $("runCheck").disabled = targetCodes.length === 0;
@@ -667,6 +708,22 @@ async function runCheck() {
   }
 }
 
+for (const size of [20, 50, 100]) {
+  $("copyAtom" + size).addEventListener("click", async () => {
+    const selected = atomTestCodes.slice(0, size);
+    const value = selected.join("\n");
+    if (!value) return;
+    $("atomTestCodes").value = value;
+    try {
+      await navigator.clipboard.writeText(value);
+      $("atomTestCopyStatus").textContent = "全年齢 " + selected.length + "件をコピーしました。";
+    } catch (_) {
+      $("atomTestCodes").focus();
+      $("atomTestCodes").select();
+      $("atomTestCopyStatus").textContent = "自動コピーできません。選択されたNコードを手動でコピーしてください。";
+    }
+  });
+}
 $("run").addEventListener("click", extract);
 loadAtomFailures();
 $("runCheck").addEventListener("click", runCheck);
