@@ -119,7 +119,7 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
         <tr><td>短編</td><td><code>novel_type === 2 && end === 0</code></td><td><code>status = "短編"</code></td></tr>
         <tr><td>完結</td><td><code>novel_type === 1 && end === 0</code></td><td><code>status = "完結"</code></td></tr>
         <tr><td>連載中</td><td><code>novel_type === 1 && end === 1</code></td><td><code>status = "連載中"</code></td></tr>
-        <tr><td>日付</td><td><code>general_firstup</code>・<code>general_lastup</code> を検証し、<code>YYYY/MM/DD</code> へ正規化</td><td>タイムゾーンなしはJSTとして扱い、Z／UTCオフセット付きはJSTへ変換。欠落・空値・不正値はエラー。旧 <code>updatedAt</code> は移行時に <code>lastPublishedAt</code> へ統一。</td></tr>
+        <tr><td>日付</td><td><code>general_firstup</code>・<code>general_lastup</code> を検証し、<code>YYYY/MM/DD HH:mm</code> へ正規化</td><td>タイムゾーンなしはJSTとして扱い、Z／UTCオフセット付きはJSTへ変換。欠落・空値・不正値はエラー。旧 <code>updatedAt</code> は移行時に <code>lastPublishedAt</code> へ統一。</td></tr>
         <tr><td>ジャンル・属性</td><td><code>{ source: 元API項目名, value: 元API値 }</code></td><td>0/1をtrue/falseに置き換えない。</td></tr>
       </tbody>
     </table>
@@ -861,12 +861,12 @@ function normalizeNarouDate(value, sourceKey, errors) {
     return null;
   }
   const text = value.trim();
-  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?(Z|[+-]\d{2}:?\d{2})?)?$/i);
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?(Z|[+-]\d{2}:?\d{2})?$/i);
   if (!match) {
-    errors.push(sourceKey + "：日付形式が不正です（" + text + "）");
+    errors.push(sourceKey + "：日付・時刻の形式が不正です（" + text + "）");
     return null;
   }
-  const [, y, mo, d, hh = "00", mm = "00", ss = "00", zone = ""] = match;
+  const [, y, mo, d, hh, mm, ss = "00", zone = ""] = match;
   const year = Number(y), month = Number(mo), day = Number(d);
   const hour = Number(hh), minute = Number(mm), second = Number(ss);
   const check = new Date(Date.UTC(year, month - 1, day));
@@ -875,21 +875,30 @@ function normalizeNarouDate(value, sourceKey, errors) {
     errors.push(sourceKey + "：実在しない日付または時刻です（" + text + "）");
     return null;
   }
-  if (!zone) return y + "/" + mo + "/" + d; // timezoneなしはJSTの壁時計として扱う
+  // タイムゾーンなしのAPI日時はJSTの壁時計時刻として扱う。
+  if (!zone) return y + "/" + mo + "/" + d + " " + hh + ":" + mm;
   const normalizedZone = zone.toUpperCase() === "Z" ? "Z" :
     zone.replace(/([+-]\d{2})(\d{2})$/, "$1:$2");
+  if (normalizedZone !== "Z") {
+    const offset = normalizedZone.match(/^([+-])(\d{2}):(\d{2})$/);
+    if (!offset || Number(offset[2]) > 14 || Number(offset[3]) > 59 ||
+        (Number(offset[2]) === 14 && Number(offset[3]) !== 0)) {
+      errors.push(sourceKey + "：UTCオフセットが不正です（" + text + "）");
+      return null;
+    }
+  }
   const instant = new Date(y + "-" + mo + "-" + d + "T" + hh + ":" + mm + ":" + ss + normalizedZone);
   if (Number.isNaN(instant.getTime())) {
     errors.push(sourceKey + "：タイムゾーン付き日時を解釈できません（" + text + "）");
     return null;
   }
   const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit"
+    timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23"
   }).formatToParts(instant);
   const part = Object.fromEntries(parts.map(item => [item.type, item.value]));
-  return part.year + "/" + part.month + "/" + part.day;
+  return part.year + "/" + part.month + "/" + part.day + " " + part.hour + ":" + part.minute;
 }
-
 function translateNarouToCommonWork(raw, existingWork = null, originalUrl = null) {
   const diagnostics = [];
   const errors = [];
@@ -905,7 +914,7 @@ function translateNarouToCommonWork(raw, existingWork = null, originalUrl = null
   applyApiField(work, "title", raw, "title", diagnostics);
   applyApiField(work, "synopsis", raw, "story", diagnostics);
   applyApiField(work, "authorName", raw, "writer", diagnostics);
-  // 必須日付は欠落・空値・不正値をエラーにする。正常値だけYYYY/MM/DDで格納。
+  // 必須日付は欠落・空値・不正値をエラーにする。正常値だけYYYY/MM/DD HH:mm（作品カードと同じ分まで）で格納。
   const publishedAt = normalizeNarouDate(raw?.general_firstup, "general_firstup（初期登録日）", errors);
   const lastPublishedAt = normalizeNarouDate(raw?.general_lastup, "general_lastup（最新話登録日）", errors);
   if (publishedAt) work.publishedAt = publishedAt;
