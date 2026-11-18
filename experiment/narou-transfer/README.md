@@ -93,7 +93,7 @@
 - API取得ボタンを押した場合に限り、なろう通常API・R18 APIへ読み取り通信を行い、取得した生JSONをLabDBの `apiRawResponses` に保存する
 - Registerは実験対象外
 
-## 現在の到達点（2026-11-18）
+## 現在の到達点（2026-11-19）
 
 - LabDB version 6。生APIレスポンスを保存する `apiRawResponses` を使用
 - 通常API8作品・R18 API2作品の生JSONを取得し、項目監査を実施
