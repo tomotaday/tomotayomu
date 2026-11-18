@@ -150,7 +150,7 @@
 
 ### 次のLab実験
 
-API取得→Atom URL補完→Translator変換→Atom一致時のみ既存 `url` 更新→LabDBの独立 `works` ストアへ保存→保存データを読み出してLab作品カードに表示、の順で10作品を使って検証する。変換エラー作品は保存せず、既存の内部ID・`bookmark`・`shelfId`・作者情報等を保持する。
+API取得→Atom URL補完→Translator変換→Atomの返却URLを `newUrl` へ保存→LabDBの独立 `works` ストアへ保存→保存データを読み出してLab作品カードに表示、の順で10作品を使って検証する。変換エラー作品は保存せず、既存の内部ID・`bookmark`・`shelfId`・作者情報等を保持する。
 
 10作品の日付表示はiPhone実機で違和感なしを確認済み。ただし、Translator全項目・Atom URL・LabDB保存・カード表示の総合検証は未完了。
 
