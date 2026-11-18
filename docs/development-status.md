@@ -26,7 +26,7 @@
 
 ## 2. 現在の優先作業
 
-1. なろうTranslatorの読み取り専用変換プレビューをiPhone実機で確認する。通常API8作品・R18 API2作品の計10作品について、日付・status・作者ID・URL・既存管理情報・genres等を照合する。必須日付エラー判定とJST書式（`YYYY/MM/DD HH:mm`）はコード確認済み。詳細は [なろうトランスファー Lab 設計記録](narou-translator-lab.md) と [Lab README](../experiment/narou-transfer/README.md)。
+1. なろうAPI＋Atomを組み合わせたTranslator処理を完成させる。APIで作品情報を取得し、APIに含まれない正規作品URLはAtomで補完する。Atomは最大100件単位で取得し、超過分は分割する。既存 `url` を旧URLとして保持したまま `newUrl` を追加し、Atom由来URLの全件取得・検証後にLabの作品カード接続先を `newUrl` へ切り替える。日付表示は通常API8作品・R18 API2作品の10作品で実機確認済み（違和感なし）。Translator全項目の確認、LabDB `works` 保存、カード表示はこれから。詳細は [なろうトランスファー Lab 設計記録](narou-translator-lab.md) と [Lab README](../experiment/narou-transfer/README.md)。
 2. なろうカードの読書状態を `reading` から整理済み `bookmark` へ切り替える作業は未着手。
 3. 必要に応じてINDEXの資料室リンクをiPhone実機でタップ確認する。
 
@@ -238,3 +238,17 @@
 - 次工程はGitHub PagesをiPhoneで開き、通常API8作品・R18 API2作品の変換結果、日付、status、作者ID、URL未生成、既存管理情報の保持、genresの元値・型を確認する。
 - 本番DB・本番登録ページ・INDEX・Shortcut・GitHub Actionsへの変更なし。
 - 詳細仕様・実装履歴は `narou-translator-lab.md`、操作・現行構成は `../experiment/narou-transfer/README.md` を正本として参照する。
+
+
+## 2026-11-19：API＋Atom統合取得と正規URLへの段階移行方針
+
+- ともたよむ24の最終会話を引き継ぎ、次工程を「Translatorの変換結果をLabDBの独立した `works` ストアへ保存し、読み出してLab作品カードに表示する実験」と再確認した。共通 `works` の完成と既存作品カードとの本番連携は既に済んでおり、設計をやり直す工程ではない。
+- なろうの取得経路はAPI単独ではなく、**API＋Atomの併用**とする。APIから作品情報を取得し、APIで取得できない作品URLをAtomで補完してからTranslatorで共通worksへ統合する。
+- Atomの取得は、なろう側への負荷に配慮して**最大100件単位**とする。対象が100件を超える場合は複数回に分割する。
+- 既存作品の `url` は移行中の旧URLとして保持し、新たに `newUrl` 項目を設けてAtomから返された正規URLを保存する。NコードからURLを組み立てたり、推測で生成したりしない。
+- 既存URLの中には、R18作品で全年齢向けURL形式を使っているものが見受けられる。Nコードを使うとスムーズに接続できた事例はあるが、旧URLが正規の接続先とは限らないため、Atomの返却URLを正規URLとして扱う。Nコードの内部仕様・一意性の仕組みについては推測を確定事実として記録しない。
+- 移行順序：①既存 `url` を保持、②全作品のAtom URLを100件以下の単位で取得、③取得したURLを `newUrl` に保存、④欠落・取得失敗・重複・形式を検査、⑤Lab作品カードの接続先を `newUrl` に切り替え、通常・R18をiPhoneで実際に開いて確認、⑥問題がないことを確認してバックアップ後に旧 `url` を削除する。
+- Atom取得に失敗した作品の旧URLは、検証・移行完了前に消さない。新URLの全件確認が終わる前に旧URLを一括削除しない。失敗時のカード表示・再取得の詳細は実装前にLabで確認する。
+- このURL移行はまずLabDB・Lab作品カードだけで実施する。本番DB、本番作品カード、Register、INDEX、既存Shortcut、GitHub Actionsには接続・変更しない。
+- 10作品の日時表示はiPhone実機で確認し、現時点で違和感なし。これは日付表示の確認完了を意味し、Translator全項目・Atom URL・LabDB保存・カード表示までの総合検証が完了した意味ではない。
+- 次の実装単位は、LabDBに独立した `works` ストアを用意し、API生データ＋Atom URLをTranslatorで統合した結果を保存・読出し・カード表示すること。最初の10作品を対象にし、変換エラーのある作品は保存しない。既存の内部ID・しおり・棚情報・作者情報等を保持する。
