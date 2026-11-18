@@ -129,6 +129,8 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
   <button id="translatorPreviewButton" type="button">保存済みAPIデータを共通worksへ変換してプレビュー</button>
   <button id="copyTranslatorPreviewButton" type="button" disabled>変換結果をまとめてコピー</button>
   <div id="translatorPreviewStatus" class="small" aria-live="polite">まだ変換していません。</div>
+  <textarea id="translatorPreviewCopyFallback" aria-label="コピー用データ" readonly
+    style="display:none;width:100%;min-height:220px;margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:9px;font:12px/1.5 ui-monospace,monospace;white-space:pre;overflow:auto"></textarea>
   <div id="translatorPreviewResult"></div>
 </section>
 
@@ -946,27 +948,43 @@ async function runTranslatorPreview() {
 }
 
 async function copyTranslatorPreview() {
-  if (!latestTranslatorPreview) return;
+  if (!latestTranslatorPreview) {
+    translatorPreviewStatusNode.textContent = "先に変換プレビューを実行してください。";
+    return;
+  }
   const text = JSON.stringify(latestTranslatorPreview, null, 2);
+  const fallback = document.getElementById("translatorPreviewCopyFallback");
+  copyTranslatorPreviewButton.disabled = true;
   try {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(text);
-    } else {
-      const helper = document.createElement("textarea");
-      helper.value = text;
-      helper.setAttribute("readonly", "");
-      helper.style.position = "fixed";
-      helper.style.opacity = "0";
-      document.body.append(helper);
-      helper.select();
-      const copied = document.execCommand("copy");
-      helper.remove();
-      if (!copied) throw new Error("コピー機能を利用できません");
+    // まずClipboard APIを試す。iPhoneで拒否された場合は手動コピー欄へ切り替える。
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      try {
+        await navigator.clipboard.writeText(text);
+        fallback.style.display = "none";
+        fallback.value = "";
+        translatorPreviewStatusNode.textContent =
+          latestTranslatorPreview.count + "作品分をクリップボードへコピーしました。ここに貼り付けできます。";
+        return;
+      } catch (clipboardError) {
+        // APIが存在してもiOS側で拒否される場合があるため、下の手動コピーへ進む。
+      }
     }
-    translatorPreviewStatusNode.textContent = latestTranslatorPreview.count +
-      "作品分の変換結果をコピーしました。LabDBは変更していません。";
+
+    fallback.value = text;
+    fallback.style.display = "block";
+    fallback.focus();
+    fallback.select();
+    fallback.setSelectionRange(0, fallback.value.length);
+    translatorPreviewStatusNode.textContent =
+      "自動コピーは使えませんでした。下の枠内を長押しして「すべてを選択」→「コピー」を押してください。" +
+      " 全" + latestTranslatorPreview.count + "作品分のデータを表示しています。";
   } catch (error) {
-    translatorPreviewStatusNode.textContent = "コピーできませんでした：" + error.message;
+    fallback.value = text;
+    fallback.style.display = "block";
+    translatorPreviewStatusNode.textContent =
+      "自動コピーに失敗しました。下の枠を長押しして手動コピーしてください。詳細：" + error.message;
+  } finally {
+    copyTranslatorPreviewButton.disabled = false;
   }
 }
 
