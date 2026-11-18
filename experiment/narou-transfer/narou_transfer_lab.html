@@ -861,7 +861,7 @@ function normalizeNarouDate(value, sourceKey, errors) {
     return null;
   }
   const text = value.trim();
-  const match = text.match(/^(\\d{4})-(\\d{2})-(\\d{2})(?:[ T](\\d{2}):(\\d{2})(?::(\\d{2}))?(Z|[+-]\\d{2}:?\\d{2})?)?$/i);
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?(Z|[+-]\d{2}:?\d{2})?)?$/i);
   if (!match) {
     errors.push(sourceKey + "：日付形式が不正です（" + text + "）");
     return null;
@@ -877,7 +877,7 @@ function normalizeNarouDate(value, sourceKey, errors) {
   }
   if (!zone) return y + "/" + mo + "/" + d; // timezoneなしはJSTの壁時計として扱う
   const normalizedZone = zone.toUpperCase() === "Z" ? "Z" :
-    zone.replace(/([+-]\\d{2})(\\d{2})$/, "$1:$2");
+    zone.replace(/([+-]\d{2})(\d{2})$/, "$1:$2");
   const instant = new Date(y + "-" + mo + "-" + d + "T" + hh + ":" + mm + ":" + ss + normalizedZone);
   if (Number.isNaN(instant.getTime())) {
     errors.push(sourceKey + "：タイムゾーン付き日時を解釈できません（" + text + "）");
