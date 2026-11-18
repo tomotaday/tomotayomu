@@ -44,8 +44,16 @@
 | `synopsis` | `story` | API値を反映 |
 | `authorName` | `writer` | API値を反映 |
 | `authorId` | 全年齢 `userid` | 既存値があれば保持。未設定時のみAPI値を採用。R18 APIに作者IDがなければ未設定 |
-| `publishedAt` | `general_firstup` | 初回掲載日 |
-| `lastPublishedAt` | `general_lastup` | 最新話更新日 |
+| `publishedAt` | `general_firstup` | 初期登録日。必須。欠落・空値・不正値は変換エラー |
+| `lastPublishedAt` | `general_lastup` | 最新話登録日。必須。欠落・空値・不正値は変換エラー |
+
+### 日付形式・タイムゾーン
+
+- 共通worksの日付文字列は `YYYY/MM/DD`（例：`2026/11/19`）に統一する。ゼロ埋めを維持し、文字列ソートでも時系列順になる形式とする。
+- なろうAPIの `general_firstup`・`general_lastup` のようにタイムゾーン表記がない日時は、日本時間（JST）の日時として解釈する。日付部分をJSTの暦日として採用し、UTC変換で日付をずらさない。
+- ZまたはUTCオフセット付きの日時（Atom等）は、実際の時刻をJST（UTC+9）へ変換してから日付を確定する。
+- 必須日付が欠落・null・空文字・空白のみ・不正な形式／実在しない日付の場合は変換エラーとし、正常な変換として扱わない。空文字の項目枠を作ってエラーを隠さない。
+- 既存作品に以前の日付がある場合は値を不用意に消さず保持するが、今回のAPI必須日付が欠落している事実はエラーとして残す。
 | `episodeCount` | `general_all_no` | 全話数 |
 | `status` | `novel_type`・`end` | 短編／完結／連載中へ変換 |
 | `keywords` | `keyword` | 空白区切り文字列を配列化 |
