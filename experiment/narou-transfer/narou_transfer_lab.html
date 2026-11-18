@@ -98,8 +98,8 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
         <tr><td><code>synopsis</code></td><td><code>story</code></td><td><code>story</code></td><td>API値を採用。空値・欠落時は既存値を保持。</td></tr>
         <tr><td><code>authorName</code></td><td><code>writer</code></td><td><code>writer</code></td><td>API値を採用。空値・欠落時は既存値を保持。</td></tr>
         <tr><td><code>authorId</code></td><td><code>userid</code></td><td>項目なし</td><td>既存値があれば常に保持。初回相当で未設定の場合のみ、全年齢APIの有効な <code>userid</code> を採用。R18は推測・生成しない。</td></tr>
-        <tr><td><code>publishedAt</code></td><td><code>general_firstup</code></td><td><code>general_firstup</code></td><td>初回掲載日。取得値がなければ空文字の項目枠を維持。</td></tr>
-        <tr><td><code>lastPublishedAt</code></td><td><code>general_lastup</code></td><td><code>general_lastup</code></td><td>最新話更新日。取得値がなければ空文字の項目枠を維持。</td></tr>
+        <tr><td><code>publishedAt</code></td><td><code>general_firstup</code></td><td><code>general_firstup</code></td><td>初期登録日。必須。欠落・空値・不正値は変換エラー。</td></tr>
+        <tr><td><code>lastPublishedAt</code></td><td><code>general_lastup</code></td><td><code>general_lastup</code></td><td>最新話登録日。必須。欠落・空値・不正値は変換エラー。</td></tr>
         <tr><td><code>episodeCount</code></td><td><code>general_all_no</code></td><td><code>general_all_no</code></td><td>全話数。API値を数値として扱う。取得値がない場合は既存値を保持。</td></tr>
         <tr><td><code>status</code></td><td><code>novel_type</code> + <code>end</code></td><td><code>novel_type</code> + <code>end</code></td><td>下記の判定表で「短編／完結／連載中」へ変換。</td></tr>
         <tr><td><code>keywords</code></td><td><code>keyword</code></td><td><code>keyword</code></td><td>空白区切り文字列を分割して文字列配列化。空値なら既存配列を保持。</td></tr>
@@ -119,7 +119,7 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
         <tr><td>短編</td><td><code>novel_type === 2 && end === 0</code></td><td><code>status = "短編"</code></td></tr>
         <tr><td>完結</td><td><code>novel_type === 1 && end === 0</code></td><td><code>status = "完結"</code></td></tr>
         <tr><td>連載中</td><td><code>novel_type === 1 && end === 1</code></td><td><code>status = "連載中"</code></td></tr>
-        <tr><td>日付</td><td><code>publishedAt = general_firstup</code><br><code>lastPublishedAt = general_lastup</code></td><td>旧 <code>updatedAt</code> は移行時に <code>lastPublishedAt</code> へ統一。</td></tr>
+        <tr><td>日付</td><td><code>general_firstup</code>・<code>general_lastup</code> を検証し、<code>YYYY/MM/DD</code> へ正規化</td><td>タイムゾーンなしはJSTとして扱い、Z／UTCオフセット付きはJSTへ変換。欠落・空値・不正値はエラー。旧 <code>updatedAt</code> は移行時に <code>lastPublishedAt</code> へ統一。</td></tr>
         <tr><td>ジャンル・属性</td><td><code>{ source: 元API項目名, value: 元API値 }</code></td><td>0/1をtrue/falseに置き換えない。</td></tr>
       </tbody>
     </table>
