@@ -574,3 +574,38 @@ Atom取得失敗時の再取得方法、未取得作品が残る場合のカー�
 - 本番DB・本番作品カード・本番本棚・Registerには接続しない。
 - 本番localStorage／sessionStorage、既存Shortcut、GitHub Actions、INDEXを変更しない。
 - 本番移行はLabでの全件検証、バックアップ、復元可能性の確認を終えた後の別工程とする。
+
+
+## 16. 2026-11-19：LabDB version 7・独立worksストア追加
+
+### 16-1. DBスキーマの追加
+
+- `tomotaYomuNarouTranslatorLabDB` をversion 6からversion 7へ更新。
+- 既存の `sourceWorks`、`cleanWorks`、`labShelves`、`apiRawResponses` は削除・初期化しない。
+- 新しい `works` ストア（keyPath: `id`）を追加。共通works形式へ変換したデータのLab専用保存先とする。
+- 本番DB `tomotaYomuWorksDB` には接続しない。
+
+### 16-2. 保存・カード表示UI
+
+- Lab画面に「9. Translator結果の保存・共通worksカード表示」を追加。
+- 保存条件は、通常API8作品・R18 API2作品の計10作品、変換エラーなし、既存内部 `id` あり、Atom由来の有効な `newUrl` あり。
+- 保存処理は `works` が空の場合だけ `add` で新規登録する。既存レコードがある場合は上書きせず中止する。
+- カード表示は `works` ストアから読み出したレコードを使い、作品リンクは `newUrl` のみを参照する。`newUrl` 未設定の場合はリンクを無効として表示する。
+- `url` は移行中の旧URLとして保持し、`bookmark`・`shelfId`・作者情報等は変更しない。
+- 変換プレビューは引き続き読み取り専用。保存は第9節の明示操作に分離する。
+
+### 16-3. 実装・未確認事項
+
+- 対象ファイル：`experiment/narou-transfer/narou_transfer_lab.html`
+- 実装commit：`1aed4d06f2c69c69a04d0aa23d241c06f4b74739`
+- GitHub上のコードで、DB version 7、新規 `works` ストア追加、既存ストア削除処理がないこと、保存時の全件検査・重複上書き防止、カードリンクが `newUrl` のみを使うことを確認。
+- **iPhone実機でのDB version 7更新・既存データ保持・新規ストア作成確認は未実施。**
+- Atom取得前のため、`works` ストアへの作品保存はまだ実行していない。保存ボタンは10作品すべての有効な `newUrl` が揃うまで無効。
+- 次工程はAtomの実際の取得方法と100件単位の扱いを確定し、10作品の `newUrl` を用意すること。
+
+### 16-4. 既存Atomスナップショットの制約
+
+- リポジトリの `data/atom/author-feeds.json` は `scripts/atom/publish_author_atom_feeds.py` により生成される作者別Atomフィードのスナップショット。
+- スクリプトはエントリーを直近7日分に絞って保存するため、全作品の正規URLを網羅するデータではない。
+- 2026-11-19に今回の10作品を既存スナップショットとNコード照合した結果、一致したのは2作品。スナップショットにない作品を「Atomに存在しない」と判定してはならない。
+- 対象作者のAtom取得元、通常／R18フィードの選択、取得上限100件、Nコード照合、返却URLの取り扱いをLabで確認する。
