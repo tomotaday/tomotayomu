@@ -101,6 +101,33 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
 </section>
 
 <section class="panel">
+  <h2>3. 取り込んだ作品</h2>
+  <div id="works"><p class="muted">まだサンプルはありません。</p></div>
+</section>
+
+<section class="panel">
+  <h2>4. データ項目の一次調査</h2>
+  <p>LabDB内の10作品を読み取り専用で調べ、項目の出現数・値の型・サンプルを集計します。</p>
+  <p class="small">この調査は表示用の集計だけを行います。元レコードは変更しません。</p>
+  <div class="warning"><strong>重複項目の整理</strong><br>日付項目は publishedAt（初回登録日）と lastPublishedAt（最終更新日）の2項目を保持します。旧 updatedAt は lastPublishedAt へ移行し、reading と siteData.legacyFields は除いて整理版 cleanWorks へ保存します。</div>
+  
+  <div id="cleanStatus" class="small" aria-live="polite">まだ整理していません。</div>
+  <button id="auditButton" type="button">10作品の項目を調査</button>
+  <button id="copyAuditButton" type="button" disabled>調査結果をコピー</button>
+  <div id="auditStatus" class="small" aria-live="polite">まだ調査していません。</div>
+  <div id="auditResult"></div>
+</section>
+
+<section class="panel">
+  <h2>5. 作品カード実験</h2>
+  <p>本番INDEXのなろう作品カードを複製し、LabDBの整理版cleanWorksレコードを加工せずに渡します。本番DB・本番カードには接続しません。</p>
+  <p class="small">表示欄が空になる箇所や、カード側が要求する項目との違いを確認します。カード内の操作は表示確認用で、作品データの変更はできません。</p>
+  <button id="previewButton" type="button">現在のworksでカードを表示</button>
+  <div id="previewStatus" class="small" aria-live="polite">まだ表示していません。</div>
+  <div id="previewCards" class="index-card-preview"></div>
+</section>
+
+<section class="panel">
   <h2>6. なろうAPI一括取得（研究用）</h2>
   <p>LabDBのcleanWorksからNコードを読み取り、なろうAPIの全項目を一括取得します。取得した生データは専用ストアへ保存し、worksは変更しません。</p>
   <p class="small">通常APIのみ。最大10作品を1リクエストで取得します。APIから返らない作品は未取得として記録します。</p>
@@ -132,33 +159,6 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
   <textarea id="translatorPreviewCopyFallback" aria-label="コピー用データ" readonly
     style="display:none;width:100%;min-height:220px;margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:9px;font:12px/1.5 ui-monospace,monospace;white-space:pre;overflow:auto"></textarea>
   <div id="translatorPreviewResult"></div>
-</section>
-
-<section class="panel">
-  <h2>5. 作品カード実験</h2>
-  <p>本番INDEXのなろう作品カードを複製し、LabDBの整理版cleanWorksレコードを加工せずに渡します。本番DB・本番カードには接続しません。</p>
-  <p class="small">表示欄が空になる箇所や、カード側が要求する項目との違いを確認します。カード内の操作は表示確認用で、作品データの変更はできません。</p>
-  <button id="previewButton" type="button">現在のworksでカードを表示</button>
-  <div id="previewStatus" class="small" aria-live="polite">まだ表示していません。</div>
-  <div id="previewCards" class="index-card-preview"></div>
-</section>
-
-<section class="panel">
-  <h2>4. データ項目の一次調査</h2>
-  <p>LabDB内の10作品を読み取り専用で調べ、項目の出現数・値の型・サンプルを集計します。</p>
-  <p class="small">この調査は表示用の集計だけを行います。元レコードは変更しません。</p>
-  <div class="warning"><strong>重複項目の整理</strong><br>日付項目は publishedAt（初回登録日）と lastPublishedAt（最終更新日）の2項目を保持します。旧 updatedAt は lastPublishedAt へ移行し、reading と siteData.legacyFields は除いて整理版 cleanWorks へ保存します。</div>
-  
-  <div id="cleanStatus" class="small" aria-live="polite">まだ整理していません。</div>
-  <button id="auditButton" type="button">10作品の項目を調査</button>
-  <button id="copyAuditButton" type="button" disabled>調査結果をコピー</button>
-  <div id="auditStatus" class="small" aria-live="polite">まだ調査していません。</div>
-  <div id="auditResult"></div>
-</section>
-
-<section class="panel">
-  <h2>3. 取り込んだ作品</h2>
-  <div id="works"><p class="muted">まだサンプルはありません。</p></div>
 </section>
 
 <div id="status" role="status" aria-live="polite"></div>
@@ -959,7 +959,11 @@ async function copyTranslatorPreview() {
     // まずClipboard APIを試す。iPhoneで拒否された場合は手動コピー欄へ切り替える。
     if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
       try {
-        await navigator.clipboard.writeText(text);
+        // iOS側でClipboard APIのPromiseが戻らない場合に備え、一定時間で手動コピーへ切り替える。
+        await Promise.race([
+          navigator.clipboard.writeText(text),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("コピー処理がタイムアウトしました")), 1500))
+        ]);
         fallback.style.display = "none";
         fallback.value = "";
         translatorPreviewStatusNode.textContent =
