@@ -726,9 +726,9 @@ async function runCheck() {
 
 $("extractAtomUrls").addEventListener("click", () => {
   const raw = $("atomRawInput").value;
-  const matches = raw.match(/https?:\\/\\/(?:ncode|novel18)\\.syosetu\\.com\\/[a-z0-9]+\\/?/gi) || [];
-  const urls = [...new Set(matches.map(url => url.replace(/\\/$/, "").toLowerCase() + "/"))];
-  $("atomUrlOnly").value = urls.join("\\n");
+  const matches = raw.match(/https?:\/\/(?:ncode|novel18)\.syosetu\.com\/[a-z0-9]+\/?/gi) || [];
+  const urls = [...new Set(matches.map(url => url.replace(/\/$/, "").toLowerCase() + "/"))];
+  $("atomUrlOnly").value = urls.join("\n");
   $("atomUrlCountStatus").textContent = "作品URLを " + urls.length + "件確認しました。" +
     (matches.length !== urls.length ? "（重複 " + (matches.length - urls.length) + "件を除外）" : "");
   $("copyAtomUrls").disabled = urls.length === 0;
