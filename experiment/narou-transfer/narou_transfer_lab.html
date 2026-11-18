@@ -69,6 +69,97 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
   <p class="small">段階：共通worksの項目と作品カード表示を確認する実験。</p>
 </header>
 
+
+<section class="panel" id="transfer-design">
+  <h2>Transfer設計｜共通worksへの変換仕様</h2>
+  <p>Transferは、異なる入口から受け取った作品データを、共通のworks形式へ受け渡す仕組みです。サイト固有の取得・変換はTranslatorが担当し、作品カードは共通worksだけを参照します。</p>
+  <div class="audit-wrap">
+    <table class="audit-table">
+      <thead><tr><th>入口</th><th>処理</th><th>出力</th></tr></thead>
+      <tbody>
+        <tr><td>WEBサイトURL</td><td>iOSショートカット → サイト別Translator（API取得・項目名統一・値の変換）</td><td>共通works</td></tr>
+        <tr><td>ともたよむ独自データ</td><td>独自データTranslator（既存項目の読み取り・共通形式への変換）</td><td>共通works</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small">Register（本棚への新規登録・本番登録処理）はTranslator／Transferの実験から分離します。このLabは変換結果の確認までを担当し、本番DBへ書き込みません。</p>
+
+  <h3>なろうTranslator：取得元と共通worksの対照表</h3>
+  <p>対象API：小説家になろう全年齢API・R18 API。以下は2026-11-17〜18の提供生データ10作品の監査と、確定済み変換方針に基づきます。API全作品での項目存在を保証するものではありません。</p>
+  <div class="audit-wrap">
+    <table class="audit-table">
+      <thead><tr><th>共通works</th><th>全年齢API</th><th>R18 API</th><th>変換・保持ルール</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>—</td><td>—</td><td>ともたよむ専用キー。新規採番は登録側の責務。既存更新時は変更しない。</td></tr>
+        <tr><td><code>site</code></td><td>—</td><td>—</td><td>Translatorが <code>narou</code> を設定。</td></tr>
+        <tr><td><code>workId</code></td><td><code>ncode</code></td><td><code>ncode</code></td><td>文字列として受け取り、大文字化。</td></tr>
+        <tr><td><code>url</code></td><td>API項目なし</td><td>API項目なし</td><td>Shortcutから受け取った元URL全体を保存。生成・加工しない。</td></tr>
+        <tr><td><code>title</code></td><td><code>title</code></td><td><code>title</code></td><td>API値を採用。空値・欠落時は既存値を保持。</td></tr>
+        <tr><td><code>synopsis</code></td><td><code>story</code></td><td><code>story</code></td><td>API値を採用。空値・欠落時は既存値を保持。</td></tr>
+        <tr><td><code>authorName</code></td><td><code>writer</code></td><td><code>writer</code></td><td>API値を採用。空値・欠落時は既存値を保持。</td></tr>
+        <tr><td><code>authorId</code></td><td><code>userid</code></td><td>項目なし</td><td>既存値があれば常に保持。初回相当で未設定の場合のみ、全年齢APIの有効な <code>userid</code> を採用。R18は推測・生成しない。</td></tr>
+        <tr><td><code>publishedAt</code></td><td><code>general_firstup</code></td><td><code>general_firstup</code></td><td>初回掲載日。取得値がなければ空文字の項目枠を維持。</td></tr>
+        <tr><td><code>lastPublishedAt</code></td><td><code>general_lastup</code></td><td><code>general_lastup</code></td><td>最新話更新日。取得値がなければ空文字の項目枠を維持。</td></tr>
+        <tr><td><code>episodeCount</code></td><td><code>general_all_no</code></td><td><code>general_all_no</code></td><td>全話数。API値を数値として扱う。取得値がない場合は既存値を保持。</td></tr>
+        <tr><td><code>status</code></td><td><code>novel_type</code> + <code>end</code></td><td><code>novel_type</code> + <code>end</code></td><td>下記の判定表で「短編／完結／連載中」へ変換。</td></tr>
+        <tr><td><code>keywords</code></td><td><code>keyword</code></td><td><code>keyword</code></td><td>空白区切り文字列を分割して文字列配列化。空値なら既存配列を保持。</td></tr>
+        <tr><td><code>genres</code></td><td><code>biggenre</code>・<code>genre</code>・属性フラグ・<code>isr15</code></td><td><code>nocgenre</code>・属性フラグ</td><td>単一配列に格納。各要素は元API項目名 <code>source</code> と元値 <code>value</code> を保持。値の型をBoolean等へ変換しない。</td></tr>
+        <tr><td><code>authorKana</code> 一式</td><td>今回の標本で確認できず</td><td>今回の標本で確認できず</td><td>既存値を保持。別経路から渡された場合は受け取る。自動取得機能は追加しない。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>変換式・判定式</h3>
+  <div class="audit-wrap">
+    <table class="audit-table">
+      <thead><tr><th>対象</th><th>変換ルール</th><th>例</th></tr></thead>
+      <tbody>
+        <tr><td>作品ID</td><td><code>workId = String(api.ncode).toUpperCase()</code></td><td><code>n1234ab → N1234AB</code></td></tr>
+        <tr><td>キーワード</td><td><code>keywords = keyword.trim().split(/\\s+/)</code>（空要素を除外）</td><td><code>"異世界転生 白い結婚" → ["異世界転生","白い結婚"]</code></td></tr>
+        <tr><td>短編</td><td><code>novel_type === 2 && end === 0</code></td><td><code>status = "短編"</code></td></tr>
+        <tr><td>完結</td><td><code>novel_type === 1 && end === 0</code></td><td><code>status = "完結"</code></td></tr>
+        <tr><td>連載中</td><td><code>novel_type === 1 && end === 1</code></td><td><code>status = "連載中"</code></td></tr>
+        <tr><td>日付</td><td><code>publishedAt = general_firstup</code><br><code>lastPublishedAt = general_lastup</code></td><td>旧 <code>updatedAt</code> は移行時に <code>lastPublishedAt</code> へ統一。</td></tr>
+        <tr><td>ジャンル・属性</td><td><code>{ source: 元API項目名, value: 元API値 }</code></td><td>0/1をtrue/falseに置き換えない。</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small">statusの想定外の値・組み合わせは推測で分類せず、診断対象とします。</p>
+
+  <h3>取り込まないAPI項目</h3>
+  <div class="audit-wrap">
+    <table class="audit-table">
+      <thead><tr><th>API項目</th><th>扱い</th><th>理由</th></tr></thead>
+      <tbody>
+        <tr><td><code>length</code>・<code>time</code></td><td>取り込まない</td><td>現時点で利用目的なし。</td></tr>
+        <tr><td><code>novelupdated_at</code>・<code>updated_at</code></td><td>取り込まない</td><td>共通worksの日付は <code>publishedAt</code>・<code>lastPublishedAt</code> の2項目に限定。</td></tr>
+        <tr><td><code>isstop</code>・<code>gensaku</code>・<code>kaiwaritu</code>・<code>sasie_cnt</code></td><td>取り込まない</td><td>合意済みの不要項目。</td></tr>
+        <tr><td>ポイント・評価・ブックマーク数・感想数・レビュー数</td><td>取り込まない</td><td>利用しない方針。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>既存worksの保護ルール</h3>
+  <ul>
+    <li>既存の <code>id</code>・<code>url</code>・<code>shelfId</code>・<code>bookmark</code>・<code>searchExcluded</code> はAPIで上書きしない。</li>
+    <li><code>authorId</code> は既存値を維持し、作者名から推測・生成しない。R18 APIに作者IDがなくても作品データの変換を止めない。</li>
+    <li><code>authorKana</code>・<code>authorKanaFirst</code>・<code>authorKanaChecked</code> は既存値を維持し、入力に含まれていれば受け取る。</li>
+    <li>API項目が欠落・null・空文字・空白のみなら既存値を上書きしない。既存値もなければ未設定のまま。</li>
+    <li>URLはAPIから作らず、Shortcutから受け取った元URL全体を使う。</li>
+    <li>既存の <code>genres</code> に今回対象外のsourceが含まれている場合は保持する。</li>
+  </ul>
+
+  <h3>このLabでの確認範囲と次工程</h3>
+  <ul>
+    <li>変換プレビュー：メモリ上で共通worksを生成し、既存cleanWorksとNコード照合。LabDBへの保存はしない。</li>
+    <li>API監査：通常API8作品・R18 API2作品の提供生データ10件を実測。全API作品での項目存在を保証するものではない。</li>
+    <li>URL一括補完：Atomは100件単位で進める暫定運用方針。これは作品情報APIの項目変換とは別のURL補完工程。</li>
+    <li>残作業：iPhone実機で10作品の変換プレビューを照合すること、Shortcutから元URLをTranslatorへ渡す方法を接続すること。</li>
+    <li>本番DBへの書き込み・本番Registerとの接続は、このLabの対象外。別工程として安全性を確認してから判断する。</li>
+  </ul>
+  <p class="small">仕様の正本：<code>docs/narou-translator-lab.md</code>。実装とこの表示が食い違う場合は、正本と現行コードを照合して更新します。</p>
+</section>
+
 <section class="notice">
   <strong>安全境界</strong>
   <ul>
