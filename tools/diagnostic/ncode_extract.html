@@ -116,6 +116,27 @@ const API = { normal: "https://api.syosetu.com/novelapi/api/", r18: "https://api
 let atomTestCodes = [];
 const $ = id => document.getElementById(id);
 
+// iPhone SafariではClipboard APIが失敗することがあるため、選択＋execCommandも試す。
+async function copyText(value, textarea) {
+  if (!value) return false;
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(value);
+      return true;
+    }
+  } catch (_) {}
+  if (textarea) {
+    textarea.value = value;
+    textarea.focus();
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+    try {
+      if (document.execCommand("copy")) return true;
+    } catch (_) {}
+  }
+  return false;
+}
+
 async function openExistingDB() {
   if (!indexedDB.databases) throw new Error("既存DBの有無を確認できないブラウザです。安全のため停止しました。");
   const databases = await indexedDB.databases();
@@ -633,14 +654,10 @@ $("clearFullCheck").addEventListener("click", () => {
 $("copyMissing").addEventListener("click", async () => {
   const value = $("missingReport").value;
   if (!value) return;
-  try {
-    await navigator.clipboard.writeText(value);
-    $("missingStatus").textContent = "未検出一覧をコピーしました。";
-  } catch (_) {
-    $("missingReport").focus();
-    $("missingReport").select();
-    $("missingStatus").textContent = "自動コピーできません。選択された一覧を手動でコピーしてください。";
-  }
+  const copied = await copyText(value, $("missingReport"));
+  $("missingStatus").textContent = copied
+    ? "未検出一覧をコピーしました。"
+    : "コピーできませんでした。選択された一覧を手動でコピーしてください。";
 });
 
 async function runCheck() {
@@ -737,14 +754,10 @@ $("extractAtomUrls").addEventListener("click", () => {
 $("copyAtomUrls").addEventListener("click", async () => {
   const value = $("atomUrlOnly").value;
   if (!value) return;
-  try {
-    await navigator.clipboard.writeText(value);
-    $("atomUrlCopyStatus").textContent = "URL一覧をコピーしました。";
-  } catch (_) {
-    $("atomUrlOnly").focus();
-    $("atomUrlOnly").select();
-    $("atomUrlCopyStatus").textContent = "自動コピーできません。選択されたURL一覧を手動でコピーしてください。";
-  }
+  const copied = await copyText(value, $("atomUrlOnly"));
+  $("atomUrlCopyStatus").textContent = copied
+    ? "URL一覧をコピーしました。"
+    : "コピーできませんでした。選択されたURL一覧を手動でコピーしてください。";
 });
 
 for (const size of [20, 50, 100]) {
@@ -753,14 +766,10 @@ for (const size of [20, 50, 100]) {
     const value = selected.join("\n");
     if (!value) return;
     $("atomTestCodes").value = value;
-    try {
-      await navigator.clipboard.writeText(value);
-      $("atomTestCopyStatus").textContent = "全年齢 " + selected.length + "件をコピーしました。";
-    } catch (_) {
-      $("atomTestCodes").focus();
-      $("atomTestCodes").select();
-      $("atomTestCopyStatus").textContent = "自動コピーできません。選択されたNコードを手動でコピーしてください。";
-    }
+    const copied = await copyText(value, $("atomTestCodes"));
+    $("atomTestCopyStatus").textContent = copied
+      ? "全年齢 " + selected.length + "件をコピーしました。"
+      : "コピーできませんでした。選択されたNコードを手動でコピーしてください。";
   });
 }
 $("run").addEventListener("click", extract);
@@ -768,25 +777,17 @@ loadAtomFailures();
 $("runCheck").addEventListener("click", runCheck);
 $("copy20").addEventListener("click", async () => {
   const codes = $("allCodes").value.split(/\s+/).filter(Boolean).slice(0, 20);
-  try {
-    await navigator.clipboard.writeText(codes.join("\n"));
-    $("copyStatus").textContent = "先頭 " + codes.length + "件をコピーしました。API試験ページに貼り付けてください。";
-  } catch (_) {
-    $("allCodes").value = codes.join("\n");
-    $("allCodes").focus();
-    $("allCodes").select();
-    $("copyStatus").textContent = "先頭20件を選択しました。手動でコピーしてください。";
-  }
+  const value = codes.join("\n");
+  const copied = await copyText(value, $("allCodes"));
+  $("copyStatus").textContent = copied
+    ? "先頭 " + codes.length + "件をコピーしました。API試験ページに貼り付けてください。"
+    : "先頭20件を選択しました。手動でコピーしてください。";
 });
 $("copy").addEventListener("click", async () => {
-  try {
-    await navigator.clipboard.writeText($("allCodes").value);
-    $("copyStatus").textContent = "照会対象Nコードをクリップボードにコピーしました。";
-  } catch (_) {
-    $("allCodes").focus();
-    $("allCodes").select();
-    $("copyStatus").textContent = "自動コピーできませんでした。選択された一覧を手動でコピーしてください。";
-  }
+  const copied = await copyText($("allCodes").value, $("allCodes"));
+  $("copyStatus").textContent = copied
+    ? "照会対象Nコードをコピーしました。"
+    : "コピーできませんでした。選択された一覧を手動でコピーしてください。";
 });
 })();
 </script>
