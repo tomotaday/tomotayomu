@@ -61,11 +61,12 @@ strong.num{font-size:1.5rem}
 
 <section class="panel" id="atomTestPanel">
 <h2>Atom件数上限の検証用Nコード</h2>
-<p class="small">全年齢作品のみを対象にし、既存の検索除外Nコードを除いて、先頭20件・50件・100件をコピーします。作品データと検索除外リストは読み取り専用です。</p>
+<p class="small">全年齢作品のみを対象にし、既存の検索除外Nコードを除いて、先頭20件・50件・100件・200件をコピーします。作品データと検索除外リストは読み取り専用です。</p>
 <div id="atomTestStatus" class="status">本棚からNコードを抽出すると、検証用一覧を作成します。</div>
 <button id="copyAtom20" type="button" disabled>全年齢20件をコピー</button>
 <button id="copyAtom50" type="button" disabled>全年齢50件をコピー</button>
 <button id="copyAtom100" type="button" disabled>全年齢100件をコピー</button>
+<button id="copyAtom200" type="button" disabled>全年齢200件をコピー</button>
 <textarea id="atomTestCodes" readonly placeholder="検証対象Nコードがここに表示されます。"></textarea>
 <div id="atomTestCopyStatus" class="small"></div>
 </section>
@@ -192,7 +193,7 @@ async function extract() {
   $("atomTestCodes").value = "";
   $("atomTestStatus").textContent = "全年齢・検索除外条件を確認中…";
   $("atomTestCopyStatus").textContent = "";
-  for (const size of [20, 50, 100]) $("copyAtom" + size).disabled = true;
+  for (const size of [20, 50, 100, 200]) $("copyAtom" + size).disabled = true;
   $("checkStatus").textContent = "抽出中…";
   $("checkSummary").textContent = "";
   $("checkResults").replaceChildren();
@@ -261,8 +262,8 @@ async function extract() {
       : "全年齢作品 " + normalCodes.length + "件 ／ R18除外 " +
         (narouWorks.length - normalWorks.length) + "件 ／ 検索除外コード除外 " +
         (normalCodes.length - atomTestCodes.length) + "件 ／ 検証対象 " +
-        atomTestCodes.length + "件。20・50・100件の各ボタンで先頭からコピーできます。";
-    for (const size of [20, 50, 100]) {
+        atomTestCodes.length + "件。20・50・100・200件の各ボタンで先頭からコピーできます。";
+    for (const size of [20, 50, 100, 200]) {
       $("copyAtom" + size).disabled = !!atomTestError || atomTestCodes.length === 0;
     }
     $("copy").disabled = targetCodes.length === 0;
@@ -760,7 +761,7 @@ $("copyAtomUrls").addEventListener("click", async () => {
     : "コピーできませんでした。選択されたURL一覧を手動でコピーしてください。";
 });
 
-for (const size of [20, 50, 100]) {
+for (const size of [20, 50, 100, 200]) {
   $("copyAtom" + size).addEventListener("click", async () => {
     const selected = atomTestCodes.slice(0, size);
     const value = selected.join("\n");
