@@ -256,7 +256,7 @@ code{overflow-wrap:anywhere;background:#eef1f6;padding:2px 4px;border-radius:4px
 <section class="panel" id="translator-works-panel">
   <h2>9. Translator結果の保存・共通worksカード表示</h2>
   <p>API＋Atomで取得した情報をTranslatorで共通worksへ変換し、独立LabDBのworksストアへ保存します。保存後はworksから読み出したデータだけでカードを表示します。</p>
-  <p class="small">保存条件：10作品すべてに変換エラーがなく、既存内部idがあり、Atomから取得したURLがnewUrlに入っていること。urlは旧URLとして保持し、bookmark等の管理情報は変更しません。</p>
+  <p class="small">保存条件：10作品すべてに変換エラーがなく、既存内部idがあり、Atomから取得したURLがnewUrlに入っていること。Atom取得失敗・Nコード不一致・重複はエラーとし、旧urlへフォールバックしません。旧urlは移行中のバックアップとして保持し、bookmark等の管理情報は変更しません。</p>
   <div class="warning"><strong>安全確認</strong><br>保存先はtomotaYomuNarouTranslatorLabDBのworksストアだけです。既存ストアは削除・初期化しません。worksストアに既存レコードがある場合は上書きせず、保存を中止します。</div>
   <button id="saveTranslatorWorksButton" type="button" disabled>Translator結果をworksへ保存</button>
   <button id="renderTranslatorWorksButton" type="button">保存済みworksからカードを表示</button>
@@ -1227,7 +1227,7 @@ async function renderTranslatorWorksCards() {
       } else {
         const missing = document.createElement("span");
         missing.className = "preview-error";
-        missing.textContent = "newUrl未設定：作品リンクは無効";
+        missing.textContent = "Atom由来newUrl未取得：エラー／旧urlへの代替リンクなし";
         actions.append(missing);
       }
       const details = document.createElement("details");
