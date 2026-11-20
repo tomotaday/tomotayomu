@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f7f7fb">
+<title>ともたよむ｜R18 Atom試験コード抽出</title>
+<style>
+:root{color-scheme:light;--ink:#273044;--muted:#687386;--line:#dfe4ed;--paper:#fff;--bg:#f5f7fb;--accent:#526b9a}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:var(--bg);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:680px;margin:0 auto}
+h1{font-size:1.3rem;margin:0 0 8px}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px;margin:12px 0}
+button{border:0;border-radius:10px;background:var(--accent);color:white;padding:11px 16px;font-size:1rem}
+.status{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--muted)}
+.small{font-size:.85rem;color:var(--muted)}
+textarea{width:100%;min-height:100px;padding:10px;font:14px/1.5 ui-monospace,monospace}
+</style>
+</head>
+<body>
+<main>
+<p><a href="../../index.html">← ともたよむに戻る</a></p>
+<h1>R18 Atom試験コード抽出</h1>
+<p class="small">新DBのworksストアから、R18のなろう作品を読み取り、試験用Nコードを最大3件表示します。</p>
+<section class="panel">
+<strong>読み取り専用</strong>
+<p class="small">既存DBを開いて読むだけです。DB・localStorage・GitHubへの保存、作品データの変更は一切行いません。DBがなければ新規作成せず停止します。</p>
+<button id="run" type="button">R18作品を抽出</button>
+</section>
+<section class="panel">
+<h2>抽出結果</h2>
+<div id="status" class="status">まだ実行していません。</div>
+<textarea id="codes" readonly placeholder="抽出したNコードがここに表示されます。"></textarea>
+<button id="copy" type="button" disabled>試験用Nコードをコピー</button>
+<div id="copyStatus" class="small"></div>
+</section>
+</main>
+<script>
+(() => {
+"use strict";
+const DB_NAME = "tomotaYomuWorksDB";
+const DB_VERSION = 2;
+const $ = id => document.getElementById(id);
+
+function isCanonicalR18(work) {
+  return work?.siteData?.isR18 === true ||
+    work?.siteData?.legacyFields?.__r18 === true ||
+    work?.siteData?.authorType === "r18";
+}
+async function openExistingDB() {
+  if (!indexedDB.databases) throw new Error("既存DBの有無を確認できないブラウザです。安全のため停止しました。");
+  const databases = await indexedDB.databases();
+  if (!databases.some(item => item.name === DB_NAME)) throw new Error("新DBが見つかりません。DBの新規作成は行いません。");
+  return await new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME);
+    request.onupgradeneeded = () => {
+      request.transaction.abort();
+      reject(new Error("DBのバージョン変更が必要なため停止しました。"));
+    };
+    request.onsuccess = () => {
+      const db = request.result;
+      if (db.version !== DB_VERSION || !db.objectStoreNames.contains("works")) {
+        db.close();
+        reject(new Error("DBバージョンまたはworksストアが想定外です。"));
+        return;
+      }
+      resolve(db);
+    };
+    request.onerror = () => reject(request.error || new Error("DBを開けませんでした。"));
+    request.onblocked = () => reject(new Error("DBが別画面で使用中です。ほかのともたよむ画面を閉じてください。"));
+  });
+}
+function readAll(db) {
+  return new Promise((resolve, reject) => {
+    const request = db.transaction("works", "readonly").objectStore("works").getAll();
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => reject(request.error || new Error("worksの読み取りに失敗しました。"));
+  });
+}
+async function extract() {
+  const button = $("run");
+  button.disabled = true;
+  $("status").textContent = "既存DBを読み取り中…";
+  $("codes").value = "";
+  $("copy").disabled = true;
+  let db;
+  try {
+    db = await openExistingDB();
+    const all = await readAll(db);
+    const r18 = all.filter(work => work && work.site === "narou" && isCanonicalR18(work));
+    const codes = [...new Set(r18
+      .map(work => String(work.workId || "").trim().toUpperCase())
+      .filter(code => /^N[0-9A-Z]+$/.test(code)))].sort();
+    const sample = codes.slice(0, 3);
+    $("status").textContent =
+      "抽出完了（読み取りのみ）\n" +
+      "DB：" + db.name + " v" + db.version + "\n" +
+      "なろうR18作品：" + r18.length + "件\n" +
+      "有効なNコード（重複除外）：" + codes.length + "件\n" +
+      "今回の試験対象：" + sample.length + "件\n" +
+      "確認日時：" + new Date().toLocaleString("ja-JP") +
+      (sample.length < 1 ? "\n試験対象がありません。" : "");
+    $("codes").value = sample.join("\n");
+    $("copy").disabled = sample.length === 0;
+  } catch (error) {
+    $("status").textContent = "抽出を中止しました。\n" + (error.message || String(error));
+  } finally {
+    if (db) db.close();
+    button.disabled = false;
+  }
+}
+$("run").addEventListener("click", extract);
+$("copy").addEventListener("click", async () => {
+  const value = $("codes").value.trim();
+  if (!value) return;
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(value);
+    } else {
+      $("codes").focus();
+      $("codes").select();
+      if (!document.execCommand("copy")) throw new Error("copy failed");
+    }
+    $("copyStatus").textContent = "試験用Nコードをコピーしました。";
+  } catch (_) {
+    $("codes").focus();
+    $("codes").select();
+    $("copyStatus").textContent = "自動コピーできません。選択されたNコードを手動でコピーしてください。";
+  }
+});
+})();
+</script>
+</body>
+</html>
