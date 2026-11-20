@@ -33,6 +33,7 @@ textarea{width:100%;min-height:100px;padding:10px;font:14px/1.5 ui-monospace,mon
 <div id="status" class="status">まだ実行していません。</div>
 <textarea id="codes" readonly placeholder="抽出したNコードがここに表示されます。"></textarea>
 <button id="copy" type="button" disabled>試験用Nコードをコピー</button>
+<p class="small">コピーできない場合は、抽出後にこの欄のNコードを長押ししてコピーできます。</p>
 <div id="copyStatus" class="small"></div>
 </section>
 </main>
@@ -112,21 +113,32 @@ async function extract() {
 }
 $("run").addEventListener("click", extract);
 $("copy").addEventListener("click", async () => {
-  const value = $("codes").value.trim();
+  const area = $("codes");
+  const value = area.value.trim();
   if (!value) return;
+  $("copyStatus").textContent = "";
   try {
     if (navigator.clipboard && window.isSecureContext) {
       await navigator.clipboard.writeText(value);
-    } else {
-      $("codes").focus();
-      $("codes").select();
-      if (!document.execCommand("copy")) throw new Error("copy failed");
+      $("copyStatus").textContent = "コピーしました。GitHub Actionsの入力欄に貼り付けてください。";
+      return;
     }
-    $("copyStatus").textContent = "試験用Nコードをコピーしました。";
   } catch (_) {
-    $("codes").focus();
-    $("codes").select();
-    $("copyStatus").textContent = "自動コピーできません。選択されたNコードを手動でコピーしてください。";
+    // iOSアプリ内ブラウザなどではClipboard APIが拒否されることがあります。
+  }
+  area.focus();
+  area.select();
+  area.setSelectionRange(0, area.value.length);
+  let copied = false;
+  try {
+    copied = document.execCommand("copy");
+  } catch (_) {
+    copied = false;
+  }
+  if (copied) {
+    $("copyStatus").textContent = "コピーしました。GitHub Actionsの入力欄に貼り付けてください。";
+  } else {
+    $("copyStatus").textContent = "自動コピーできません。選択中のNコードを長押しして「コピー」を選んでください。";
   }
 });
 })();
