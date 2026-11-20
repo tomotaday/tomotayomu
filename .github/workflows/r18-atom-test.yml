@@ -113,7 +113,7 @@ jobs:
 
           with open(output, "w", encoding="utf-8") as f:
               json.dump(report, f, ensure_ascii=False, indent=2)
-              f.write("\\n")
+              f.write("\n")
 
           print("R18 Atom test status:", report["status"])
           print("Requested:", ", ".join(report["requested"]))
