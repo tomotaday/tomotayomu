@@ -22,7 +22,7 @@ textarea{width:100%;min-height:100px;padding:10px;font:14px/1.5 ui-monospace,mon
 <main>
 <p><a href="../../index.html">← ともたよむに戻る</a></p>
 <h1>R18 Atom試験コード抽出</h1>
-<p class="small">新DBのworksストアから、R18のなろう作品を読み取り、試験用Nコードを最大10件表示します。</p>
+<p class="small">新DBのworksストアから、R18のなろう作品を読み取り、試験用Nコードを最大100件表示します。</p>
 <section class="panel">
 <strong>読み取り専用</strong>
 <p class="small">既存DBを開いて読むだけです。DB・localStorage・GitHubへの保存、作品データの変更は一切行いません。DBがなければ新規作成せず停止します。</p>
@@ -93,7 +93,7 @@ async function extract() {
     const codes = [...new Set(r18
       .map(work => String(work.workId || "").trim().toUpperCase())
       .filter(code => /^N[0-9A-Z]+$/.test(code)))].sort();
-    const sample = codes.slice(0, 10);
+    const sample = codes.slice(0, 100);
     $("status").textContent =
       "抽出完了（読み取りのみ）\n" +
       "DB：" + db.name + " v" + db.version + "\n" +
