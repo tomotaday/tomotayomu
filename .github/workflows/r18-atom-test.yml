@@ -57,6 +57,7 @@ jobs:
 
               params = urllib.parse.urlencode({
                   "out": "atom",
+                  "lim": 100,
                   "ncode": "-".join(x.lower() for x in codes)
               })
               url = report["api"] + "?" + params
