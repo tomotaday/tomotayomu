@@ -32,9 +32,8 @@ textarea{width:100%;min-height:100px;padding:10px;font:14px/1.5 ui-monospace,mon
 <h2>抽出結果</h2>
 <div id="status" class="status">まだ実行していません。</div>
 <textarea id="codes" readonly placeholder="抽出したNコードがここに表示されます。"></textarea>
-<button id="copy" type="button" disabled>クリップボードへコピー</button>
-<button id="selectCopy" type="button" disabled style="margin-top:8px;background:#687386">Nコードを選択して手動コピー</button>
-<p class="small">iPhoneアプリ内では自動コピーが許可されない場合があります。その場合は「Nコードを選択して手動コピー」を押し、選択された文字を長押しして「コピー」を選んでください。</p>
+<button id="selectCopy" type="button" disabled>Nコードを選択（手動コピー）</button>
+<p class="small">ボタンを押すとNコード全体が選択されます。選択された文字を長押しして、メニューから「コピー」を選んでください。iPhoneアプリ内では自動コピーを使わず、この方法でコピーします。</p>
 <div id="copyStatus" class="small" role="status" aria-live="polite"></div>
 </section>
 </main>
@@ -85,7 +84,6 @@ async function extract() {
   button.disabled = true;
   $("status").textContent = "既存DBを読み取り中…";
   $("codes").value = "";
-  $("copy").disabled = true;
   $("selectCopy").disabled = true;
   let db;
   try {
@@ -105,7 +103,6 @@ async function extract() {
       "確認日時：" + new Date().toLocaleString("ja-JP") +
       (sample.length < 1 ? "\n試験対象がありません。" : "");
     $("codes").value = sample.join("\n");
-    $("copy").disabled = sample.length === 0;
     $("selectCopy").disabled = sample.length === 0;
   } catch (error) {
     $("status").textContent = "抽出を中止しました。\n" + (error.message || String(error));
@@ -115,31 +112,13 @@ async function extract() {
   }
 }
 $("run").addEventListener("click", extract);
-function selectCodesForManualCopy() {
+$("selectCopy").addEventListener("click", () => {
   const area = $("codes");
+  if (!area.value.trim()) return;
   area.focus();
   area.select();
   area.setSelectionRange(0, area.value.length);
-  $("copyStatus").textContent = "Nコードを選択しました。選択部分を長押しして「コピー」を選んでください。";
-}
-$("selectCopy").addEventListener("click", selectCodesForManualCopy);
-$("copy").addEventListener("click", async () => {
-  const value = $("codes").value.trim();
-  if (!value) return;
-  $("copyStatus").textContent = "コピーを試しています…";
-  // Clipboard APIはクリック操作の直後に呼び出す必要があるため、
-  // awaitや別処理を挟まず、ユーザー操作中に要求を開始します。
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      const pending = navigator.clipboard.writeText(value);
-      await pending;
-      $("copyStatus").textContent = "クリップボードへコピーしました。GitHub Actionsの入力欄に貼り付けてください。";
-      return;
-    }
-  } catch (_) {
-    // iOSアプリ内ブラウザではClipboard APIが拒否される場合があります。
-  }
-  selectCodesForManualCopy();
+  $("copyStatus").textContent = "Nコード全体を選択しました。選択部分を長押しして「コピー」を選んでください。";
 });
 })();
 </script>
