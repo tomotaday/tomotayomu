@@ -164,13 +164,10 @@ async function extract() {
   $("allCodes").value = "";
   $("copy").disabled = true;
   $("copy20").disabled = true;
-  $("runCheck").disabled = true;
+
   $("runFullCheck").disabled = true;
   atomTestCodes = [];
   $("runAtomDirectTest").disabled = true;
-  $("checkStatus").textContent = "抽出中…";
-  $("checkSummary").textContent = "";
-  $("checkResults").replaceChildren();
   $("copyStatus").textContent = "";
   let db;
   try {
@@ -231,11 +228,9 @@ async function extract() {
     $("preview").textContent = targetCodes.slice(0, 20).join("\n") || "照会対象Nコードは見つかりませんでした。";
     $("allCodes").value = targetCodes.join("\n");
     $("runAtomDirectTest").disabled = !!atomTestError || atomTestCodes.length === 0;
-    $("runAtomDirectTest").disabled = !!atomTestError || atomTestCodes.length === 0;
     $("copy").disabled = targetCodes.length === 0;
     $("copy20").disabled = targetCodes.length === 0;
     $("runFullCheck").disabled = targetCodes.length === 0;
-    $("checkStatus").textContent = targetCodes.length ? "抽出完了。先頭1000件のAPI判定を実行できます。" : "照会対象Nコードがありません。";
   } catch (error) {
     $("status").textContent = "抽出できませんでした。\n" + (error && error.message ? error.message : String(error));
   } finally {
@@ -312,7 +307,7 @@ async function runFullCheck() {
   const codes = $("allCodes").value.split(/\s+/).filter(Boolean);
   if (!codes.length) return;
   $("runFullCheck").disabled = true;
-  $("runCheck").disabled = true;
+
   $("fullResults").replaceChildren();
 
   const CHUNK_SIZE = 100;
@@ -348,7 +343,7 @@ async function runFullCheck() {
     catch (error) {
       $("fullStatus").textContent = "一時進捗を保存できないため開始できません：" + (error.message || String(error));
       $("runFullCheck").disabled = false;
-      $("runCheck").disabled = false;
+
       return;
     }
   }
@@ -462,7 +457,7 @@ async function runFullCheck() {
     $("fullSummary").textContent = "完了済み " + done.size + "/" + batches.length + "バッチ。未完了分は未検出扱いにしていません。";
   } finally {
     $("runFullCheck").disabled = false;
-    $("runCheck").disabled = false;
+
   }
 }
 
