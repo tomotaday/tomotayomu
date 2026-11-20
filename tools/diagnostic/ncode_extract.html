@@ -82,6 +82,9 @@ strong.num{font-size:1.5rem}
 <p class="small">本棚から抽出した全年齢Nコードの先頭3件を使い、通常APIからAtomを直接取得します。通信・XML解析の確認専用です。DB・localStorage・GitHubには保存しません。</p>
 <button id="runAtomDirectTest" type="button" disabled>先頭3件でAtom取得テスト</button>
 <div id="atomDirectTestStatus" class="status">先に本棚からNコードを抽出してください。</div>
+<p class="small">通信失敗の切り分け用：同じAtom URLをブラウザで直接開きます。XMLが表示されるか確認してください。</p>
+<p><a id="openAtomDirectUrl" href="#" target="_blank" rel="noopener" aria-disabled="true" style="display:inline-block;padding:10px 14px;border:1px solid var(--line);border-radius:10px;color:var(--accent);text-decoration:none;pointer-events:none;opacity:.5">Atom URLをブラウザで開く（先頭3件）</a></p>
+<div id="atomDirectUrlStatus" class="small">先に本棚からNコードを抽出してください。</div>
 </section>
 </main>
 <script>
@@ -228,6 +231,21 @@ async function extract() {
     $("preview").textContent = targetCodes.slice(0, 20).join("\n") || "照会対象Nコードは見つかりませんでした。";
     $("allCodes").value = targetCodes.join("\n");
     $("runAtomDirectTest").disabled = !!atomTestError || atomTestCodes.length === 0;
+    const atomUrlLink = $("openAtomDirectUrl");
+    if (atomTestCodes.length) {
+      const atomQuery = new URLSearchParams({ out: "atom", ncode: atomTestCodes.slice(0, 3).map(code => code.toLowerCase()).join("-") });
+      atomUrlLink.href = API.normal + "?" + atomQuery.toString();
+      atomUrlLink.style.pointerEvents = "auto";
+      atomUrlLink.style.opacity = "1";
+      atomUrlLink.setAttribute("aria-disabled", "false");
+      $("atomDirectUrlStatus").textContent = "対象Nコード：" + atomTestCodes.slice(0, 3).join(", ");
+    } else {
+      atomUrlLink.href = "#";
+      atomUrlLink.style.pointerEvents = "none";
+      atomUrlLink.style.opacity = ".5";
+      atomUrlLink.setAttribute("aria-disabled", "true");
+      $("atomDirectUrlStatus").textContent = atomTestError || "Atom対象作品がありません。";
+    }
     $("copy").disabled = targetCodes.length === 0;
     $("copy20").disabled = targetCodes.length === 0;
     $("runFullCheck").disabled = targetCodes.length === 0;
