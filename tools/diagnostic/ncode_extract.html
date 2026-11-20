@@ -59,6 +59,13 @@ strong.num{font-size:1.5rem}
 <div id="atomUrlCopyStatus" class="small"></div>
 </section>
 
+<section class="panel" id="atomDirectTestPanel">
+<h2>Atom直接取得テスト（保存なし）</h2>
+<p class="small">本棚から抽出した全年齢Nコードの先頭3件を使い、通常APIからAtomを直接取得します。通信・XML解析の確認専用です。DB・localStorage・GitHubには保存しません。</p>
+<button id="runAtomDirectTest" type="button" disabled>先頭3件でAtom取得テスト</button>
+<div id="atomDirectTestStatus" class="status">先に本棚からNコードを抽出してください。</div>
+</section>
+
 <section class="panel" id="atomTestPanel">
 <h2>Atom件数上限の検証用Nコード</h2>
 <p class="small">全年齢作品のみを対象にし、既存の検索除外Nコードを除いて、先頭20件・50件・100件・200件をコピーします。作品データと検索除外リストは読み取り専用です。</p>
@@ -194,6 +201,7 @@ async function extract() {
   $("atomTestStatus").textContent = "全年齢・検索除外条件を確認中…";
   $("atomTestCopyStatus").textContent = "";
   for (const size of [20, 50, 100, 200]) $("copyAtom" + size).disabled = true;
+  $("runAtomDirectTest").disabled = true;
   $("checkStatus").textContent = "抽出中…";
   $("checkSummary").textContent = "";
   $("checkResults").replaceChildren();
@@ -263,9 +271,52 @@ async function extract() {
         (narouWorks.length - normalWorks.length) + "件 ／ 検索除外コード除外 " +
         (normalCodes.length - atomTestCodes.length) + "件 ／ 検証対象 " +
         atomTestCodes.length + "件。20・50・100・200件の各ボタンで先頭からコピーできます。";
-    for (const size of [20, 50, 100, 200]) {
+    
+async function runAtomDirectTest() {
+  const button = $("runAtomDirectTest");
+  const status = $("atomDirectTestStatus");
+  const codes = atomTestCodes.slice(0, 3);
+  if (!codes.length) return;
+  button.disabled = true;
+  status.textContent = "Atom APIへ接続中…";
+  try {
+    const query = new URLSearchParams({
+      out: "atom",
+      ncode: codes.map(code => code.toLowerCase()).join("-")
+    });
+    const endpoint = API.normal + "?" + query.toString();
+    const response = await fetch(endpoint, { method: "GET", cache: "no-store" });
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    const xmlText = await response.text();
+    const xml = new DOMParser().parseFromString(xmlText, "application/atom+xml");
+    if (xml.querySelector("parsererror")) throw new Error("応答をXMLとして解析できませんでした。");
+    const entries = [...xml.getElementsByTagNameNS("http://www.w3.org/2005/Atom", "entry")];
+    const ids = entries.map(entry => {
+      const id = entry.getElementsByTagNameNS("http://www.w3.org/2005/Atom", "id")[0];
+      return id ? id.textContent.trim() : "(idなし)";
+    });
+    status.textContent =
+      "取得成功\nHTTP：" + response.status +
+      "\n応答サイズ：" + xmlText.length.toLocaleString("ja-JP") + "文字" +
+      "\nAtom entry数：" + entries.length +
+      "\n対象Nコード：" + codes.join(", ") +
+      "\nentry ID：\n" + (ids.join("\n") || "(entryなし)") +
+      "\n\n※取得内容は表示確認のみ。保存・更新は行っていません。";
+  } catch (error) {
+    const message = error && error.message ? error.message : String(error);
+    status.textContent = "Atom直接取得テスト失敗\n" + message +
+      (message.includes("Failed to fetch") || message.includes("Load failed")
+        ? "\n\nブラウザのCORS制限、通信環境、API側の応答を切り分ける必要があります。"
+        : "");
+  } finally {
+    button.disabled = false;
+  }
+}
+
+for (const size of [20, 50, 100, 200]) {
       $("copyAtom" + size).disabled = !!atomTestError || atomTestCodes.length === 0;
     }
+    $("runAtomDirectTest").disabled = !!atomTestError || atomTestCodes.length === 0;
     $("copy").disabled = targetCodes.length === 0;
     $("copy20").disabled = targetCodes.length === 0;
     $("runCheck").disabled = targetCodes.length === 0;
@@ -773,6 +824,7 @@ for (const size of [20, 50, 100, 200]) {
       : "コピーできませんでした。選択されたNコードを手動でコピーしてください。";
   });
 }
+$("runAtomDirectTest").addEventListener("click", runAtomDirectTest);
 $("run").addEventListener("click", extract);
 loadAtomFailures();
 $("runCheck").addEventListener("click", runCheck);
