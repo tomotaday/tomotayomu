@@ -1,0 +1,143 @@
+name: R18 Novel API Atom取得テスト（保存なし）
+
+on:
+  workflow_dispatch:
+    inputs:
+      ncodes:
+        description: "R18試験用Nコード（1〜3件。改行・空白・カンマ区切り可）"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  test-r18-atom:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch and validate R18 Atom
+        id: test
+        continue-on-error: true
+        env:
+          NCODES_INPUT: ${{ inputs.ncodes }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+          import sys
+          import urllib.parse
+          import urllib.request
+          import xml.etree.ElementTree as ET
+          from datetime import datetime, timezone
+
+          output = "r18-atom-test-result.json"
+          report = {
+              "tested_at": datetime.now(timezone.utc).isoformat(),
+              "api": "https://api.syosetu.com/novel18api/api/",
+              "mode": "read-only test; no repository or bookshelf writes",
+              "requested": [],
+              "entries": [],
+              "errors": []
+          }
+
+          try:
+              raw = os.environ.get("NCODES_INPUT", "")
+              codes = [x.upper() for x in re.split(r"[\\s,;]+", raw.strip()) if x]
+              if not codes:
+                  raise ValueError("Nコードが入力されていません。")
+              if len(codes) > 3:
+                  raise ValueError("試験は最大3件です。")
+              if any(not re.fullmatch(r"N[0-9A-Z]+", x) for x in codes):
+                  raise ValueError("Nコード形式が不正です。")
+              if len(set(codes)) != len(codes):
+                  raise ValueError("同じNコードが重複しています。")
+              report["requested"] = codes
+
+              params = urllib.parse.urlencode({
+                  "out": "atom",
+                  "ncode": "-".join(x.lower() for x in codes)
+              })
+              url = report["api"] + "?" + params
+              req = urllib.request.Request(url, headers={
+                  "User-Agent": "TomotaYomu-R18-Atom-Test/1.0",
+                  "Accept": "application/atom+xml, application/xml;q=0.9, */*;q=0.8"
+              })
+              with urllib.request.urlopen(req, timeout=40) as response:
+                  status = response.status
+                  body = response.read()
+              report["http_status"] = status
+              report["response_bytes"] = len(body)
+
+              root = ET.fromstring(body)
+              ns = {"atom": "http://www.w3.org/2005/Atom"}
+              entries = root.findall("atom:entry", ns)
+              for entry in entries:
+                  title = entry.findtext("atom:title", default="", namespaces=ns)
+                  entry_id = entry.findtext("atom:id", default="", namespaces=ns)
+                  links = entry.findall("atom:link", ns)
+                  href = ""
+                  for link in links:
+                      rel = link.attrib.get("rel", "")
+                      if rel in ("alternate", "") and link.attrib.get("href"):
+                          href = link.attrib["href"]
+                          break
+                  if not href and links:
+                      href = links[0].attrib.get("href", "")
+                  candidate = href or entry_id
+                  match = re.search(r"/(n[0-9a-z]+)(?:/|$)", candidate, re.I)
+                  ncode = match.group(1).upper() if match else ""
+                  report["entries"].append({
+                      "ncode": ncode,
+                      "title": title,
+                      "url": href,
+                      "atom_id": entry_id
+                  })
+
+              counts = {code: sum(1 for item in report["entries"] if item["ncode"] == code) for code in codes}
+              report["match_counts"] = counts
+              bad = [code for code, count in counts.items() if count != 1]
+              missing_url = [item["ncode"] for item in report["entries"] if item["ncode"] in codes and not item["url"]]
+              if bad:
+                  report["errors"].append("各Nコードのentryが1件ずつ取得できていません: " + ", ".join(bad))
+              if missing_url:
+                  report["errors"].append("URLが取得できないentryがあります: " + ", ".join(missing_url))
+              if report["errors"]:
+                  report["status"] = "failure"
+              else:
+                  report["status"] = "success"
+          except Exception as exc:
+              report["status"] = "failure"
+              report["errors"].append(type(exc).__name__ + ": " + str(exc))
+
+          with open(output, "w", encoding="utf-8") as f:
+              json.dump(report, f, ensure_ascii=False, indent=2)
+              f.write("\\n")
+
+          print("R18 Atom test status:", report["status"])
+          print("Requested:", ", ".join(report["requested"]))
+          print("Returned entries:", len(report["entries"]))
+          for item in report["entries"]:
+              print(f'{item["ncode"] or "(Nコード判定不可)"} | {item["title"]} | {item["url"]}')
+          for error in report["errors"]:
+              print("ERROR:", error)
+
+          if report["status"] != "success":
+              sys.exit(1)
+          PY
+
+      - name: Upload test result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r18-atom-test-result
+          path: r18-atom-test-result.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Report failure
+        if: steps.test.outcome == 'failure'
+        run: |
+          echo "R18 Atom取得または照合に失敗しました。ArtifactのJSONとログを確認してください。"
+          exit 1
