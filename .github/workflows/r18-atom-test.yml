@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       ncodes:
-        description: "R18試験用Nコード（1〜10件。改行・空白・カンマ区切り可）"
+        description: "R18試験用Nコード（1〜100件。改行・空白・カンマ区切り可）"
         required: true
         type: string
 
@@ -47,8 +47,8 @@ jobs:
               codes = [x.upper() for x in re.split(r"[\s,;]+", raw.strip()) if x]
               if not codes:
                   raise ValueError("Nコードが入力されていません。")
-              if len(codes) > 10:
-                  raise ValueError("試験は最大10件です。")
+              if len(codes) > 100:
+                  raise ValueError("試験は最大100件です。")
               if any(not re.fullmatch(r"N[0-9A-Z]+", x) for x in codes):
                   raise ValueError("Nコード形式が不正です。")
               if len(set(codes)) != len(codes):
