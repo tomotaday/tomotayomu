@@ -44,7 +44,7 @@ jobs:
 
           try:
               raw = os.environ.get("NCODES_INPUT", "")
-              codes = [x.upper() for x in re.split(r"[\\s,;]+", raw.strip()) if x]
+              codes = [x.upper() for x in re.split(r"[\s,;]+", raw.strip()) if x]
               if not codes:
                   raise ValueError("Nコードが入力されていません。")
               if len(codes) > 3:
