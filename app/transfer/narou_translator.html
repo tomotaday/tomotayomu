@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f7fb">
+<title>なろうTranslator｜本番移行準備｜ともたよむ</title>
+<style>
+:root{color-scheme:light;--bg:#f4f6fa;--paper:#fff;--ink:#202633;--muted:#667085;--line:#d9e0ea;--accent:#315d9b;--ok:#e9f5ee;--warn:#fff4df;--bad:#fff1f1}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.6}
+main{width:min(900px,100%);margin:auto;padding:18px 14px 48px}
+header,.panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:15px;margin:12px 0}
+h1{font-size:22px;margin:3px 0 8px}h2{font-size:17px;margin:0 0 9px}p{margin:6px 0}.small{font-size:13px;color:var(--muted)}
+label{display:block;font-weight:650;margin:12px 0 5px}select,button{font:inherit;border:1px solid var(--line);border-radius:9px;padding:11px 12px;background:white;color:var(--ink);width:100%;margin:5px 0}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}button:disabled{opacity:.45}
+.status{white-space:pre-wrap;overflow-wrap:anywhere;margin:10px 0;padding:11px;border-radius:9px;background:#f4f6fa;font-size:13px}
+.ok{background:var(--ok)}.warn{background:var(--warn)}.bad{background:var(--bad)}
+.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}.metric{background:#f4f6fa;border-radius:9px;padding:10px}.metric strong{display:block;font-size:20px}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:360px;overflow:auto;background:#f4f6fa;border-radius:9px;padding:10px;font-size:12px}
+</style>
+</head>
+<body><main>
+<header>
+ <p class="small">PRODUCTION TRANSFER / READ ONLY</p>
+ <h1>なろうTranslator</h1>
+ <p>全作品再取得DBから本番共通works形式へ変換し、移行用JSONを作成します。</p>
+ <p class="small">このページは移行元DBを読み取り専用で扱います。本番DBへの書き込み、仮保存DBの変更は行いません。</p>
+</header>
+<section class="panel">
+ <h2>1. 移行元データ</h2>
+ <label for="dbSelect">再取得DB</label>
+ <select id="dbSelect"><option value="">DB一覧を確認中…</option></select>
+ <button id="refreshDb">DB一覧を更新</button>
+ <button id="loadDb" class="primary">3,657作品を読み込んで変換</button>
+ <div id="dbStatus" class="status">まだ読み込んでいません。</div>
+</section>
+<section class="panel">
+ <h2>2. 変換結果</h2>
+ <div class="metrics">
+  <div class="metric"><span class="small">変換対象</span><strong id="total">—</strong></div>
+  <div class="metric"><span class="small">変換エラー</span><strong id="errors">—</strong></div>
+  <div class="metric"><span class="small">通常API</span><strong id="normal">—</strong></div>
+  <div class="metric"><span class="small">R18 API</span><strong id="r18">—</strong></div>
+ </div>
+ <div id="resultStatus" class="status">移行元を読み込むと結果を表示します。</div>
+ <button id="download" class="primary" disabled>変換結果JSONを保存</button>
+ <p class="small">エラーが1件でもある場合は全件JSONの保存を許可しません。エラー一覧は画面で確認できます。</p>
+ <div id="errorList"></div>
+</section>
+<section class="panel">
+ <h2>3. データ保護</h2>
+ <ul class="small">
+  <li>読み取り元は tomotaYomuNarouReacquire_ で始まる version 1 DBのみ。</li>
+  <li>API生データは api[selectedSource].raw を使用します。</li>
+  <li>既存作品情報は source.snapshots の元レコードを引き継ぎます。</li>
+  <li>Atom URLは作品レコード最上位の url を newUrl に引き継ぎます。元の url は保持します。</li>
+  <li>変換結果はファイル出力のみ。IndexedDB・本番DB・localStorageには書き込みません。</li>
+ </ul>
+</section>
+<script>
+"use strict";
+const PREFIX="tomotaYomuNarouReacquire_";
+const EXPECTED=3657;
+const $=id=>document.getElementById(id);
+let convertedData=null;
+const NAROU_GENRE_SOURCE_FIELDS=["biggenre","genre","nocgenre","isr15","isbl","isgl","iszankoku","istensei","istenni"];
+function hasApiValue(value){return value!==undefined&&value!==null&&!(typeof value==="string"&&value.trim()==="");}
+function applyApiField(target,targetKey,raw,sourceKey,diagnostics){
+ if(!Object.prototype.hasOwnProperty.call(raw,sourceKey))return;
+ if(!hasApiValue(raw[sourceKey])){diagnostics.push(sourceKey+"：空値のため既存値を保持");return;}
+ target[targetKey]=raw[sourceKey];
+}
+function normalizeNarouDate(value,sourceKey,errors){
+ if(!hasApiValue(value)){errors.push(sourceKey+"：必須日付が取得できません");return null;}
+ if(typeof value!=="string"){errors.push(sourceKey+"：日付が文字列ではありません");return null;}
+ const text=value.trim();
+ const match=text.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?(Z|[+-]\d{2}:?\d{2})?$/i);
+ if(!match){errors.push(sourceKey+"：日付・時刻の形式が不正です（"+text+"）");return null;}
+ const [,y,mo,d,hh,mm,ss="00",zone=""]=match;
+ const year=Number(y),month=Number(mo),day=Number(d),hour=Number(hh),minute=Number(mm),second=Number(ss);
+ const check=new Date(Date.UTC(year,month-1,day));
+ if(check.getUTCFullYear()!==year||check.getUTCMonth()!==month-1||check.getUTCDate()!==day||hour>23||minute>59||second>59){
+  errors.push(sourceKey+"：実在しない日付または時刻です（"+text+"）");return null;
+ }
+ if(!zone)return y+"/"+mo+"/"+d+" "+hh+":"+mm;
+ const normalizedZone=zone.toUpperCase()==="Z"?"Z":zone.replace(/([+-]\d{2})(\d{2})$/,"$1:$2");
+ if(normalizedZone!=="Z"){
+  const offset=normalizedZone.match(/^([+-])(\d{2}):(\d{2})$/);
+  if(!offset||Number(offset[2])>14||Number(offset[3])>59||(Number(offset[2])===14&&Number(offset[3])!==0)){
+   errors.push(sourceKey+"：UTCオフセットが不正です（"+text+"）");return null;
+  }
+ }
+ const instant=new Date(y+"-"+mo+"-"+d+"T"+hh+":"+mm+":"+ss+normalizedZone);
+ if(Number.isNaN(instant.getTime())){errors.push(sourceKey+"：タイムゾーン付き日時を解釈できません（"+text+"）");return null;}
+ const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(instant);
+ const part=Object.fromEntries(parts.map(item=>[item.type,item.value]));
+ return part.year+"/"+part.month+"/"+part.day+" "+part.hour+":"+part.minute;
+}
+function translateNarouToCommonWork(raw,existingWork){
+ const diagnostics=[],errors=[];
+ const work=existingWork?structuredClone(existingWork):{site:"narou"};
+ const ncode=String(raw?.ncode||raw?.Ncode||"").trim().toUpperCase();
+ if(!ncode)errors.push("Nコードがありません");else{work.site="narou";work.workId=ncode;}
+ applyApiField(work,"title",raw,"title",diagnostics);
+ applyApiField(work,"synopsis",raw,"story",diagnostics);
+ applyApiField(work,"authorName",raw,"writer",diagnostics);
+ const publishedAt=normalizeNarouDate(raw?.general_firstup,"general_firstup（初期登録日）",errors);
+ const lastPublishedAt=normalizeNarouDate(raw?.general_lastup,"general_lastup（最新話登録日）",errors);
+ if(publishedAt)work.publishedAt=publishedAt;
+ if(lastPublishedAt)work.lastPublishedAt=lastPublishedAt;
+ applyApiField(work,"episodeCount",raw,"general_all_no",diagnostics);
+ if(existingWork?.authorId){diagnostics.push("authorId：既存の作者IDを保持");}
+ else if(Object.prototype.hasOwnProperty.call(raw,"userid")&&hasApiValue(raw.userid)){work.authorId=raw.userid;}
+ else{diagnostics.push("authorId：有効なuseridなし。作者名から推定しない");}
+ if(Object.prototype.hasOwnProperty.call(raw,"keyword")){
+  if(hasApiValue(raw.keyword))work.keywords=String(raw.keyword).trim().split(/\s+/u).filter(Boolean);
+  else diagnostics.push("keyword：空値のため既存値を保持");
+ }
+ const novelType=raw.novel_type,end=raw.end;
+ if(novelType===2&&end===0)work.status="短編";
+ else if(novelType===1&&end===0)work.status="完結";
+ else if(novelType===1&&end===1)work.status="連載中";
+ else diagnostics.push("status：想定外の組合せのため既存値を保持");
+ const oldGenres=Array.isArray(work.genres)?structuredClone(work.genres):[];
+ const oldBySource=new Map(oldGenres.filter(x=>x&&typeof x.source==="string").map(x=>[x.source,x]));
+ const nextGenres=[];
+ for(const source of NAROU_GENRE_SOURCE_FIELDS){
+  if(Object.prototype.hasOwnProperty.call(raw,source)&&hasApiValue(raw[source]))nextGenres.push({source,value:raw[source]});
+  else if(oldBySource.has(source))nextGenres.push(oldBySource.get(source));
+ }
+ const knownSet=new Set(NAROU_GENRE_SOURCE_FIELDS);
+ for(const item of oldGenres){if(!item||!knownSet.has(item.source))nextGenres.push(item);}
+ if(nextGenres.length||NAROU_GENRE_SOURCE_FIELDS.some(key=>Object.prototype.hasOwnProperty.call(raw,key)))work.genres=nextGenres;
+ const unknownFlags=Object.keys(raw).filter(key=>/^is[a-z0-9_]+$/i.test(key)&&!knownSet.has(key));
+ if(unknownFlags.length)diagnostics.push("未採用の属性候補："+unknownFlags.join("、"));
+ if(existingWork?.url)work.url=existingWork.url;
+ else delete work.url;
+ if(existingWork){
+  for(const key of ["id","shelfId","bookmark","searchExcluded","authorKana","authorKanaFirst","authorKanaChecked"]){
+   if(Object.prototype.hasOwnProperty.call(existingWork,key))work[key]=structuredClone(existingWork[key]);
+  }
+ }else{delete work.id;}
+ if(!work.id)errors.push("既存内部idがありません");
+ return {work,diagnostics,errors};
+}
+function reqResult(req){return new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||Error("IndexedDB読み込み失敗"));});}
+function txDone(tx){return new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||Error("IndexedDB transaction error"));tx.onabort=()=>reject(tx.error||Error("IndexedDB transaction aborted"));});}
+function openSourceDb(name){
+ return new Promise((resolve,reject)=>{
+  const req=indexedDB.open(name);
+  req.onupgradeneeded=()=>{req.transaction.abort();reject(Error("DB更新が必要なため安全停止しました"));};
+  req.onsuccess=()=>{
+   const db=req.result;
+   if(db.version!==1||!["meta","works","batches"].every(s=>db.objectStoreNames.contains(s))){db.close();reject(Error("仮保存DB構造が想定外です"));return;}
+   const tx=db.transaction(["meta","works","batches"],"readonly");
+   const valid=tx.objectStore("meta").keyPath==="id"&&tx.objectStore("works").keyPath==="ncode"&&tx.objectStore("batches").keyPath==="id";
+   tx.abort();
+   if(!valid){db.close();reject(Error("keyPathが想定外です"));return;}
+   resolve(db);
+  };
+  req.onerror=()=>reject(req.error||Error("DBを開けません"));
+  req.onblocked=()=>reject(Error("DBが別画面で使用中です"));
+ });
+}
+async function refreshDbList(){
+ const select=$("dbSelect"),previous=select.value;select.replaceChildren();
+ if(!indexedDB.databases){select.add(new Option("このブラウザではDB一覧を取得できません",""));return;}
+ const dbs=await indexedDB.databases();
+ const names=dbs.map(x=>x.name).filter(x=>x&&x.startsWith(PREFIX)).sort().reverse();
+ if(!names.length)select.add(new Option("再取得DBがありません",""));
+ else names.forEach(name=>select.add(new Option(name,name)));
+ if(names.includes(previous))select.value=previous;
+ $("dbStatus").textContent="再取得DB："+names.length+"件";
+}
+async function convertAll(){
+ const name=$("dbSelect").value;if(!name)return;
+ $("loadDb").disabled=true;$("download").disabled=true;convertedData=null;
+ $("dbStatus").textContent="移行元DBをreadonlyで読み込み中…";$("errorList").replaceChildren();
+ let db;
+ try{
+  db=await openSourceDb(name);
+  const tx=db.transaction(["meta","works"],"readonly");
+  const [meta,rows]=await Promise.all([reqResult(tx.objectStore("meta").get("run")),reqResult(tx.objectStore("works").getAll()),txDone(tx)]);
+  if(!meta||meta.dbName!==name||meta.sourceDb!=="tomotaYomuWorksDB"||meta.sourceDbVersion!==2)throw Error("DBのmetaが想定外です");
+  if(rows.length!==EXPECTED||meta.targetCount!==EXPECTED)throw Error("作品数が3,657件ではありません（DB："+rows.length+"／meta："+meta.targetCount+"）");
+  const seen=new Set(),records=[],errors=[],sourceCounts={normal:0,r18:0};
+  for(const row of rows){
+   const ncode=String(row?.ncode||"").toUpperCase();
+   if(!ncode||seen.has(ncode)){errors.push({ncode:ncode||"(空)",messages:["Nコード空欄または重複"]});continue;}
+   seen.add(ncode);
+   if(row.targetStatus!=="ready"){errors.push({ncode,messages:["targetStatusがreadyではありません"]});continue;}
+   const source=row.api?.selectedSource;
+   if(source!=="normal"&&source!=="r18"){errors.push({ncode,messages:["API selectedSourceが不正です"]});continue;}
+   sourceCounts[source]++;
+   const apiSlot=row.api?.[source];
+   const raw=apiSlot?.raw;
+   if(apiSlot?.status!=="found"||!raw||typeof raw!=="object"){errors.push({ncode,messages:["選択APIの生データがありません"]});continue;}
+   if(String(raw.ncode||"").toUpperCase()!==ncode){errors.push({ncode,messages:["API生データのNコード不一致"]});continue;}
+   const snapshots=row.source?.snapshots;
+   if(!Array.isArray(snapshots)||snapshots.length!==1||!snapshots[0]||typeof snapshots[0]!=="object"){errors.push({ncode,messages:["元作品スナップショットが一意に取得できません"]});continue;}
+   const existing=snapshots[0];
+   if(String(existing.workId||"").toUpperCase()!==ncode){errors.push({ncode,messages:["元作品スナップショットのworkId不一致"]});continue;}
+   if(typeof row.url!=="string"||!row.url.trim()){errors.push({ncode,messages:["Atom正規URLがありません"]});continue;}
+   const result=translateNarouToCommonWork(raw,existing);
+   if(result.errors.length){errors.push({ncode,messages:result.errors});continue;}
+   result.work.newUrl=row.url;
+   records.push({ncode,apiSource:source,work:result.work,diagnostics:result.diagnostics});
+  }
+  if(sourceCounts.normal!==1453||sourceCounts.r18!==2204)errors.push({ncode:"(API区分集計)",messages:["通常/R18件数が想定と不一致："+sourceCounts.normal+"/"+sourceCounts.r18]});
+  if(records.length!==EXPECTED)errors.push({ncode:"(総件数)",messages:["変換成功件数が3,657件ではありません："+records.length]});
+  $("total").textContent=records.length.toLocaleString("ja-JP");$("errors").textContent=errors.length.toLocaleString("ja-JP");
+  $("normal").textContent=sourceCounts.normal.toLocaleString("ja-JP");$("r18").textContent=sourceCounts.r18.toLocaleString("ja-JP");
+  if(errors.length){
+   $("resultStatus").className="status bad";$("resultStatus").textContent="全件変換は未完了です。エラー："+errors.length+"件。エラー作品を修正するまでJSON出力はできません。";
+   const pre=document.createElement("pre");pre.textContent=JSON.stringify(errors.slice(0,100),null,2);$("errorList").append(pre);
+  }else{
+   convertedData={format:"tomotayomu-narou-works-transfer-v1",formatVersion:1,sourceDb:name,sourceDbVersion:1,generatedAt:new Date().toISOString(),count:records.length,normal:sourceCounts.normal,r18:sourceCounts.r18,records:records.map(x=>x.work)};
+   $("resultStatus").className="status ok";$("resultStatus").textContent="全件変換成功："+records.length.toLocaleString("ja-JP")+"件。API通常/R18・Atom URL・元作品情報をNコードで照合しました。JSONを保存できます。";
+   $("download").disabled=false;
+   const info=document.createElement("pre");info.textContent="出力形式："+convertedData.format+"\n件数："+convertedData.count+"\n先頭3件のNコード："+records.slice(0,3).map(x=>x.ncode).join(" / ");$("errorList").append(info);
+  }
+  $("dbStatus").textContent="読み込み完了（readonly）\nDB："+name+"\nmeta対象："+meta.targetCount+"件\n作品レコード："+rows.length+"件\n元DB："+meta.sourceDb+" v"+meta.sourceDbVersion;
+ }catch(error){
+  $("resultStatus").className="status bad";$("resultStatus").textContent="変換を停止しました。\n"+(error.message||String(error));
+ }finally{if(db)db.close();$("loadDb").disabled=false;}
+}
+function downloadJson(){
+ if(!convertedData)return;
+ const blob=new Blob([JSON.stringify(convertedData)],{type:"application/json"});
+ const url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download="narou-works-transfer-3657.json";document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);
+}
+$("refreshDb").addEventListener("click",refreshDbList);
+$("loadDb").addEventListener("click",convertAll);
+$("download").addEventListener("click",downloadJson);
+refreshDbList().catch(e=>{$("dbStatus").textContent="DB一覧取得失敗："+e.message;});
+</script></main></body></html>
