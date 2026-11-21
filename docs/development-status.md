@@ -319,3 +319,12 @@
 - 元JSON・再取得DB・本番DB・localStorage・Shortcut・GitHub Actionsへの書き込み・変更は行っていない。
 - 詳細な検査範囲・keywords判断・次工程は [なろうトランスファー Lab 設計記録](narou-translator-lab.md) の第18-8項を参照。
 - **次の作業：最新JSONを基準に、再取得API情報の変換結果・Atom URL・引継ぎ情報の保全を確認する。** 旧スナップショットとの値の違いは、最新化による正当な差分か、変換・保全の誤りかを区別する。
+
+### 2026-11-22：TranslatorのAtom URL Nコード一致検査を追加
+
+- `app/transfer/narou_translator.html` に、Atom URLのHTTPS・通常/R18別ホスト検査に加え、URL pathnameのNコードと対象作品のNコードが完全一致する検査を追加。
+- 不一致の場合は当該作品を変換エラーとして扱い、全件JSON出力を停止する。
+- コード更新commit：`80869368bffad8509757440f995fdb45e0d48d78`。GitHub mainから再取得してコードを確認済み。
+- **iPhone実機での再変換・全3,657件検査は未実施。**
+- 次工程はiPhone実機でTranslatorを再読み込みし、再取得DBをreadonlyで再変換。エラー0件を確認後、新しいv2 JSONを出力して再監査する。
+- 本番DB・IndexedDB・localStorage・Shortcut・GitHub Actionsへの変更なし。詳細は `narou-translator-lab.md` 第18-9項。
