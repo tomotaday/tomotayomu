@@ -47,7 +47,7 @@ jobs:
           }
 
           def parse_codes(raw, label):
-              codes = [x.upper() for x in re.split(r"[\\s,;]+", raw.strip()) if x]
+              codes = [x.upper() for x in re.split(r"[\s,;]+", raw.strip()) if x]
               if not codes:
                   raise ValueError(label + "のNコードが空です。")
               if any(not re.fullmatch(r"N[0-9A-Z]+", x) for x in codes):
@@ -166,7 +166,7 @@ jobs:
           report["resultCount"] = len(report["results"])
           with open(OUTPUT, "w", encoding="utf-8") as f:
               json.dump(report, f, ensure_ascii=False, indent=2)
-              f.write("\\n")
+              f.write(chr(10))
           print("Status:", report["status"])
           print("Results:", len(report["results"]), "/ 3657")
           print("Batches:", len(report["batches"]))
