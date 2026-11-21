@@ -431,6 +431,9 @@ async function saveBatch(db, stage, codes, apiResult, errorText) {
   const batchId = "batch_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
   const now = new Date().toISOString();
   const works = await getWorksByCodes(db, codes);
+  if (works.length !== codes.length) {
+    throw new Error("保存対象の作品レコード数が要求Nコード数と一致しません。保存を中止しました。");
+  }
   const tx = db.transaction(["works", "batches", "meta"], "readwrite");
   const workStore = tx.objectStore("works");
   for (const work of works) {
@@ -515,6 +518,7 @@ function countStatuses(works, scopeCodes) {
     normalMissing: rows.filter(w => w.api.normal.status === "not_found").length,
     normalError: rows.filter(w => w.api.normal.status === "error").length,
     r18Found: rows.filter(w => w.api.r18.status === "found").length,
+    r18Error: rows.filter(w => w.api.r18.status === "error").length,
     bothMissing: rows.filter(w => w.api.normal.status === "not_found" && w.api.r18.status === "not_found").length,
     pending: rows.filter(w => w.targetStatus === "ready" &&
       (w.api.normal.status === "pending" || w.api.normal.status === "error" ||
@@ -529,6 +533,7 @@ function renderCounts(counts) {
     ["R18 API取得", counts.r18Found],
     ["両API正常・対象なし", counts.bothMissing],
     ["通常API未完了", counts.normalError],
+    ["R18 API未完了", counts.r18Error],
     ["残り・再試行", counts.pending]
   ];
   for (const [label, value] of items) {
