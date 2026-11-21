@@ -593,7 +593,7 @@ async function runApiProcess() {
     const duplicates = scoped.filter(w => w.targetStatus === "duplicate_ncode");
     const ready = scoped.filter(w => w.targetStatus === "ready");
     setStatus("apiStatus", "対象 " + ready.length + "件を処理します。重複Nコード " + duplicates.length + "件は照会しません。");
-    await updateMeta(db, m => { m.status = "api_running"; m.scopeCompleted = Math.max(m.scopeCompleted || 0, scopeCodes.length); });
+    await updateMeta(db, m => { m.status = "api_running"; m.scopeRequested = Math.max(m.scopeRequested || 0, scopeCodes.length); });
 
     // 第1段階：通常API。成功済み・正常未取得済みの作品は再照会しない。
     let pendingNormal = ready.filter(w => w.api.normal.status === "pending" || w.api.normal.status === "error");
@@ -642,6 +642,7 @@ async function runApiProcess() {
     const finished = finalCounts.pending === 0;
     await updateMeta(db, m => {
       m.status = finished ? "api_scope_completed" : "api_incomplete";
+      if (finished) m.scopeCompleted = Math.max(m.scopeCompleted || 0, scopeCodes.length);
       m.lastScopeCount = scopeCodes.length;
       m.lastScopeAt = new Date().toISOString();
     });
