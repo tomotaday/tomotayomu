@@ -89,6 +89,7 @@ code{overflow-wrap:anywhere}
 <p class="small">「今回の検証範囲」で選択した先頭件数について、API生データ・Nコード照合・バッチ記録を読み取り専用で検査します。API再取得、DB書き込み、データ変更は行いません。</p>
 <button id="auditApiSample" class="secondary" disabled>選択範囲の保存内容を検査</button>
 <div id="auditStatus" class="status">作業DBを選択してください。</div>
+<div id="excludedAccessLinks" class="status" aria-live="polite"></div>
 </section>
 
 <section class="panel">
@@ -722,6 +723,7 @@ async function auditApiSample() {
     try {
       const storedExcluded = localStorage.getItem(excludedKey);
       if (storedExcluded === null) {
+        $("excludedAccessLinks").textContent = "";
         excludedCompareText = [
           "【ともたよむ検索除外リストとの照合】",
           "照合できません：このブラウザのlocalStorageに検索除外リストが見つかりません。",
@@ -737,17 +739,35 @@ async function auditApiSample() {
           "【ともたよむ検索除外リストとの照合】",
           "参照キー：" + excludedKey,
           "検索除外リスト登録数：" + excludedSet.size + "件",
-          "両API正常・対象なし43件のうち検索除外に該当：" + excludedHits.length + "件",
+          "両API正常・対象なし " + bothMissing + "件のうち検索除外に該当：" + excludedHits.length + "件",
           "検索除外リストに該当しない：" + excludedMisses.length + "件",
-          "",
-          "［検索除外に該当］",
-          ...(excludedHits.length ? excludedHits : ["該当なし"]),
-          "",
-          "［検索除外に非該当］",
-          ...(excludedMisses.length ? excludedMisses : ["該当なし"])
+          "非該当作品は、下のアクセス用アドレスから個別に確認できます。"
         ];
+        const linkBox = $("excludedAccessLinks");
+        linkBox.replaceChildren();
+        if (excludedMisses.length) {
+          const heading = document.createElement("strong");
+          heading.textContent = "【検索除外リストに非該当：個別確認】";
+          linkBox.appendChild(heading);
+          excludedMisses.forEach(code => {
+            const row = document.createElement("div");
+            row.style.marginTop = "8px";
+            const label = document.createElement("span");
+            label.textContent = code + "：";
+            const link = document.createElement("a");
+            link.href = "https://ncode.syosetu.com/" + encodeURIComponent(code.toLowerCase()) + "/";
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            link.textContent = link.href;
+            row.append(label, link);
+            linkBox.appendChild(row);
+          });
+        } else {
+          linkBox.textContent = "検索除外リストに非該当の作品はありません。";
+        }
       }
     } catch (error) {
+      $("excludedAccessLinks").textContent = "";
       excludedCompareText = [
         "【ともたよむ検索除外リストとの照合】",
         "照合できません：" + (error.message || String(error)),
