@@ -624,6 +624,7 @@ async function auditApiSample() {
     let normalRawFieldsMin = Infinity, normalRawFieldsMax = 0;
     let r18RawFieldsMin = Infinity, r18RawFieldsMax = 0;
     let bothMissing = 0;
+    const bothMissingCodes = [];
 
     for (let i = 0; i < sampleWorks.length; i++) {
       const work = sampleWorks[i];
@@ -669,6 +670,7 @@ async function auditApiSample() {
           if (r18.raw !== null) issues.push(code + "：R18 API not_found なのに生データが null ではありません。");
           if (work.api.selectedSource !== null) issues.push(code + "：両API未返却なのに selectedSource が null ではありません。");
           bothMissing++;
+          bothMissingCodes.push(code);
         } else {
           issues.push(code + "：通常API未返却作品のR18状態が想定外です（" + r18.status + "）。");
         }
@@ -715,6 +717,31 @@ async function auditApiSample() {
         issues.push(stage + " バッチの返却コードと保存済み生データが一致しません。");
       }
     }
+    const evidenceRows = bothMissingCodes.map(code => {
+      const normalMatches = relevantBatches.filter(b => b.stage === "normal" && b.requestedCodes.includes(code));
+      const r18Matches = relevantBatches.filter(b => b.stage === "r18" && b.requestedCodes.includes(code));
+      const normalBatch = normalMatches.length === 1 ? normalMatches[0] : null;
+      const r18Batch = r18Matches.length === 1 ? r18Matches[0] : null;
+      for (const [stage, matches, batch] of [["通常API", normalMatches, normalBatch], ["R18 API", r18Matches, r18Batch]]) {
+        if (matches.length !== 1) issues.push(code + "：" + stage + "の要求バッチが一意ではありません（" + matches.length + "件）。");
+        if (batch) {
+          if (batch.status !== "completed") issues.push(code + "：" + stage + "バッチが正常完了扱いではありません。");
+          if (batch.returnedCodes.includes(code)) issues.push(code + "：" + stage + "の返却コードに含まれています。");
+          if (batch.allcount !== batch.returnedCodes.length) issues.push(code + "：" + stage + "のallcountと返却コード数が不一致です。");
+        }
+      }
+      const stamp = value => value ? new Date(value).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }) : "日時記録なし";
+      return code +
+        "｜通常 " + (normalBatch ? normalBatch.id + " 完了 " + stamp(normalBatch.completedAt) + "／返却外" : "要求バッチ不明") +
+        "｜R18 " + (r18Batch ? r18Batch.id + " 完了 " + stamp(r18Batch.completedAt) + "／返却外" : "要求バッチ不明");
+    });
+    const evidenceText = [
+      "【両API正常応答・対象Nコード未返却の個別記録】",
+      "件数：" + bothMissingCodes.length,
+      "判定条件：通常API・R18 APIの各バッチが completed、allcount＝returnedCodes.length、当該Nコードが要求対象に含まれ、返却Codesには含まれないこと。",
+      "※API応答は要求単位の一覧形式で、Nコードごとの不存在証明書ではありません。ここで裏付けるのは「各APIの正常形式応答に当該Nコードが含まれなかった」という事実です。",
+      ...evidenceRows
+    ];
     const fmt = n => Number.isFinite(n) ? String(n) : "—";
     const summary = [
       issues.length ? "検査結果：不一致あり" : "検査結果：すべて一致",
@@ -724,7 +751,9 @@ async function auditApiSample() {
       "両API正常・対象なし：" + bothMissing + "件",
       "関連バッチ：" + relevantBatches.length + "件（通常 " + batchCodes.normal.length + "要求／R18 " + batchCodes.r18.length + "要求）",
       "検査方式：仮保存DBの meta／works／batches を readonly で読み取り",
-      issues.length ? "確認事項：\n・" + issues.join("\n・") : "Nコード照合・要求/返却記録・生データ保存に不一致はありません。"
+      issues.length ? "確認事項：\n・" + issues.join("\n・") : "Nコード照合・要求/返却記録・生データ保存に不一致はありません。",
+      "",
+      ...evidenceText
     ];
     setStatus("auditStatus", summary.join("\n"));
   } catch (error) {
