@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f3ed">
+<title>ともたよむ｜なろう全件移行Lab</title>
+<style>
+:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#c9c0b5;--green:#278454;--green-bg:#DDF3E7;--blue:#2465a5;--blue-bg:#DCEEFF;--warn:#8a5b00;--warn-bg:#fff4d6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.55}
+main{width:min(100%,760px);margin:auto;padding:18px 14px 48px}
+h1{font-size:20px;margin:0 0 5px}
+h2{font-size:16px;margin:0 0 10px}
+p{margin:6px 0}
+.small,.muted{font-size:12px;color:var(--muted)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px;margin:12px 0}
+button,input{font:inherit}
+button{border:1px solid var(--line);border-radius:8px;background:#fffdf9;color:var(--ink);padding:8px 11px}
+button:disabled{opacity:.45}
+input[type=file]{width:100%;padding:9px 0}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+#status{white-space:pre-wrap;font-size:13px;margin-top:10px}
+.warning{background:var(--warn-bg);border:1px solid #e3c77e;border-radius:9px;padding:10px;font-size:12px}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.stat{background:#f4f1eb;border:1px solid #e0d9ce;border-radius:9px;padding:9px}
+.stat strong{display:block;font-size:19px;font-variant-numeric:tabular-nums}
+.stat span{font-size:11px;color:var(--muted)}
+.audit{font-size:13px;display:grid;grid-template-columns:1fr auto;gap:5px 10px}
+.pass{color:#207245;font-weight:700}.fail{color:#a12b22;font-weight:700}
+.pager{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0}
+.card{background:var(--card);border:1px solid #aaa195;border-radius:12px;padding:13px;margin:10px 0}
+.meta{font-size:12px;color:#555;margin-bottom:7px}
+.title{font-size:15px;line-height:1.45;font-weight:700;margin:0 0 4px}
+.author{font-size:13px;color:#555;display:flex;align-items:center;gap:6px}
+.authorName{flex:1;min-width:0}
+.badge{flex:0 0 auto;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700}
+.narou{background:var(--green-bg);color:var(--green)}
+.r18{background:var(--blue-bg);color:var(--blue)}
+.synopsis{white-space:pre-wrap;color:#555;margin:7px 0;font-size:13px}
+details{font-size:13px;margin-top:8px}
+summary{cursor:pointer}
+.cardActions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;font-size:13px}
+.cardActions a{color:inherit;text-decoration:none;border-bottom:1px solid #aaa}
+.shortStoryReadToggle{min-width:4.5em;font-weight:600}
+.shortStoryReadToggle.isRead{background:#e8e8e8;border-color:#c8c8c8;color:#333}
+.shortStoryReadToggle.isUnread{background:#fff0a6;border-color:#e1bd48;color:#805400}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;background:#f3f0ea;padding:8px;border-radius:7px}
+@media(min-width:560px){.stats{grid-template-columns:repeat(4,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<main>
+<h1>ともたよむ｜なろう全件移行Lab</h1>
+<p class="muted">3,657作品の全件取り込み・データ照合・作品カード表示を検証する独立実験室</p>
+<div class="warning">
+<strong>安全境界</strong><br>
+このページは専用DB <code>tomotaYomuNarouFullTransferLabDB</code> だけを使用します。本番DB、既存10作品LabDB、localStorage、GitHub Actions、Shortcutにはアクセスしません。作品データの変換・上書き・削除も行いません。
+</div>
+
+<section class="panel">
+<h2>1. JSONを取り込む</h2>
+<p class="small">「narou-works-transfer-3657-v2.json」を選択してください。保存前に全3,657件を検査し、問題があれば1件も保存しません。</p>
+<input id="fileInput" type="file" accept=".json,application/json">
+<div class="actions">
+<button id="importBtn" type="button">JSONを検査してLabDBへ保存</button>
+<button id="reloadBtn" type="button">保存済みLabDBを再読込</button>
+</div>
+<div id="status" role="status" aria-live="polite">LabDBの状態を確認しています…</div>
+</section>
+
+<section class="panel">
+<h2>2. 全件検査結果</h2>
+<div id="stats" class="stats">
+<div class="stat"><strong>—</strong><span>保存作品数</span></div>
+<div class="stat"><strong>—</strong><span>通常作品</span></div>
+<div class="stat"><strong>—</strong><span>R18作品</span></div>
+<div class="stat"><strong>—</strong><span>しおりあり</span></div>
+</div>
+<div id="audit" class="audit" style="margin-top:12px">まだ検査していません。</div>
+</section>
+
+<section class="panel">
+<h2>3. 保存データから作品カードを確認</h2>
+<p class="small">全件を目視する必要はありません。ページ送りで代表作品を確認でき、全件の正確性は上の機械検査で判定します。</p>
+<div class="pager">
+<button id="prevBtn" type="button" disabled>前へ</button>
+<span id="pageLabel" class="small">0 / 0ページ</span>
+<button id="nextBtn" type="button" disabled>次へ</button>
+</div>
+<div id="cards"></div>
+<div class="pager">
+<button id="prevBtn2" type="button" disabled>前へ</button>
+<span id="pageLabel2" class="small">0 / 0ページ</span>
+<button id="nextBtn2" type="button" disabled>次へ</button>
+</div>
+</section>
+<p class="small">このLabの確認が終わるまでは、本番DBへの取り込みは行いません。</p>
+</main>
+
+<script>
+"use strict";
+const DB_NAME = "tomotaYomuNarouFullTransferLabDB";
+const DB_VERSION = 1;
+const EXPECTED = { total: 3657, normal: 1453, r18: 2204 };
+const PAGE_SIZE = 20;
+let savedRecords = [];
+let currentPage = 0;
+
+const $ = id => document.getElementById(id);
+const fileInput = $("fileInput");
+const importBtn = $("importBtn");
+const reloadBtn = $("reloadBtn");
+const statusNode = $("status");
+const auditNode = $("audit");
+const statsNode = $("stats");
+const cardsNode = $("cards");
+
+function setStatus(message){ statusNode.textContent = message; }
+function requestResult(request){
+  return new Promise((resolve,reject)=>{
+    request.onsuccess=()=>resolve(request.result);
+    request.onerror=()=>reject(request.error||new Error("IndexedDBの読み込みに失敗しました"));
+  });
+}
+function openLabDB(){
+  return new Promise((resolve,reject)=>{
+    const request=indexedDB.open(DB_NAME,DB_VERSION);
+    request.onupgradeneeded=()=>{
+      const db=request.result;
+      if(!db.objectStoreNames.contains("works"))db.createObjectStore("works",{keyPath:"id"});
+    };
+    request.onsuccess=()=>{
+      const db=request.result;
+      if(db.version!==DB_VERSION||!db.objectStoreNames.contains("works")){
+        db.close();reject(new Error("LabDBの構造が想定外です"));return;
+      }
+      resolve(db);
+    };
+    request.onerror=()=>reject(request.error||new Error("専用LabDBを開けません"));
+    request.onblocked=()=>reject(new Error("別のタブがLabDBを使用中です。ほかのLabタブを閉じてください"));
+  });
+}
+function stableStringify(value){
+  if(value===null||typeof value!=="object")return JSON.stringify(value);
+  if(Array.isArray(value))return "["+value.map(stableStringify).join(",")+"]";
+  return "{"+Object.keys(value).sort().map(key=>JSON.stringify(key)+":"+stableStringify(value[key])).join(",")+"}";
+}
+function validateTransfer(data){
+  const errors=[];
+  if(!data||typeof data!=="object")return {ok:false,errors:["JSONの最上位がオブジェクトではありません。"]};
+  if(data.format!=="tomotayomu-narou-works-transfer-v2")errors.push("formatが想定値と一致しません。");
+  if(data.formatVersion!==2)errors.push("formatVersionが2ではありません。");
+  if(!Array.isArray(data.records))errors.push("recordsが配列ではありません。");
+  if(!Array.isArray(data.records))return {ok:false,errors};
+  const records=data.records;
+  if(records.length!==EXPECTED.total)errors.push("作品数が想定値3,657件ではありません（実際："+records.length+"件）。");
+  if(Number(data.count)!==records.length)errors.push("countとrecords件数が一致しません。");
+  const ids=new Set(),ncodes=new Set();
+  let normal=0,r18=0,read=0,unread=0,numeric=0,shortRead=0,badBookmark=0,badR=0,badUrl=0,badEpisodes=0,badSite=0;
+  for(let i=0;i<records.length;i++){
+    const w=records[i]||{},n=String(w.workId||"").toUpperCase(),id=String(w.id||"");
+    if(w.site!=="narou")badSite++;
+    if(!/^N[0-9A-Z]+$/.test(n)||id!=="narou:"+n)errors.push("ID/Nコード不整合："+(id||"行"+(i+1)));
+    if(ids.has(id))errors.push("重複id："+id); ids.add(id);
+    if(ncodes.has(n))errors.push("重複Nコード："+n); ncodes.add(n);
+    const isR18=w.siteData?.isR18===true;
+    let url;
+    try{url=new URL(String(w.url||""));}catch{url=null;}
+    const expectedHost=isR18?"novel18.syosetu.com":"ncode.syosetu.com";
+    if(!url||url.protocol!=="https:"||url.hostname!==expectedHost||url.pathname.toUpperCase()!=="/"+n+"/")badUrl++;
+    if(!Number.isInteger(w.episodeCount)||w.episodeCount<0)badEpisodes++;
+    const b=w.bookmark;
+    if(b===null||b===undefined)unread++;
+    else if(b==="R"){read++;if(w.siteData?.noveltype!==2||w.episodeCount!==1)badR++;else shortRead++;}
+    else if(Number.isInteger(b)&&b>0){numeric++;}
+    else badBookmark++;
+    if(isR18)r18++;else normal++;
+  }
+  if(badSite)errors.push("siteがnarouではない作品："+badSite+"件");
+  if(badUrl)errors.push("URLまたはR18ホスト不整合："+badUrl+"件");
+  if(badEpisodes)errors.push("episodeCount不正："+badEpisodes+"件");
+  if(badBookmark)errors.push("bookmark形式不正："+badBookmark+"件");
+  if(badR)errors.push("bookmark=Rなのに短編・1話ではない作品："+badR+"件");
+  if(normal!==EXPECTED.normal||Number(data.normal)!==normal)errors.push("通常作品数が想定値と一致しません（"+normal+"件）。");
+  if(r18!==EXPECTED.r18||Number(data.r18)!==r18)errors.push("R18作品数が想定値と一致しません（"+r18+"件）。");
+  return {ok:errors.length===0,errors,summary:{total:records.length,normal,r18,read,shortRead,numeric,unread,badBookmark,badR,badUrl,badEpisodes}};
+}
+function countAudit(records,sourceRecords){
+  const total=records.length;
+  let normal=0,r18=0,read=0,numeric=0,unread=0,short=0,emptyShelf=0,missingTitle=0,duplicate=0;
+  const ids=new Set(),ncodes=new Set();
+  for(const w of records){
+    const n=String(w.workId||"").toUpperCase();
+    if(ids.has(w.id)||ncodes.has(n))duplicate++;
+    ids.add(w.id);ncodes.add(n);
+    if(w.siteData?.isR18===true)r18++;else normal++;
+    if(w.bookmark==="R")read++;
+    else if(Number.isInteger(w.bookmark)&&w.bookmark>0)numeric++;
+    else if(w.bookmark==null)unread++;
+    if(w.siteData?.noveltype===2)short++;
+    if(!String(w.shelfId||"").trim())emptyShelf++;
+    if(!String(w.title||"").trim())missingTitle++;
+  }
+  let matched=null;
+  if(sourceRecords){
+    const source=new Map(sourceRecords.map(w=>[w.id,w]));
+    matched=records.reduce((n,w)=>n+(source.has(w.id)&&stableStringify(source.get(w.id))===stableStringify(w)?1:0),0);
+  }
+  return {total,normal,r18,read,numeric,unread,short,emptyShelf,missingTitle,duplicate,matched};
+}
+function renderAudit(a,sourceAvailable){
+  statsNode.innerHTML="";
+  const tiles=[
+    [a.total.toLocaleString("ja-JP"),"保存作品数"],
+    [a.normal.toLocaleString("ja-JP"),"通常作品"],
+    [a.r18.toLocaleString("ja-JP"),"R18作品"],
+    [(a.read+a.numeric).toLocaleString("ja-JP"),"しおりあり"]
+  ];
+  for(const [value,label] of tiles){
+    const box=document.createElement("div");box.className="stat";
+    const strong=document.createElement("strong");strong.textContent=value;
+    const span=document.createElement("span");span.textContent=label;
+    box.append(strong,span);statsNode.append(box);
+  }
+  auditNode.replaceChildren();
+  const rows=[
+    ["保存件数",a.total+" / "+EXPECTED.total,a.total===EXPECTED.total],
+    ["通常作品",a.normal+" / "+EXPECTED.normal,a.normal===EXPECTED.normal],
+    ["R18作品",a.r18+" / "+EXPECTED.r18,a.r18===EXPECTED.r18],
+    ["Nコード・ID重複",a.duplicate+"件",a.duplicate===0],
+    ["タイトル欠落",a.missingTitle+"件",a.missingTitle===0],
+    ["短編作品",a.short+"件",true],
+    ["短編既読（bookmark=R）",a.read+"件",true],
+    ["連載しおり（数値）",a.numeric+"件",true],
+    ["しおりなし",a.unread+"件",true],
+    ["棚IDなし",a.emptyShelf+"件",true]
+  ];
+  if(sourceAvailable)rows.push(["元JSONとの全項目照合",a.matched+" / "+a.total,a.matched===a.total]);
+  for(const [label,value,ok] of rows){
+    const l=document.createElement("span");l.textContent=label;
+    const v=document.createElement("strong");v.textContent=value;v.className=ok?"pass":"fail";
+    auditNode.append(l,v);
+  }
+}
+function formatCardDate(value){
+  const raw=String(value||"").trim();
+  if(!raw)return "—";
+  const match=raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/);
+  if(!match)return raw;
+  return match[1]+"/"+Number(match[2])+"/"+Number(match[3])+(match[4]?" "+String(match[4]).padStart(2,"0")+":"+match[5]:"");
+}
+function bookmarkPosition(value){
+  if(value===null||value===undefined||value==="")return null;
+  if(value==="R")return 1;
+  const number=Number(value);
+  return Number.isFinite(number)&&number>0?number:null;
+}
+function createCard(w){
+  const card=document.createElement("article");card.className="card";
+  const meta=document.createElement("div");meta.className="meta";
+  meta.textContent=formatCardDate(w.lastPublishedAt)+" ｜ "+(w.status||"状態不明")+(w.shelfId?" ｜ 棚ID："+w.shelfId:"");
+  const title=document.createElement("h3");title.className="title";title.textContent=w.title||"（タイトルなし）";
+  const author=document.createElement("div");author.className="author";
+  const authorName=document.createElement("span");authorName.className="authorName";authorName.textContent="作者："+(w.authorName||"作者情報なし");
+  const badge=document.createElement("span");badge.className="badge "+(w.siteData?.isR18===true?"r18":"narou");badge.textContent=w.siteData?.isR18===true?"なろうR18":"なろう";
+  author.append(authorName,badge);
+  const synopsisDetails=document.createElement("details");
+  const synopsisSummary=document.createElement("summary");synopsisSummary.textContent="あらすじを読む";
+  const synopsis=document.createElement("p");synopsis.className="synopsis";synopsis.textContent=w.synopsis||"あらすじなし";
+  synopsisDetails.append(synopsisSummary,synopsis);
+  const actions=document.createElement("div");actions.className="cardActions";
+  const workUrl=document.createElement("a");workUrl.href=w.url;workUrl.target="_blank";workUrl.rel="noopener noreferrer";workUrl.textContent="作品を開く";
+  actions.append(workUrl);
+  const total=Number(w.episodeCount||0),position=bookmarkPosition(w.bookmark),isShort=String(w.siteData?.noveltype??"").trim()==="2";
+  if(isShort){
+    const button=document.createElement("button");button.type="button";button.disabled=true;
+    const isRead=w.bookmark==="R";button.textContent=isRead?"読了":"未読";
+    button.className="shortStoryReadToggle "+(isRead?"isRead":"isUnread");
+    actions.append(button);
+  }else{
+    const resume=document.createElement("a");resume.target="_blank";resume.rel="noopener noreferrer";
+    resume.href=position!==null&&position>0?w.url+position+"/":w.url;
+    resume.textContent=position===null?"続き📖📝記録なし / "+(total||"—")+"話":"続き📖"+position+"/"+(total||"—")+"話";
+    if(w.siteData?.isR18===true)resume.textContent+="　®️";
+    actions.append(resume);
+  }
+  const diagnostic=document.createElement("details");
+  const diagnosticSummary=document.createElement("summary");diagnosticSummary.textContent="作品データを確認";
+  const pre=document.createElement("pre");
+  pre.textContent=[
+    "id: "+w.id,
+    "workId: "+w.workId,
+    "bookmark: "+(w.bookmark===null?"null":String(w.bookmark)),
+    "episodeCount: "+w.episodeCount,
+    "noveltype: "+String(w.siteData?.noveltype??"（なし）"),
+    "isR18: "+String(w.siteData?.isR18),
+    "shelfId: "+String(w.shelfId||"")
+  ].join("\n");
+  diagnostic.append(diagnosticSummary,pre);
+  card.append(meta,title,author,synopsisDetails,actions,diagnostic);
+  return card;
+}
+function renderCards(){
+  cardsNode.replaceChildren();
+  const totalPages=Math.ceil(savedRecords.length/PAGE_SIZE);
+  const start=currentPage*PAGE_SIZE;
+  const pageRecords=savedRecords.slice(start,start+PAGE_SIZE);
+  for(const w of pageRecords)cardsNode.append(createCard(w));
+  const label=(totalPages?currentPage+1:0)+" / "+totalPages+"ページ（全"+savedRecords.length.toLocaleString("ja-JP")+"作品）";
+  $("pageLabel").textContent=label;$("pageLabel2").textContent=label;
+  const prev=currentPage>0,next=currentPage+1<totalPages;
+  $("prevBtn").disabled=!prev;$("prevBtn2").disabled=!prev;
+  $("nextBtn").disabled=!next;$("nextBtn2").disabled=!next;
+}
+async function loadSavedRecords(sourceRecords=null){
+  const db=await openLabDB();
+  try{
+    const tx=db.transaction("works","readonly");
+    const records=await requestResult(tx.objectStore("works").getAll());
+    records.sort((a,b)=>String(a.workId||"").localeCompare(String(b.workId||""),"ja"));
+    savedRecords=records;currentPage=0;
+    const audit=countAudit(records,sourceRecords);
+    renderAudit(audit,Boolean(sourceRecords));
+    renderCards();
+    importBtn.disabled=records.length>0;
+    if(records.length===0)setStatus("専用LabDBは空です。JSONを選んで取り込めます。");
+    else setStatus("専用LabDBから"+records.length.toLocaleString("ja-JP")+"作品を読み込みました。保存済みデータは変更していません。");
+  }finally{db.close()}
+}
+async function importJson(){
+  const file=fileInput.files?.[0];
+  if(!file){setStatus("先にJSONファイルを選択してください。");return;}
+  importBtn.disabled=true;reloadBtn.disabled=true;
+  try{
+    setStatus("JSONを読み込み・検査しています…");
+    const data=JSON.parse(await file.text());
+    const check=validateTransfer(data);
+    if(!check.ok){
+      setStatus("取り込みを中止しました。データは保存していません。\n"+check.errors.slice(0,30).map(x=>"・"+x).join("\n"));
+      return;
+    }
+    const db=await openLabDB();
+    try{
+      const count=await requestResult(db.transaction("works","readonly").objectStore("works").count());
+      if(count!==0){setStatus("取り込み中止：専用LabDBには既に"+count+"作品が保存されています。既存データは変更していません。");return;}
+      setStatus("検査合格。3,657作品を1つのトランザクションで保存しています…");
+      await new Promise((resolve,reject)=>{
+        const tx=db.transaction("works","readwrite");
+        const store=tx.objectStore("works");
+        for(const record of data.records)store.add(record);
+        tx.oncomplete=resolve;
+        tx.onerror=()=>reject(tx.error||new Error("保存トランザクションに失敗しました"));
+        tx.onabort=()=>reject(tx.error||new Error("保存を中止しました。部分保存はロールバックされています"));
+      });
+    }finally{db.close()}
+    await loadSavedRecords(data.records);
+    const audit=countAudit(savedRecords,data.records);
+    if(audit.total===EXPECTED.total&&audit.matched===EXPECTED.total&&audit.duplicate===0){
+      setStatus("取り込み成功。3,657作品を保存し、元JSONとの全項目照合も3,657件一致しました。bookmarkを含む各レコードは変換せず保存しています。");
+    }else{
+      setStatus("保存は完了しましたが、照合結果に不一致があります。結果を確認してください。");
+    }
+  }catch(error){
+    setStatus("処理エラー："+error.message+"\n保存処理が失敗した場合、IndexedDBトランザクション全体が中止されます。");
+  }finally{
+    reloadBtn.disabled=false;
+    const db=await openLabDB().catch(()=>null);
+    if(db){const count=await requestResult(db.transaction("works","readonly").objectStore("works").count()).catch(()=>-1);db.close();importBtn.disabled=count!==0;}
+  }
+}
+$("prevBtn").addEventListener("click",()=>{if(currentPage>0){currentPage--;renderCards();}});
+$("prevBtn2").addEventListener("click",()=>{if(currentPage>0){currentPage--;renderCards();}});
+$("nextBtn").addEventListener("click",()=>{if(currentPage+1<Math.ceil(savedRecords.length/PAGE_SIZE)){currentPage++;renderCards();}});
+$("nextBtn2").addEventListener("click",()=>{if(currentPage+1<Math.ceil(savedRecords.length/PAGE_SIZE)){currentPage++;renderCards();}});
+importBtn.addEventListener("click",importJson);
+reloadBtn.addEventListener("click",async()=>{
+  reloadBtn.disabled=true;
+  try{await loadSavedRecords();}catch(error){setStatus("再読込エラー："+error.message);}
+  finally{reloadBtn.disabled=false;}
+});
+(async()=>{
+  try{await loadSavedRecords();}
+  catch(error){setStatus("LabDBを開けません："+error.message);}
+})();
+</script>
+</body>
+</html>
