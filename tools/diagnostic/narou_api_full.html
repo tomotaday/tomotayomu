@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f5f7fb">
+<title>ともたよむ｜なろう再取得 APIフル版</title>
+<style>
+:root{color-scheme:light;--ink:#263247;--muted:#68758a;--line:#dce3ed;--paper:#fff;--bg:#f5f7fb;--accent:#526b9a;--ok:#287a55;--warn:#9a6418;--bad:#b33b3b}
+*{box-sizing:border-box}
+body{margin:0;padding:18px;background:var(--bg);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:780px;margin:0 auto}
+h1{font-size:1.35rem;margin:8px 0}
+h2{font-size:1.05rem;margin:0 0 10px}
+p{margin:6px 0}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:15px;margin:12px 0}
+.small{font-size:.84rem;color:var(--muted)}
+.status{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--muted)}
+button,select{font:inherit;border-radius:10px;padding:10px 13px}
+button{border:0;background:var(--accent);color:white;margin:4px 4px 4px 0}
+button.secondary{background:#e9edf5;color:var(--ink);border:1px solid var(--line)}
+button.danger{background:#8d4545}
+button:disabled{opacity:.45}
+select{max-width:100%;border:1px solid var(--line);background:white;color:var(--ink)}
+.statgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.stat{background:#f5f7fb;border:1px solid var(--line);border-radius:10px;padding:10px}
+.stat strong{display:block;font-size:1.25rem}
+label{display:block;font-weight:600;margin:8px 0 4px}
+progress{width:100%;height:16px}
+code{overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<main>
+<p><a href="../../index.html">← ともたよむに戻る</a></p>
+<h1>なろう全作品再取得｜APIフル版</h1>
+<p class="small">本番DBからなろう作品を読み取り、APIの全項目を取得して独立した統合仮保存DBへ保存します。Atom・Translator・本番works更新は、このAPI工程には含みません。</p>
+
+<section class="panel">
+<h2>安全境界</h2>
+<ul class="small">
+<li>本番DB <code>tomotaYomuWorksDB v2 / works</code> は読み取り専用です。</li>
+<li>保存先は作業ごとに作る独立DBです。localStorageは使用しません。</li>
+<li>API生データは加工せず作品レコードへ保存します。Atom用領域も同じレコード内に確保します。</li>
+<li>このページに仮保存DBの削除機能はありません。</li>
+</ul>
+<button id="loadTargets">本番DBから対象を読み込む</button>
+<div id="targetStatus" class="status">まだ読み込んでいません。</div>
+<div id="targetCounts" class="statgrid"></div>
+</section>
+
+<section class="panel">
+<h2>新しい作業DBを作成</h2>
+<p class="small">全対象の固定スナップショットを作ります。Nコード重複・形式不正は記録してAPI照会対象から分離します。</p>
+<button id="createRun" disabled>新しい仮保存DBを作成</button>
+<div id="createStatus" class="status"></div>
+</section>
+
+<section class="panel">
+<h2>既存作業の再開</h2>
+<label for="runSelect">保存済み作業DB</label>
+<select id="runSelect" style="width:100%"><option value="">作業DBを読み込んでください</option></select>
+<button id="refreshRuns" class="secondary">作業DB一覧を更新</button>
+<button id="inspectRun" class="secondary" disabled>選択した作業を確認</button>
+<div id="runStatus" class="status">作業DBはまだ選択されていません。</div>
+</section>
+
+<section class="panel">
+<h2>API取得</h2>
+<p class="small">検証範囲は累積件数です。10件で確認後、100 → 500 → 1,000 → 全件へ広げます。1回のAPI要求は最大100件。完了済み作品は再取得しません。</p>
+<label for="scopeSelect">今回の検証範囲</label>
+<select id="scopeSelect">
+<option value="10">先頭10件</option>
+<option value="100">先頭100件</option>
+<option value="500">先頭500件</option>
+<option value="1000">先頭1,000件</option>
+<option value="0">全件</option>
+</select>
+<button id="runApi" disabled>API取得を開始／再開</button>
+<button id="stopApi" class="danger" disabled>次のバッチ後に停止</button>
+<div id="apiStatus" class="status">作業DBを選択してください。</div>
+<progress id="apiProgress" max="100" value="0"></progress>
+<div id="apiCounts" class="statgrid"></div>
+</section>
+
+<section class="panel">
+<h2>作業結果</h2>
+<button id="refreshSummary" class="secondary" disabled>進捗を再読込</button>
+<div id="summaryStatus" class="status">作業DBを選択してください。</div>
+</section>
+
+<script>
+"use strict";
+const MAIN_DB = "tomotaYomuWorksDB";
+const MAIN_VERSION = 2;
+const TEMP_PREFIX = "tomotaYomuNarouReacquire_";
+const API = {
+  normal: "https://api.syosetu.com/novelapi/api/",
+  r18: "https://api.syosetu.com/novel18api/api/"
+};
+const API_BATCH_SIZE = 100;
+const API_TIMEOUT_MS = 25000;
+const API_INTERVAL_MS = 500;
+const $ = id => document.getElementById(id);
+let loadedTargets = null;
+let activeDbName = "";
+let stopRequested = false;
+let lastRequestAt = 0;
+
+function setStatus(id, value) { $(id).textContent = value; }
+function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+function validNcode(value) { return /^N[0-9A-Z]+$/.test(value); }
+
+function openExistingDb(name, expectedVersion, requiredStores) {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(name);
+    request.onupgradeneeded = () => {
+      request.transaction.abort();
+      reject(new Error("既存DBのバージョン変更が必要なため停止しました。"));
+    };
+    request.onsuccess = () => {
+      const db = request.result;
+      if (db.version !== expectedVersion || requiredStores.some(s => !db.objectStoreNames.contains(s))) {
+        db.close();
+        reject(new Error("DBのバージョンまたはストア構造が想定外です。"));
+        return;
+      }
+      resolve(db);
+    };
+    request.onerror = () => reject(request.error || new Error("DBを開けませんでした。"));
+    request.onblocked = () => reject(new Error("DBが別画面で使用中です。ほかの画面を閉じてください。"));
+  });
+}
+function readAll(store) {
+  return new Promise((resolve, reject) => {
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error || new Error("データ読み取りに失敗しました。"));
+  });
+}
+function txDone(tx) {
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error || new Error("DB transaction failed"));
+    tx.onabort = () => reject(tx.error || new Error("DB transaction aborted"));
+  });
+}
+
+async function loadProductionTargets() {
+  $("loadTargets").disabled = true;
+  loadedTargets = null;
+  setStatus("targetStatus", "本番DBの存在と構造を確認中…");
+  $("targetCounts").replaceChildren();
+  $("createRun").disabled = true;
+  let db;
+  try {
+    if (!indexedDB.databases) throw new Error("このブラウザでは既存DBの有無を確認できません。安全のため停止しました。");
+    const names = await indexedDB.databases();
+    if (!names.some(x => x.name === MAIN_DB)) throw new Error("本番DBが見つかりません。新規作成は行いません。");
+    db = await openExistingDb(MAIN_DB, MAIN_VERSION, ["works"]);
+    const all = await new Promise((resolve, reject) => {
+      const req = db.transaction("works", "readonly").objectStore("works").getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error || new Error("worksの読み取りに失敗しました。"));
+    });
+    const narou = all.filter(row => row && row.site === "narou");
+    const groups = new Map();
+    const invalidRows = [];
+    for (const row of narou) {
+      const code = String(row.workId || "").trim().toUpperCase();
+      if (!validNcode(code)) {
+        invalidRows.push({ id: row.id ?? null, workId: row.workId ?? null });
+        continue;
+      }
+      if (!groups.has(code)) groups.set(code, []);
+      groups.get(code).push(row);
+    }
+    const targetCodes = [...groups.keys()].sort();
+    const duplicateCodes = targetCodes.filter(code => groups.get(code).length > 1);
+    const targetRows = targetCodes.map(ncode => ({
+      ncode,
+      source: {
+        workId: groups.get(ncode)[0].workId ?? null,
+        id: groups.get(ncode)[0].id ?? null,
+        snapshots: groups.get(ncode)
+      },
+      targetStatus: groups.get(ncode).length > 1 ? "duplicate_ncode" : "ready",
+      api: {
+        normal: { status: "pending", raw: null, error: null },
+        r18: { status: "not_needed", raw: null, error: null },
+        selectedSource: null
+      },
+      atom: { status: "pending", raw: null, error: null },
+      transfer: { status: "pending", result: null, errors: [] }
+    }));
+    loadedTargets = {
+      targetCodes,
+      targetRows,
+      invalidRows,
+      duplicateCodes,
+      sourceWorksCount: narou.length,
+      createdAt: new Date().toISOString()
+    };
+    const uniqueEligible = targetRows.filter(x => x.targetStatus === "ready").length;
+    setStatus("targetStatus",
+      "読み取り完了。本番DBへの書き込みは行っていません。\n" +
+      "DB：" + MAIN_DB + " v" + db.version + "\n" +
+      "読み込み日時：" + new Date().toLocaleString("ja-JP"));
+    const cards = [
+      ["なろう作品", narou.length],
+      ["有効なユニークNコード", targetCodes.length],
+      ["API照会可能", uniqueEligible],
+      ["重複Nコード", duplicateCodes.length],
+      ["形式不正・Nコードなし", invalidRows.length]
+    ];
+    for (const [label, value] of cards) {
+      const div = document.createElement("div");
+      div.className = "stat";
+      const strong = document.createElement("strong");
+      strong.textContent = Number(value).toLocaleString("ja-JP");
+      const span = document.createElement("span");
+      span.className = "small";
+      span.textContent = label;
+      div.append(strong, span);
+      $("targetCounts").appendChild(div);
+    }
+    $("createRun").disabled = targetCodes.length === 0;
+  } catch (error) {
+    setStatus("targetStatus", "対象読み込みを中止しました。\n" + (error.message || String(error)));
+  } finally {
+    if (db) db.close();
+    $("loadTargets").disabled = false;
+  }
+}
+
+function makeRunId() {
+  const stamp = new Date().toISOString().replace(/[-:TZ.]/g, "").slice(0, 14);
+  const suffix = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return stamp + "_" + suffix;
+}
+async function createWorkDb() {
+  if (!loadedTargets) return;
+  $("createRun").disabled = true;
+  const runId = makeRunId();
+  const dbName = TEMP_PREFIX + runId;
+  setStatus("createStatus", "独立仮保存DBを作成中…");
+  let db;
+  try {
+    db = await new Promise((resolve, reject) => {
+      const req = indexedDB.open(dbName, 1);
+      req.onupgradeneeded = () => {
+        const d = req.result;
+        d.createObjectStore("meta", { keyPath: "id" });
+        d.createObjectStore("works", { keyPath: "ncode" });
+        d.createObjectStore("batches", { keyPath: "id" });
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error || new Error("仮保存DBを作成できませんでした。"));
+      req.onblocked = () => reject(new Error("仮保存DBの作成がブロックされました。"));
+    });
+    const meta = {
+      id: "run",
+      runId,
+      dbName,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      status: "prepared",
+      sourceDb: MAIN_DB,
+      sourceDbVersion: MAIN_VERSION,
+      sourceWorksCount: loadedTargets.sourceWorksCount,
+      targetCount: loadedTargets.targetCodes.length,
+      eligibleCount: loadedTargets.targetRows.filter(x => x.targetStatus === "ready").length,
+      duplicateCodes: loadedTargets.duplicateCodes,
+      invalidRows: loadedTargets.invalidRows,
+      targetCodes: loadedTargets.targetCodes,
+      scopeCompleted: 0
+    };
+    const tx = db.transaction(["meta", "works"], "readwrite");
+    tx.objectStore("meta").put(meta);
+    for (const work of loadedTargets.targetRows) tx.objectStore("works").put(work);
+    await txDone(tx);
+    activeDbName = dbName;
+    setStatus("createStatus", "仮保存DBを作成しました。\n" + dbName + "\n対象Nコード：" + meta.targetCount + "件\n重複コードは照会対象から分離して記録しています。");
+    await refreshRuns();
+    $("runSelect").value = dbName;
+    await inspectSelectedRun();
+  } catch (error) {
+    setStatus("createStatus", "仮保存DB作成に失敗しました。\n" + (error.message || String(error)));
+  } finally {
+    if (db) db.close();
+    $("createRun").disabled = !loadedTargets;
+  }
+}
+
+async function refreshRuns() {
+  const select = $("runSelect");
+  const previous = select.value;
+  select.replaceChildren();
+  const names = await indexedDB.databases();
+  const runNames = names.map(x => x.name).filter(x => x && x.startsWith(TEMP_PREFIX)).sort().reverse();
+  if (!runNames.length) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "保存済み作業DBはありません";
+    select.appendChild(option);
+  } else {
+    for (const name of runNames) {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      select.appendChild(option);
+    }
+    if (runNames.includes(previous)) select.value = previous;
+  }
+  $("inspectRun").disabled = runNames.length === 0;
+  await updateActionAvailability();
+}
+async function getRunMeta(db) {
+  return new Promise((resolve, reject) => {
+    const req = db.transaction("meta", "readonly").objectStore("meta").get("run");
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error || new Error("metaの読み取りに失敗しました。"));
+  });
+}
+async function inspectSelectedRun() {
+  const name = $("runSelect").value;
+  if (!name) return;
+  let db;
+  try {
+    db = await openExistingDb(name, 1, ["meta", "works", "batches"]);
+    const meta = await getRunMeta(db);
+    if (!meta) throw new Error("作業情報が見つかりません。");
+    activeDbName = name;
+    setStatus("runStatus",
+      "作業DB：" + name + "\n" +
+      "作成：" + meta.createdAt + "\n" +
+      "対象：" + meta.targetCount + "件（照会可能 " + meta.eligibleCount + "件）\n" +
+      "状態：" + meta.status);
+    await updateActionAvailability();
+    await refreshSummary();
+  } catch (error) {
+    setStatus("runStatus", "作業DBを開けませんでした。\n" + (error.message || String(error)));
+  } finally {
+    if (db) db.close();
+  }
+}
+async function updateActionAvailability() {
+  const enabled = !!$("runSelect").value;
+  $("runApi").disabled = !enabled;
+  $("refreshSummary").disabled = !enabled;
+}
+
+function jsonp(url) {
+  return new Promise((resolve, reject) => {
+    const callback = "tomotaNarouFull_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+    const script = document.createElement("script");
+    let finished = false;
+    const cleanup = () => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      try { delete window[callback]; } catch (_) { window[callback] = undefined; }
+      script.remove();
+    };
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error("APIタイムアウト（" + (API_TIMEOUT_MS / 1000) + "秒）"));
+    }, API_TIMEOUT_MS);
+    window[callback] = data => { cleanup(); resolve(data); };
+    script.onerror = () => { cleanup(); reject(new Error("APIスクリプトの読み込みに失敗しました。")); };
+    script.src = url + "&callback=" + callback;
+    document.body.appendChild(script);
+  });
+}
+async function requestApi(base, codes) {
+  const waitMs = Math.max(0, API_INTERVAL_MS - (Date.now() - lastRequestAt));
+  if (waitMs) await wait(waitMs);
+  const query = new URLSearchParams({
+    out: "jsonp",
+    ncode: codes.map(x => x.toLowerCase()).join("-"),
+    lim: String(codes.length)
+  });
+  const response = await jsonp(base + "?" + query.toString());
+  lastRequestAt = Date.now();
+  if (!Array.isArray(response) || !response.length || !response[0] ||
+      !Number.isInteger(response[0].allcount)) {
+    throw new Error("API応答形式が不正です（allcountがありません）。");
+  }
+  const rows = response.slice(1);
+  if (rows.length !== response[0].allcount) {
+    throw new Error("API応答件数が不一致です（allcount " + response[0].allcount + "／受信 " + rows.length + "）。");
+  }
+  if (rows.length > codes.length) throw new Error("返却件数が要求件数を超えています。");
+  const requested = new Set(codes);
+  const found = new Map();
+  for (const row of rows) {
+    if (!row || typeof row.ncode !== "string") throw new Error("Nコードのない返却行があります。");
+    const code = row.ncode.trim().toUpperCase();
+    if (!validNcode(code)) throw new Error("形式不正なNコードが返却されました：" + code);
+    if (!requested.has(code)) throw new Error("要求していないNコードが返却されました：" + code);
+    if (found.has(code)) throw new Error("返却Nコードが重複しています：" + code);
+    found.set(code, row);
+  }
+  return {
+    allcount: response[0].allcount,
+    rows,
+    found,
+    returnedCodes: [...found.keys()]
+  };
+}
+
+async function getWorksByCodes(db, codes) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("works", "readonly");
+    const store = tx.objectStore("works");
+    const result = [];
+    let remaining = codes.length;
+    if (!remaining) { resolve(result); return; }
+    for (const code of codes) {
+      const req = store.get(code);
+      req.onsuccess = () => {
+        if (req.result) result.push(req.result);
+        remaining--;
+        if (!remaining) resolve(result);
+      };
+      req.onerror = () => reject(req.error || new Error("worksレコードの読み取りに失敗しました。"));
+    }
+  });
+}
+async function saveBatch(db, stage, codes, apiResult, errorText) {
+  const batchId = "batch_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
+  const now = new Date().toISOString();
+  const works = await getWorksByCodes(db, codes);
+  const tx = db.transaction(["works", "batches", "meta"], "readwrite");
+  const workStore = tx.objectStore("works");
+  for (const work of works) {
+    const slot = work.api[stage];
+    if (errorText) {
+      slot.status = "error";
+      slot.error = errorText;
+    } else {
+      const raw = apiResult.found.get(work.ncode) || null;
+      slot.status = raw ? "found" : "not_found";
+      slot.raw = raw;
+      slot.error = null;
+      if (stage === "normal") {
+        if (raw) {
+          work.api.selectedSource = "normal";
+          work.api.r18.status = "not_needed";
+        } else {
+          work.api.r18.status = "pending";
+        }
+      } else if (raw) {
+        work.api.selectedSource = "r18";
+      }
+    }
+    workStore.put(work);
+  }
+  tx.objectStore("batches").put({
+    id: batchId,
+    stage,
+    requestedCodes: codes,
+    requestedAt: now,
+    completedAt: new Date().toISOString(),
+    status: errorText ? "error" : "completed",
+    allcount: apiResult ? apiResult.allcount : null,
+    returnedCodes: apiResult ? apiResult.returnedCodes : [],
+    error: errorText || null
+  });
+  const metaReq = tx.objectStore("meta").get("run");
+  metaReq.onsuccess = () => {
+    const meta = metaReq.result;
+    if (meta) {
+      meta.updatedAt = new Date().toISOString();
+      meta.status = errorText ? "api_error" : "api_running";
+      tx.objectStore("meta").put(meta);
+    }
+  };
+  await txDone(tx);
+}
+async function readRunData(db) {
+  const tx = db.transaction(["meta", "works"], "readonly");
+  const meta = await new Promise((resolve, reject) => {
+    const req = tx.objectStore("meta").get("run");
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  const works = await new Promise((resolve, reject) => {
+    const req = tx.objectStore("works").getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+  return { meta, works };
+}
+async function updateMeta(db, updater) {
+  const tx = db.transaction("meta", "readwrite");
+  const store = tx.objectStore("meta");
+  const req = store.get("run");
+  req.onsuccess = () => {
+    const meta = req.result;
+    if (!meta) return;
+    updater(meta);
+    meta.updatedAt = new Date().toISOString();
+    store.put(meta);
+  };
+  await txDone(tx);
+}
+function countStatuses(works, scopeCodes) {
+  const selected = new Set(scopeCodes);
+  const rows = works.filter(w => selected.has(w.ncode));
+  return {
+    total: rows.length,
+    duplicate: rows.filter(w => w.targetStatus === "duplicate_ncode").length,
+    normalFound: rows.filter(w => w.api.normal.status === "found").length,
+    normalMissing: rows.filter(w => w.api.normal.status === "not_found").length,
+    normalError: rows.filter(w => w.api.normal.status === "error").length,
+    r18Found: rows.filter(w => w.api.r18.status === "found").length,
+    bothMissing: rows.filter(w => w.api.normal.status === "not_found" && w.api.r18.status === "not_found").length,
+    pending: rows.filter(w => w.targetStatus === "ready" &&
+      (w.api.normal.status === "pending" || w.api.normal.status === "error" ||
+       (w.api.normal.status === "not_found" && (w.api.r18.status === "pending" || w.api.r18.status === "error")))).length
+  };
+}
+function renderCounts(counts) {
+  $("apiCounts").replaceChildren();
+  const items = [
+    ["対象", counts.total],
+    ["通常API取得", counts.normalFound],
+    ["R18 API取得", counts.r18Found],
+    ["両API正常・対象なし", counts.bothMissing],
+    ["通常API未完了", counts.normalError],
+    ["残り・再試行", counts.pending]
+  ];
+  for (const [label, value] of items) {
+    const div = document.createElement("div");
+    div.className = "stat";
+    const strong = document.createElement("strong");
+    strong.textContent = Number(value).toLocaleString("ja-JP");
+    const span = document.createElement("span");
+    span.className = "small";
+    span.textContent = label;
+    div.append(strong, span);
+    $("apiCounts").appendChild(div);
+  }
+  const done = counts.total - counts.pending - counts.duplicate;
+  $("apiProgress").value = counts.total ? Math.max(0, Math.min(100, done / counts.total * 100)) : 0;
+}
+async function refreshSummary() {
+  const name = activeDbName || $("runSelect").value;
+  if (!name) return;
+  let db;
+  try {
+    db = await openExistingDb(name, 1, ["meta", "works", "batches"]);
+    const { meta, works } = await readRunData(db);
+    const counts = countStatuses(works, meta.targetCodes);
+    renderCounts(counts);
+    const complete = counts.pending === 0 && counts.normalError === 0;
+    setStatus("summaryStatus",
+      "作業DB：" + name + "\n" +
+      "対象：" + meta.targetCount + "件（重複Nコード " + meta.duplicateCodes.length + "件を除く）\n" +
+      "API取得成功：" + (counts.normalFound + counts.r18Found) + "件\n" +
+      "両API正常・対象なし：" + counts.bothMissing + "件\n" +
+      "未完了・再試行対象：" + counts.pending + "件\n" +
+      "状態：" + (complete ? "API照会対象の処理完了" : "未完了／再開可能") + "\n" +
+      "最終更新：" + meta.updatedAt);
+  } catch (error) {
+    setStatus("summaryStatus", "進捗を読み込めませんでした。\n" + (error.message || String(error)));
+  } finally {
+    if (db) db.close();
+  }
+}
+async function runApiProcess() {
+  const name = $("runSelect").value;
+  if (!name) return;
+  const selectedScope = Number($("scopeSelect").value);
+  stopRequested = false;
+  $("runApi").disabled = true;
+  $("stopApi").disabled = false;
+  setStatus("apiStatus", "作業DBを開いています…");
+  let db;
+  try {
+    db = await openExistingDb(name, 1, ["meta", "works", "batches"]);
+    const { meta } = await readRunData(db);
+    if (!meta || !Array.isArray(meta.targetCodes)) throw new Error("対象スナップショットがありません。");
+    const scopeCodes = selectedScope === 0 ? meta.targetCodes : meta.targetCodes.slice(0, selectedScope);
+    const eligibleCodes = scopeCodes.filter(code => {
+      const row = null;
+      return true;
+    });
+    const worksAll = await new Promise((resolve, reject) => {
+      const req = db.transaction("works", "readonly").objectStore("works").getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+    const map = new Map(worksAll.map(w => [w.ncode, w]));
+    const scoped = scopeCodes.map(code => map.get(code)).filter(Boolean);
+    const duplicates = scoped.filter(w => w.targetStatus === "duplicate_ncode");
+    const ready = scoped.filter(w => w.targetStatus === "ready");
+    setStatus("apiStatus", "対象 " + ready.length + "件を処理します。重複Nコード " + duplicates.length + "件は照会しません。");
+    await updateMeta(db, m => { m.status = "api_running"; m.scopeCompleted = Math.max(m.scopeCompleted || 0, scopeCodes.length); });
+
+    // 第1段階：通常API。成功済み・正常未取得済みの作品は再照会しない。
+    let pendingNormal = ready.filter(w => w.api.normal.status === "pending" || w.api.normal.status === "error");
+    while (pendingNormal.length && !stopRequested) {
+      const part = pendingNormal.slice(0, API_BATCH_SIZE);
+      setStatus("apiStatus", "通常API照会中…\n残り " + pendingNormal.length + "件／今回 " + part.length + "件");
+      let result = null, errorText = null;
+      try { result = await requestApi(API.normal, part.map(w => w.ncode)); }
+      catch (error) { errorText = error.message || String(error); }
+      await saveBatch(db, "normal", part.map(w => w.ncode), result, errorText);
+      if (errorText) {
+        setStatus("apiStatus", "通常APIのバッチが未完了です。R18 APIへは送っていません。\n" + errorText + "\n再開するとこのバッチを再試行します。");
+        break;
+      }
+      pendingNormal = pendingNormal.slice(part.length);
+      await refreshSummary();
+    }
+
+    // 第2段階：通常APIが正常応答し、対象Nコードが返らなかった作品だけR18 APIへ。
+    if (!stopRequested) {
+      const latest = await new Promise((resolve, reject) => {
+        const req = db.transaction("works", "readonly").objectStore("works").getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+      });
+      let pendingR18 = latest.filter(w => scopeCodes.includes(w.ncode) &&
+        w.targetStatus === "ready" && w.api.normal.status === "not_found" &&
+        (w.api.r18.status === "pending" || w.api.r18.status === "error"));
+      while (pendingR18.length && !stopRequested) {
+        const part = pendingR18.slice(0, API_BATCH_SIZE);
+        setStatus("apiStatus", "R18 API照会中…\n通常API正常応答・未返却 " + pendingR18.length + "件／今回 " + part.length + "件");
+        let result = null, errorText = null;
+        try { result = await requestApi(API.r18, part.map(w => w.ncode)); }
+        catch (error) { errorText = error.message || String(error); }
+        await saveBatch(db, "r18", part.map(w => w.ncode), result, errorText);
+        if (errorText) {
+          setStatus("apiStatus", "R18 APIのバッチが未完了です。再開するとこのバッチを再試行します。\n" + errorText);
+          break;
+        }
+        pendingR18 = pendingR18.slice(part.length);
+        await refreshSummary();
+      }
+    }
+    const finalData = await readRunData(db);
+    const finalCounts = countStatuses(finalData.works, scopeCodes);
+    const finished = finalCounts.pending === 0;
+    await updateMeta(db, m => {
+      m.status = finished ? "api_scope_completed" : "api_incomplete";
+      m.lastScopeCount = scopeCodes.length;
+      m.lastScopeAt = new Date().toISOString();
+    });
+    setStatus("apiStatus",
+      (finished ? "今回の検証範囲は処理完了。" : "未完了のバッチがあります。再開できます。") +
+      "\n範囲：" + scopeCodes.length + "件" +
+      "\n通常API取得：" + finalCounts.normalFound +
+      "\nR18 API取得：" + finalCounts.r18Found +
+      "\n両API正常・対象なし：" + finalCounts.bothMissing +
+      "\n未完了・再試行対象：" + finalCounts.pending +
+      (stopRequested ? "\n停止要求を反映しました。" : ""));
+    await refreshSummary();
+  } catch (error) {
+    setStatus("apiStatus", "API工程を停止しました。\n" + (error.message || String(error)));
+  } finally {
+    if (db) db.close();
+    $("runApi").disabled = false;
+    $("stopApi").disabled = true;
+  }
+}
+
+$("loadTargets").addEventListener("click", loadProductionTargets);
+$("createRun").addEventListener("click", createWorkDb);
+$("refreshRuns").addEventListener("click", () => refreshRuns().catch(e => setStatus("runStatus", e.message || String(e))));
+$("inspectRun").addEventListener("click", inspectSelectedRun);
+$("runSelect").addEventListener("change", () => {
+  activeDbName = $("runSelect").value;
+  updateActionAvailability();
+});
+$("runApi").addEventListener("click", runApiProcess);
+$("stopApi").addEventListener("click", () => {
+  stopRequested = true;
+  $("stopApi").disabled = true;
+  setStatus("apiStatus", "停止要求を受け付けました。現在のバッチを保存してから停止します。");
+});
+$("refreshSummary").addEventListener("click", refreshSummary);
+refreshRuns().catch(error => setStatus("runStatus", error.message || String(error)));
+</script>
+</body>
+</html>
