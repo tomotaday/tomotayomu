@@ -118,6 +118,8 @@ function translateNarouToCommonWork(raw,existingWork){
   if(hasApiValue(raw.keyword))work.keywords=String(raw.keyword).trim().split(/\s+/u).filter(Boolean);
   else diagnostics.push("keyword：空値のため既存値を保持");
  }
+ if(work.keywords==null)work.keywords=[];
+ else if(!Array.isArray(work.keywords))errors.push("keywords：文字列配列ではありません");
  const novelType=raw.novel_type,end=raw.end;
  if(novelType===2&&end===0)work.status="短編";
  else if(novelType===1&&end===0)work.status="完結";
