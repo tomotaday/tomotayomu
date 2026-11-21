@@ -405,8 +405,7 @@ async function requestApi(base, codes) {
     allcount: response[0].allcount,
     rows,
     found,
-    returnedCodes: [...found.keys()],
-    rawResponse: response
+    returnedCodes: [...found.keys()]
   };
 }
 
@@ -466,7 +465,6 @@ async function saveBatch(db, stage, codes, apiResult, errorText) {
     status: errorText ? "error" : "completed",
     allcount: apiResult ? apiResult.allcount : null,
     returnedCodes: apiResult ? apiResult.returnedCodes : [],
-    rawResponse: apiResult ? apiResult.rawResponse : null,
     error: errorText || null
   });
   const metaReq = tx.objectStore("meta").get("run");
