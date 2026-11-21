@@ -23,7 +23,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:360px;overflow:auto;b
 <header>
  <p class="small">PRODUCTION TRANSFER / READ ONLY</p>
  <h1>なろうTranslator</h1>
- <p>全作品再取得DBからAtom取得済みの対象作品を選び、本番共通works形式へ変換して移行用JSONを作成します。</p>
+ <p>なろう全作品の再取得DBから、APIデータ・Atom正規URL・既存の管理情報を照合し、理想の共通works形式へ一括変換して移行用JSONを作成します。</p>
  <p class="small">このページは移行元DBを読み取り専用で扱います。本番DBへの書き込み、仮保存DBの変更は行いません。</p>
 </header>
 <section class="panel">
@@ -53,7 +53,9 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:360px;overflow:auto;b
   <li>読み取り元は tomotaYomuNarouReacquire_ で始まる version 1 DBのみ。</li>
   <li>API生データは api[selectedSource].raw を使用します。</li>
   <li>既存作品情報は source.snapshots の元レコードを引き継ぎます。</li>
-  <li>Atom URLは作品レコード最上位の url を newUrl に引き継ぎます。元の url は保持します。</li>
+  <li>Atomから取得した正規URLを最終的な url に設定します。旧 url は引き継ぎません。</li>
+  <li>updatedAt・createdAt・reading・characterCount・newUrl・siteData.legacyFields は出力しません。</li>
+  <li>bookmark欠落はnullへ正規化し、null・"R"・正の整数だけを許可します。</li>
   <li>変換結果はファイル出力のみ。IndexedDB・本番DB・localStorageには書き込みません。</li>
  </ul>
 </section>
@@ -133,14 +135,22 @@ function translateNarouToCommonWork(raw,existingWork){
  if(nextGenres.length||NAROU_GENRE_SOURCE_FIELDS.some(key=>Object.prototype.hasOwnProperty.call(raw,key)))work.genres=nextGenres;
  const unknownFlags=Object.keys(raw).filter(key=>/^is[a-z0-9_]+$/i.test(key)&&!knownSet.has(key));
  if(unknownFlags.length)diagnostics.push("未採用の属性候補："+unknownFlags.join("、"));
- if(existingWork?.url)work.url=existingWork.url;
- else delete work.url;
  if(existingWork){
   for(const key of ["id","shelfId","bookmark","searchExcluded","authorKana","authorKanaFirst","authorKanaChecked"]){
    if(Object.prototype.hasOwnProperty.call(existingWork,key))work[key]=structuredClone(existingWork[key]);
   }
  }else{delete work.id;}
  if(!work.id)errors.push("既存内部idがありません");
+ // 今回のworks正規化：旧項目・重複項目を残さない。
+ for(const key of ["updatedAt","createdAt","reading","characterCount","newUrl"])delete work[key];
+ if(work.siteData&&typeof work.siteData==="object"){
+  work.siteData=structuredClone(work.siteData);
+  delete work.siteData.legacyFields;
+ }
+ // しおりは唯一の読書状態。欠落は未読(null)として正規化。
+ if(!Object.prototype.hasOwnProperty.call(work,"bookmark"))work.bookmark=null;
+ const bookmark=work.bookmark;
+ if(!(bookmark===null||bookmark==="R"||(Number.isInteger(bookmark)&&bookmark>0)))errors.push("bookmark：null・R・正の整数以外の値です（"+String(bookmark)+"）");
  return {work,diagnostics,errors};
 }
 function reqResult(req){return new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||Error("IndexedDB読み込み失敗"));});}
@@ -206,7 +216,8 @@ async function convertAll(){
    if(typeof row.url!=="string"||!row.url.trim()){errors.push({ncode,messages:["Atom正規URLがありません"]});continue;}
    const result=translateNarouToCommonWork(raw,existing);
    if(result.errors.length){errors.push({ncode,messages:result.errors});continue;}
-   result.work.newUrl=row.url;
+   result.work.url=row.url;
+   if(result.work.id!=="narou:"+ncode){errors.push({ncode,messages:["内部idがNコードと一致しません"]});continue;}
    records.push({ncode,apiSource:source,work:result.work,diagnostics:result.diagnostics});
   }
   if(sourceCounts.normal!==1453||sourceCounts.r18!==2204)errors.push({ncode:"(API区分集計)",messages:["通常/R18件数が想定と不一致："+sourceCounts.normal+"/"+sourceCounts.r18]});
@@ -217,7 +228,7 @@ async function convertAll(){
    $("resultStatus").className="status bad";$("resultStatus").textContent="全件変換は未完了です。エラー："+errors.length+"件。エラー作品を修正するまでJSON出力はできません。";
    const pre=document.createElement("pre");pre.textContent=JSON.stringify(errors.slice(0,100),null,2);$("errorList").append(pre);
   }else{
-   convertedData={format:"tomotayomu-narou-works-transfer-v1",formatVersion:1,sourceDb:name,sourceDbVersion:1,generatedAt:new Date().toISOString(),count:records.length,normal:sourceCounts.normal,r18:sourceCounts.r18,records:records.map(x=>x.work)};
+   convertedData={format:"tomotayomu-narou-works-transfer-v2",formatVersion:2,sourceDb:name,sourceDbVersion:1,generatedAt:new Date().toISOString(),count:records.length,normal:sourceCounts.normal,r18:sourceCounts.r18,records:records.map(x=>x.work)};
    $("resultStatus").className="status ok";$("resultStatus").textContent="全件変換成功："+records.length.toLocaleString("ja-JP")+"件。API通常/R18・Atom URL・元作品情報をNコードで照合しました。JSONを保存できます。";
    $("download").disabled=false;
    const info=document.createElement("pre");info.textContent="出力形式："+convertedData.format+"\n件数："+convertedData.count+"\n先頭3件のNコード："+records.slice(0,3).map(x=>x.ncode).join(" / ");$("errorList").append(info);
@@ -231,7 +242,7 @@ function downloadJson(){
  if(!convertedData)return;
  const blob=new Blob([JSON.stringify(convertedData)],{type:"application/json"});
  const url=URL.createObjectURL(blob),a=document.createElement("a");
- a.href=url;a.download="narou-works-transfer-3657.json";document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);
+ a.href=url;a.download="narou-works-transfer-3657-v2.json";document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);
 }
 $("refreshDb").addEventListener("click",refreshDbList);
 $("loadDb").addEventListener("click",convertAll);
