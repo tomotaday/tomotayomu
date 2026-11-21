@@ -651,3 +651,51 @@ Atom取得失敗時の再取得方法、未取得作品が残る場合のカー�
 ### 17-5. 旧記述との関係
 
 第15節等にある「Atom取得失敗時に旧URLを保持して利用する」「未取得作品が残る場合のカード切替条件を検討する」という記述は、当時の検討履歴である。2026-11-19の本節で仕様を確定し、**取得失敗はエラー、旧URLへのフォールバックなし**に改める。旧記述は履歴として残し、現行仕様の根拠にはしない。
+
+## 18. 2026-11-22：全件トランスファー専用Translatorのworks正規化
+
+### 18-1. ページの役割
+
+- `app/transfer/narou_translator.html` は、なろう全作品の再取得データを共通worksへ移すための一括トランスファー専用ページとする。
+- 新規作品登録用ページ・Shortcut・現行Registerとは役割を分ける。
+- 入力元は `tomotaYomuNarouReacquire_` で始まる再取得DB。API生データは再取得DBに保存済みの `api[selectedSource].raw` を使い、ここでAPIを再取得しない。
+- Atom URLは再取得DBの作品レコード最上位 `row.url` を使用する。
+- 再取得DBはreadonlyで開く。出力はJSONファイルのみ。本番works DB・localStorage・Shortcut・GitHub Actionsへの書き込みや変更は行わない。
+
+### 18-2. worksへの確定マッピング
+
+- `url`：Atomから返された正規URLを最終値として設定する。既存スナップショットの旧 `url` は引き継がず、`newUrl` は作らない。Atom URLの取得失敗、Nコードとの不一致、API区分とホストの不一致はエラーとする。旧URLへのフォールバックは禁止。
+- `publishedAt`：API `general_firstup`（初回登録日）。
+- `lastPublishedAt`：API `general_lastup`（最新話登録日）。
+- 日付は `YYYY/MM/DD HH:mm`（JST、秒なし）。正しいAPI項目が欠落・不正ならエラーとし、別の日付項目から補完しない。
+- `keywords`：API `keyword` を空白区切りで配列化する。空値は既存値を保持し、空文字要素を作らない。
+- `genres`：全年齢APIの `biggenre`・`genre`・属性フラグ・`isr15`、R18 APIの `nocgenre`・属性フラグを、`{source, value}` の配列で保持する。元の値と型を変更しない。既存の対象外sourceも保持する。出力時にgenres配列がない作品はエラー。
+- `authorId`：既存の有効値を維持。未設定の場合だけ通常APIの有効な `userid` を採用する。作者名から推測しない。R18 APIに作者IDがなくても作品の変換を止めない。
+- `id`・`shelfId`・`bookmark`・`searchExcluded`・作者かな情報等のともたよむ独自情報は、既存スナップショットから引き継ぐ。
+- `bookmark`：唯一の読書位置・状態。未設定・欠落は `null` に正規化。許可値は `null`・`"R"`・正の整数。0・負数・その他の値はエラー。数値がepisodeCountを超える場合もエラー。
+
+### 18-3. 出力から除く旧項目
+
+以下は最終worksに残さない。
+
+- `updatedAt`、`createdAt`、`reading`、`characterCount`、`newUrl`
+- `siteData.legacyFields`
+
+日付は `publishedAt` と `lastPublishedAt` の2項目だけとする。`reading` を参照してbookmarkを補正しない。bookmarkが正本である。
+
+### 18-4. 全件検査と出力形式
+
+- 再取得DB全体・meta件数・対象件数を照合する。
+- 対象は通常API 1,453件、R18 API 2,204件、合計3,657件。
+- Nコード重複、API生データとのNコード不一致、元スナップショットとのNコード不一致、Atom URL欠落・形式不正・ホスト不一致、内部id不一致、必須日付エラー、bookmark不正、genres欠落を検査する。
+- エラーが1件でもあれば全件JSONを出力しない。
+- 出力形式を `tomotayomu-narou-works-transfer-v2`（formatVersion 2）、ファイル名を `narou-works-transfer-3657-v2.json` とする。
+
+### 18-5. 実装・確認状態
+
+- 対象ファイル：`app/transfer/narou_translator.html`
+- 実装commit：`2131668f1c2096934ae6b663b8775861bdd85719`（works正規化・v2出力）、`f2276cf50b02c2ee2e93b066a8b81c25ed64ed7f`（Atom URL・ジャンル・bookmark検査）
+- GitHubから更新後ファイルを再取得し、Atom URLを `url` に設定すること、旧URLを引き継がないこと、旧項目削除、`siteData.legacyFields` 削除、bookmark欠落のnull化、genres検査、Atom URLホスト検査、v2出力を静的に確認した。
+- 既存のユーザー提供JSON（3,657件）の事前監査では、bookmarkの許可値違反0件、genres配列欠落0件、keywords欠落5件（APIキーワード空値に相当）を確認した。既存JSONには旧項目が残るが、今回の修正後Translatorが再出力時に除去する対象であり、元JSONは変更していない。
+- **iPhone実機での再取得DB読み込み・3,657件の再変換・v2 JSON出力・出力JSONの再監査は未実施。**
+- 本番works DBへの登録・移行は未実施。今後、v2 JSONを実機で出力・検査し、バックアップと復元方針を確認する別工程とする。
