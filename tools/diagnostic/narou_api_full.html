@@ -85,8 +85,8 @@ code{overflow-wrap:anywhere}
 
 <section class="panel">
 <h2>API保存データ検査</h2>
-<p class="small">先頭10作品のAPI生データ・Nコード照合・バッチ記録を読み取り専用で検査します。API再取得、DB書き込み、データ変更は行いません。</p>
-<button id="auditApiSample" class="secondary" disabled>先頭10作品の保存内容を検査</button>
+<p class="small">「今回の検証範囲」で選択した先頭件数について、API生データ・Nコード照合・バッチ記録を読み取り専用で検査します。API再取得、DB書き込み、データ変更は行いません。</p>
+<button id="auditApiSample" class="secondary" disabled>選択範囲の保存内容を検査</button>
 <div id="auditStatus" class="status">作業DBを選択してください。</div>
 </section>
 
@@ -609,13 +609,12 @@ async function auditApiSample() {
       })
     ]);
     if (!meta || !Array.isArray(meta.targetCodes)) throw new Error("作業メタ情報または対象Nコードがありません。");
-    const sampleCodes = meta.targetCodes.slice(0, 10);
+    const requestedScope = Number($("scopeSelect").value);
+    const sampleCodes = requestedScope === 0 ? meta.targetCodes : meta.targetCodes.slice(0, requestedScope);
     const workMap = new Map(allWorks.map(w => [w.ncode, w]));
     const sampleWorks = sampleCodes.map(code => workMap.get(code));
     const issues = [];
-    const details = [];
-    if (sampleCodes.length !== 10) issues.push("対象スナップショットの先頭10件を確認できません（件数：" + sampleCodes.length + "）。");
-    if (sampleWorks.some(w => !w)) issues.push("先頭10件の作品レコードに欠落があります。");
+    if (sampleWorks.some(w => !w)) issues.push("検査範囲内の作品レコードに欠落があります。");
 
     const expectedNormal = [];
     const expectedR18 = [];
@@ -623,6 +622,7 @@ async function auditApiSample() {
     const expectedR18Returned = new Set();
     let normalRawFieldsMin = Infinity, normalRawFieldsMax = 0;
     let r18RawFieldsMin = Infinity, r18RawFieldsMax = 0;
+    let bothMissing = 0;
 
     for (let i = 0; i < sampleWorks.length; i++) {
       const work = sampleWorks[i];
@@ -649,7 +649,7 @@ async function auditApiSample() {
           normalRawFieldsMin = Math.min(normalRawFieldsMin, n);
           normalRawFieldsMax = Math.max(normalRawFieldsMax, n);
         }
-        if (r18.status !== "not_needed") issues.push(code + "：通常API取得済みなのにR18状態が not_needed ではありません。");
+        if (r18.status !== "not_needed" || r18.raw !== null) issues.push(code + "：通常API取得済みなのにR18状態／生データが not_needed／null ではありません。");
         if (work.api.selectedSource !== "normal") issues.push(code + "：selectedSource が normal ではありません。");
       } else if (normal.status === "not_found") {
         if (normal.raw !== null) issues.push(code + "：通常API not_found なのに生データが null ではありません。");
@@ -664,8 +664,12 @@ async function auditApiSample() {
             r18RawFieldsMax = Math.max(r18RawFieldsMax, n);
           }
           if (work.api.selectedSource !== "r18") issues.push(code + "：selectedSource が r18 ではありません。");
+        } else if (r18.status === "not_found") {
+          if (r18.raw !== null) issues.push(code + "：R18 API not_found なのに生データが null ではありません。");
+          if (work.api.selectedSource !== null) issues.push(code + "：両API未返却なのに selectedSource が null ではありません。");
+          bothMissing++;
         } else {
-          issues.push(code + "：通常API未返却作品のR18状態が found ではありません（" + r18.status + "）。");
+          issues.push(code + "：通常API未返却作品のR18状態が想定外です（" + r18.status + "）。");
         }
       } else {
         issues.push(code + "：通常API状態が想定外です（" + normal.status + "）。");
@@ -688,7 +692,7 @@ async function auditApiSample() {
       }
       if (batch.allcount !== batch.returnedCodes.length) issues.push(batch.stage + " バッチ " + batch.id + " の allcount と返却コード数が不一致です。");
       for (const code of batch.requestedCodes || []) {
-        if (!sampleCodes.includes(code)) issues.push(batch.stage + " バッチに先頭10件以外の要求コードが混在しています：" + code);
+        if (!sampleCodes.includes(code)) issues.push(batch.stage + " バッチに検査範囲外の要求コードが混在しています：" + code);
         batchCodes[batch.stage].push(code);
       }
       for (const code of batch.returnedCodes) {
@@ -713,9 +717,10 @@ async function auditApiSample() {
     const fmt = n => Number.isFinite(n) ? String(n) : "—";
     const summary = [
       issues.length ? "検査結果：不一致あり" : "検査結果：すべて一致",
-      "対象作品：" + sampleWorks.filter(Boolean).length + "／" + sampleCodes.length,
+      "検査範囲：" + sampleWorks.filter(Boolean).length + "／" + sampleCodes.length,
       "通常API生データ：" + expectedNormalReturned.size + "件（項目数 " + fmt(normalRawFieldsMin) + "〜" + fmt(normalRawFieldsMax) + "）",
       "R18 API生データ：" + expectedR18Returned.size + "件（項目数 " + fmt(r18RawFieldsMin) + "〜" + fmt(r18RawFieldsMax) + "）",
+      "両API正常・対象なし：" + bothMissing + "件",
       "関連バッチ：" + relevantBatches.length + "件（通常 " + batchCodes.normal.length + "要求／R18 " + batchCodes.r18.length + "要求）",
       "検査方式：仮保存DBの meta／works／batches を readonly で読み取り",
       issues.length ? "確認事項：\n・" + issues.join("\n・") : "Nコード照合・要求/返却記録・生データ保存に不一致はありません。"
