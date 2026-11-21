@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f7f7fb">
+<title>ともたよむ｜Atom URL取得対象出力</title>
+<style>
+:root{color-scheme:light;--ink:#273044;--muted:#687386;--line:#dfe4ed;--paper:#fff;--bg:#f5f7fb;--accent:#526b9a}
+*{box-sizing:border-box}
+body{margin:0;padding:18px;background:var(--bg);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:760px;margin:0 auto}h1{font-size:1.3rem;margin:0 0 6px}h2{font-size:1.05rem;margin:0 0 10px}
+p{margin:6px 0}.panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:15px;margin:12px 0}
+.small{font-size:.84rem;color:var(--muted)}.status{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--muted)}
+button,select,textarea{font:inherit;border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:white;color:var(--ink);margin:4px 4px 4px 0}
+button.primary{background:var(--accent);border-color:var(--accent);color:white}button:disabled{opacity:.45}
+textarea{width:100%;min-height:130px;font:12px/1.5 ui-monospace,monospace}
+</style>
+</head>
+<body><main>
+<p><a href="../../index.html">← ともたよむに戻る</a></p>
+<h1>今回限り｜Atom URL取得対象出力</h1>
+<p class="small">既存のAPI仮保存DBをreadonlyで読み取り、Atom取得対象のNコードだけを出力します。DBへの書き込み・localStorage利用はありません。</p>
+<section class="panel">
+<h2>1. 仮保存DBを選択</h2>
+<select id="db" style="width:100%"><option>DB一覧を読み込み中…</option></select>
+<button id="refresh">DB一覧更新</button><button id="inspect" class="primary" disabled>対象を確認</button>
+<div id="status" class="status">待機中</div>
+</section>
+<section class="panel">
+<h2>2. 対象一覧</h2>
+<p class="small">通常API取得済みとR18 API取得済みを分けて出力します。検索除外38件・削除確認済み5件はAPI結果に含まれないため対象外です。</p>
+<label for="normal">通常Atom対象 Nコード</label><textarea id="normal" readonly placeholder="対象確認後に表示"></textarea>
+<button id="copyNormal" disabled>通常Nコードをコピー</button>
+<label for="r18">R18 Atom対象 Nコード</label><textarea id="r18" readonly placeholder="対象確認後に表示"></textarea>
+<button id="copyR18" disabled>R18 Nコードをコピー</button>
+<button id="download" class="primary" disabled>対象一覧JSONを保存</button>
+<div id="audit" class="status"></div>
+</section>
+<section class="panel">
+<h2>安全確認</h2>
+<ul class="small">
+<li>本番DBには接続しません。</li><li>選択した仮保存DBはreadonlyで開きます。</li>
+<li>API原本・作品レコード・Atom/transfer既存領域は変更しません。</li>
+<li>出力するのはNコードとAPI区分だけです。</li>
+</ul>
+</section>
+</main>
+<script>
+"use strict";
+const PREFIX="tomotaYomuNarouReacquire_";
+const $=id=>document.getElementById(id);
+let exportData=null;
+function setStatus(id,s){$(id).textContent=s;}
+async function refresh(){
+ const s=$("db"),old=s.value;s.replaceChildren();
+ try{
+  if(!indexedDB.databases)throw new Error("このブラウザではDB一覧を確認できません。");
+  const dbs=await indexedDB.databases(),names=dbs.map(x=>x.name).filter(x=>x&&x.startsWith(PREFIX)).sort().reverse();
+  if(!names.length){const o=document.createElement("option");o.value="";o.textContent="対象DBなし";s.append(o);}
+  for(const n of names){const o=document.createElement("option");o.value=n;o.textContent=n;s.append(o);}
+  if(names.includes(old))s.value=old;
+  $("inspect").disabled=!names.length;setStatus("status","仮保存DB："+names.length+"件");
+ }catch(e){const o=document.createElement("option");o.value="";o.textContent="DB一覧取得失敗";s.append(o);$("inspect").disabled=true;setStatus("status",e.message||String(e));}
+}
+function openDb(name){return new Promise((resolve,reject)=>{
+ const r=indexedDB.open(name);
+ r.onupgradeneeded=()=>{r.transaction.abort();reject(new Error("DBバージョン変更が必要なため停止しました。"));};
+ r.onsuccess=()=>{const db=r.result;if(db.version!==1||!["meta","works","batches"].every(x=>db.objectStoreNames.contains(x))){db.close();reject(new Error("DB構造が想定外です。"));return;}resolve(db);};
+ r.onerror=()=>reject(r.error||new Error("DBを開けません。"));
+ r.onblocked=()=>reject(new Error("DBが別画面で使用中です。"));
+});}
+function getWorks(db){return new Promise((resolve,reject)=>{
+ const r=db.transaction("works","readonly").objectStore("works").getAll();
+ r.onsuccess=()=>resolve(r.result||[]);r.onerror=()=>reject(r.error||new Error("works読み取り失敗"));
+});}
+async function inspect(){
+ $("inspect").disabled=true;exportData=null;setStatus("status","仮保存DBをreadonlyで確認中…");
+ try{
+  const name=$("db").value;if(!name)throw new Error("DBを選択してください。");
+  const db=await openDb(name);let rows;try{rows=await getWorks(db);}finally{db.close();}
+  const seen=new Set(),normal=[],r18=[],invalid=[];
+  for(const w of rows){
+   if(!w||w.targetStatus!=="ready")continue;
+   const code=String(w.ncode||"").toUpperCase();
+   if(!/^N[0-9A-Z]+$/.test(code)){invalid.push(code||"(空)");continue;}
+   if(seen.has(code)){invalid.push(code+" (重複)");continue;}seen.add(code);
+   if(w.api?.selectedSource==="normal"&&w.api?.normal?.status==="found")normal.push(code);
+   else if(w.api?.selectedSource==="r18"&&w.api?.r18?.status==="found")r18.push(code);
+  }
+  normal.sort();r18.sort();
+  if(normal.length+r18.length!==3657)throw new Error("対象件数が想定と異なります。通常："+normal.length+"、R18："+r18.length+"、合計："+(normal.length+r18.length)+"。安全のため出力を停止しました。");
+  if(invalid.length)throw new Error("形式不正または重複が見つかりました："+invalid.slice(0,10).join(", "));
+  const all=new Set([...normal,...r18]);if(all.size!==3657)throw new Error("通常/R18間でNコード重複があります。");
+  exportData={format:"tomotayomu-narou-atom-url-targets-v1",createdAt:new Date().toISOString(),database:name,expectedCount:3657,normal,r18};
+  $("normal").value=normal.join("\n");$("r18").value=r18.join("\n");
+  $("copyNormal").disabled=!normal.length;$("copyR18").disabled=!r18.length;$("download").disabled=false;
+  setStatus("status","対象確認完了（readonly）\nDB："+name+"\n作品レコード："+rows.length+"件\n通常："+normal.length+"件\nR18："+r18.length+"件\n合計："+all.size+"件");
+  setStatus("audit","照合：Nコード形式OK／重複なし／通常・R18区分の重複なし／対象3,657件");
+ }catch(e){setStatus("status","停止しました。\n"+(e.message||String(e)));$("normal").value="";$("r18").value="";$("copyNormal").disabled=true;$("copyR18").disabled=true;$("download").disabled=true;}
+ finally{$("inspect").disabled=false;}
+}
+async function copy(id){try{await navigator.clipboard.writeText($(id).value);setStatus("audit","コピーしました。");}catch(e){$(id).focus();$(id).select();setStatus("audit","自動コピーできません。選択状態にしたので手動でコピーしてください。");}}
+function download(){if(!exportData)return;const blob=new Blob([JSON.stringify(exportData,null,2)+"\n"],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="narou-atom-url-targets.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+$("refresh").addEventListener("click",refresh);$("inspect").addEventListener("click",inspect);
+$("copyNormal").addEventListener("click",()=>copy("normal"));$("copyR18").addEventListener("click",()=>copy("r18"));$("download").addEventListener("click",download);
+refresh();
+</script></body></html>
