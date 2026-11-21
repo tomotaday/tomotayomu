@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f5f7fb">
+<title>ともたよむ｜Atom URL結果取込</title>
+<style>
+:root{color-scheme:light;--ink:#273044;--muted:#687386;--line:#dfe4ed;--paper:#fff;--bg:#f5f7fb;--accent:#526b9a;--ok:#16794b;--warn:#9a5b13;--bad:#b42318}
+*{box-sizing:border-box}body{margin:0;padding:18px;background:var(--bg);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:760px;margin:0 auto}h1{font-size:1.3rem;margin:0 0 6px}h2{font-size:1.05rem;margin:0 0 8px}p{margin:6px 0}
+.small{font-size:.84rem;color:var(--muted)}.panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:15px;margin:12px 0}
+input,select,button{font:inherit;border:1px solid var(--line);border-radius:9px;padding:11px 12px;background:white;color:var(--ink);width:100%;margin:5px 0}
+button.primary{background:var(--accent);border-color:var(--accent);color:white;font-weight:650}button:disabled{opacity:.45}
+.status{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--muted);font-size:.9rem}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}.metric{background:#f7f8fb;border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}.metric strong{display:block;font-size:1.2rem}
+.warn{color:var(--warn)}.good{color:var(--ok)}.bad{color:var(--bad)}
+</style>
+</head>
+<body><main>
+<p><a href="../../index.html">← ともたよむに戻る</a></p>
+<h1>今回限り｜Atom URL結果の仮保存DB取込</h1>
+<p class="small">GitHub Actionsの結果JSONを、選択した再取得仮保存DBの works レコードへNコード照合して追加します。</p>
+
+<section class="panel">
+<h2>1. Artifact内のJSONを選択</h2>
+<p class="small">GitHubからダウンロードしたZIPを「ファイル」アプリで展開し、中の narou-atom-url-result.json を選択してください。</p>
+<input id="file" type="file" accept=".json,application/json">
+<div id="fileStatus" class="status">結果JSON未選択です。</div>
+<div class="grid">
+<div class="metric"><strong id="resultCount">—</strong><span class="small">URL結果</span></div>
+<div class="metric"><strong id="normalCount">—</strong><span class="small">通常</span></div>
+<div class="metric"><strong id="r18Count">—</strong><span class="small">R18</span></div>
+</div>
+</section>
+
+<section class="panel">
+<h2>2. 取り込み先の仮保存DB</h2>
+<p class="small">tomotaYomuNarouReacquire_ で始まるDBだけを候補に表示します。DBは最初に読み取り専用で検査します。</p>
+<select id="db"><option value="">DB一覧を読み込み中…</option></select>
+<button id="refresh">DB一覧を更新</button>
+<button id="audit" class="primary" disabled>書き込み前の照合を実行</button>
+<div id="auditStatus" class="status">結果JSONとDBを選択してください。</div>
+</section>
+
+<section class="panel">
+<h2>3. 照合結果・保存</h2>
+<p class="small warn">この段階ではまだDBは変更されません。照合が全件合格した場合だけ、保存ボタンが有効になります。</p>
+<div id="summary" class="status">未検査です。</div>
+<button id="write" class="primary" disabled>3,657件のURLを仮保存DBへ保存</button>
+<div id="writeStatus" class="status">保存はまだ実行していません。</div>
+</section>
+
+<section class="panel">
+<h2>保存する内容と安全境界</h2>
+<ul class="small">
+<li>変更するのは works レコード最上位の url 項目だけです。</li>
+<li>api / atom / transfer / source.snapshot 等の既存項目は変更しません。</li>
+<li>本番DB tomotaYomuWorksDB には接続しません。</li>
+<li>localStorage / sessionStorage は使用しません。</li>
+<li>対象3,657件すべてを事前照合し、1件でも不一致なら保存を許可しません。</li>
+<li>既存urlが空欄なら追加し、同じURLならそのまま、異なるURLがあれば全体を停止します。</li>
+</ul>
+</section>
+</main>
+<script>
+"use strict";
+const PREFIX="tomotaYomuNarouReacquire_";
+const EXPECTED_FORMAT="tomotayomu-narou-atom-url-result-v1";
+const EXPECTED_TOTAL=3657;
+const $=id=>document.getElementById(id);
+let resultData=null, auditPlan=null;
+function say(id,s){$(id).textContent=s;}
+function txDone(tx){return new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("IndexedDB transaction error"));tx.onabort=()=>reject(tx.error||new Error("IndexedDB transaction aborted"));});}
+function openDb(name){return new Promise((resolve,reject)=>{
+ const req=indexedDB.open(name);
+ req.onupgradeneeded=()=>{req.transaction.abort();reject(new Error("DB更新が必要なため安全停止しました。"));};
+ req.onsuccess=()=>{const db=req.result;
+  if(db.version!==1||!["meta","works","batches"].every(x=>db.objectStoreNames.contains(x))){db.close();reject(new Error("DB名・バージョン・ストア構造が想定外です。"));return;}
+  resolve(db);
+ };
+ req.onerror=()=>reject(req.error||new Error("DBを開けません。"));
+ req.onblocked=()=>reject(new Error("DBが別画面で使用中です。"));
+});}
+function reqResult(req){return new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error("IndexedDB読み取り失敗"));});}
+async function refreshDbs(){
+ const sel=$("db"),prev=sel.value;sel.replaceChildren();
+ try{
+  if(!indexedDB.databases)throw new Error("このブラウザではIndexedDB一覧を取得できません。");
+  const list=await indexedDB.databases();
+  const names=list.map(x=>x.name).filter(x=>x&&x.startsWith(PREFIX)).sort().reverse();
+  for(const name of names){const op=document.createElement("option");op.value=name;op.textContent=name;sel.append(op);}
+  if(names.includes(prev))sel.value=prev;
+  if(!names.length){const op=document.createElement("option");op.value="";op.textContent="対象DBがありません";sel.append(op);}
+  $("audit").disabled=!resultData||!names.length;
+ }catch(e){const op=document.createElement("option");op.value="";op.textContent="DB一覧取得失敗";sel.append(op);say("auditStatus",e.message||String(e));$("audit").disabled=true;}
+}
+function validateResult(d){
+ if(!d||typeof d!=="object"||Array.isArray(d))throw new Error("JSONの形式が不正です。");
+ if(d.format!==EXPECTED_FORMAT)throw new Error("formatが想定外です。");
+ if(d.status!=="success")throw new Error("Actionのstatusがsuccessではありません。");
+ if(!d.requested||!Array.isArray(d.requested.normal)||!Array.isArray(d.requested.r18))throw new Error("requestedの構造が不正です。");
+ if(!Array.isArray(d.results)||!Array.isArray(d.errors)||!Array.isArray(d.batches))throw new Error("results / errors / batchesが不正です。");
+ if(d.errors.length!==0)throw new Error("Action結果にエラーが残っています。");
+ if(d.resultCount!==EXPECTED_TOTAL||d.results.length!==EXPECTED_TOTAL)throw new Error("結果件数が3,657件ではありません。");
+ const requested=new Map();
+ for(const [source,codes] of [["normal",d.requested.normal],["r18",d.requested.r18]]){
+  for(const code of codes){
+   if(typeof code!=="string"||!/^N[0-9A-Z]+$/.test(code))throw new Error("要求Nコードの形式不正: "+String(code));
+   if(requested.has(code))throw new Error("要求Nコードが重複: "+code);
+   requested.set(code,source);
+  }
+ }
+ if(requested.size!==EXPECTED_TOTAL||d.requested.normal.length!==1453||d.requested.r18.length!==2204)throw new Error("requestedの件数が今回の対象と一致しません。");
+ const seen=new Set(), counts={normal:0,r18:0};
+ for(const row of d.results){
+  if(!row||typeof row.ncode!=="string"||!requested.has(row.ncode))throw new Error("要求外の結果Nコードがあります。");
+  if(seen.has(row.ncode))throw new Error("結果Nコードが重複しています: "+row.ncode);
+  seen.add(row.ncode);
+  if(row.source!==requested.get(row.ncode))throw new Error("API区分が要求時と不一致: "+row.ncode);
+  const expectedHost=row.source==="normal"?"ncode.syosetu.com":"novel18.syosetu.com";
+  let u;try{u=new URL(row.url);}catch{throw new Error("URL形式不正: "+row.ncode);}
+  if(u.protocol!=="https:"||u.hostname!==expectedHost||u.pathname.toLowerCase().replace(/\/$/,"")!=="/"+row.ncode.toLowerCase()||u.search||u.hash)throw new Error("URLホスト・パス不一致: "+row.ncode);
+  counts[row.source]++;
+ }
+ if(seen.size!==requested.size)throw new Error("要求と結果の件数が一致しません。");
+ if(counts.normal!==1453||counts.r18!==2204)throw new Error("結果の通常/R18件数が一致しません。");
+ return {requested,counts};
+}
+$("file").addEventListener("change",async()=>{
+ resultData=null;auditPlan=null;$("audit").disabled=true;$("write").disabled=true;
+ const f=$("file").files?.[0];if(!f){say("fileStatus","結果JSON未選択です。");return;}
+ try{
+  if(f.size>5000000)throw new Error("ファイルサイズが想定外です。");
+  const d=JSON.parse(await f.text());const check=validateResult(d);
+  resultData=d;
+  $("resultCount").textContent=d.results.length.toLocaleString();
+  $("normalCount").textContent=check.counts.normal.toLocaleString();
+  $("r18Count").textContent=check.counts.r18.toLocaleString();
+  say("fileStatus","検査合格："+f.name+" ("+f.size.toLocaleString()+" bytes)\nstatus: "+d.status+"\n取得終了: "+d.finishedAt+"\nバッチ: "+d.batches.length+"件");
+  await refreshDbs();
+  say("auditStatus","結果JSONは合格。取り込み先DBを選んで照合してください。");
+ }catch(e){resultData=null;say("fileStatus","読み込み停止\n"+(e.message||String(e)));}
+});
+$("refresh").addEventListener("click",refreshDbs);
+$("db").addEventListener("change",()=>{$("audit").disabled=!resultData||!$("db").value;$("write").disabled=true;auditPlan=null;say("auditStatus","DBを変更しました。再度、書き込み前の照合を実行してください。");});
+$("audit").addEventListener("click",async()=>{
+ $("audit").disabled=true;$("write").disabled=true;auditPlan=null;say("auditStatus","仮保存DBを読み取り専用で照合中…");
+ let db;
+ try{
+  const name=$("db").value;
+  if(!name||!name.startsWith(PREFIX))throw new Error("対象の仮保存DBを選択してください。");
+  db=await openDb(name);
+  const tx=db.transaction(["meta","works"],"readonly");
+  const metaReq=tx.objectStore("meta").get("run");
+  const allReq=tx.objectStore("works").getAll();
+  const [meta,works]=await Promise.all([reqResult(metaReq),reqResult(allReq),txDone(tx)]).then(x=>[x[0],x[1]]);
+  if(!meta||meta.dbName!==name)throw new Error("metaのDB名が一致しません。");
+  if(meta.sourceDb!=="tomotaYomuWorksDB"||meta.sourceDbVersion!==2)throw new Error("本番DB由来のメタ情報が想定外です。");
+  const byCode=new Map();
+  for(const w of works){const code=String(w?.ncode||"").toUpperCase();if(!code||byCode.has(code))throw new Error("仮保存DBにNコード空欄または重複があります: "+code);byCode.set(code,w);}
+  const plan=[];let existingSame=0,willAdd=0;
+  for(const row of resultData.results){
+   const w=byCode.get(row.ncode);
+   if(!w)throw new Error("仮保存DBに対象Nコードがありません: "+row.ncode);
+   if(w.targetStatus!=="ready")throw new Error("対象作品のtargetStatusがreadyではありません: "+row.ncode);
+   if(w.api?.selectedSource!==row.source)throw new Error("API選択区分が一致しません: "+row.ncode);
+   if(w.api?.[row.source]?.status!=="found")throw new Error("対応するAPI取得状態がfoundではありません: "+row.ncode);
+   const old=typeof w.url==="string"?w.url:"";
+   if(old&&old!==row.url)throw new Error("既存urlと取得URLが異なります。上書きせず停止: "+row.ncode);
+   if(old===row.url)existingSame++;else willAdd++;
+   plan.push({ncode:row.ncode,url:row.url,oldUrl:old});
+  }
+  if(plan.length!==EXPECTED_TOTAL)throw new Error("保存予定件数が3,657件ではありません。");
+  auditPlan={dbName:name,plan,existingSame,willAdd,workCount:works.length};
+  say("auditStatus","全件照合合格（readonly）\nDB："+name+"\nworks全体："+works.length+"件\n対象照合："+plan.length+" / 3,657件\n通常：1,453件／R18：2,204件\n既存と同じURL："+existingSame+"件\n新規追加："+willAdd+"件\n不一致・欠落・区分違い：0件");
+  say("summary","保存予定：3,657件\n変更内容：各worksレコード最上位に url を追加\n既存の api / atom / transfer / source は保持\n本番DBへの接続：なし\n\n照合だけを完了しました。まだ書き込みはしていません。");
+  $("write").disabled=false;
+ }catch(e){say("auditStatus","照合停止\n"+(e.message||String(e)));say("summary","不一致があるため保存できません。");}
+ finally{if(db)db.close();$("audit").disabled=!resultData||!$("db").value;}
+});
+$("write").addEventListener("click",async()=>{
+ if(!auditPlan||!confirm("仮保存DB「"+auditPlan.dbName+"」のworks 3,657件に、最上位url項目を書き込みます。既存の他項目は保持します。本当に実行しますか？"))return;
+ $("write").disabled=true;$("audit").disabled=true;say("writeStatus","書き込み中…DBを開いています。");
+ let db;
+ try{
+  db=await openDb(auditPlan.dbName);
+  const tx=db.transaction("works","readwrite"),store=tx.objectStore("works");
+  for(const item of auditPlan.plan){
+   const get=store.get(item.ncode);
+   get.onsuccess=()=>{
+    const current=get.result;
+    if(!current||current.targetStatus!=="ready"||current.api?.selectedSource!==(resultData.requested.normal.includes(item.ncode)?"normal":"r18")||(current.url&&current.url!==item.url)){
+     try{tx.abort();}catch{}
+     return;
+    }
+    store.put({...current,url:item.url});
+   };
+  }
+  await txDone(tx);
+  say("writeStatus","保存完了！\nURLを書き込んだ件数："+auditPlan.plan.length.toLocaleString()+"件\n対象DB："+auditPlan.dbName+"\n本番DBは変更していません。\n次は保存後のreadonly再検査を行います。");
+  $("write").disabled=true;
+  auditPlan=null;
+ }catch(e){say("writeStatus","保存を完了できませんでした。\n"+(e.message||String(e))+"\nDBの状態を再検査してください。");$("write").disabled=true;}
+ finally{if(db)db.close();$("audit").disabled=!resultData||!$("db").value;}
+});
+refreshDbs();
+</script></body></html>
