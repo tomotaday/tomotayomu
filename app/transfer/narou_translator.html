@@ -222,6 +222,8 @@ async function convertAll(){
    if(result.errors.length){errors.push({ncode,messages:result.errors});continue;}
    result.work.url=row.url;
    if(Array.isArray(result.work.genres)===false){errors.push({ncode,messages:["genres：共通worksのジャンル配列がありません"]});continue;}
+   if(result.work.bookmark==="R"&&result.work.status!=="短編"){errors.push({ncode,messages:["bookmark：Rは短編作品だけに使用できます"]});continue;}
+   if(Number.isInteger(result.work.bookmark)&&result.work.status==="短編"){errors.push({ncode,messages:["bookmark：短編作品に数値しおりは使用できません"]});continue;}
    if(Number.isInteger(result.work.bookmark)&&Number.isInteger(result.work.episodeCount)&&result.work.bookmark>result.work.episodeCount){errors.push({ncode,messages:["bookmark：episodeCountを超えています"]});continue;}
    if(result.work.id!=="narou:"+ncode){errors.push({ncode,messages:["内部idがNコードと一致しません"]});continue;}
    records.push({ncode,apiSource:source,work:result.work,diagnostics:result.diagnostics});
