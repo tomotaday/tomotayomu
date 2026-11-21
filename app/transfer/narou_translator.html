@@ -214,9 +214,15 @@ async function convertAll(){
    const existing=snapshots[0];
    if(String(existing.workId||"").toUpperCase()!==ncode){errors.push({ncode,messages:["元作品スナップショットのworkId不一致"]});continue;}
    if(typeof row.url!=="string"||!row.url.trim()){errors.push({ncode,messages:["Atom正規URLがありません"]});continue;}
+   let atomUrl;
+   try{atomUrl=new URL(row.url);}catch{errors.push({ncode,messages:["Atom正規URLの形式が不正です"]});continue;}
+   const expectedHost=source==="r18"?"novel18.syosetu.com":"ncode.syosetu.com";
+   if(!["https:"].includes(atomUrl.protocol)||atomUrl.hostname!==expectedHost){errors.push({ncode,messages:["Atom正規URLのホストまたはprotocolがAPI区分と一致しません"]});continue;}
    const result=translateNarouToCommonWork(raw,existing);
    if(result.errors.length){errors.push({ncode,messages:result.errors});continue;}
    result.work.url=row.url;
+   if(Array.isArray(result.work.genres)===false){errors.push({ncode,messages:["genres：共通worksのジャンル配列がありません"]});continue;}
+   if(Number.isInteger(result.work.bookmark)&&Number.isInteger(result.work.episodeCount)&&result.work.bookmark>result.work.episodeCount){errors.push({ncode,messages:["bookmark：episodeCountを超えています"]});continue;}
    if(result.work.id!=="narou:"+ncode){errors.push({ncode,messages:["内部idがNコードと一致しません"]});continue;}
    records.push({ncode,apiSource:source,work:result.work,diagnostics:result.diagnostics});
   }
