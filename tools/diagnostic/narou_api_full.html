@@ -84,6 +84,13 @@ code{overflow-wrap:anywhere}
 </section>
 
 <section class="panel">
+<h2>API保存データ検査</h2>
+<p class="small">先頭10作品のAPI生データ・Nコード照合・バッチ記録を読み取り専用で検査します。API再取得、DB書き込み、データ変更は行いません。</p>
+<button id="auditApiSample" class="secondary" disabled>先頭10作品の保存内容を検査</button>
+<div id="auditStatus" class="status">作業DBを選択してください。</div>
+</section>
+
+<section class="panel">
 <h2>作業結果</h2>
 <button id="refreshSummary" class="secondary" disabled>進捗を再読込</button>
 <div id="summaryStatus" class="status">作業DBを選択してください。</div>
@@ -348,6 +355,7 @@ async function updateActionAvailability() {
   const enabled = !!$("runSelect").value;
   $("runApi").disabled = !enabled;
   $("refreshSummary").disabled = !enabled;
+  $("auditApiSample").disabled = !enabled;
 }
 
 function jsonp(url) {
@@ -574,6 +582,153 @@ async function refreshSummary() {
     if (db) db.close();
   }
 }
+async function auditApiSample() {
+  const name = $("runSelect").value;
+  if (!name) return;
+  $("auditApiSample").disabled = true;
+  setStatus("auditStatus", "仮保存DBを読み取り専用で検査しています…");
+  let db;
+  try {
+    db = await openExistingDb(name, 1, ["meta", "works", "batches"]);
+    const tx = db.transaction(["meta", "works", "batches"], "readonly");
+    const [meta, allWorks, allBatches] = await Promise.all([
+      new Promise((resolve, reject) => {
+        const req = tx.objectStore("meta").get("run");
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error);
+      }),
+      new Promise((resolve, reject) => {
+        const req = tx.objectStore("works").getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+      }),
+      new Promise((resolve, reject) => {
+        const req = tx.objectStore("batches").getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+      })
+    ]);
+    if (!meta || !Array.isArray(meta.targetCodes)) throw new Error("作業メタ情報または対象Nコードがありません。");
+    const sampleCodes = meta.targetCodes.slice(0, 10);
+    const workMap = new Map(allWorks.map(w => [w.ncode, w]));
+    const sampleWorks = sampleCodes.map(code => workMap.get(code));
+    const issues = [];
+    const details = [];
+    if (sampleCodes.length !== 10) issues.push("対象スナップショットの先頭10件を確認できません（件数：" + sampleCodes.length + "）。");
+    if (sampleWorks.some(w => !w)) issues.push("先頭10件の作品レコードに欠落があります。");
+
+    const expectedNormal = [];
+    const expectedR18 = [];
+    const expectedNormalReturned = new Set();
+    const expectedR18Returned = new Set();
+    let normalRawFieldsMin = Infinity, normalRawFieldsMax = 0;
+    let r18RawFieldsMin = Infinity, r18RawFieldsMax = 0;
+
+    for (let i = 0; i < sampleWorks.length; i++) {
+      const work = sampleWorks[i];
+      const code = sampleCodes[i];
+      if (!work) continue;
+      if (work.ncode !== code) issues.push(code + "：worksキーとNコードが一致しません。");
+      if (work.targetStatus !== "ready") {
+        issues.push(code + "：API照会対象外の状態です（" + work.targetStatus + "）。");
+        continue;
+      }
+      const normal = work.api && work.api.normal;
+      const r18 = work.api && work.api.r18;
+      if (!normal || !r18) {
+        issues.push(code + "：API保存領域がありません。");
+        continue;
+      }
+      expectedNormal.push(code);
+      if (normal.status === "found") {
+        if (!normal.raw || typeof normal.raw !== "object") issues.push(code + "：通常API found ですが生データがありません。");
+        else {
+          if (String(normal.raw.ncode || "").toUpperCase() !== code) issues.push(code + "：通常API生データのNコードが一致しません。");
+          expectedNormalReturned.add(code);
+          const n = Object.keys(normal.raw).length;
+          normalRawFieldsMin = Math.min(normalRawFieldsMin, n);
+          normalRawFieldsMax = Math.max(normalRawFieldsMax, n);
+        }
+        if (r18.status !== "not_needed") issues.push(code + "：通常API取得済みなのにR18状態が not_needed ではありません。");
+        if (work.api.selectedSource !== "normal") issues.push(code + "：selectedSource が normal ではありません。");
+      } else if (normal.status === "not_found") {
+        if (normal.raw !== null) issues.push(code + "：通常API not_found なのに生データが null ではありません。");
+        expectedR18.push(code);
+        if (r18.status === "found") {
+          if (!r18.raw || typeof r18.raw !== "object") issues.push(code + "：R18 API found ですが生データがありません。");
+          else {
+            if (String(r18.raw.ncode || "").toUpperCase() !== code) issues.push(code + "：R18 API生データのNコードが一致しません。");
+            expectedR18Returned.add(code);
+            const n = Object.keys(r18.raw).length;
+            r18RawFieldsMin = Math.min(r18RawFieldsMin, n);
+            r18RawFieldsMax = Math.max(r18RawFieldsMax, n);
+          }
+          if (work.api.selectedSource !== "r18") issues.push(code + "：selectedSource が r18 ではありません。");
+        } else {
+          issues.push(code + "：通常API未返却作品のR18状態が found ではありません（" + r18.status + "）。");
+        }
+      } else {
+        issues.push(code + "：通常API状態が想定外です（" + normal.status + "）。");
+      }
+    }
+
+    const relevantBatches = allBatches.filter(b =>
+      Array.isArray(b.requestedCodes) && b.requestedCodes.some(code => sampleCodes.includes(code)));
+    const batchCodes = { normal: [], r18: [] };
+    const batchReturned = { normal: new Set(), r18: new Set() };
+    for (const batch of relevantBatches) {
+      if (!batchCodes[batch.stage]) {
+        issues.push("未知のバッチ区分があります：" + batch.stage);
+        continue;
+      }
+      if (batch.status !== "completed") issues.push(batch.stage + " バッチ " + batch.id + " が completed ではありません。");
+      if (!Array.isArray(batch.returnedCodes)) {
+        issues.push(batch.stage + " バッチ " + batch.id + " に returnedCodes がありません。");
+        continue;
+      }
+      if (batch.allcount !== batch.returnedCodes.length) issues.push(batch.stage + " バッチ " + batch.id + " の allcount と返却コード数が不一致です。");
+      for (const code of batch.requestedCodes || []) {
+        if (!sampleCodes.includes(code)) issues.push(batch.stage + " バッチに先頭10件以外の要求コードが混在しています：" + code);
+        batchCodes[batch.stage].push(code);
+      }
+      for (const code of batch.returnedCodes) {
+        if (!batch.requestedCodes.includes(code)) issues.push(batch.stage + " バッチが要求外コードを返しています：" + code);
+        if (batchReturned[batch.stage].has(code)) issues.push(batch.stage + " バッチ間で返却コードが重複しています：" + code);
+        batchReturned[batch.stage].add(code);
+      }
+    }
+    for (const stage of ["normal", "r18"]) {
+      const expected = stage === "normal" ? expectedNormal : expectedR18;
+      const requested = batchCodes[stage];
+      if (new Set(requested).size !== requested.length) issues.push(stage + " バッチの要求コードが重複しています。");
+      if (requested.length !== expected.length || expected.some(code => !requested.includes(code))) {
+        issues.push(stage + " バッチの要求コードと作品レコードの対象が一致しません。");
+      }
+      const returnedExpected = stage === "normal" ? expectedNormalReturned : expectedR18Returned;
+      if (batchReturned[stage].size !== returnedExpected.size ||
+          [...returnedExpected].some(code => !batchReturned[stage].has(code))) {
+        issues.push(stage + " バッチの返却コードと保存済み生データが一致しません。");
+      }
+    }
+    const fmt = n => Number.isFinite(n) ? String(n) : "—";
+    const summary = [
+      issues.length ? "検査結果：不一致あり" : "検査結果：すべて一致",
+      "対象作品：" + sampleWorks.filter(Boolean).length + "／" + sampleCodes.length,
+      "通常API生データ：" + expectedNormalReturned.size + "件（項目数 " + fmt(normalRawFieldsMin) + "〜" + fmt(normalRawFieldsMax) + "）",
+      "R18 API生データ：" + expectedR18Returned.size + "件（項目数 " + fmt(r18RawFieldsMin) + "〜" + fmt(r18RawFieldsMax) + "）",
+      "関連バッチ：" + relevantBatches.length + "件（通常 " + batchCodes.normal.length + "要求／R18 " + batchCodes.r18.length + "要求）",
+      "検査方式：仮保存DBの meta／works／batches を readonly で読み取り",
+      issues.length ? "確認事項：\n・" + issues.join("\n・") : "Nコード照合・要求/返却記録・生データ保存に不一致はありません。"
+    ];
+    setStatus("auditStatus", summary.join("\n"));
+  } catch (error) {
+    setStatus("auditStatus", "検査を完了できませんでした。\n" + (error.message || String(error)));
+  } finally {
+    if (db) db.close();
+    $("auditApiSample").disabled = false;
+  }
+}
+
 async function runApiProcess() {
   const name = $("runSelect").value;
   if (!name) return;
@@ -684,6 +839,7 @@ $("stopApi").addEventListener("click", () => {
   setStatus("apiStatus", "停止要求を受け付けました。現在のバッチを保存してから停止します。");
 });
 $("refreshSummary").addEventListener("click", refreshSummary);
+$("auditApiSample").addEventListener("click", auditApiSample);
 refreshRuns().catch(error => setStatus("runStatus", error.message || String(error)));
 </script>
 </body>
