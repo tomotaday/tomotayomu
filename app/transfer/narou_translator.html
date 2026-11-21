@@ -23,7 +23,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:360px;overflow:auto;b
 <header>
  <p class="small">PRODUCTION TRANSFER / READ ONLY</p>
  <h1>なろうTranslator</h1>
- <p>全作品再取得DBから本番共通works形式へ変換し、移行用JSONを作成します。</p>
+ <p>全作品再取得DBからAtom取得済みの対象作品を選び、本番共通works形式へ変換して移行用JSONを作成します。</p>
  <p class="small">このページは移行元DBを読み取り専用で扱います。本番DBへの書き込み、仮保存DBの変更は行いません。</p>
 </header>
 <section class="panel">
@@ -31,7 +31,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:360px;overflow:auto;b
  <label for="dbSelect">再取得DB</label>
  <select id="dbSelect"><option value="">DB一覧を確認中…</option></select>
  <button id="refreshDb">DB一覧を更新</button>
- <button id="loadDb" class="primary">3,657作品を読み込んで変換</button>
+ <button id="loadDb" class="primary">Atom対象3,657作品を読み込んで変換</button>
  <div id="dbStatus" class="status">まだ読み込んでいません。</div>
 </section>
 <section class="panel">
@@ -182,13 +182,16 @@ async function convertAll(){
   const tx=db.transaction(["meta","works"],"readonly");
   const [meta,rows]=await Promise.all([reqResult(tx.objectStore("meta").get("run")),reqResult(tx.objectStore("works").getAll()),txDone(tx)]);
   if(!meta||meta.dbName!==name||meta.sourceDb!=="tomotaYomuWorksDB"||meta.sourceDbVersion!==2)throw Error("DBのmetaが想定外です");
-  if(rows.length!==EXPECTED||meta.targetCount!==EXPECTED)throw Error("作品数が3,657件ではありません（DB："+rows.length+"／meta："+meta.targetCount+"）");
+  if(rows.length!==meta.targetCount)throw Error("DB全体件数とmeta.targetCountが一致しません（DB："+rows.length+"／meta："+meta.targetCount+"）");
   const seen=new Set(),records=[],errors=[],sourceCounts={normal:0,r18:0};
+  let excludedNotReady=0,excludedApiNotFound=0;
   for(const row of rows){
+   if(row?.targetStatus!=="ready"){excludedNotReady++;continue;}
+   const selected=row.api?.selectedSource;
+   if((selected!=="normal"&&selected!=="r18")||row.api?.[selected]?.status!=="found"){excludedApiNotFound++;continue;}
    const ncode=String(row?.ncode||"").toUpperCase();
    if(!ncode||seen.has(ncode)){errors.push({ncode:ncode||"(空)",messages:["Nコード空欄または重複"]});continue;}
    seen.add(ncode);
-   if(row.targetStatus!=="ready"){errors.push({ncode,messages:["targetStatusがreadyではありません"]});continue;}
    const source=row.api?.selectedSource;
    if(source!=="normal"&&source!=="r18"){errors.push({ncode,messages:["API selectedSourceが不正です"]});continue;}
    sourceCounts[source]++;
@@ -219,7 +222,7 @@ async function convertAll(){
    $("download").disabled=false;
    const info=document.createElement("pre");info.textContent="出力形式："+convertedData.format+"\n件数："+convertedData.count+"\n先頭3件のNコード："+records.slice(0,3).map(x=>x.ncode).join(" / ");$("errorList").append(info);
   }
-  $("dbStatus").textContent="読み込み完了（readonly）\nDB："+name+"\nmeta対象："+meta.targetCount+"件\n作品レコード："+rows.length+"件\n元DB："+meta.sourceDb+" v"+meta.sourceDbVersion;
+  $("dbStatus").textContent="読み込み完了（readonly）\nDB全体："+rows.length+"件\nAtom対象："+records.length+"件\nAPI未取得等の除外："+excludedApiNotFound+"件\nready以外の除外："+excludedNotReady+"件\n元DB："+meta.sourceDb+" v"+meta.sourceDbVersion;
  }catch(error){
   $("resultStatus").className="status bad";$("resultStatus").textContent="変換を停止しました。\n"+(error.message||String(error));
  }finally{if(db)db.close();$("loadDb").disabled=false;}
