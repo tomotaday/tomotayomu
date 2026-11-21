@@ -1,0 +1,192 @@
+name: なろう全作品 Atom URL 一括取得（今回限り）
+
+on:
+  workflow_dispatch:
+    inputs:
+      normal_ncodes:
+        description: "通常Atom対象Nコード（改行・空白・カンマ区切り。対象一覧ページからコピー）"
+        required: true
+        type: string
+      r18_ncodes:
+        description: "R18 Atom対象Nコード（改行・空白・カンマ区切り。対象一覧ページからコピー）"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  fetch-atom-urls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Fetch Atom URLs and validate Ncodes
+        id: fetch
+        continue-on-error: true
+        env:
+          NORMAL_NCODES: ${{ inputs.normal_ncodes }}
+          R18_NCODES: ${{ inputs.r18_ncodes }}
+        run: |
+          python - <<'PY'
+          import json, os, re, sys, time, urllib.parse, urllib.request, urllib.error
+          import xml.etree.ElementTree as ET
+          from datetime import datetime, timezone
+
+          NS = {"atom": "http://www.w3.org/2005/Atom"}
+          HOSTS = {"normal": "ncode.syosetu.com", "r18": "novel18.syosetu.com"}
+          ENDPOINTS = {
+              "normal": "https://api.syosetu.com/novelapi/api/",
+              "r18": "https://api.syosetu.com/novel18api/api/"
+          }
+          OUTPUT = "narou-atom-url-result.json"
+          report = {
+              "format": "tomotayomu-narou-atom-url-result-v1",
+              "startedAt": datetime.now(timezone.utc).isoformat(),
+              "status": "running", "requested": {"normal": [], "r18": []},
+              "results": [], "errors": [], "batches": []
+          }
+
+          def parse_codes(raw, label):
+              codes = [x.upper() for x in re.split(r"[\\s,;]+", raw.strip()) if x]
+              if not codes:
+                  raise ValueError(label + "のNコードが空です。")
+              if any(not re.fullmatch(r"N[0-9A-Z]+", x) for x in codes):
+                  raise ValueError(label + "に形式不正Nコードがあります。")
+              if len(codes) != len(set(codes)):
+                  raise ValueError(label + "に重複Nコードがあります。")
+              return codes
+
+          def extract_url(entry, kind):
+              links = entry.findall("atom:link", NS)
+              candidates = sorted(links, key=lambda x: (0 if x.attrib.get("rel", "") in ("alternate", "") else 1))
+              for link in candidates:
+                  href = link.attrib.get("href", "").strip()
+                  if not href:
+                      continue
+                  from urllib.parse import urlparse
+                  u = urlparse(href)
+                  if u.scheme == "https" and u.hostname == HOSTS[kind] and u.path.endswith("/"):
+                      return href
+              return ""
+
+          try:
+              groups = {
+                  "normal": parse_codes(os.environ.get("NORMAL_NCODES", ""), "通常"),
+                  "r18": parse_codes(os.environ.get("R18_NCODES", ""), "R18")
+              }
+              report["requested"] = groups
+              all_codes = groups["normal"] + groups["r18"]
+              if len(all_codes) != 3657:
+                  raise ValueError("対象総数が3,657件ではありません: " + str(len(all_codes)))
+              if len(all_codes) != len(set(all_codes)):
+                  raise ValueError("通常/R18間でNコードが重複しています。")
+
+              for kind in ("normal", "r18"):
+                  codes = groups[kind]
+                  for offset in range(0, len(codes), 100):
+                      batch = codes[offset:offset+100]
+                      params = urllib.parse.urlencode({
+                          "out": "atom", "lim": len(batch),
+                          "ncode": "-".join(x.lower() for x in batch)
+                      })
+                      url = ENDPOINTS[kind] + "?" + params
+                      last_error = None
+                      for attempt in range(1, 4):
+                          try:
+                              req = urllib.request.Request(url, headers={
+                                  "User-Agent": "TomotaYomu-Atom-URL-Once/1.0",
+                                  "Accept": "application/atom+xml, application/xml;q=0.9, */*;q=0.8"
+                              })
+                              with urllib.request.urlopen(req, timeout=45) as response:
+                                  if response.status != 200:
+                                      raise RuntimeError("HTTP " + str(response.status))
+                                  body = response.read()
+                              root = ET.fromstring(body)
+                              entries = root.findall("atom:entry", NS)
+                              seen = {}
+                              for entry in entries:
+                                  entry_id = entry.findtext("atom:id", default="", namespaces=NS)
+                                  href = extract_url(entry, kind)
+                                  source = href or entry_id
+                                  m = re.search(r"/(n[0-9a-z]+)(?:/|$)", source, re.I)
+                                  code = m.group(1).upper() if m else ""
+                                  if code:
+                                      seen.setdefault(code, []).append(href)
+                              batch_errors = []
+                              for code in batch:
+                                  urls = seen.get(code, [])
+                                  if len(urls) != 1:
+                                      batch_errors.append(code + ": entry件数=" + str(len(urls)))
+                                  elif not urls[0]:
+                                      batch_errors.append(code + ": URL欠落")
+                                  else:
+                                      report["results"].append({
+                                          "ncode": code, "source": kind, "url": urls[0]
+                                      })
+                              unknown = sorted(set(seen) - set(batch))
+                              if unknown:
+                                  batch_errors.append("要求外Nコード: " + ",".join(unknown))
+                              report["batches"].append({
+                                  "source": kind, "offset": offset, "requested": len(batch),
+                                  "returnedEntries": len(entries), "httpStatus": 200,
+                                  "attempt": attempt, "errors": batch_errors
+                              })
+                              if batch_errors:
+                                  report["errors"].extend([kind + " batch@" + str(offset) + " " + e for e in batch_errors])
+                              last_error = None
+                              break
+                          except Exception as exc:
+                              last_error = type(exc).__name__ + ": " + str(exc)
+                              if attempt < 3:
+                                  time.sleep(3 * attempt)
+                      if last_error:
+                          report["errors"].append(kind + " batch@" + str(offset) + " failed: " + last_error)
+                          report["batches"].append({
+                              "source": kind, "offset": offset, "requested": len(batch),
+                              "attempt": 3, "errors": [last_error]
+                          })
+                      time.sleep(1.0)
+
+              expected = set(all_codes)
+              got = [x["ncode"] for x in report["results"]]
+              missing = sorted(expected - set(got))
+              duplicates = sorted({x for x in got if got.count(x) > 1})
+              if missing:
+                  report["errors"].append("未取得Nコード: " + ",".join(missing))
+              if duplicates:
+                  report["errors"].append("URL結果重複Nコード: " + ",".join(duplicates))
+              if len(report["results"]) != 3657:
+                  report["errors"].append("URL取得結果件数が3,657件ではありません: " + str(len(report["results"])))
+              report["status"] = "success" if not report["errors"] else "failure"
+          except Exception as exc:
+              report["status"] = "failure"
+              report["errors"].append(type(exc).__name__ + ": " + str(exc))
+
+          report["finishedAt"] = datetime.now(timezone.utc).isoformat()
+          report["resultCount"] = len(report["results"])
+          with open(OUTPUT, "w", encoding="utf-8") as f:
+              json.dump(report, f, ensure_ascii=False, indent=2)
+              f.write("\\n")
+          print("Status:", report["status"])
+          print("Results:", len(report["results"]), "/ 3657")
+          print("Batches:", len(report["batches"]))
+          for error in report["errors"]:
+              print("ERROR:", error)
+          if report["status"] != "success":
+              sys.exit(1)
+          PY
+
+      - name: Upload URL result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: narou-atom-url-result
+          path: narou-atom-url-result.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Report failure
+        if: steps.fetch.outcome == 'failure'
+        run: |
+          echo "Atom URL取得または照合に失敗しました。Artifactとログを確認してください。"
+          exit 1
