@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#f6f3ed" name="theme-color"/>
-<title>ともたよむ v3.8.1【2026/11/14】カクヨム・note連携対応版</title>
+<title>ともたよむ v3.8.2【2026/11/22】bookmark正本対応版</title>
 <style>
 :root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195;--shelf-card:#fff;--shelf-ink:#252525;--shelf-line:#ddd;--topbtn-bg:#fffdf9;--topbtn-ink:#252525;--topbtn-line:#c9c0b4;--work-card-line:#aaa195}
 *{box-sizing:border-box}
@@ -112,7 +112,7 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 
 
 <main>
-<h1 style="font-size:18px;margin:0 0 8px;white-space:nowrap;font-size:clamp(15px,4.4vw,18px)">ともたよむ v3.8.1【2026/11/14】</h1><p style="font-size:14px;margin:0 0 8px;color:var(--muted)">カクヨム・note連携対応版</p>
+<h1 style="font-size:18px;margin:0 0 8px;white-space:nowrap;font-size:clamp(15px,4.4vw,18px)">ともたよむ v3.8.2【2026/11/22】</h1><p style="font-size:14px;margin:0 0 8px;color:var(--muted)">bookmark正本対応版</p>
 
 <div class="top-update-actions">
 <button id="updateBtn" type="button">🔄 本棚更新</button>
@@ -387,7 +387,7 @@ async function buildV3CardsFromIndexedDB(){
     authorId:v.authorId??"",
     url:v.url||"",
     story:v.synopsis||v.siteData?.legacyFields?.story||"",
-    general_lastup:v.updatedAt||v.siteData?.legacyFields?.general_lastup||"",
+    general_lastup:v.lastPublishedAt||v.updatedAt||v.siteData?.legacyFields?.general_lastup||"",
     general_all_no:v.episodeCount??v.siteData?.legacyFields?.general_all_no??"",
     end:v.siteData?.end??v.siteData?.legacyFields?.end??(v.status==="完結"?"0":v.status==="連載中"?"1":""),
     noveltype:v.siteData?.noveltype??"",
@@ -807,7 +807,7 @@ function receiveNoteUrlFromQuery(){
   return true;
 }
 
-function restoreReadingFromQuery(){
+function restoreBookmarkFromQuery(){
   const params = new URLSearchParams(location.search);
   const n = (params.get("ncode") || "").trim().toUpperCase();
   let episode = params.get("episode") || "";
@@ -821,7 +821,7 @@ function restoreReadingFromQuery(){
     if(card && String(card.dataset.noveltype||"").trim()==="2") episode="1";
   }
 
-  setReading(n, Number(episode));
+  setBookmark(n, Number(episode));
 
   const cleanUrl = new URL(location.href);
   cleanUrl.searchParams.delete("ncode");
@@ -831,8 +831,8 @@ function restoreReadingFromQuery(){
   return true;
 }
 
-let worksReadingMap=Object.create(null);
-let worksReadingReady=false;
+let worksBookmarkMap=Object.create(null);
+let worksBookmarkReady=false;
 
 async function openExistingWorksDB(){
   if(!indexedDB.databases)throw new Error("ブラウザがIndexedDB一覧に対応していません");
@@ -846,7 +846,7 @@ async function openExistingWorksDB(){
     req.onblocked=()=>reject(new Error("新DBを別タブが使用中です"));
   });
 }
-async function loadReadingFromWorksDB(){
+async function loadBookmarksFromWorksDB(){
   const db=await openExistingWorksDB();
   try{
     const rows=await new Promise((resolve,reject)=>{
@@ -860,26 +860,22 @@ async function loadReadingFromWorksDB(){
       if(w.site!=="narou")return;
       const n=String(w.workId||"").toUpperCase();
       if(!n)return;
-      const reading=w.reading||{};
-      if(reading.isRead===true)next[n]=1;
-      else if(reading.isRead===false)next[n]=0;
-      else if(Number.isFinite(reading.position))next[n]=reading.position;
-      else next[n]=null;
+      next[n]=w.bookmark??null;
     });
-    worksReadingMap=next;
-    worksReadingReady=true;
+    worksBookmarkMap=next;
+    worksBookmarkReady=true;
     return rows.length;
   }finally{db.close()}
 }
-function prepareReadingCards(){
-  if(!worksReadingReady)throw new Error("新DBの読書状態が未読込です");
-  const m=readingMap();
+function prepareBookmarkCards(){
+  if(!worksBookmarkReady)throw new Error("新DBのbookmarkが未読込です");
+  const m=worksBookmarkMap;
   document.querySelectorAll("#shelf .card").forEach(card=>{
     if(card.dataset.noteId)return;
     const n=String(card.dataset.ncode||"").toUpperCase();
     if(!n)return;
     const raw=Object.prototype.hasOwnProperty.call(m,n)?m[n]:null;
-    const current=raw===null||raw===undefined||!Number.isFinite(Number(raw))?null:Number(raw);
+    const current=bookmarkPosition(raw);
     const total=Number(card.dataset.totalEpisodes||0);
     const workUrl=card.querySelector(".workLink")?.href||"";
     const isShortStory=String(card.dataset.noveltype||"").trim()==="2";
@@ -887,36 +883,38 @@ function prepareReadingCards(){
     renderResumeLink(card,current,total,workUrl,isShortStory);
   });
 }
-function readingMap(){return worksReadingMap;}
-function readingFor(n){
-  const key=String(n).toUpperCase();
-  if(!Object.prototype.hasOwnProperty.call(worksReadingMap,key))return null;
-  const value=worksReadingMap[key];
-  return Number.isFinite(Number(value))?Number(value):null;
+function bookmarkPosition(value){
+  if(value===null||value===undefined||value==="")return null;
+  if(value==="R")return 1;
+  const number=Number(value);
+  return Number.isFinite(number)&&number>0?number:null;
 }
-function setReading(n,episode){
+function bookmarkPositionFor(n){
+  const key=String(n).toUpperCase();
+  return Object.prototype.hasOwnProperty.call(worksBookmarkMap,key)?bookmarkPosition(worksBookmarkMap[key]):null;
+}
+function setBookmark(n,episode){
   const key=String(n).toUpperCase(),value=Number(episode);
   const card=[...document.querySelectorAll("#shelf .card")].find(el=>String(el.dataset.ncode||"").toUpperCase()===key);
-  const previous=worksReadingMap[key];
+  const previous=worksBookmarkMap[key];
   const isShortStory=String(card?.dataset?.noveltype||"").trim()==="2";
-  worksReadingMap[key]=value;
+  const nextBookmark=isShortStory?(value>=1?"R":null):(value>0?value:null);
+  worksBookmarkMap[key]=nextBookmark;
   openExistingWorksDB().then(db=>new Promise((resolve,reject)=>{
     const tx=db.transaction("works","readwrite"),store=tx.objectStore("works"),req=store.get("narou:"+key);
     req.onsuccess=()=>{
       const record=req.result;
       if(!record){tx.abort();reject(new Error("新DBに作品がありません："+key));return}
-      record.reading=record.reading||{position:null,isRead:null};
-      if(isShortStory){record.reading.position=null;record.reading.isRead=value>=1}
-      else{record.reading.position=value;record.reading.isRead=null}
+      record.bookmark=nextBookmark;
       store.put(record);
     };
-    req.onerror=()=>{tx.abort();reject(req.error||new Error("読書状態の取得に失敗しました"))};
+    req.onerror=()=>{tx.abort();reject(req.error||new Error("bookmarkの取得に失敗しました"))};
     tx.oncomplete=resolve;
-    tx.onerror=()=>reject(tx.error||new Error("読書状態の保存に失敗しました"));
-    tx.onabort=()=>reject(tx.error||new Error("読書状態の保存を中止しました"));
+    tx.onerror=()=>reject(tx.error||new Error("bookmarkの保存に失敗しました"));
+    tx.onabort=()=>reject(tx.error||new Error("bookmarkの保存を中止しました"));
   }).finally(()=>db.close())).catch(error=>{
-    worksReadingMap[key]=previous??null;
-    console.error("新DB読書状態保存失敗",error);
+    worksBookmarkMap[key]=previous??null;
+    console.error("bookmark保存失敗",error);
     const status=document.getElementById("apiStatus");
     if(status)status.textContent="しおりの保存に失敗しました："+error.message;
   });
@@ -965,7 +963,7 @@ function updateCard(card,w){
   if(Object.prototype.hasOwnProperty.call(w,"end") || Object.prototype.hasOwnProperty.call(w,"novel_type") || Object.prototype.hasOwnProperty.call(w,"noveltype")) card.querySelector(".status").textContent = setStatus(w);
   card.querySelector(".synopsis").textContent = w.story || "あらすじなし";
   const workUrl = siteUrl({...w,ncode:n}); card.querySelector(".workLink").href = workUrl;
-  const current = readingFor(n), total = Number(w.general_all_no || card.dataset.totalEpisodes || 0);
+  const current = bookmarkPositionFor(n), total = Number(w.general_all_no || card.dataset.totalEpisodes || 0);
   card.dataset.current = current==null ? "" : String(current);
   const isShortStory = String(card.dataset.noveltype || "").trim() === "2";
   renderResumeLink(card,current,total,workUrl,isShortStory);
@@ -973,7 +971,7 @@ function updateCard(card,w){
 }
 function applyCardState(card){
   if(card.dataset.noteId)return;
-  const n=String(card.dataset.ncode||"").toUpperCase(), candidates=getUpdateCandidates(), candidate=candidates[n], current=readingFor(n), total=Number(card.dataset.totalEpisodes||0);
+  const n=String(card.dataset.ncode||"").toUpperCase(), candidates=getUpdateCandidates(), candidate=candidates[n], current=bookmarkPositionFor(n), total=Number(card.dataset.totalEpisodes||0);
   const isShelfRegistered=String(card.dataset.shelfId||"").trim()!=="";
   const unread=current!=null && total>0 && current<total;
   const mark=card.querySelector(".newMark");
@@ -1163,7 +1161,7 @@ function buildUpdateView(){
   cards.forEach(card=>{
     if(card.dataset.noteId)return;
     applyCardState(card);
-    const n=String(card.dataset.ncode||"").toUpperCase(), candidate=candidates[n], current=readingFor(n), total=Number(card.dataset.totalEpisodes||0);
+    const n=String(card.dataset.ncode||"").toUpperCase(), candidate=candidates[n], current=bookmarkPositionFor(n), total=Number(card.dataset.totalEpisodes||0);
     const unread=current!=null && total>0 && current<total;
     const isShelfRegistered=String(card.dataset.shelfId||"").trim()!=="";
     if(candidate&&unread&&isShelfRegistered)updates.push(card);
@@ -1328,7 +1326,7 @@ function showShelfMoveDialog(card){
         await moveWorkToShelf(n,newId);
       }
       await buildV3CardsFromIndexedDB();
-      prepareReadingCards();
+      prepareBookmarkCards();
       renderGlobalBaseline();
       restoreLatestWorks();
       buildUpdateView();
@@ -1348,9 +1346,9 @@ document.addEventListener("click",e=>{
   if(!card||String(card.dataset.noveltype||"").trim()!=="2")return;
   const n=String(card.dataset.ncode||"").toUpperCase();
   if(!/^N[0-9A-Z]+$/.test(n))return;
-  const current=readingFor(n);
+  const current=bookmarkPositionFor(n);
   const next=Number(current)>=1?0:1;
-  setReading(n,next);
+  setBookmark(n,next);
   card.dataset.current=String(next);
   renderResumeLink(card,next,Number(card.dataset.totalEpisodes||1),card.querySelector(".workLink")?.href||"",true);
   applyCardState(card);
@@ -1479,7 +1477,7 @@ async function autoImportNoteMagazineFromShortcut(){
     };
     await saveNoteItem(item);
     await buildV3CardsFromIndexedDB();
-    prepareReadingCards();renderGlobalBaseline();restoreLatestWorks();buildUpdateView();buildShelfFolders();
+    prepareBookmarkCards();renderGlobalBaseline();restoreLatestWorks();buildUpdateView();buildShelfFolders();
     if(status)status.textContent=(current?"noteマガジンの目次を更新しました：":"noteマガジンを本棚に登録しました：")+item.title+"（目次 "+data.items.length+"件）";
   }catch(error){
     console.error("note目次の自動登録／更新に失敗",error);
@@ -1495,7 +1493,7 @@ document.addEventListener("click",async e=>{
     if(!id)return;
     if(!confirm("このカクヨム作品を本棚から削除しますか？"))return;
     await writeKakuyomuItems(readKakuyomuItems().filter(x=>String(x.id)!==id));
-    await buildV3CardsFromIndexedDB();prepareReadingCards();renderGlobalBaseline();restoreLatestWorks();buildUpdateView();buildShelfFolders();
+    await buildV3CardsFromIndexedDB();prepareBookmarkCards();renderGlobalBaseline();restoreLatestWorks();buildUpdateView();buildShelfFolders();
     const status=document.getElementById("apiStatus");if(status)status.textContent="カクヨム作品を削除しました。";
     return;
   }
@@ -1506,7 +1504,7 @@ document.addEventListener("click",async e=>{
     const item=readNoteItems().find(x=>x.id===noteId);
     if(!item){alert("note作品データが見つかりません");return}
     await saveNoteItem({...item,status:String(card.querySelector(".noteStatusInput")?.value||"").trim(),synopsis:String(card.querySelector(".noteSynopsisInput")?.value||"").trim()});
-    await buildV3CardsFromIndexedDB();prepareReadingCards();restoreLatestWorks();buildUpdateView();buildShelfFolders();
+    await buildV3CardsFromIndexedDB();prepareBookmarkCards();restoreLatestWorks();buildUpdateView();buildShelfFolders();
     const status=document.getElementById("apiStatus");if(status)status.textContent="note作品情報を保存しました。";
     return;
   }
@@ -1522,7 +1520,7 @@ document.addEventListener("click",async e=>{
       if(!item)throw new Error("note作品データが見つかりません");
       await saveNoteItem({...item,bookmarkUrl:url.href});
       document.getElementById("apiStatus").textContent="しおりURLを保存しました。";
-      await buildV3CardsFromIndexedDB();prepareReadingCards();restoreLatestWorks();buildUpdateView();buildShelfFolders();
+      await buildV3CardsFromIndexedDB();prepareBookmarkCards();restoreLatestWorks();buildUpdateView();buildShelfFolders();
     }catch(err){alert("しおりを保存できません："+err.message)}
     return;
   }
@@ -1533,7 +1531,7 @@ document.addEventListener("click",async e=>{
     return;
   }
 });
-window.addEventListener("load",async()=>{ try{ const s=document.getElementById("apiStatus"); if(s)s.textContent="本棚情報反映中"; await buildV3CardsFromIndexedDB(); await loadReadingFromWorksDB(); await refreshNotePublishedDates(); try{localStorage.removeItem("tomotaYomu_work_edit_overrides_v1");}catch(e){console.warn("旧作品編集表示データの削除をスキップ",e);} restoreReadingFromQuery(); prepareReadingCards(); renderGlobalBaseline(); restoreLatestWorks(); buildUpdateView(); buildShelfFolders(); syncSearchExcludedButtons(); }catch(e){ console.warn("v3 IndexedDB本棚再構築失敗",e); const s=document.getElementById("apiStatus"); if(s)s.textContent="v3 IndexedDB接続失敗："+e.message; } });
+window.addEventListener("load",async()=>{ try{ const s=document.getElementById("apiStatus"); if(s)s.textContent="本棚情報反映中"; await buildV3CardsFromIndexedDB(); await loadBookmarksFromWorksDB(); await refreshNotePublishedDates(); try{localStorage.removeItem("tomotaYomu_work_edit_overrides_v1");}catch(e){console.warn("旧作品編集表示データの削除をスキップ",e);} restoreBookmarkFromQuery(); prepareBookmarkCards(); renderGlobalBaseline(); restoreLatestWorks(); buildUpdateView(); buildShelfFolders(); syncSearchExcludedButtons(); }catch(e){ console.warn("v3 IndexedDB本棚再構築失敗",e); const s=document.getElementById("apiStatus"); if(s)s.textContent="v3 IndexedDB接続失敗："+e.message; } });
 
 /* 作者Atomフィード：本棚DBと独立した保存領域 */
 const ATOM_DB_NAME="tomotaYomuAtomDB", ATOM_DB_VERSION=1;
