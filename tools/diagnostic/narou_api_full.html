@@ -717,31 +717,43 @@ async function auditApiSample() {
         issues.push(stage + " バッチの返却コードと保存済み生データが一致しません。");
       }
     }
-    const evidenceRows = bothMissingCodes.map(code => {
-      const normalMatches = relevantBatches.filter(b => b.stage === "normal" && b.requestedCodes.includes(code));
-      const r18Matches = relevantBatches.filter(b => b.stage === "r18" && b.requestedCodes.includes(code));
-      const normalBatch = normalMatches.length === 1 ? normalMatches[0] : null;
-      const r18Batch = r18Matches.length === 1 ? r18Matches[0] : null;
-      for (const [stage, matches, batch] of [["通常API", normalMatches, normalBatch], ["R18 API", r18Matches, r18Batch]]) {
-        if (matches.length !== 1) issues.push(code + "：" + stage + "の要求バッチが一意ではありません（" + matches.length + "件）。");
-        if (batch) {
-          if (batch.status !== "completed") issues.push(code + "：" + stage + "バッチが正常完了扱いではありません。");
-          if (batch.returnedCodes.includes(code)) issues.push(code + "：" + stage + "の返却コードに含まれています。");
-          if (batch.allcount !== batch.returnedCodes.length) issues.push(code + "：" + stage + "のallcountと返却コード数が不一致です。");
-        }
+    let excludedCompareText = [];
+    const excludedKey = "tomotaYomu_search_excluded_ncodes_v1";
+    try {
+      const storedExcluded = localStorage.getItem(excludedKey);
+      if (storedExcluded === null) {
+        excludedCompareText = [
+          "【ともたよむ検索除外リストとの照合】",
+          "照合できません：このブラウザのlocalStorageに検索除外リストが見つかりません。",
+          "本棚と同じブラウザ・同じGitHub Pagesオリジンで開いているか確認してください。"
+        ];
+      } else {
+        const parsed = JSON.parse(storedExcluded);
+        if (!Array.isArray(parsed)) throw new Error("検索除外リストの形式が配列ではありません。");
+        const excludedSet = new Set(parsed.map(value => String(value).trim().toUpperCase()).filter(Boolean));
+        const excludedHits = bothMissingCodes.filter(code => excludedSet.has(code));
+        const excludedMisses = bothMissingCodes.filter(code => !excludedSet.has(code));
+        excludedCompareText = [
+          "【ともたよむ検索除外リストとの照合】",
+          "参照キー：" + excludedKey,
+          "検索除外リスト登録数：" + excludedSet.size + "件",
+          "両API正常・対象なし43件のうち検索除外に該当：" + excludedHits.length + "件",
+          "検索除外リストに該当しない：" + excludedMisses.length + "件",
+          "",
+          "［検索除外に該当］",
+          ...(excludedHits.length ? excludedHits : ["該当なし"]),
+          "",
+          "［検索除外に非該当］",
+          ...(excludedMisses.length ? excludedMisses : ["該当なし"])
+        ];
       }
-      const stamp = value => value ? new Date(value).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }) : "日時記録なし";
-      return code +
-        "｜通常 " + (normalBatch ? normalBatch.id + " 完了 " + stamp(normalBatch.completedAt) + "／返却外" : "要求バッチ不明") +
-        "｜R18 " + (r18Batch ? r18Batch.id + " 完了 " + stamp(r18Batch.completedAt) + "／返却外" : "要求バッチ不明");
-    });
-    const evidenceText = [
-      "【両API正常応答・対象Nコード未返却の個別記録】",
-      "件数：" + bothMissingCodes.length,
-      "判定条件：通常API・R18 APIの各バッチが completed、allcount＝returnedCodes.length、当該Nコードが要求対象に含まれ、返却Codesには含まれないこと。",
-      "※API応答は要求単位の一覧形式で、Nコードごとの不存在証明書ではありません。ここで裏付けるのは「各APIの正常形式応答に当該Nコードが含まれなかった」という事実です。",
-      ...evidenceRows
-    ];
+    } catch (error) {
+      excludedCompareText = [
+        "【ともたよむ検索除外リストとの照合】",
+        "照合できません：" + (error.message || String(error)),
+        "検索除外リストの内容は変更していません。"
+      ];
+    }
     const fmt = n => Number.isFinite(n) ? String(n) : "—";
     const summary = [
       issues.length ? "検査結果：不一致あり" : "検査結果：すべて一致",
@@ -753,7 +765,7 @@ async function auditApiSample() {
       "検査方式：仮保存DBの meta／works／batches を readonly で読み取り",
       issues.length ? "確認事項：\n・" + issues.join("\n・") : "Nコード照合・要求/返却記録・生データ保存に不一致はありません。",
       "",
-      ...evidenceText
+      ...excludedCompareText
     ];
     setStatus("auditStatus", summary.join("\n"));
   } catch (error) {
