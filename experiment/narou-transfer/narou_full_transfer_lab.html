@@ -256,14 +256,21 @@ function bookmarkPosition(value){
   const number=Number(value);
   return Number.isFinite(number)&&number>0?number:null;
 }
+function cardStatus(w){
+  if(String(w.siteData?.noveltype??"").trim()==="2")return "🟣 短編";
+  const end=String(w.siteData?.end??(w.status==="完結"?"0":w.status==="連載中"?"1":""));
+  if(end==="0")return "🔵 完結";
+  if(end==="1")return "🟢 連載中";
+  return "状態不明";
+}
 function createCard(w){
   const card=document.createElement("article");card.className="card";
   const meta=document.createElement("div");meta.className="meta";
-  meta.textContent=formatCardDate(w.lastPublishedAt)+" ｜ "+(w.status||"状態不明")+(w.shelfId?" ｜ 棚ID："+w.shelfId:"");
+  meta.textContent=formatCardDate(w.lastPublishedAt)+" ｜ "+cardStatus(w);
   const title=document.createElement("h3");title.className="title";title.textContent=w.title||"（タイトルなし）";
   const author=document.createElement("div");author.className="author";
   const authorName=document.createElement("span");authorName.className="authorName";authorName.textContent="作者："+(w.authorName||"作者情報なし");
-  const badge=document.createElement("span");badge.className="badge "+(w.siteData?.isR18===true?"r18":"narou");badge.textContent=w.siteData?.isR18===true?"なろうR18":"なろう";
+  const badge=document.createElement("span");badge.className="badge narou";badge.textContent="なろう";
   author.append(authorName,badge);
   const synopsisDetails=document.createElement("details");
   const synopsisSummary=document.createElement("summary");synopsisSummary.textContent="あらすじを読む";
