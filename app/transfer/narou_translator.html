@@ -220,6 +220,8 @@ async function convertAll(){
    try{atomUrl=new URL(row.url);}catch{errors.push({ncode,messages:["Atom正規URLの形式が不正です"]});continue;}
    const expectedHost=source==="r18"?"novel18.syosetu.com":"ncode.syosetu.com";
    if(!["https:"].includes(atomUrl.protocol)||atomUrl.hostname!==expectedHost){errors.push({ncode,messages:["Atom正規URLのホストまたはprotocolがAPI区分と一致しません"]});continue;}
+   const atomPath=atomUrl.pathname.replace(/\/+$/,"").toUpperCase();
+   if(atomPath!=="/"+ncode){errors.push({ncode,messages:["Atom正規URLのパスに含まれるNコードが対象作品と一致しません（"+atomUrl.pathname+"）"]});continue;}
    const result=translateNarouToCommonWork(raw,existing);
    if(result.errors.length){errors.push({ncode,messages:result.errors});continue;}
    result.work.url=row.url;
