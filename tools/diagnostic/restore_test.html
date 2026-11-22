@@ -185,8 +185,8 @@ function inspectLocalStoragePayload(data){
  return {rows,totalChars,bytes:totalChars*2};
 }
 $('restoreBtn').addEventListener('click',async()=>{
- if(!parsedBackup||busy||createdDBs.length||createdKeys.length)return;
- if(!confirm('バックアップ内の全IndexedDBとlocalStorageを、今回専用のテスト領域へ復元します。\\n本番の保存データは変更しません。続けますか？'))return;
+ if(!parsedBackup||busy||createdDBs.length)return;
+ if(!confirm('バックアップ内の全IndexedDBを、今回専用のテスト領域へ復元します。localStorageはJSON内の検査のみです。\\n本番の保存データは変更しません。続けますか？'))return;
  busy=true;$('restoreBtn').disabled=true;$('deleteBtn').hidden=true;
  testToken=new Date().toISOString().replace(/[^0-9]/g,'').slice(0,17);
  const dbMap=new Map();let currentDB=null;
@@ -246,7 +246,7 @@ $('restoreBtn').addEventListener('click',async()=>{
   $('restoreStatus').textContent='復元テスト失敗：'+(e.message||String(e));
   $('verifyStatus').textContent='テスト領域が一部作成されている可能性があります。\\n作成済みDB：'+createdDBs.length+'個\\nテスト識別子：'+testToken;
   $('verifyStatus').className='status bad';
-  if(createdDBs.length||createdKeys.length)$('deleteBtn').hidden=false;
+  if(createdDBs.length)$('deleteBtn').hidden=false;
  }finally{busy=false;$('restoreBtn').disabled=true}
 });
 $('deleteBtn').addEventListener('click',async()=>{
@@ -269,7 +269,7 @@ $('deleteBtn').addEventListener('click',async()=>{
  }else{
   $('verifyStatus').textContent='今回作成したテストDB '+createdDBs.length+'個を削除しました。';
   $('verifyStatus').className='status good';$('verifyResult').replaceChildren();$('deleteBtn').hidden=true;
-  createdDBs=[];createdKeys=[];testToken=null;
+  createdDBs=[];testToken=null;
   $('restoreStatus').textContent='テスト領域を削除しました。別のテストを行う場合は、バックアップを再検査してください。';
  }
  busy=false;$('deleteBtn').disabled=false;
