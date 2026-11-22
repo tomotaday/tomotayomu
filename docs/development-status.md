@@ -424,3 +424,14 @@
 - コードcommit：`3815a77d`（追加）、`c109da73`（API応答メタ情報処理）、`161a8da5`（bookmark保護調整）。GitHubから再取得し、全scriptのJavaScript構文チェックは合格。
 - **未確認：iPhone実機で通常作品・R18作品をそれぞれ1件更新し、保存・表示・管理情報維持を確認すること。**
 - 詳細：[data-migration-log.md](data-migration-log.md) の「2026-11-23：作品カード詳細内に1作品単位のなろうAPI再取得機能を追加」。
+
+
+## 2026-11-23：未読作品の更新棚判定を修正
+
+- 原因：`applyCardState()` と `buildUpdateView()` の未読判定が `current != null` を必須にしていたため、bookmark=null（しおりなし）の完全未読作品が対象外になっていた。
+- `isUnreadWork()` を追加し、bookmark=nullは未読、しおり位置が総話数未満なら未読、読了位置は対象外とする共通判定に統一。
+- カードの🆙マークと更新棚の両方に適用。
+- DB・bookmark・shelfId・localStorage・更新候補データは変更なし。判定コードのみ。
+- commit：`48df9b2e41ff3726ba4838bab044b434278c41a5`。全scriptの構文チェック合格。
+- **次の実機確認：** 本棚所属・更新候補ありの完全未読作品が🆙棚に出ること、途中まで読んだ作品も出ること、読了作品は出ないこと。
+- 詳細：[data-migration-log.md](data-migration-log.md) の同日追記を参照。
