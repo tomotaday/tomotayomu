@@ -166,4 +166,16 @@ main{width:min(100%,780px);margin:auto;padding:22px 16px 52px}h1{font-size:24px;
 <p><strong>重要：</strong>これは棚卸し完了の記録であり、今回のバックアップJSONの取得・内容検証・復元試験はまだ完了していない。2026/11/08の旧DBバックアップ実績とは別である。</p>
 <p>iPhoneではJSON生成時のメモリ使用量に注意し、失敗時に連続再試行しない。ダウンロード開始表示だけで保存完了と判断せず、Files上の実ファイルとJSON内容を確認する。取得後はIndexedDBの全DB・ストア・件数およびlocalStorageキー数を棚卸し結果と照合する。</p>
 </section>
+
+<section class="card">
+<strong>JSONファイル名の分類｜2026/11/22追加</strong>
+<p>基本形：<code>ty_&lt;type&gt;_YYMMDDhhmm.json</code>。用途コードは短縮形に統一する。</p>
+<table>
+<tr><th>分類</th><th>用途</th><th>例</th></tr>
+<tr><td><code>list</code></td><td>棚卸し・保存領域の一覧／構造確認。実データの復元用ではない。</td><td><code>ty_list_2611221215.json</code></td></tr>
+<tr><td><code>bak</code></td><td>本番データのバックアップ。対象範囲の実データを保存する。</td><td><code>ty_bak_2611221235.json</code></td></tr>
+<tr><td><code>rst</code></td><td>復元テスト・復元検証結果。</td><td><code>ty_rst_2611221300.json</code></td></tr>
+</table>
+<p>2026/11/22の棚卸しファイルは <code>list</code>、これから取得・検証する全保存領域の本番バックアップは <code>bak</code> に分類する。分類コードの詳細は <code>docs/data-migration-log.md</code> の命名規則を参照。</p>
+</section>
 </main></body></html>
