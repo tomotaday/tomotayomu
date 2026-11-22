@@ -81,7 +81,7 @@ function convertApiRow(row,existing,exportedAt){
  if(typeof raw.title!=="string"||!raw.title.trim())fail(ncode+"：titleなし");
  if(typeof raw.story!=="string")fail(ncode+"：storyが文字列ではありません");
  if(!Number.isInteger(raw.general_all_no)||raw.general_all_no<1)fail(ncode+"：general_all_noが不正です");
- if(!Number.isInteger(raw.userid)||raw.userid<1)fail(ncode+"：useridが不正です");
+ if(!isR18&&(!Number.isInteger(raw.userid)||raw.userid<1))fail(ncode+"：normal APIのuseridが不正です");
  const novelType=Number(raw.novel_type),end=Number(raw.end);
  let status;
  if(novelType===2&&end===0)status="短編";
@@ -92,7 +92,8 @@ function convertApiRow(row,existing,exportedAt){
  const keywords=typeof raw.keyword==="string"?raw.keyword.trim().split(/\s+/u).filter(Boolean):[];
  const work=existing?clone(existing):{id:"narou:"+ncode,site:"narou",workId:ncode,shelfId:"",bookmark:null};
  const api={
-  title:raw.title,synopsis:raw.story,authorName:raw.writer,authorId:raw.userid,status,
+  title:raw.title,synopsis:raw.story,authorName:raw.writer,
+  authorId:isR18?(existing?.authorId??null):raw.userid,status,
   episodeCount:raw.general_all_no,publishedAt:formatApiDate(raw.general_firstup,ncode+" general_firstup"),
   lastPublishedAt:formatApiDate(raw.general_lastup,ncode+" general_lastup"),keywords,genres,
   url:"https://"+(isR18?"novel18.syosetu.com":"ncode.syosetu.com")+"/"+ncode.toLowerCase()+"/"
@@ -103,7 +104,7 @@ function convertApiRow(row,existing,exportedAt){
   noveltype:novelType,end,keyword:typeof raw.keyword==="string"?raw.keyword:"",
   genre:raw.genre??null,biggenre:raw.biggenre??null,nocgenre:raw.nocgenre??null,
   isstop:raw.isstop??0,novelupdated_at:raw.novelupdated_at??"",
-  api_fetched_at:exportedAt,userid_source:raw.userid,
+  api_fetched_at:exportedAt,userid_source:raw.userid??0,
   authorType:isR18?"r18":"normal",isR18
  });
  for(const key of ["isr15","isbl","isgl","iszankoku","istensei","istenni"])if(Object.prototype.hasOwnProperty.call(raw,key))siteData[key]=raw[key];
