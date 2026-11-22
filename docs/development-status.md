@@ -369,3 +369,15 @@
 - 監査の詳細・差分・次工程は `data-migration-log.md` の「2026-11-22：本番バックアップと3,657作品移行JSONの突合監査」を正本とする。
 - 次は関連画面を含む旧項目の参照経路監査と、未知の独自項目・bookmark・authorIdを保護する読み取り専用マージプレビューの作成。
 - **本番worksへの書き込みは未実施。** 明示承認までは本番DB・localStorage・Shortcut・GitHub Actionsを変更しない。
+
+
+## 2026-11-22：統合works整理・移行優先順位（最新）
+
+- 統合JSON `tomotayomu-common-works-3700-v1.json`：3,700件（なろう3,695＝通常3,657＋検索除外38、カクヨム3、note2）。
+- 旧項目の実測では、なろう側の `reading` / `updatedAt` / `createdAt` / `characterCount` / `siteData.legacyFields` は検索除外38件に限られ、通常作品3,657件には存在しない。
+- **移行優先順位：なろう3,695件（通常3,657＋検索除外38）を先に完成させる。** カクヨム3件・note2件は合計5件と少数のため、なろう移行後に個別調整する。必要なら登録経路も再修正する。
+- 新DB `tomotaYomuWorksDB` の `works` を正本とする。旧DBを新しい参照先・フォールバックとして残さない。
+- `tomotayomu-common-works-3700-v2-cleaned.json` は試作後の元JSON照合で情報欠落が判明したため、**移行用に使用しない**。旧形式情報の移行先を作品単位で確認し、修正版JSONを再作成する。
+- 次工程：検索除外38件（特に旧カード形式3件）の情報保持監査 → なろう3,695件の修正版JSON作成・全件検証 → 読み取り専用マージプレビュー。
+- 本番works更新・IndexedDB/localStorage・Shortcut・GitHub Actionsの変更は未実施。明示承認前に本番書き込みを行わない。
+- 詳細：[データ統合・参照先移行記録](data-migration-log.md) の「2026-11-22：統合works 3,700件の整理方針・移行優先順位の確認」。
