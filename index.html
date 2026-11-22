@@ -980,7 +980,7 @@ async function refreshNarouWorkFromApi(card){
     });
     const cardsNow=[...document.querySelectorAll("#shelf .card, #shelfSections .card, #searchResults .card")]
       .filter(x=>String(x.dataset.ncode||"").toUpperCase()===n);
-    cardsNow.forEach(x=>updateCard(x,saved));
+    cardsNow.forEach(x=>{x.dataset.authorName=String(saved.authorName||"");x.dataset.authorId=String(saved.authorId||"");updateCard(x,saved)});
     say("✅ 最新情報に更新しました（"+saved.episodeCount+"話）");
   }catch(error){
     say("⚠️ 更新できませんでした："+(error.message||String(error)));
