@@ -1399,8 +1399,10 @@ async function supplementNarouWorksFromApi(){
         const url=base+"?ncode="+part.join("-")+"&of=ncode-gl&lim=500";
         const data=await jsonp(url);
         if(!Array.isArray(data))throw new Error(label+" APIの応答形式が不正です");
+        // なろうAPIは先頭要素に allcount（取得件数）を返し、その後に作品データを返す。
+        const apiRows=data[0]&&Object.prototype.hasOwnProperty.call(data[0],"allcount")?data.slice(1):data;
         const requested=new Set(part.map(x=>x.toUpperCase()));
-        for(const api of data){
+        for(const api of apiRows){
           const n=String(api?.ncode||"").trim().toUpperCase();
           if(!n||!requested.has(n))throw new Error(label+" APIから要求外のNコードが返りました："+(n||"(空欄)"));
           if(apiByNcode.has(n))throw new Error("API応答にNコード重複があります："+n);
