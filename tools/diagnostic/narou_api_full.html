@@ -88,6 +88,7 @@ code{overflow-wrap:anywhere}
 <h2>API保存データ検査</h2>
 <p class="small">「今回の検証範囲」で選択した先頭件数について、API生データ・Nコード照合・バッチ記録を読み取り専用で検査します。API再取得、DB書き込み、データ変更は行いません。</p>
 <button id="auditApiSample" class="secondary" disabled>選択範囲の保存内容を検査</button>
+<button id="exportApiRaw" class="secondary" disabled>API生データを全件JSON出力</button>
 <div id="auditStatus" class="status">作業DBを選択してください。</div>
 <div id="excludedAccessLinks" class="status" aria-live="polite"></div>
 </section>
@@ -355,6 +356,7 @@ async function inspectSelectedRun() {
 }
 async function updateActionAvailability() {
   const enabled = !!$("runSelect").value;
+  $("exportApiRaw").disabled = !enabled;
   $("runApi").disabled = !enabled;
   $("refreshSummary").disabled = !enabled;
   $("auditApiSample").disabled = !enabled;
@@ -796,6 +798,78 @@ async function auditApiSample() {
   }
 }
 
+async function exportApiRaw() {
+  const name = $("runSelect").value;
+  if (!name || !name.startsWith(TEMP_PREFIX)) return;
+  $("exportApiRaw").disabled = true;
+  setStatus("auditStatus", "仮保存DBからAPI生データを読み取り専用で取り出しています…");
+  let db;
+  try {
+    db = await openExistingDb(name, 1, ["meta", "works", "batches"]);
+    const tx = db.transaction(["meta", "works"], "readonly");
+    const [meta, allWorks] = await Promise.all([
+      new Promise((resolve, reject) => {
+        const req = tx.objectStore("meta").get("run");
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error || new Error("作業メタ情報を読めませんでした。"));
+      }),
+      new Promise((resolve, reject) => {
+        const req = tx.objectStore("works").getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error || new Error("作品データを読めませんでした。"));
+      })
+    ]);
+    if (!meta || !Array.isArray(meta.targetCodes)) throw new Error("対象Nコード一覧がありません。");
+    const workMap = new Map(allWorks.map(work => [work.ncode, work]));
+    const records = meta.targetCodes.map(ncode => {
+      const work = workMap.get(ncode);
+      if (!work) return { ncode, targetStatus: "record_missing", apiSource: null, apiStatus: "record_missing", raw: null };
+      const source = work.api && work.api.selectedSource;
+      const selected = source === "normal" ? work.api.normal : source === "r18" ? work.api.r18 : null;
+      return {
+        ncode,
+        targetStatus: work.targetStatus || null,
+        normalStatus: work.api && work.api.normal ? work.api.normal.status : null,
+        r18Status: work.api && work.api.r18 ? work.api.r18.status : null,
+        apiSource: source || null,
+        apiStatus: selected ? selected.status : "no_selected_source",
+        raw: selected && selected.status === "found" ? selected.raw : null
+      };
+    });
+    const found = records.filter(row => row.raw && typeof row.raw === "object").length;
+    const payload = {
+      format: "tomotayomu-narou-api-raw-audit-v1",
+      exportedAt: new Date().toISOString(),
+      sourceDb: name,
+      targetCount: meta.targetCodes.length,
+      storedWorkCount: allWorks.length,
+      rawRecordCount: found,
+      records
+    };
+    const blob = new Blob([JSON.stringify(payload)], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "narou-api-raw-audit-" + new Date().toISOString().replace(/[:.]/g, "-") + ".json";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setStatus("auditStatus",
+      "API生データJSONを作成しました。\n" +
+      "対象：" + records.length + "件\n" +
+      "生データあり：" + found + "件\n" +
+      "生データなし／取得失敗等：" + (records.length - found) + "件\n" +
+      "方式：仮保存DBの meta／works を readonly で読み取り\n" +
+      "DBへの書き込み・API再取得・localStorage参照は行っていません。");
+  } catch (error) {
+    setStatus("auditStatus", "JSON出力に失敗しました。\n" + (error.message || String(error)));
+  } finally {
+    if (db) db.close();
+    $("exportApiRaw").disabled = false;
+  }
+}
+
 async function runApiProcess() {
   const name = $("runSelect").value;
   if (!name) return;
@@ -907,6 +981,7 @@ $("stopApi").addEventListener("click", () => {
 });
 $("refreshSummary").addEventListener("click", refreshSummary);
 $("auditApiSample").addEventListener("click", auditApiSample);
+$("exportApiRaw").addEventListener("click", exportApiRaw);
 refreshRuns().catch(error => setStatus("runStatus", error.message || String(error)));
 </script>
 </body>
