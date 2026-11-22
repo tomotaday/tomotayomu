@@ -159,4 +159,11 @@ main{width:min(100%,780px);margin:auto;padding:22px 16px 52px}h1{font-size:24px;
 <p class="small">この追記は、11/08のバックアップ成功記録を取り消すものではない。バックアップの対象時点と、その後の旧DB件数差を明確にするための補足である。</p>
 </section>
 
+
+<section class="card warn">
+<strong>2026/11/22 追記：現行全保存領域の棚卸し・バックアップ準備</strong>
+<p>2026/11/22 12:15:25 JST、iPhone実機の読み取り専用棚卸しでIndexedDB 5/5 DB・合計14,422レコード、localStorage 51キー・概算5,129.5 KB、エラー0を確認した。内訳とストア構成は <code>docs/data-migration-log.md</code> の「2026-11-22：全保存領域の棚卸し・本番バックアップ準備」を参照。</p>
+<p><strong>重要：</strong>これは棚卸し完了の記録であり、今回のバックアップJSONの取得・内容検証・復元試験はまだ完了していない。2026/11/08の旧DBバックアップ実績とは別である。</p>
+<p>iPhoneではJSON生成時のメモリ使用量に注意し、失敗時に連続再試行しない。ダウンロード開始表示だけで保存完了と判断せず、Files上の実ファイルとJSON内容を確認する。取得後はIndexedDBの全DB・ストア・件数およびlocalStorageキー数を棚卸し結果と照合する。</p>
+</section>
 </main></body></html>
