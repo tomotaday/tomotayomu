@@ -76,32 +76,34 @@ async function inspectDB(name){
  }finally{db.close()}
 }
 async function diagnose(){
- const button=$('run');button.disabled=true;$('dbStatus').textContent='調査中…';$('lsStatus').textContent='調査中…';$('dbResult').replaceChildren();$('lsResult').replaceChildren();
+ const button=$('run'),report=['【ともたよむ 保存領域調査結果】','調査日時：'+new Date().toLocaleString('ja-JP'),''];
+ button.disabled=true;$('copyReport').disabled=true;$('reportText').value='調査中…';$('copyStatus').textContent='';
+ $('dbStatus').textContent='調査中…';$('lsStatus').textContent='調査中…';$('dbResult').replaceChildren();$('lsResult').replaceChildren();
  try{
-  const results=[];
-  for(const name of DB_NAMES)results.push(await inspectDB(name));
+  const results=[];for(const name of DB_NAMES)results.push(await inspectDB(name));
   const total=results.reduce((n,x)=>n+(x.rows||[]).reduce((m,r)=>m+r.count,0),0);
   $('dbStatus').textContent='確認したDB：'+results.filter(x=>!x.missing).length+' / '+DB_NAMES.length+'｜全ストア合計レコード：'+total+'｜'+new Date().toLocaleString('ja-JP');
+  report.push('■ IndexedDB','確認したDB：'+results.filter(x=>!x.missing).length+' / '+DB_NAMES.length,'全ストア合計レコード：'+total+'件','');
   for(const result of results){
-   const box=document.createElement('div');box.style.marginTop='14px';
-   const title=document.createElement('p');title.innerHTML='';title.textContent=result.name+' '+(result.missing?'（このブラウザでは未作成）':'｜version '+result.version);box.appendChild(title);
-   if(result.rows){const t=table(['ストア','keyPath','自動採番','インデックス','件数']);result.rows.forEach(r=>{const tr=document.createElement('tr');cell(tr,r.name);cell(tr,r.keyPath);cell(tr,r.autoIncrement?'はい':'いいえ');cell(tr,r.indexes.join('\n')||'なし');cell(tr,r.count);t.appendChild(tr)});box.appendChild(t)}
+   report.push(result.name+(result.missing?'：未作成':'：version '+result.version));
+   if(result.rows)result.rows.forEach(r=>report.push('  '+r.name+'：'+r.count+'件（keyPath：'+r.keyPath+'／自動採番：'+(r.autoIncrement?'はい':'いいえ')+'）'));else report.push('  ストア情報なし');
+   report.push('');
+   const box=document.createElement('div');box.style.marginTop='14px';const title=document.createElement('p');
+   title.textContent=result.name+' '+(result.missing?'（このブラウザでは未作成）':'｜version '+result.version);box.appendChild(title);
+   if(result.rows){const t=table(['ストア','keyPath','自動採番','インデックス','件数']);result.rows.forEach(r=>{const tr=document.createElement('tr');cell(tr,r.name);cell(tr,r.keyPath);cell(tr,r.autoIncrement?'はい':'いいえ');cell(tr,r.indexes.join('\\n')||'なし');cell(tr,r.count);t.appendChild(tr)});box.appendChild(t)}
    $('dbResult').appendChild(box);
   }
  }catch(e){const msg=e.message||String(e);$('dbStatus').textContent='IndexedDB調査エラー：'+msg;report.push('■ IndexedDB調査エラー',msg,'')}
  try{
-  const rows=[];let total=0;
-  for(let i=0;i<localStorage.length;i++){
-   const key=localStorage.key(i);if(key===null)continue;
-   const value=localStorage.getItem(key)||'';const bytes=(key.length+value.length)*2;total+=bytes;rows.push({key,bytes});
-  }
+  const rows=[];let total=0;for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key===null)continue;const value=localStorage.getItem(key)||'';const bytes=(key.length+value.length)*2;total+=bytes;rows.push({key,bytes})}
   rows.sort((a,b)=>b.bytes-a.bytes);
   $('lsStatus').textContent='キー数：'+rows.length+'｜概算合計：'+(total/1024).toFixed(1)+' KB｜'+new Date().toLocaleString('ja-JP');
-  const t=table(['キー名','概算容量']);
-  rows.forEach(r=>{const tr=document.createElement('tr');cell(tr,r.key);cell(tr,r.bytes.toLocaleString()+' bytes');t.appendChild(tr)});
-  $('lsResult').appendChild(t);
- }catch(e){$('lsStatus').textContent='localStorage調査エラー：'+(e.message||String(e))}
- button.disabled=false;
+  report.push('■ localStorage','キー数：'+rows.length,'概算合計：約'+(total/1024).toFixed(1)+' KB');rows.forEach(r=>report.push('  '+r.key+'（約'+r.bytes+' bytes）'));report.push('');
+  const t=table(['キー名','概算容量']);rows.forEach(r=>{const tr=document.createElement('tr');cell(tr,r.key);cell(tr,r.bytes.toLocaleString()+' bytes');t.appendChild(tr)});$('lsResult').appendChild(t);
+ }catch(e){const msg=e.message||String(e);$('lsStatus').textContent='localStorage調査エラー：'+msg;report.push('■ localStorage調査エラー',msg,'')}
+ report.push('■ 調査エラー');if(report.some(x=>x.includes('調査エラー')&&x!=='■ 調査エラー'))report.push('上記を確認してください');else report.push('なし');
+ report.push('','※この調査は読み取り専用です。バックアップファイルの作成とは別の操作です。');
+ $('reportText').value=report.join('\\n');$('copyReport').disabled=false;button.disabled=false;
 }
 function validateJsonSafe(value,path,stack=new WeakSet()){
  if(value===null||typeof value==='string'||typeof value==='boolean')return;
@@ -185,7 +187,7 @@ async function exportAllData(){
  }catch(e){status.textContent='取り出し失敗：'+(e.message||String(e))+'\nファイルは完成していない可能性があります。元データは変更していません。'}
  finally{button.disabled=false}
 }
-$('run').addEventListener('click',diagnose);
+$('run').addEventListener('click',diagnose);\n$('copyReport').addEventListener('click',async()=>{const area=$('reportText');try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(area.value);$('copyStatus').textContent='コピーしました。ChatGPTに貼り付けてね。'}else{area.focus();area.select();const ok=document.execCommand('copy');$('copyStatus').textContent=ok?'コピーしました。ChatGPTに貼り付けてね。':'テキスト欄を長押しして全選択・コピーしてください。'}}catch(e){area.focus();area.select();$('copyStatus').textContent='自動コピーできませんでした。テキスト欄を長押しして全選択・コピーしてください。'}});
 $('export').addEventListener('click',exportAllData);
 })();
 </script></body></html>
