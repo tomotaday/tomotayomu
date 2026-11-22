@@ -413,3 +413,14 @@
 - index.html のトップ操作列は、従来の4操作だけを一行に配置する。
 - 表示順：🔄 本棚更新、① JSONコピー、② Atom更新、🔃 順序反転。
 - API応答診断、R18 API応答診断、最新話更新日取得、更新日データ診断、R18判定診断の実験・診断ボタンはトップ操作列から外す。診断・補助処理のコード自体を削除する変更ではない。
+
+
+## 2026-11-23：作品カード単位のなろうAPI再取得
+
+- `index.html` のなろう作品カード「詳細を開く」内に「🔄 API更新」を追加。通常API／R18 APIを作品ごとに切り替えて、1作品だけ再取得する。
+- API応答の件数メタ情報を除外し、作品レコード1件・Nコード一致・必須項目・状態・日時を検証してから、新works `works` の既存レコード1件を更新する。
+- title、synopsis、authorName、authorId（通常API）、status、episodeCount、publishedAt、lastPublishedAt、keywords、genres、url、API由来siteDataを更新。bookmark・shelfId・作者かな等は既存値を維持する。R18のauthorIdは既存値を維持。
+- カクヨム・noteは対象外。旧works、shelves、localStorage、本棚更新の一括判定、Shortcut、GitHub Actionsは変更しない。
+- コードcommit：`3815a77d`（追加）、`c109da73`（API応答メタ情報処理）、`161a8da5`（bookmark保護調整）。GitHubから再取得し、全scriptのJavaScript構文チェックは合格。
+- **未確認：iPhone実機で通常作品・R18作品をそれぞれ1件更新し、保存・表示・管理情報維持を確認すること。**
+- 詳細：[data-migration-log.md](data-migration-log.md) の「2026-11-23：作品カード詳細内に1作品単位のなろうAPI再取得機能を追加」。
