@@ -1317,8 +1317,13 @@ async function supplementNarouWorksFromApi(){
     const narou=snapshot.filter(w=>w?.site==="narou");
     if(!narou.length)throw new Error("新worksに補完対象のなろう作品がありません");
     const groups=new Map();
+    const ids=new Set();
     for(const record of narou){
       const n=String(record.workId||"").trim().toUpperCase();
+      const id=String(record.id||"").trim();
+      if(!id)throw new Error("作品IDがない作品があるため安全停止しました："+(n||"(Nコード不明)"));
+      if(ids.has(id))throw new Error("作品ID重複があるため安全停止しました："+id);
+      ids.add(id);
       if(!/^N[0-9A-Z]+$/.test(n))throw new Error("Nコードが不正な作品があります："+String(record.workId||"(空欄)"));
       if(!groups.has(n))groups.set(n,[]);
       groups.get(n).push(record);
