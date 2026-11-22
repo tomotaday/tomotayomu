@@ -27,11 +27,11 @@ ul{padding-left:20px;margin:8px 0}.danger{font-weight:700;color:#9b3434}
 <header>
  <p class="small">v4.0.0 / NEW WORKS IMPORT</p>
  <h1>なろう APIデータ取込</h1>
- <p>変換済みの3,657作品JSONを、既存の新works正本DBへ取り込みます。</p>
- <p class="small">旧worksは参照しません。既存の新worksレコードを土台にAPI項目だけを更新し、しおり・本棚・作者かな等の管理情報は新works側の値を維持します。</p>
+ <p>API生データ監査JSONから3,657作品を直接変換し、既存の新works正本DBへ取り込みます。</p>
+ <p class="small">旧works・Atom・旧作品スナップショットは参照しません。新works側の既存レコードから、しおり・本棚・作者かな等の管理情報だけを維持します。</p>
 </header>
 <section class="panel">
- <h2>1. 変換済みJSONを選択</h2>
+ <h2>1. API生データ監査JSONを選択</h2>
  <input id="file" type="file" accept=".json,application/json">
  <div id="fileStatus" class="status">JSONファイルを選択してください。</div>
 </section>
@@ -64,84 +64,101 @@ const DB_NAME="tomotaYomuWorksDB",DB_VERSION=2,STORE="works";
 const EXPECTED=3657,EXPECTED_NORMAL=1453,EXPECTED_R18=2204;
 const $=id=>document.getElementById(id);
 let payload=null,plan=null;
-const API_FIELDS=["title","synopsis","authorName","authorId","authorType","status","episodeCount","publishedAt","lastPublishedAt","keywords","genres","url"];
-const SITE_API_FIELDS=["noveltype","end","keyword","genre","isstop","novelupdated_at","userid_source","authorType","isR18","biggenre","nocgenre","isr15","isbl","isgl","iszankoku","istensei","istenni"];
-function fail(message){throw new Error(message)}
+const GENRE_FIELDS=["biggenre","genre","nocgenre","isr15","isbl","isgl","iszankoku","istensei","istenni"];
+const API_FIELDS=["title","synopsis","authorName","authorId","status","episodeCount","publishedAt","lastPublishedAt","keywords","genres","url"];
+function fail(m){throw Error(m)}
 function clone(v){return structuredClone(v)}
-function readFile(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(JSON.parse(String(r.result)));r.onerror=()=>reject(r.error||Error("ファイルを読み込めません"));r.readAsText(file,"UTF-8")})}
+function formatApiDate(v,key){
+ if(typeof v!=="string"||!/^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}(?::\\d{2})?$/.test(v))fail(key+"：API日時の形式が不正です（"+v+"）");
+ const [d,t]=v.split(" "),[y,m,day]=d.split("-"),[h,min]=t.split(":");
+ const dt=new Date(Number(y),Number(m)-1,Number(day),Number(h),Number(min));
+ if(dt.getFullYear()!==Number(y)||dt.getMonth()!==Number(m)-1||dt.getDate()!==Number(day)||Number(h)>23||Number(min)>59)fail(key+"：実在しない日時です（"+v+"）");
+ return y+"/"+m+"/"+day+" "+h+":"+min;
+}
+function convertApiRow(row,existing,exportedAt){
+ const raw=row.raw,ncode=String(row.ncode||"").toUpperCase(),isR18=row.apiSource==="r18";
+ if(!raw||String(raw.ncode||"").toUpperCase()!==ncode)fail(ncode+"：API生データのNコード不一致");
+ if(typeof raw.title!=="string"||!raw.title.trim())fail(ncode+"：titleなし");
+ if(typeof raw.story!=="string")fail(ncode+"：storyが文字列ではありません");
+ if(!Number.isInteger(raw.general_all_no)||raw.general_all_no<1)fail(ncode+"：general_all_noが不正です");
+ if(!Number.isInteger(raw.userid)||raw.userid<1)fail(ncode+"：useridが不正です");
+ const novelType=Number(raw.novel_type),end=Number(raw.end);
+ let status;
+ if(novelType===2&&end===0)status="短編";
+ else if(novelType===1&&end===0)status="完結";
+ else if(novelType===1&&end===1)status="連載中";
+ else fail(ncode+"：novel_type/endの組合せが不正です（"+novelType+"/"+end+"）");
+ const genres=GENRE_FIELDS.filter(k=>Object.prototype.hasOwnProperty.call(raw,k)&&raw[k]!==null&&raw[k]!=="").map(source=>({source,value:raw[source]}));
+ const keywords=typeof raw.keyword==="string"?raw.keyword.trim().split(/\\s+/u).filter(Boolean):[];
+ const work=existing?clone(existing):{id:"narou:"+ncode,site:"narou",workId:ncode,shelfId:"",bookmark:null};
+ const api={
+  title:raw.title,synopsis:raw.story,authorName:raw.writer,authorId:raw.userid,status,
+  episodeCount:raw.general_all_no,publishedAt:formatApiDate(raw.general_firstup,ncode+" general_firstup"),
+  lastPublishedAt:formatApiDate(raw.general_lastup,ncode+" general_lastup"),keywords,genres,
+  url:"https://"+(isR18?"novel18.syosetu.com":"ncode.syosetu.com")+"/"+ncode.toLowerCase()+"/"
+ };
+ for(const key of API_FIELDS)work[key]=clone(api[key]);
+ const siteData=work.siteData&&typeof work.siteData==="object"?clone(work.siteData):{};
+ Object.assign(siteData,{
+  noveltype:novelType,end,keyword:typeof raw.keyword==="string"?raw.keyword:"",
+  genre:raw.genre??null,biggenre:raw.biggenre??null,nocgenre:raw.nocgenre??null,
+  isstop:raw.isstop??0,novelupdated_at:raw.novelupdated_at??"",
+  api_fetched_at:exportedAt,userid_source:raw.userid,
+  authorType:isR18?"r18":"normal",isR18
+ });
+ for(const key of ["isr15","isbl","isgl","iszankoku","istensei","istenni"])if(Object.prototype.hasOwnProperty.call(raw,key))siteData[key]=raw[key];
+ work.siteData=siteData;
+ // Canonical works has no duplicate/legacy reading fields.
+ for(const key of ["updatedAt","createdAt","reading","characterCount","newUrl"])delete work[key];
+ if(!work.id)work.id="narou:"+ncode;
+ if(work.site!=="narou"||work.workId!==ncode)fail(ncode+"：既存worksの識別子が一致しません");
+ if(!(work.bookmark===null||work.bookmark===undefined||work.bookmark==="R"||(Number.isInteger(work.bookmark)&&work.bookmark>0)))fail(ncode+"：既存bookmarkが不正です");
+ if(work.bookmark===undefined)work.bookmark=null;
+ if(!Object.prototype.hasOwnProperty.call(work,"shelfId"))work.shelfId="";
+ if(work.bookmark==="R"&&status!=="短編")fail(ncode+"：Rしおりは短編以外に設定できません");
+ if(Number.isInteger(work.bookmark)&&status==="短編")fail(ncode+"：短編に数値しおりは設定できません");
+ if(Number.isInteger(work.bookmark)&&work.bookmark>work.episodeCount)fail(ncode+"：しおりが総話数を超えています");
+ return work;
+}
+function readFile(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>{try{resolve(JSON.parse(String(r.result)))}catch(e){reject(e)}};r.onerror=()=>reject(r.error||Error("ファイル読込失敗"));r.readAsText(file,"UTF-8")})}
 function openExistingDb(){
  return new Promise((resolve,reject)=>{
   const req=indexedDB.open(DB_NAME);
-  req.onupgradeneeded=()=>{req.transaction.abort();reject(Error("DB version upgrade required. 安全のため停止しました。"))};
-  req.onsuccess=()=>{const db=req.result;
-   if(db.version!==DB_VERSION||!db.objectStoreNames.contains(STORE)||!db.objectStoreNames.contains("shelves")){db.close();reject(Error("新works DBのversionまたはstore構造が想定外です"));return}
+  req.onupgradeneeded=()=>{req.transaction.abort();reject(Error("DB更新が必要なため停止しました"))};
+  req.onsuccess=()=>{const db=req.result,storeOk=db.version===DB_VERSION&&db.objectStoreNames.contains(STORE)&&db.objectStoreNames.contains("shelves");
+   if(!storeOk){db.close();reject(Error("新works DBのversion/storeが想定外です"));return}
    const tx=db.transaction(STORE,"readonly"),store=tx.objectStore(STORE);
-   if(store.keyPath!=="id"||!store.indexNames.contains("site")||!store.indexNames.contains("workId")){db.close();reject(Error("worksストアのkeyPath/indexが想定外です"));return}
-   const reqAll=store.getAll();reqAll.onsuccess=()=>resolve({db,records:reqAll.result||[]});reqAll.onerror=()=>{db.close();reject(reqAll.error||Error("新works読み込み失敗"))};
+   if(store.keyPath!=="id"||!store.indexNames.contains("site")||!store.indexNames.contains("workId")){db.close();reject(Error("worksストア構造が想定外です"));return}
+   const q=store.getAll();q.onsuccess=()=>resolve({db,records:q.result||[]});q.onerror=()=>{db.close();reject(q.error||Error("works読み込み失敗"))};
    tx.onerror=()=>{db.close();reject(tx.error||Error("readonly transaction error"))};
   };
-  req.onerror=()=>reject(req.error||Error("新works DBを開けません"));
-  req.onblocked=()=>reject(Error("別タブが新works DBを使用中です"));
+  req.onerror=()=>reject(req.error||Error("新works DBを開けません"));req.onblocked=()=>reject(Error("別タブが新works DBを使用中です"));
  });
 }
-function validateEnvelope(data){
- if(!data||data.format!=="tomotayomu-narou-works-transfer-v2"||data.formatVersion!==2)fail("JSON形式がnarou-works-transfer-v2ではありません");
- if(data.count!==EXPECTED||!Array.isArray(data.records)||data.records.length!==EXPECTED)fail("作品数が3,657件ではありません");
- if(data.normal!==EXPECTED_NORMAL||data.r18!==EXPECTED_R18)fail("通常/R18件数が想定と異なります");
- const ids=new Set();let normal=0,r18=0;
- for(let i=0;i<data.records.length;i++){
-  const w=data.records[i],n=String(w?.workId||"").toUpperCase();
-  if(w?.site!=="narou"||!/^N[0-9A-Z]+$/.test(n)||w.id!=="narou:"+n)fail("レコード"+(i+1)+"：site/workId/idが不正です");
-  if(ids.has(w.id))fail("重複ID："+w.id);ids.add(w.id);
-  if(typeof w.title!=="string"||!w.title.trim())fail(n+"：titleがありません");
-  if(typeof w.synopsis!=="string")fail(n+"：synopsisが文字列ではありません");
-  if(!Array.isArray(w.keywords)||!Array.isArray(w.genres))fail(n+"：keywords/genresが配列ではありません");
-  if(!Number.isInteger(w.episodeCount)||w.episodeCount<1)fail(n+"：episodeCountが不正です");
-  if(typeof w.publishedAt!=="string"||typeof w.lastPublishedAt!=="string")fail(n+"：日付がありません");
-  let host;try{const u=new URL(w.url);host=u.hostname;if(u.protocol!=="https:"||!["ncode.syosetu.com","novel18.syosetu.com"].includes(host)||u.pathname.replace(/\\/+$/,"").toUpperCase()!=="/"+n)fail(n+"：作品URLが不正です");}catch{fail(n+"：作品URLがありません／不正です")}
-  if(host==="novel18.syosetu.com")r18++;else normal++;
- }
- if(normal!==EXPECTED_NORMAL||r18!==EXPECTED_R18)fail("JSON内のisR18集計が想定と不一致："+normal+"/"+r18);
- return {ids,normal,r18};
-}
-function mergeApi(existing,incoming){
- const out=existing?clone(existing):clone(incoming);
- for(const key of API_FIELDS)if(Object.prototype.hasOwnProperty.call(incoming,key))out[key]=clone(incoming[key]);
- const currentSiteData=out.siteData&&typeof out.siteData==="object"?clone(out.siteData):{};
- const incomingSiteData=incoming.siteData&&typeof incoming.siteData==="object"?incoming.siteData:{};
- for(const key of SITE_API_FIELDS)if(Object.prototype.hasOwnProperty.call(incomingSiteData,key))currentSiteData[key]=clone(incomingSiteData[key]);
- const isR18=new URL(incoming.url).hostname==="novel18.syosetu.com";
- const genreMap=new Map((Array.isArray(incoming.genres)?incoming.genres:[]).map(x=>[x.source,x.value]));
- for(const key of ["biggenre","genre","nocgenre","isr15","isbl","isgl","iszankoku","istensei","istenni"])if(genreMap.has(key))currentSiteData[key]=genreMap.get(key);
- currentSiteData.noveltype=incoming.status==="短編"?2:1;
- currentSiteData.end=incoming.status==="連載中"?1:0;
- currentSiteData.keyword=Array.isArray(incoming.keywords)?incoming.keywords.join(" "):"";
- currentSiteData.userid_source=incoming.authorId??null;
- currentSiteData.authorType=isR18?"r18":"normal";
- currentSiteData.isR18=isR18;
- out.siteData=currentSiteData;
- // 新worksのしおり・棚・作者かな等は既存レコードの値を優先。新規はJSONの値をそのまま使用。
- return out;
-}
 async function prepare(data){
- const check=validateEnvelope(data),opened=await openExistingDb();
+ if(data?.format!=="tomotayomu-narou-api-raw-audit-v1")fail("JSON形式がAPI生データ監査JSONではありません");
+ if(!Array.isArray(data.records)||data.rawRecordCount!==EXPECTED)fail("rawRecordCountが3,657件ではありません");
+ const found=data.records.filter(r=>r.targetStatus==="ready"&&r.apiStatus==="found"&&r.raw);
+ if(found.length!==EXPECTED)fail("API取得成功件数が3,657件ではありません："+found.length);
+ const codes=new Set(),normal=found.filter(r=>r.apiSource==="normal").length,r18=found.filter(r=>r.apiSource==="r18").length;
+ if(normal!==EXPECTED_NORMAL||r18!==EXPECTED_R18)fail("通常/R18件数が想定外："+normal+"/"+r18);
+ for(const r of found){const n=String(r.ncode||"").toUpperCase();if(!n||codes.has(n))fail("Nコード空欄または重複："+n);codes.add(n)}
+ const opened=await openExistingDb();
  try{
   const byId=new Map(opened.records.map(w=>[w.id,w]));
-  const writes=data.records.map(incoming=>mergeApi(byId.get(incoming.id)||null,incoming));
+  const writes=found.map(r=>convertApiRow(r,byId.get("narou:"+String(r.ncode).toUpperCase())||null,data.exportedAt));
   const update=writes.filter(w=>byId.has(w.id)).length,add=writes.length-update;
-  const conflicts=writes.filter(w=>{const old=byId.get(w.id);return old&&(old.site!=="narou"||old.workId!==w.workId)});
-  if(conflicts.length)fail("既存IDとworkId/siteが衝突しています："+conflicts.slice(0,5).map(x=>x.id).join(", "));
-  plan={dbName:DB_NAME,writes,update,add,existingCount:opened.records.length,normal:check.normal,r18:check.r18};
+  plan={writes,update,add,existingCount:opened.records.length,normal,r18};
   $("total").textContent=writes.length.toLocaleString("ja-JP");$("update").textContent=update.toLocaleString("ja-JP");$("add").textContent=add.toLocaleString("ja-JP");$("errors").textContent="0";
   $("preview").className="status ok";
-  $("preview").textContent="検証成功\n新works現在："+opened.records.length.toLocaleString("ja-JP")+"件\nAPI対象："+writes.length.toLocaleString("ja-JP")+"件（通常 "+check.normal+" / R18 "+check.r18+"）\n既存更新："+update+"件\n新規追加："+add+"件\n本棚・しおり・作者かな等の既存管理情報は維持します。";
+  $("preview").textContent="検証成功\\nAPI取得成功："+writes.length+"件（通常 "+normal+" / R18 "+r18+"）\\n新works現在："+opened.records.length+"件\\n既存更新："+update+"件\\n新規追加："+add+"件\\n既存のshelfId・bookmark・作者かな等は維持します。";
   $("commit").disabled=false;
  }finally{opened.db.close()}
 }
 $("file").addEventListener("change",async e=>{
  $("commit").disabled=true;payload=null;plan=null;
  try{const f=e.target.files?.[0];if(!f)return;payload=await readFile(f);await prepare(payload);$("fileStatus").textContent="読込完了："+f.name}
- catch(err){$("preview").className="status bad";$("preview").textContent="検証停止：\n"+(err.message||String(err));$("errors").textContent="1";$("fileStatus").textContent="ファイルの検証に失敗しました"}
+ catch(err){$("preview").className="status bad";$("preview").textContent="検証停止：\\n"+(err.message||String(err));$("errors").textContent="1";$("fileStatus").textContent="ファイル検証に失敗しました"}
 });
 $("commit").addEventListener("click",async()=>{
  if(!plan||!payload)return;
@@ -149,15 +166,14 @@ $("commit").addEventListener("click",async()=>{
  let db;
  try{
   const opened=await openExistingDb();db=opened.db;
-  // DBが検証後に変更されていないか、件数と対象IDを再確認する。
-  if(opened.records.length!==plan.existingCount)fail("検証後に新works件数が変わりました。再読込してください");
+  if(opened.records.length!==plan.existingCount)fail("検証後に新works件数が変わりました。JSONを再読込してください");
   const tx=db.transaction(STORE,"readwrite"),store=tx.objectStore(STORE);
   for(const w of plan.writes)store.put(w);
-  await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||Error("書き込みtransaction失敗"));tx.onabort=()=>reject(tx.error||Error("transactionが中止されました"))});
+  await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||Error("書き込み失敗"));tx.onabort=()=>reject(tx.error||Error("transaction中止"))});
   $("preview").className="status ok";
-  $("preview").textContent="新worksへの反映が完了しました。\nAPI対象："+plan.writes.length.toLocaleString("ja-JP")+"件\n既存更新："+plan.update+"件\n新規追加："+plan.add+"件\n書き込み先："+DB_NAME+" / works\n本棚ストア・localStorageは変更していません。";
+  $("preview").textContent="新worksへの反映が完了しました。\\nAPI作品："+plan.writes.length+"件\\n既存更新："+plan.update+"件\\n新規追加："+plan.add+"件\\nDB："+DB_NAME+" / works\\nshelves・localStorageは変更していません。";
   $("commit").textContent="反映完了";
- }catch(err){$("preview").className="status bad";$("preview").textContent="書き込み失敗（transactionは完了していません）：\n"+(err.message||String(err));$("commit").disabled=false}
+ }catch(err){$("preview").className="status bad";$("preview").textContent="書き込み失敗：\\n"+(err.message||String(err));$("commit").disabled=false}
  finally{if(db)db.close()}
 });
 </script>
