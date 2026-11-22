@@ -902,9 +902,11 @@ async function refreshNarouWorkFromApi(card){
     const isR18=card.dataset.r18==="1";
     const apiBase=isR18?R18_API_URL:API_URL;
     const result=await jsonp(apiBase+"?ncode="+encodeURIComponent(n)+"&lim=1");
-    if(!Array.isArray(result)||!result.length||!result[0]||!result[0].ncode)
-      throw new Error("APIに作品が見つかりませんでした");
-    const raw=result[0],returned=String(raw.ncode).trim().toUpperCase();
+    if(!Array.isArray(result))throw new Error("APIの応答形式が不正です");
+    // なろうAPIの先頭要素は件数メタデータ。ncodeを持つ作品レコードだけを取り出す。
+    const apiRows=result.filter(row=>row&&row.ncode);
+    if(apiRows.length!==1)throw new Error(apiRows.length===0?"APIに作品が見つかりませんでした":"APIから複数作品が返されたため停止しました");
+    const raw=apiRows[0],returned=String(raw.ncode).trim().toUpperCase();
     if(returned!==n)throw new Error("APIのNコードが一致しません");
     if(typeof raw.title!=="string"||!raw.title.trim())throw new Error("作品タイトルが取得できません");
     if(typeof raw.story!=="string"||!Number.isInteger(Number(raw.general_all_no))||Number(raw.general_all_no)<1)
