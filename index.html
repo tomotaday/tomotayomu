@@ -117,6 +117,7 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 <div class="top-update-actions">
 <button id="updateBtn" type="button">🔄 本棚更新</button>
 <button id="apiProbeBtn" type="button">🧪 API応答診断</button>
+<button id="r18ApiProbeBtn" type="button">🧪 R18 API応答診断</button>
 <button id="apiSupplementBtn" type="button">📅 最新話更新日を取得</button>
 <button id="dateAuditBtn" type="button">🔍 更新日データ診断</button>
 <button id="r18AuditBtn" type="button">🔍 R18判定診断</button>
@@ -1356,6 +1357,62 @@ async function auditNarouLastPublishedAt(){
     if(box)box.textContent="診断失敗："+e.message;
   }finally{if(btn)btn.disabled=false}
 }
+async function diagnoseNarouR18ApiResponse(){
+  const btn=document.getElementById("r18ApiProbeBtn"),box=document.getElementById("apiProbeResult"),status=document.getElementById("apiStatus");
+  const requestedNcode="N5860MU";
+  if(btn)btn.disabled=true;
+  if(box){box.hidden=false;box.textContent=requestedNcode+" のR18 API総話数を確認中…（IndexedDB読み取りのみ・保存なし）";}
+  try{
+    const db=await openExistingWorksDB();
+    let rows;
+    try{
+      rows=await new Promise((resolve,reject)=>{
+        const tx=db.transaction("works","readonly"),req=tx.objectStore("works").getAll();
+        req.onsuccess=()=>resolve(req.result||[]);
+        req.onerror=()=>reject(req.error||new Error("新works読込失敗"));
+        tx.onerror=()=>reject(tx.error||new Error("新works読込トランザクション失敗"));
+      });
+    }finally{db.close()}
+    const target=rows.find(w=>w?.site==="narou"&&String(w?.workId||"").trim().toUpperCase()===requestedNcode);
+    if(!target)throw new Error(requestedNcode+" が新works内に見つかりません");
+    const isR18=target?.siteData?.isR18===true;
+    if(!isR18)throw new Error(requestedNcode+" は新works内でR18判定ではありません（isR18="+String(target?.siteData?.isR18)+ "）。R18 API照会は中止しました");
+    const url=R18_API_URL+"?ncode="+encodeURIComponent(requestedNcode)+"&of=n-ga&lim=1";
+    const data=await jsonp(url);
+    const describe=(item)=>{
+      if(item===null)return {type:"null"};
+      if(Array.isArray(item))return {type:"array",length:item.length};
+      if(typeof item!=="object")return {type:typeof item,value:String(item).slice(0,120)};
+      return {
+        type:"object",
+        keys:Object.keys(item),
+        allcount:Object.prototype.hasOwnProperty.call(item,"allcount")?item.allcount:"(なし)",
+        ncode:Object.prototype.hasOwnProperty.call(item,"ncode")?item.ncode:"(なし)",
+        general_all_no:Object.prototype.hasOwnProperty.call(item,"general_all_no")?item.general_all_no:"(なし)"
+      };
+    };
+    const returned=Array.isArray(data)?data.slice(1).find(x=>String(x?.ncode||"").trim().toUpperCase()===requestedNcode):null;
+    const report=[
+      "【なろうR18 API・総話数応答診断】",
+      "診断対象Nコード："+requestedNcode,
+      "IndexedDB登録：あり（site=narou）",
+      "IndexedDB R18判定："+String(isR18),
+      "応答全体の型："+(Array.isArray(data)?"Array":typeof data),
+      "応答件数："+(Array.isArray(data)?data.length:"配列ではない"),
+      "先頭要素："+JSON.stringify(Array.isArray(data)?describe(data[0]):describe(data)),
+      "2番目の要素："+JSON.stringify(Array.isArray(data)?describe(data[1]):{type:"対象外"}),
+      "Nコード一致："+(returned?"あり":"なし"),
+      "一致データの総話数："+(returned&&Number.isInteger(Number(returned.general_all_no))?String(returned.general_all_no):"取得できず"),
+      "※IndexedDBは読み取りのみ。作品データの保存・変更は行っていません。"
+    ];
+    if(box)box.textContent=report.join("\n");
+    if(status)status.textContent="R18 API総話数応答診断完了（読み取り専用）";
+  }catch(e){
+    console.error("なろうR18 API応答診断失敗",e);
+    if(box)box.textContent="R18 API応答診断失敗："+e.message+"\n※IndexedDBへの保存・変更は行っていません。";
+    if(status)status.textContent="R18 API応答診断失敗："+e.message;
+  }finally{if(btn)btn.disabled=false}
+}
 async function diagnoseNarouApiResponse(){
   const btn=document.getElementById("apiProbeBtn"),box=document.getElementById("apiProbeResult"),status=document.getElementById("apiStatus");
   if(btn)btn.disabled=true;
@@ -1637,6 +1694,7 @@ document.addEventListener("click",e=>{
 });
 document.getElementById("updateBtn").addEventListener("click",updateInfo);
 document.getElementById("apiProbeBtn").addEventListener("click",diagnoseNarouApiResponse);
+document.getElementById("r18ApiProbeBtn").addEventListener("click",diagnoseNarouR18ApiResponse);
 document.getElementById("apiSupplementBtn").addEventListener("click",supplementNarouWorksFromApi);
 document.getElementById("dateAuditBtn").addEventListener("click",auditNarouLastPublishedAt);
 document.getElementById("r18AuditBtn").addEventListener("click",auditNarouR18Flag);
