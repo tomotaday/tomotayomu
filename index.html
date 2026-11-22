@@ -209,6 +209,18 @@ function loadJSON(key, fallback) { try { return JSON.parse(localStorage.getItem(
 function saveJSON(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
 function getGlobalBaseline(){ return localStorage.getItem(GLOBAL_BASELINE_KEY) || INITIAL_GLOBAL_BASELINE; }
 function setGlobalBaseline(value){ localStorage.setItem(GLOBAL_BASELINE_KEY, value); }
+function renderGlobalBaseline(){
+  const el=document.getElementById("baselineDate");
+  if(!el)return;
+  const date=new Date(getGlobalBaseline());
+  if(!Number.isFinite(date.getTime())){
+    el.textContent="本棚基準日：反映待ち";
+    return;
+  }
+  const pad=n=>String(n).padStart(2,"0");
+  const formatted=date.getFullYear()+"/"+pad(date.getMonth()+1)+"/"+pad(date.getDate())+" "+pad(date.getHours())+":"+pad(date.getMinutes());
+  el.textContent="本棚基準日："+formatted;
+}
 function getUpdateCandidates(){ return loadJSON(UPDATE_CANDIDATES_KEY,{}); }
 function saveUpdateCandidates(value){ saveJSON(UPDATE_CANDIDATES_KEY,value); }
 let siteItemsCache={note:null,kakuyomu:null};
