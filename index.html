@@ -116,15 +116,9 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 
 <div class="top-update-actions">
 <button id="updateBtn" type="button">🔄 本棚更新</button>
-<button id="apiProbeBtn" type="button">🧪 API応答診断</button>
-<button id="r18ApiProbeBtn" type="button">🧪 R18 API応答診断</button>
-<button id="apiSupplementBtn" type="button">📅 最新話更新日を取得</button>
-<button id="dateAuditBtn" type="button">🔍 更新日データ診断</button>
-<button id="r18AuditBtn" type="button">🔍 R18判定診断</button>
 <button id="copyAuthorJsonBtn" type="button">① JSONコピー</button>
 <button id="launchAuthorAtomBtn" type="button">② Atom更新</button>
 <button id="reverseOrderBtn" type="button">🔃 順序反転</button>
-
 </div>
 <div id="baselineDate" style="font-size:13px;margin:8px 0">本棚基準日：反映待ち</div>
 <div id="registrationResult" hidden style="border:1px solid #8caa9b;border-radius:10px;background:#f1f8f4;padding:10px;margin:10px 0;overflow-wrap:anywhere"></div>
@@ -1693,11 +1687,11 @@ document.addEventListener("click",e=>{
   applyCardState(card);
 });
 document.getElementById("updateBtn").addEventListener("click",updateInfo);
-document.getElementById("apiProbeBtn").addEventListener("click",diagnoseNarouApiResponse);
-document.getElementById("r18ApiProbeBtn").addEventListener("click",diagnoseNarouR18ApiResponse);
-document.getElementById("apiSupplementBtn").addEventListener("click",supplementNarouWorksFromApi);
-document.getElementById("dateAuditBtn").addEventListener("click",auditNarouLastPublishedAt);
-document.getElementById("r18AuditBtn").addEventListener("click",auditNarouR18Flag);
+document.getElementById("apiProbeBtn")?.addEventListener("click",diagnoseNarouApiResponse);
+document.getElementById("r18ApiProbeBtn")?.addEventListener("click",diagnoseNarouR18ApiResponse);
+document.getElementById("apiSupplementBtn")?.addEventListener("click",supplementNarouWorksFromApi);
+document.getElementById("dateAuditBtn")?.addEventListener("click",auditNarouLastPublishedAt);
+document.getElementById("r18AuditBtn")?.addEventListener("click",auditNarouR18Flag);
 document.getElementById("reverseOrderBtn")?.addEventListener("click",()=>{workOrderReversed=!workOrderReversed;buildShelfFolders();});
 document.getElementById("copyAuthorJsonBtn")?.addEventListener("click",async()=>{
   const btn=document.getElementById("copyAuthorJsonBtn");
