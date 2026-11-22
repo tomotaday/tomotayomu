@@ -175,8 +175,9 @@ async function exportAllData(){
   if(localCount!==Object.keys(local).length)throw new Error('localStorage件数照合失敗');
   const blob=new Blob([json],{type:'application/json;charset=utf-8'});
   const url=URL.createObjectURL(blob),a=document.createElement('a');
-  const stamp=exportedAt.replace(/[:.]/g,'-');
-  a.href=url;a.download='ty-backup-'+stamp+'.json';
+  const localNow=new Date(),pad=n=>String(n).padStart(2,'0');
+  const stamp=pad(localNow.getMonth()+1)+pad(localNow.getDate())+pad(localNow.getHours())+pad(localNow.getMinutes());
+  a.href=url;a.download='ty_backup_'+stamp+'.json';
   document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),60000);
   const total=checks.reduce((n,x)=>n+x.count,0);
