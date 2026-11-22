@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f3ed">
+<title>なろうAPIデータ取込｜ともたよむ</title>
+<style>
+:root{color-scheme:light;--bg:#f6f3ed;--paper:#fffdf9;--ink:#252525;--muted:#777;--line:#c9c0b4;--accent:#315d9b;--ok:#edf7f0;--bad:#fff0f0}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.6}
+main{width:min(760px,100%);margin:auto;padding:18px 14px 48px}
+header,.panel{background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:15px;margin:12px 0}
+h1{font-size:21px;margin:0 0 6px}h2{font-size:16px;margin:0 0 8px}
+p{margin:6px 0}.small{font-size:12px;color:var(--muted)}
+button,input{font:inherit}input[type=file]{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff;margin:7px 0}
+button{width:100%;padding:11px;border:1px solid var(--line);border-radius:9px;background:#fff;margin:6px 0;color:var(--ink)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+button:disabled{opacity:.45}
+.status{white-space:pre-wrap;overflow-wrap:anywhere;padding:11px;border-radius:9px;background:#f1f2f4;font-size:13px;margin-top:9px}
+.status.ok{background:var(--ok)}.status.bad{background:var(--bad)}
+.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}
+.metric{background:#f1f2f4;border-radius:8px;padding:9px}.metric strong{display:block;font-size:20px}
+ul{padding-left:20px;margin:8px 0}.danger{font-weight:700;color:#9b3434}
+</style>
+</head>
+<body><main>
+<header>
+ <p class="small">v4.0.0 / NEW WORKS IMPORT</p>
+ <h1>なろう APIデータ取込</h1>
+ <p>変換済みの3,657作品JSONを、既存の新works正本DBへ取り込みます。</p>
+ <p class="small">旧worksは参照しません。既存の新worksレコードを土台にAPI項目だけを更新し、しおり・本棚・作者かな等の管理情報は新works側の値を維持します。</p>
+</header>
+<section class="panel">
+ <h2>1. 変換済みJSONを選択</h2>
+ <input id="file" type="file" accept=".json,application/json">
+ <div id="fileStatus" class="status">JSONファイルを選択してください。</div>
+</section>
+<section class="panel">
+ <h2>2. 取込前検証</h2>
+ <div class="metrics">
+  <div class="metric">取込対象<strong id="total">—</strong></div>
+  <div class="metric">既存更新<strong id="update">—</strong></div>
+  <div class="metric">新規追加<strong id="add">—</strong></div>
+  <div class="metric">検証エラー<strong id="errors">—</strong></div>
+ </div>
+ <div id="preview" class="status">ファイル選択後に検証します。</div>
+ <button id="commit" class="primary" disabled>新worksへ一括反映する</button>
+ <p class="small">書き込みは単一IndexedDB transactionです。途中失敗時はtransaction全体が取り消されます。shelvesストア・localStorageは変更しません。</p>
+</section>
+<section class="panel">
+ <h2>3. 取込ルール</h2>
+ <ul class="small">
+  <li>対象DB：tomotaYomuWorksDB / version 2 / worksストア（keyPath: id）</li>
+  <li>API項目：作品名、あらすじ、作者名・作者ID、公開日、最新話更新日、総話数、状態、キーワード、ジャンル、なろうAPI属性</li>
+  <li>既存新worksの管理項目：id、shelfId、bookmark、authorKana、authorKanaFirst、authorKanaChecked等を維持</li>
+  <li>新規作品はJSON内の管理項目を引き継ぐ</li>
+  <li>旧works、Atom、旧作品スナップショットは参照しない</li>
+ </ul>
+ <p class="small danger">取込後のロールバックには、事前に取得したDBバックアップを使用してください。</p>
+</section>
+<script>
+"use strict";
+const DB_NAME="tomotaYomuWorksDB",DB_VERSION=2,STORE="works";
+const EXPECTED=3657,EXPECTED_NORMAL=1453,EXPECTED_R18=2204;
+const $=id=>document.getElementById(id);
+let payload=null,plan=null;
+const API_FIELDS=["title","synopsis","authorName","authorId","authorType","status","episodeCount","publishedAt","lastPublishedAt","keywords","genres","url"];
+const SITE_API_FIELDS=["noveltype","end","keyword","genre","isstop","novelupdated_at","userid_source","authorType","isR18","biggenre","nocgenre","isr15","isbl","isgl","iszankoku","istensei","istenni"];
+function fail(message){throw new Error(message)}
+function clone(v){return structuredClone(v)}
+function readFile(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(JSON.parse(String(r.result)));r.onerror=()=>reject(r.error||Error("ファイルを読み込めません"));r.readAsText(file,"UTF-8")})}
+function openExistingDb(){
+ return new Promise((resolve,reject)=>{
+  const req=indexedDB.open(DB_NAME);
+  req.onupgradeneeded=()=>{req.transaction.abort();reject(Error("DB version upgrade required. 安全のため停止しました。"))};
+  req.onsuccess=()=>{const db=req.result;
+   if(db.version!==DB_VERSION||!db.objectStoreNames.contains(STORE)||!db.objectStoreNames.contains("shelves")){db.close();reject(Error("新works DBのversionまたはstore構造が想定外です"));return}
+   const tx=db.transaction(STORE,"readonly"),store=tx.objectStore(STORE);
+   if(store.keyPath!=="id"||!store.indexNames.contains("site")||!store.indexNames.contains("workId")){db.close();reject(Error("worksストアのkeyPath/indexが想定外です"));return}
+   const reqAll=store.getAll();reqAll.onsuccess=()=>resolve({db,records:reqAll.result||[]});reqAll.onerror=()=>{db.close();reject(reqAll.error||Error("新works読み込み失敗"))};
+   tx.onerror=()=>{db.close();reject(tx.error||Error("readonly transaction error"))};
+  };
+  req.onerror=()=>reject(req.error||Error("新works DBを開けません"));
+  req.onblocked=()=>reject(Error("別タブが新works DBを使用中です"));
+ });
+}
+function validateEnvelope(data){
+ if(!data||data.format!=="tomotayomu-narou-works-transfer-v2"||data.formatVersion!==2)fail("JSON形式がnarou-works-transfer-v2ではありません");
+ if(data.count!==EXPECTED||!Array.isArray(data.records)||data.records.length!==EXPECTED)fail("作品数が3,657件ではありません");
+ if(data.normal!==EXPECTED_NORMAL||data.r18!==EXPECTED_R18)fail("通常/R18件数が想定と異なります");
+ const ids=new Set();let normal=0,r18=0;
+ for(let i=0;i<data.records.length;i++){
+  const w=data.records[i],n=String(w?.workId||"").toUpperCase();
+  if(w?.site!=="narou"||!/^N[0-9A-Z]+$/.test(n)||w.id!=="narou:"+n)fail("レコード"+(i+1)+"：site/workId/idが不正です");
+  if(ids.has(w.id))fail("重複ID："+w.id);ids.add(w.id);
+  if(typeof w.title!=="string"||!w.title.trim())fail(n+"：titleがありません");
+  if(typeof w.synopsis!=="string")fail(n+"：synopsisが文字列ではありません");
+  if(!Array.isArray(w.keywords)||!Array.isArray(w.genres))fail(n+"：keywords/genresが配列ではありません");
+  if(!Number.isInteger(w.episodeCount)||w.episodeCount<1)fail(n+"：episodeCountが不正です");
+  if(typeof w.publishedAt!=="string"||typeof w.lastPublishedAt!=="string")fail(n+"：日付がありません");
+  if(typeof w.siteData?.isR18!=="boolean")fail(n+"：siteData.isR18がありません");
+  if(w.siteData.isR18)r18++;else normal++;
+ }
+ if(normal!==EXPECTED_NORMAL||r18!==EXPECTED_R18)fail("JSON内のisR18集計が想定と不一致："+normal+"/"+r18);
+ return {ids,normal,r18};
+}
+function mergeApi(existing,incoming){
+ const out=existing?clone(existing):clone(incoming);
+ for(const key of API_FIELDS)if(Object.prototype.hasOwnProperty.call(incoming,key))out[key]=clone(incoming[key]);
+ const currentSiteData=out.siteData&&typeof out.siteData==="object"?clone(out.siteData):{};
+ const incomingSiteData=incoming.siteData&&typeof incoming.siteData==="object"?incoming.siteData:{};
+ for(const key of SITE_API_FIELDS)if(Object.prototype.hasOwnProperty.call(incomingSiteData,key))currentSiteData[key]=clone(incomingSiteData[key]);
+ out.siteData=currentSiteData;
+ // 新worksのしおり・棚・作者かな等は既存レコードの値を優先。新規はJSONの値をそのまま使用。
+ return out;
+}
+async function prepare(data){
+ const check=validateEnvelope(data),opened=await openExistingDb();
+ try{
+  const byId=new Map(opened.records.map(w=>[w.id,w]));
+  const writes=data.records.map(incoming=>mergeApi(byId.get(incoming.id)||null,incoming));
+  const update=writes.filter(w=>byId.has(w.id)).length,add=writes.length-update;
+  const conflicts=writes.filter(w=>{const old=byId.get(w.id);return old&&(old.site!=="narou"||old.workId!==w.workId)});
+  if(conflicts.length)fail("既存IDとworkId/siteが衝突しています："+conflicts.slice(0,5).map(x=>x.id).join(", "));
+  plan={dbName:DB_NAME,writes,update,add,existingCount:opened.records.length,normal:check.normal,r18:check.r18};
+  $("total").textContent=writes.length.toLocaleString("ja-JP");$("update").textContent=update.toLocaleString("ja-JP");$("add").textContent=add.toLocaleString("ja-JP");$("errors").textContent="0";
+  $("preview").className="status ok";
+  $("preview").textContent="検証成功\n新works現在："+opened.records.length.toLocaleString("ja-JP")+"件\nAPI対象："+writes.length.toLocaleString("ja-JP")+"件（通常 "+check.normal+" / R18 "+check.r18+"）\n既存更新："+update+"件\n新規追加："+add+"件\n本棚・しおり・作者かな等の既存管理情報は維持します。";
+  $("commit").disabled=false;
+ }finally{opened.db.close()}
+}
+$("file").addEventListener("change",async e=>{
+ $("commit").disabled=true;payload=null;plan=null;
+ try{const f=e.target.files?.[0];if(!f)return;payload=await readFile(f);await prepare(payload);$("fileStatus").textContent="読込完了："+f.name}
+ catch(err){$("preview").className="status bad";$("preview").textContent="検証停止：\n"+(err.message||String(err));$("errors").textContent="1";$("fileStatus").textContent="ファイルの検証に失敗しました"}
+});
+$("commit").addEventListener("click",async()=>{
+ if(!plan||!payload)return;
+ $("commit").disabled=true;$("preview").className="status";$("preview").textContent="書き込み中…";
+ let db;
+ try{
+  const opened=await openExistingDb();db=opened.db;
+  // DBが検証後に変更されていないか、件数と対象IDを再確認する。
+  if(opened.records.length!==plan.existingCount)fail("検証後に新works件数が変わりました。再読込してください");
+  const tx=db.transaction(STORE,"readwrite"),store=tx.objectStore(STORE);
+  for(const w of plan.writes)store.put(w);
+  await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||Error("書き込みtransaction失敗"));tx.onabort=()=>reject(tx.error||Error("transactionが中止されました"))});
+  $("preview").className="status ok";
+  $("preview").textContent="新worksへの反映が完了しました。\nAPI対象："+plan.writes.length.toLocaleString("ja-JP")+"件\n既存更新："+plan.update+"件\n新規追加："+plan.add+"件\n書き込み先："+DB_NAME+" / works\n本棚ストア・localStorageは変更していません。";
+  $("commit").textContent="反映完了";
+ }catch(err){$("preview").className="status bad";$("preview").textContent="書き込み失敗（transactionは完了していません）：\n"+(err.message||String(err));$("commit").disabled=false}
+ finally{if(db)db.close()}
+});
+</script>
+</main></body></html>
