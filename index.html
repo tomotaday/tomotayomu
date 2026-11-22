@@ -1235,31 +1235,66 @@ async function auditNarouLastPublishedAt(){
       });
     }finally{db.close()}
     const normal=rows.filter(w=>w.site==="narou"&&w.siteData?.isR18!==true);
-    const counts={valid:0,empty:0,invalid:0},examples={valid:[],empty:[],invalid:[]};
+    const counts={absent:0,undefined:0,nullValue:0,emptyString:0,valid:0,invalid:0};
+    const typeCounts={};
+    const examples={absent:[],undefined:[],nullValue:[],emptyString:[],valid:[],invalid:[]};
+    const addExample=(key,w,value)=>{
+      if(examples[key].length>=8)return;
+      const id=String(w.workId||w.id||"(IDなし)");
+      let shown;
+      if(value===undefined)shown="<undefined>";
+      else if(value===null)shown="<null>";
+      else if(typeof value==="string")shown=JSON.stringify(value);
+      else if(value instanceof Date)shown="Date("+String(value)+")";
+      else shown=String(JSON.stringify(value));
+      examples[key].push(id+" : "+shown);
+    };
     normal.forEach(w=>{
-      const value=w.lastPublishedAt,kind=classifyStoredDate(value);
-      counts[kind]++;
-      if(examples[kind].length<5)examples[kind].push(String(w.workId||w.id||"(IDなし)")+" : "+(value===undefined?"<undefined>":value===null?"<null>":JSON.stringify(value)));
+      const exists=Object.prototype.hasOwnProperty.call(w,"lastPublishedAt");
+      const value=w.lastPublishedAt;
+      if(!exists){counts.absent++;addExample("absent",w,value);return}
+      if(value===undefined){counts.undefined++;addExample("undefined",w,value);return}
+      if(value===null){counts.nullValue++;addExample("nullValue",w,value);return}
+      if(typeof value==="string"&&value.trim()===""){counts.emptyString++;addExample("emptyString",w,value);return}
+      const type=value instanceof Date?"Date":typeof value;
+      typeCounts[type]=(typeCounts[type]||0)+1;
+      const kind=classifyStoredDate(value);
+      if(kind==="valid"){counts.valid++;addExample("valid",w,value)}
+      else{counts.invalid++;addExample("invalid",w,value)}
     });
     box.textContent=[
-      "【なろう通常作品・最新話更新日診断】",
+      "【なろう通常作品・lastPublishedAt項目の実体診断】",
       "診断日時："+new Date().toLocaleString("ja-JP"),
       "対象作品数："+normal.length,
-      "日付として解釈可能："+counts.valid,
-      "空欄・未設定："+counts.empty,
-      "形式不正・解釈不可："+counts.invalid,
       "",
-      "【正常値の例】",...(examples.valid.length?examples.valid:["該当なし"]),
+      "【項目の存在・値】",
+      "項目自体が存在しない："+counts.absent,
+      "項目あり・値がundefined："+counts.undefined,
+      "項目あり・値がnull："+counts.nullValue,
+      "項目あり・空文字："+counts.emptyString,
+      "日付として解釈可能な値："+counts.valid,
+      "値あり・日付として解釈不可："+counts.invalid,
       "",
-      "【空欄の例】",...(examples.empty.length?examples.empty:["該当なし"]),
+      "【値ありデータの型】",
+      ...(Object.keys(typeCounts).length?Object.entries(typeCounts).map(([type,count])=>type+"："+count):["該当なし"]),
       "",
-      "【形式不正の例】",...(examples.invalid.length?examples.invalid:["該当なし"]),
+      "【項目なしの例】",...(examples.absent.length?examples.absent:["該当なし"]),
+      "",
+      "【undefinedの例】",...(examples.undefined.length?examples.undefined:["該当なし"]),
+      "",
+      "【nullの例】",...(examples.nullValue.length?examples.nullValue:["該当なし"]),
+      "",
+      "【空文字の例】",...(examples.emptyString.length?examples.emptyString:["該当なし"]),
+      "",
+      "【日付として解釈可能な値の例】",...(examples.valid.length?examples.valid:["該当なし"]),
+      "",
+      "【値あり・解釈不可の例】",...(examples.invalid.length?examples.invalid:["該当なし"]),
       "",
       "※読み取り専用。IndexedDBへの書き込み・API通信は行っていません。"
     ].join("\n");
-    status.textContent="更新日データ診断完了（読み取り専用）";
+    status.textContent="lastPublishedAt項目の実体診断完了（読み取り専用）";
   }catch(e){
-    console.error("更新日データ診断失敗",e);
+    console.error("lastPublishedAt項目の実体診断失敗",e);
     if(box)box.textContent="診断失敗："+e.message;
   }finally{if(btn)btn.disabled=false}
 }
