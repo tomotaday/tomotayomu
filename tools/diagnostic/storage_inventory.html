@@ -90,7 +90,7 @@ async function diagnose(){
    report.push('');
    const box=document.createElement('div');box.style.marginTop='14px';const title=document.createElement('p');
    title.textContent=result.name+' '+(result.missing?'（このブラウザでは未作成）':'｜version '+result.version);box.appendChild(title);
-   if(result.rows){const t=table(['ストア','keyPath','自動採番','インデックス','件数']);result.rows.forEach(r=>{const tr=document.createElement('tr');cell(tr,r.name);cell(tr,r.keyPath);cell(tr,r.autoIncrement?'はい':'いいえ');cell(tr,r.indexes.join('\\n')||'なし');cell(tr,r.count);t.appendChild(tr)});box.appendChild(t)}
+   if(result.rows){const t=table(['ストア','keyPath','自動採番','インデックス','件数']);result.rows.forEach(r=>{const tr=document.createElement('tr');cell(tr,r.name);cell(tr,r.keyPath);cell(tr,r.autoIncrement?'はい':'いいえ');cell(tr,r.indexes.join('\n')||'なし');cell(tr,r.count);t.appendChild(tr)});box.appendChild(t)}
    $('dbResult').appendChild(box);
   }
  }catch(e){const msg=e.message||String(e);$('dbStatus').textContent='IndexedDB調査エラー：'+msg;report.push('■ IndexedDB調査エラー',msg,'')}
@@ -103,7 +103,7 @@ async function diagnose(){
  }catch(e){const msg=e.message||String(e);$('lsStatus').textContent='localStorage調査エラー：'+msg;report.push('■ localStorage調査エラー',msg,'')}
  report.push('■ 調査エラー');if(report.some(x=>x.includes('調査エラー')&&x!=='■ 調査エラー'))report.push('上記を確認してください');else report.push('なし');
  report.push('','※この調査は読み取り専用です。バックアップファイルの作成とは別の操作です。');
- $('reportText').value=report.join('\\n');$('copyReport').disabled=false;button.disabled=false;
+ $('reportText').value=report.join('\n');$('copyReport').disabled=false;button.disabled=false;
 }
 function validateJsonSafe(value,path,stack=new WeakSet()){
  if(value===null||typeof value==='string'||typeof value==='boolean')return;
@@ -187,7 +187,8 @@ async function exportAllData(){
  }catch(e){status.textContent='取り出し失敗：'+(e.message||String(e))+'\nファイルは完成していない可能性があります。元データは変更していません。'}
  finally{button.disabled=false}
 }
-$('run').addEventListener('click',diagnose);\n$('copyReport').addEventListener('click',async()=>{const area=$('reportText');try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(area.value);$('copyStatus').textContent='コピーしました。ChatGPTに貼り付けてね。'}else{area.focus();area.select();const ok=document.execCommand('copy');$('copyStatus').textContent=ok?'コピーしました。ChatGPTに貼り付けてね。':'テキスト欄を長押しして全選択・コピーしてください。'}}catch(e){area.focus();area.select();$('copyStatus').textContent='自動コピーできませんでした。テキスト欄を長押しして全選択・コピーしてください。'}});
+$('run').addEventListener('click',diagnose);
+$('copyReport').addEventListener('click',async()=>{const area=$('reportText');try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(area.value);$('copyStatus').textContent='コピーしました。ChatGPTに貼り付けてね。'}else{area.focus();area.select();const ok=document.execCommand('copy');$('copyStatus').textContent=ok?'コピーしました。ChatGPTに貼り付けてね。':'テキスト欄を長押しして全選択・コピーしてください。'}}catch(e){area.focus();area.select();$('copyStatus').textContent='自動コピーできませんでした。テキスト欄を長押しして全選択・コピーしてください。'}});
 $('export').addEventListener('click',exportAllData);
 })();
 </script></body></html>
