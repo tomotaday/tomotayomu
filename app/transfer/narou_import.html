@@ -69,7 +69,7 @@ const API_FIELDS=["title","synopsis","authorName","authorId","status","episodeCo
 function fail(m){throw Error(m)}
 function clone(v){return structuredClone(v)}
 function formatApiDate(v,key){
- if(typeof v!=="string"||!/^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}(?::\\d{2})?$/.test(v))fail(key+"：API日時の形式が不正です（"+v+"）");
+ if(typeof v!=="string"||!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(?::\d{2})?$/.test(v))fail(key+"：API日時の形式が不正です（"+v+"）");
  const [d,t]=v.split(" "),[y,m,day]=d.split("-"),[h,min]=t.split(":");
  const dt=new Date(Number(y),Number(m)-1,Number(day),Number(h),Number(min));
  if(dt.getFullYear()!==Number(y)||dt.getMonth()!==Number(m)-1||dt.getDate()!==Number(day)||Number(h)>23||Number(min)>59)fail(key+"：実在しない日時です（"+v+"）");
@@ -89,7 +89,7 @@ function convertApiRow(row,existing,exportedAt){
  else if(novelType===1&&end===1)status="連載中";
  else fail(ncode+"：novel_type/endの組合せが不正です（"+novelType+"/"+end+"）");
  const genres=GENRE_FIELDS.filter(k=>Object.prototype.hasOwnProperty.call(raw,k)&&raw[k]!==null&&raw[k]!=="").map(source=>({source,value:raw[source]}));
- const keywords=typeof raw.keyword==="string"?raw.keyword.trim().split(/\\s+/u).filter(Boolean):[];
+ const keywords=typeof raw.keyword==="string"?raw.keyword.trim().split(/\s+/u).filter(Boolean):[];
  const work=existing?clone(existing):{id:"narou:"+ncode,site:"narou",workId:ncode,shelfId:"",bookmark:null};
  const api={
   title:raw.title,synopsis:raw.story,authorName:raw.writer,authorId:raw.userid,status,
@@ -151,14 +151,14 @@ async function prepare(data){
   plan={writes,update,add,existingCount:opened.records.length,normal,r18};
   $("total").textContent=writes.length.toLocaleString("ja-JP");$("update").textContent=update.toLocaleString("ja-JP");$("add").textContent=add.toLocaleString("ja-JP");$("errors").textContent="0";
   $("preview").className="status ok";
-  $("preview").textContent="検証成功\\nAPI取得成功："+writes.length+"件（通常 "+normal+" / R18 "+r18+"）\\n新works現在："+opened.records.length+"件\\n既存更新："+update+"件\\n新規追加："+add+"件\\n既存のshelfId・bookmark・作者かな等は維持します。";
+  $("preview").textContent="検証成功\nAPI取得成功："+writes.length+"件（通常 "+normal+" / R18 "+r18+"）\n新works現在："+opened.records.length+"件\n既存更新："+update+"件\n新規追加："+add+"件\n既存のshelfId・bookmark・作者かな等は維持します。";
   $("commit").disabled=false;
  }finally{opened.db.close()}
 }
 $("file").addEventListener("change",async e=>{
  $("commit").disabled=true;payload=null;plan=null;
  try{const f=e.target.files?.[0];if(!f)return;payload=await readFile(f);await prepare(payload);$("fileStatus").textContent="読込完了："+f.name}
- catch(err){$("preview").className="status bad";$("preview").textContent="検証停止：\\n"+(err.message||String(err));$("errors").textContent="1";$("fileStatus").textContent="ファイル検証に失敗しました"}
+ catch(err){$("preview").className="status bad";$("preview").textContent="検証停止：\n"+(err.message||String(err));$("errors").textContent="1";$("fileStatus").textContent="ファイル検証に失敗しました"}
 });
 $("commit").addEventListener("click",async()=>{
  if(!plan||!payload)return;
@@ -171,9 +171,9 @@ $("commit").addEventListener("click",async()=>{
   for(const w of plan.writes)store.put(w);
   await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||Error("書き込み失敗"));tx.onabort=()=>reject(tx.error||Error("transaction中止"))});
   $("preview").className="status ok";
-  $("preview").textContent="新worksへの反映が完了しました。\\nAPI作品："+plan.writes.length+"件\\n既存更新："+plan.update+"件\\n新規追加："+plan.add+"件\\nDB："+DB_NAME+" / works\\nshelves・localStorageは変更していません。";
+  $("preview").textContent="新worksへの反映が完了しました。\nAPI作品："+plan.writes.length+"件\n既存更新："+plan.update+"件\n新規追加："+plan.add+"件\nDB："+DB_NAME+" / works\nshelves・localStorageは変更していません。";
   $("commit").textContent="反映完了";
- }catch(err){$("preview").className="status bad";$("preview").textContent="書き込み失敗：\\n"+(err.message||String(err));$("commit").disabled=false}
+ }catch(err){$("preview").className="status bad";$("preview").textContent="書き込み失敗：\n"+(err.message||String(err));$("commit").disabled=false}
  finally{if(db)db.close()}
 });
 </script>
