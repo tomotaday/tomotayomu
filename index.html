@@ -117,6 +117,7 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 <div class="top-update-actions">
 <button id="updateBtn" type="button">🔄 本棚更新</button>
 <button id="apiSupplementBtn" type="button">📥 API全件補完</button>
+<button id="dateAuditBtn" type="button">🔍 更新日データ診断</button>
 <button id="copyAuthorJsonBtn" type="button">① JSONコピー</button>
 <button id="launchAuthorAtomBtn" type="button">② Atom更新</button>
 <button id="reverseOrderBtn" type="button">🔃 順序反転</button>
@@ -146,6 +147,7 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 })();
 </script>
 <div id="apiStatus">本棚情報未反映</div>
+<div id="dateAuditResult" hidden style="border:1px solid #999;border-radius:10px;padding:10px;margin:10px 0;white-space:pre-wrap;overflow-wrap:anywhere"></div>
 <div id="noteReceiveStatus" hidden style="border:1px solid #8caa9b;border-radius:10px;background:#f1f8f4;padding:10px;margin:10px 0;overflow-wrap:anywhere"></div>
 <details class="searchDetails">
 <summary>🔎 検索</summary>
@@ -1207,6 +1209,60 @@ async function updateInfo(){
     btn.disabled=false;
   }
 }
+function classifyStoredDate(value){
+  if(value===null||value===undefined||value==="")return "empty";
+  if(value instanceof Date)return Number.isFinite(value.getTime())?"valid":"invalid";
+  if(typeof value==="number")return Number.isFinite(value)&&Number.isFinite(new Date(value).getTime())?"valid":"invalid";
+  if(typeof value!=="string")return "invalid";
+  const raw=value.trim();
+  if(!raw)return "empty";
+  const normalized=raw.replace(/年|月/g,"-").replace(/日/g,"").replace(/[/.]/g,"-").replace(/\s+/,"T");
+  return Number.isFinite(Date.parse(normalized))?"valid":"invalid";
+}
+async function auditNarouLastPublishedAt(){
+  const btn=document.getElementById("dateAuditBtn"),box=document.getElementById("dateAuditResult"),status=document.getElementById("apiStatus");
+  if(btn)btn.disabled=true;
+  if(box){box.hidden=false;box.textContent="新worksを読み取り中…（データ変更なし）";}
+  try{
+    const db=await openExistingWorksDB();
+    let rows;
+    try{
+      rows=await new Promise((resolve,reject)=>{
+        const tx=db.transaction("works","readonly"),req=tx.objectStore("works").getAll();
+        req.onsuccess=()=>resolve(req.result||[]);
+        req.onerror=()=>reject(req.error||new Error("新works読込失敗"));
+        tx.onerror=()=>reject(tx.error||new Error("新works読込トランザクション失敗"));
+      });
+    }finally{db.close()}
+    const normal=rows.filter(w=>w.site==="narou"&&w.siteData?.isR18!==true);
+    const counts={valid:0,empty:0,invalid:0},examples={valid:[],empty:[],invalid:[]};
+    normal.forEach(w=>{
+      const value=w.lastPublishedAt,kind=classifyStoredDate(value);
+      counts[kind]++;
+      if(examples[kind].length<5)examples[kind].push(String(w.workId||w.id||"(IDなし)")+" : "+(value===undefined?"<undefined>":value===null?"<null>":JSON.stringify(value)));
+    });
+    box.textContent=[
+      "【なろう通常作品・最新話更新日診断】",
+      "診断日時："+new Date().toLocaleString("ja-JP"),
+      "対象作品数："+normal.length,
+      "日付として解釈可能："+counts.valid,
+      "空欄・未設定："+counts.empty,
+      "形式不正・解釈不可："+counts.invalid,
+      "",
+      "【正常値の例】",...(examples.valid.length?examples.valid:["該当なし"]),
+      "",
+      "【空欄の例】",...(examples.empty.length?examples.empty:["該当なし"]),
+      "",
+      "【形式不正の例】",...(examples.invalid.length?examples.invalid:["該当なし"]),
+      "",
+      "※読み取り専用。IndexedDBへの書き込み・API通信は行っていません。"
+    ].join("\n");
+    status.textContent="更新日データ診断完了（読み取り専用）";
+  }catch(e){
+    console.error("更新日データ診断失敗",e);
+    if(box)box.textContent="診断失敗："+e.message;
+  }finally{if(btn)btn.disabled=false}
+}
 async function supplementNarouWorksFromApi(){
   const btn=document.getElementById("apiSupplementBtn"),status=document.getElementById("apiStatus");
   if(btn)btn.disabled=true;
@@ -1411,6 +1467,7 @@ document.addEventListener("click",e=>{
 });
 document.getElementById("updateBtn").addEventListener("click",updateInfo);
 document.getElementById("apiSupplementBtn").addEventListener("click",supplementNarouWorksFromApi);
+document.getElementById("dateAuditBtn").addEventListener("click",auditNarouLastPublishedAt);
 document.getElementById("reverseOrderBtn")?.addEventListener("click",()=>{workOrderReversed=!workOrderReversed;buildShelfFolders();});
 document.getElementById("copyAuthorJsonBtn")?.addEventListener("click",async()=>{
   const btn=document.getElementById("copyAuthorJsonBtn");
