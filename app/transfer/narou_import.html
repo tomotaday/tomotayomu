@@ -98,8 +98,8 @@ function validateEnvelope(data){
   if(!Array.isArray(w.keywords)||!Array.isArray(w.genres))fail(n+"：keywords/genresが配列ではありません");
   if(!Number.isInteger(w.episodeCount)||w.episodeCount<1)fail(n+"：episodeCountが不正です");
   if(typeof w.publishedAt!=="string"||typeof w.lastPublishedAt!=="string")fail(n+"：日付がありません");
-  if(typeof w.siteData?.isR18!=="boolean")fail(n+"：siteData.isR18がありません");
-  if(w.siteData.isR18)r18++;else normal++;
+  let host;try{const u=new URL(w.url);host=u.hostname;if(u.protocol!=="https:"||!["ncode.syosetu.com","novel18.syosetu.com"].includes(host)||u.pathname.replace(/\\/+$/,"").toUpperCase()!=="/"+n)fail(n+"：作品URLが不正です");}catch{fail(n+"：作品URLがありません／不正です")}
+  if(host==="novel18.syosetu.com")r18++;else normal++;
  }
  if(normal!==EXPECTED_NORMAL||r18!==EXPECTED_R18)fail("JSON内のisR18集計が想定と不一致："+normal+"/"+r18);
  return {ids,normal,r18};
@@ -110,6 +110,15 @@ function mergeApi(existing,incoming){
  const currentSiteData=out.siteData&&typeof out.siteData==="object"?clone(out.siteData):{};
  const incomingSiteData=incoming.siteData&&typeof incoming.siteData==="object"?incoming.siteData:{};
  for(const key of SITE_API_FIELDS)if(Object.prototype.hasOwnProperty.call(incomingSiteData,key))currentSiteData[key]=clone(incomingSiteData[key]);
+ const isR18=new URL(incoming.url).hostname==="novel18.syosetu.com";
+ const genreMap=new Map((Array.isArray(incoming.genres)?incoming.genres:[]).map(x=>[x.source,x.value]));
+ for(const key of ["biggenre","genre","nocgenre","isr15","isbl","isgl","iszankoku","istensei","istenni"])if(genreMap.has(key))currentSiteData[key]=genreMap.get(key);
+ currentSiteData.noveltype=incoming.status==="短編"?2:1;
+ currentSiteData.end=incoming.status==="連載中"?1:0;
+ currentSiteData.keyword=Array.isArray(incoming.keywords)?incoming.keywords.join(" "):"";
+ currentSiteData.userid_source=incoming.authorId??null;
+ currentSiteData.authorType=isR18?"r18":"normal";
+ currentSiteData.isR18=isR18;
  out.siteData=currentSiteData;
  // 新worksのしおり・棚・作者かな等は既存レコードの値を優先。新規はJSONの値をそのまま使用。
  return out;
