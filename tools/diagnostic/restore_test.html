@@ -34,6 +34,7 @@ table{width:100%;border-collapse:collapse;font-size:.88rem}th,td{text-align:left
 <p class="small">復元先は今回専用の新規領域です。既存の同名DB・キーが見つかった場合は上書きせず中止します。データ量によっては端末の空き容量が必要です。</p>
 <button id="restoreBtn" type="button" disabled>全データをテスト復元する</button>
 <button id="verifyExistingBtn" type="button" disabled style="margin:10px 0 0;background:#315f50">既存のテストDBを読み取り照合する</button>
+<button id="cleanupPriorBtn" type="button" disabled style="margin:10px 0 0;background:#9b4545">前回の復元テストDB 10個を削除する</button>
 <div id="restoreStatus" class="status">検査完了後に復元できます。</div>
 </section>
 <section class="panel">
@@ -120,7 +121,7 @@ $('inspectBtn').addEventListener('click',async()=>{
   const rows=data.databases.map(db=>[db.name,'v'+db.version,Object.keys(db.stores).length,Object.values(db.stores).reduce((n,s)=>n+s.count,0).toLocaleString()]);
   $('summary').replaceChildren(makeTable(['バックアップDB','版','ストア数','レコード数'],rows));
   $('fileStatus').textContent='検査成功：'+file.name+'\\n出力日時：'+data.exportedAt+'\\nDB：'+stats.dbCount+'個／ストア：'+stats.totalStores+'個／IndexedDB：'+stats.totalRecords.toLocaleString()+'件／localStorage：'+stats.localCount+'キー';
-  $('restoreBtn').disabled=false;$('verifyExistingBtn').disabled=false;$('restoreStatus').textContent='JSON検査完了。新規復元、または既存テストDBの読み取り照合を選べます。';
+  $('restoreBtn').disabled=false;$('verifyExistingBtn').disabled=false;$('cleanupPriorBtn').disabled=false;$('restoreStatus').textContent='JSON検査完了。既存テストDBの照合、または前回のテストDB削除ができます。';
  }catch(e){$('fileStatus').textContent='検査失敗：'+(e.message||String(e));parsedBackup=null;sourceDatabases=[];sourceLocalStorage=null}
  finally{$('inspectBtn').disabled=false}
 });
@@ -185,6 +186,38 @@ function inspectLocalStoragePayload(data){
  }
  return {rows,totalChars,bytes:totalChars*2};
 }
+$('cleanupPriorBtn').addEventListener('click',async()=>{
+ if(!parsedBackup||busy)return;
+ const token='20261122041547020';
+ const exactNames=sourceDatabases.map(db=>PREFIX+token+'__'+db.name);
+ if(!confirm('前回の復元テストで作成した専用DB 10個だけを削除します。\\n本番DB・本番localStorage・ほかのテストDBには触れません。続けますか？'))return;
+ busy=true;$('cleanupPriorBtn').disabled=true;
+ const errors=[],deleted=[];
+ try{
+  const listed=await indexedDB.databases(),existing=new Set(listed.map(x=>x.name));
+  for(const name of exactNames){
+   if(!existing.has(name))continue;
+   try{
+    await new Promise((resolve,reject)=>{
+     const req=indexedDB.deleteDatabase(name);
+     req.onsuccess=resolve;
+     req.onerror=()=>reject(req.error||Error(name+' 削除失敗'));
+     req.onblocked=()=>reject(Error(name+' は別画面で使用中のため削除できません'));
+    });
+    deleted.push(name);
+   }catch(e){errors.push((e.message||String(e)))}
+  }
+  $('verifyStatus').textContent=errors.length
+   ?'一部のテストDBを削除できませんでした。\\n削除済み：'+deleted.length+'個\\n'+errors.join('\\n')
+   :'前回の復元テスト用DBを削除しました。\\n削除：'+deleted.length+'個\\n対象外のDB・本番データは変更していません。';
+  $('verifyStatus').className=errors.length?'status bad':'status good';
+  $('verifyResult').replaceChildren();
+  $('restoreStatus').textContent=errors.length?'削除できなかったDBがあります。':'前回のテスト領域を片付けました。';
+ }catch(e){
+  $('verifyStatus').textContent='削除前のDB一覧確認に失敗しました：'+(e.message||String(e));
+  $('verifyStatus').className='status bad';
+ }finally{busy=false;$('cleanupPriorBtn').disabled=false}
+});
 $('verifyExistingBtn').addEventListener('click',async()=>{
  if(!parsedBackup||busy)return;
  busy=true;$('verifyExistingBtn').disabled=true;$('restoreBtn').disabled=true;
