@@ -477,7 +477,6 @@ async function buildV3CardsFromIndexedDB(){
   }
   const shelves=v3Shelves;
   const sm=new Map(shelves.map(v=>[String(v.shelf_id||"").trim(),v]));
-  const sm=new Map(shelves.map(v=>[String(v.shelf_id||"").trim(),v]));
   const shelfText=v=>{
     const direct=v?.shelf_name??v?.name??v?.title??v?.label??v?.display_name;
     if(direct!=null&&String(direct).trim())return String(direct).trim();
