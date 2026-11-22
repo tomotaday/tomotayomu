@@ -943,7 +943,7 @@ function renderResumeLink(card,current,total,workUrl,isShortStory){
   if(shortToggle)shortToggle.hidden=true;
   if(!resumeLink)return;
   if(current==null){
-    resumeLink.textContent="続き📖📝記録なし / "+(total||"—")+"話"+mark;
+    resumeLink.textContent="続き📖未読/"+(total||"—")+"話"+mark;
     resumeLink.href=workUrl;
   }else{
     resumeLink.textContent="続き📖"+current+"/"+(total||"—")+"話"+mark;
