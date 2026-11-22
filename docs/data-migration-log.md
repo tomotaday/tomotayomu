@@ -1100,3 +1100,24 @@ iPhoneのファイル一覧で、用途ごとにまとまり、その中で日�
 - 旧works、shelvesストア、localStorage、本棚更新の一括判定処理、Shortcut、GitHub Actionsは変更しない。
 - 作品情報はAPIを正とするが、読書管理情報（bookmark・shelfId等）はともたよむ側の既存値を正として保護する。
 - 実機テストはまず通常作品1件、次にR18作品1件で行い、タイトル・総話数・最新話更新日・状態の反映とbookmark・shelfId・作者かなの維持を確認する。
+
+
+## 2026-11-23：未読作品が更新棚から除外される判定不具合を修正
+
+### 原因
+- `applyCardState()` と `buildUpdateView()` の両方で、未読判定が `current != null && total > 0 && current < total` となっていた。
+- しおりが `null` の完全未読作品は `current != null` を満たさず、更新候補・本棚所属作品であっても更新棚に出なかった。
+
+### 修正
+- `isUnreadWork(n,totalEpisodes)` を追加し、未読判定を共通化。
+- bookmarkが `null`（しおりなし）の場合は未読。
+- 数値のしおりがある場合は、総話数が正で、しおり位置が総話数未満なら未読。
+- 短編の読了値 `"R"` は既存の `bookmarkPosition()` により位置1として扱われ、総話数1なら読了として更新棚対象外。
+- `applyCardState()` のカード🆙表示と `buildUpdateView()` の更新棚抽出が同じ共通関数を使用する。
+
+### 安全性・確認
+- 変更ファイル：`index.html` のみ。
+- bookmark値、works DB、shelves、localStorage、更新候補の保存形式は変更しない。判定ロジックのみの修正。
+- commit：`48df9b2e41ff3726ba4838bab044b434278c41a5`
+- GitHubから再取得した全script要素のJavaScript構文チェック：2件ともOK。
+- 未確認：iPhone実機で、未読かつ本棚所属かつ更新候補ありの作品が更新棚に表示されること、および読了作品が対象外のままであること。
