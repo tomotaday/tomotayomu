@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f7fb">
+<title>新works統合プレビュー｜ともたよむ</title>
+<style>
+:root{color-scheme:light;--bg:#f4f6fa;--paper:#fff;--ink:#202633;--muted:#667085;--line:#d9e0ea;--accent:#315d9b;--ok:#e9f5ee;--warn:#fff4df;--bad:#fff1f1}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.6}
+main{width:min(900px,100%);margin:auto;padding:18px 14px 48px}header,.panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:15px;margin:12px 0}
+h1{font-size:22px;margin:3px 0 8px}h2{font-size:17px;margin:0 0 9px}.small{font-size:13px;color:var(--muted)}
+label{display:block;font-weight:650;margin:12px 0 5px}input,button{font:inherit;border:1px solid var(--line);border-radius:9px;padding:11px 12px;background:white;color:var(--ink);width:100%;margin:5px 0}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}button:disabled{opacity:.45}
+.status{white-space:pre-wrap;overflow-wrap:anywhere;margin:10px 0;padding:11px;border-radius:9px;background:#f4f6fa;font-size:13px}.ok{background:var(--ok)}.warn{background:var(--warn)}.bad{background:var(--bad)}
+.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}.metric{background:#f4f6fa;border-radius:9px;padding:10px}.metric strong{display:block;font-size:20px}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:360px;overflow:auto;background:#f4f6fa;border-radius:9px;padding:10px;font-size:12px}
+</style>
+</head>
+<body><main>
+<header>
+ <p class="small">READ ONLY / MERGE PREVIEW</p>
+ <h1>新works統合プレビュー</h1>
+ <p>バックアップJSONとTranslator JSONを照合し、新しい共通works用JSONを作成します。</p>
+ <p class="small">このページはファイルをブラウザ内で処理するだけです。IndexedDB・localStorage・本番DB・GitHub Actionsには書き込みません。</p>
+</header>
+<section class="panel">
+ <h2>1. ファイルを選択</h2>
+ <label for="backup">本棚バックアップJSON（ty_bak_*.json）</label>
+ <input id="backup" type="file" accept=".json,application/json">
+ <label for="transfer">なろうTranslator JSON（narou-works-transfer-*.json）</label>
+ <input id="transfer" type="file" accept=".json,application/json">
+ <button id="run" class="primary">統合プレビューを実行</button>
+ <div id="status" class="status">2つのJSONを選択してください。</div>
+</section>
+<section class="panel">
+ <h2>2. 統合結果</h2>
+ <div class="metrics">
+  <div class="metric"><span class="small">なろう通常移行</span><strong id="narou">—</strong></div>
+  <div class="metric"><span class="small">検索除外引継ぎ</span><strong id="excluded">—</strong></div>
+  <div class="metric"><span class="small">カクヨム・note</span><strong id="other">—</strong></div>
+  <div class="metric"><span class="small">新works合計</span><strong id="total">—</strong></div>
+ </div>
+ <div id="details" class="status">まだ検査していません。</div>
+ <button id="download" class="primary" disabled>新works統合JSONを保存</button>
+ <p class="small">検査エラーが1件でもある場合、JSON保存はできません。</p>
+ <pre id="errors" hidden></pre>
+</section>
+<script>
+"use strict";
+const EXPECT={narou:3657,excluded:38,kakuyomu:3,note:2,total:3700};
+const EXCLUDED_KEY="tomotaYomu_search_excluded_ncodes_v1";
+const $=id=>document.getElementById(id);
+let output=null;
+function readFile(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>{try{resolve(JSON.parse(String(r.result)))}catch(e){reject(new Error(file.name+"：JSON解析失敗 "+e.message))}};r.onerror=()=>reject(new Error(file.name+"：読み込み失敗"));r.readAsText(file)})}
+function clone(x){return JSON.parse(JSON.stringify(x))}
+function fail(errors,msg){errors.push(msg)}
+async function run(){
+ $("run").disabled=true;$("download").disabled=true;output=null;$("errors").hidden=true;$("errors").textContent="";
+ try{
+  const bf=$("backup").files[0],tf=$("transfer").files[0];if(!bf||!tf)throw Error("バックアップJSONとTranslator JSONの両方を選択してください。");
+  $("status").textContent="ファイルを読み込んで照合しています…";
+  const [backup,transfer]=await Promise.all([readFile(bf),readFile(tf)]);
+  const errors=[];
+  if(backup.format!=="tomotayomu-storage-backup"||!Array.isArray(backup.databases))fail(errors,"バックアップ形式が想定外です");
+  if(transfer.format!=="tomotayomu-narou-works-transfer-v2"||!Array.isArray(transfer.records))fail(errors,"Translator JSON形式が想定外です");
+  const db=(backup.databases||[]).find(x=>x.name==="tomotaYomuWorksDB");
+  const baseRows=db?.stores?.works?.records;
+  if(!Array.isArray(baseRows))fail(errors,"バックアップ内にtomotaYomuWorksDB.worksがありません");
+  const ls=backup.localStorage||{};
+  let excludedCodes=[];
+  try{excludedCodes=JSON.parse(ls[EXCLUDED_KEY]||"[]")}catch{fail(errors,"検索除外Nコード一覧をJSONとして読めません")}
+  if(!Array.isArray(excludedCodes))fail(errors,"検索除外Nコード一覧が配列ではありません");
+  excludedCodes=excludedCodes.map(x=>String(x).trim().toUpperCase()).filter(Boolean);
+  const excludedSet=new Set(excludedCodes);
+  if(excludedSet.size!==excludedCodes.length)fail(errors,"検索除外Nコード一覧に重複があります");
+  const baseByNcode=new Map((baseRows||[]).filter(x=>x.site==="narou").map(x=>[String(x.workId||"").toUpperCase(),x]));
+  const transferByNcode=new Map();
+  for(const w of (transfer.records||[])){
+   const n=String(w.workId||"").toUpperCase();
+   if(!n||transferByNcode.has(n))fail(errors,"Translator側のNコード空欄または重複："+(n||"(空)"));
+   else transferByNcode.set(n,w);
+  }
+  if(transferByNcode.size!==EXPECT.narou)fail(errors,"Translator件数が3,657件ではありません："+transferByNcode.size);
+  if(excludedSet.size!==EXPECT.excluded)fail(errors,"検索除外リストが38件ではありません："+excludedSet.size);
+  const overlap=[...excludedSet].filter(n=>transferByNcode.has(n));
+  if(overlap.length)fail(errors,"検索除外とTranslatorの重複があります："+overlap.join(", "));
+  const missingExcluded=[...excludedSet].filter(n=>!baseByNcode.has(n));
+  if(missingExcluded.length)fail(errors,"検索除外作品がバックアップworksに見つかりません："+missingExcluded.join(", "));
+  const translatorNotInBase=[...transferByNcode.keys()].filter(n=>!baseByNcode.has(n));
+  if(translatorNotInBase.length)fail(errors,"Translator作品がバックアップにありません："+translatorNotInBase.join(", "));
+  const retainedNarou=[...baseByNcode.keys()].filter(n=>!transferByNcode.has(n)&&!excludedSet.has(n));
+  if(retainedNarou.length)fail(errors,"移行対象外のなろう作品が想定外に残ります："+retainedNarou.length+"件（削除確認済み5件以外の可能性）");
+  const removedConfirmed=[...baseByNcode.keys()].filter(n=>!transferByNcode.has(n)&&!excludedSet.has(n));
+  if(removedConfirmed.length!==5)fail(errors,"削除確認済みとして除外される件数が5件ではありません："+removedConfirmed.length);
+  const merged=[];
+  for(const [n,w] of transferByNcode){
+   const old=baseByNcode.get(n),next=clone(w);
+   // 管理情報は現行バックアップを正本として保護する。
+   for(const key of ["id","site","workId","shelfId","bookmark","authorKana","authorKanaFirst","authorKanaChecked","authorManageName"]){
+    if(Object.prototype.hasOwnProperty.call(old,key))next[key]=clone(old[key]);
+   }
+   if(old.authorId!==undefined&&old.authorId!==null&&String(old.authorId).trim()!=="")next.authorId=old.authorId;
+   else if(w.authorId===undefined||w.authorId===null||String(w.authorId).trim()==="")delete next.authorId;
+   if(!next.id||next.id!=="narou:"+n)fail(errors,"内部ID不一致："+n);
+   merged.push(next);
+  }
+  for(const n of excludedCodes){
+   const old=baseByNcode.get(n);if(!old)continue;
+   const next=clone(old);next.searchExcluded=true;merged.push(next);
+  }
+  const otherRows=(baseRows||[]).filter(x=>x.site==="kakuyomu"||x.site==="note").map(clone);
+  const kakuyomu=otherRows.filter(x=>x.site==="kakuyomu").length,note=otherRows.filter(x=>x.site==="note").length;
+  if(kakuyomu!==EXPECT.kakuyomu)fail(errors,"カクヨム作品数が3件ではありません："+kakuyomu);
+  if(note!==EXPECT.note)fail(errors,"note作品数が2件ではありません："+note);
+  merged.push(...otherRows);
+  const keys=new Set(),duplicates=[];
+  for(const w of merged){const key=String(w.id||"");if(!key||keys.has(key))duplicates.push(key||"(内部ID空欄)");keys.add(key)}
+  if(duplicates.length)fail(errors,"統合後の内部ID重複："+duplicates.slice(0,20).join(", "));
+  if(merged.length!==EXPECT.total)fail(errors,"統合後件数が3,700件ではありません："+merged.length);
+  const counts={narou:merged.filter(x=>x.site==="narou").length,kakuyomu,note,excluded:merged.filter(x=>x.site==="narou"&&x.searchExcluded===true).length};
+  if(counts.narou!==3695)fail(errors,"なろう統合件数が3,695件ではありません："+counts.narou);
+  if(counts.excluded!==38)fail(errors,"searchExcluded=trueが38件ではありません："+counts.excluded);
+  $("narou").textContent=EXPECT.narou.toLocaleString("ja-JP");
+  $("excluded").textContent=counts.excluded.toLocaleString("ja-JP");
+  $("other").textContent=(kakuyomu+note).toLocaleString("ja-JP");
+  $("total").textContent=merged.length.toLocaleString("ja-JP");
+  const report=[
+   "バックアップworks："+baseRows.length+"件",
+   "Translator："+transferByNcode.size+"件",
+   "検索除外："+excludedSet.size+"件（localStorage一覧と照合）",
+   "削除確認済み："+removedConfirmed.length+"件（出力対象外）",
+   "カクヨム："+kakuyomu+"件／note："+note+"件（既存レコードを保持）",
+   "統合後："+merged.length+"件",
+   "しおり・棚ID・既存作者ID：バックアップ側を優先",
+   "検索除外38件：既存レコードを保持し searchExcluded=true を付与",
+   "DB/localStorageへの書き込み：なし"
+  ];
+  $("details").className="status "+(errors.length?"bad":"ok");
+  $("details").textContent=errors.length?"統合を停止しました。エラー："+errors.length+"件\n"+report.join("\n"):"照合成功。JSONを保存できます。\n"+report.join("\n");
+  if(errors.length){$("errors").hidden=false;$("errors").textContent=errors.join("\n");return}
+  output={format:"tomotayomu-common-works-merge",formatVersion:1,generatedAt:new Date().toISOString(),source:{backupFile:bf.name,transferFile:tf.name,backupDb:"tomotaYomuWorksDB",backupDbVersion:db.version,transferFormat:transfer.format},counts:{narou:counts.narou,narouTransferred:EXPECT.narou,searchExcluded:counts.excluded,confirmedDeleted:removedConfirmed.length,kakuyomu,note,total:merged.length},records:merged};
+  $("download").disabled=false;
+ }catch(e){$("status").className="status bad";$("status").textContent="処理を停止しました。\n"+e.message}
+ finally{$("run").disabled=false}
+}
+function download(){
+ if(!output)return;const blob=new Blob([JSON.stringify(output)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download="tomotayomu-common-works-3700-v1.json";document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);
+}
+$("run").addEventListener("click",run);$("download").addEventListener("click",download);
+</script>
+</main></body></html>
