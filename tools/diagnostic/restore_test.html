@@ -20,7 +20,7 @@ table{width:100%;border-collapse:collapse;font-size:.88rem}th,td{text-align:left
 </head>
 <body><main>
 <h1>ともたよむ｜バックアップ復元テスト v3</h1>
-<p class="lead">バックアップ v3 に含まれる全IndexedDBとlocalStorageを、専用のテスト領域へ復元して照合します。</p>
+<p class="lead">バックアップ v3 の全IndexedDBを専用テストDBへ復元・全件照合します。localStorageは本番領域の容量を圧迫しないよう、JSON内の全キー・値を読み取り検査します。</p>
 <section class="panel">
 <h2>① バックアップJSONを選択</h2>
 <p class="small">保存領域調査・バックアップ v3 で作成したJSONを選択してください。</p>
@@ -30,7 +30,7 @@ table{width:100%;border-collapse:collapse;font-size:.88rem}th,td{text-align:left
 </section>
 <section class="panel">
 <h2>② テスト領域へ復元</h2>
-<div class="notice">本番IndexedDB・本番localStorageのキーは変更しません。バックアップ内のDBは専用名に置き換え、localStorageも専用接頭辞のキーに復元します。</div>
+<div class="notice">本番IndexedDB・本番localStorageは変更しません。IndexedDBは専用DBへ実際に復元します。localStorageは同一オリジンの容量上限を避けるため、専用キーへの複製を行わず、JSON内の全51キー・値を読み取り検査します。</div>
 <p class="small">復元先は今回専用の新規領域です。既存の同名DB・キーが見つかった場合は上書きせず中止します。データ量によっては端末の空き容量が必要です。</p>
 <button id="restoreBtn" type="button" disabled>全データをテスト復元する</button>
 <div id="restoreStatus" class="status">検査完了後に復元できます。</div>
@@ -46,7 +46,7 @@ table{width:100%;border-collapse:collapse;font-size:.88rem}th,td{text-align:left
 <li>バックアップ内のDB名はそのまま使わず、すべて専用のテストDB名に置き換えます。</li>
 <li>各DBのバージョン、ストア、keyPath、自動採番、インデックスを再現します。</li>
 <li>全レコードを復元し、件数と全内容を読み戻して照合します。</li>
-<li>localStorageは専用接頭辞を付けた一時キーに保存し、値を照合します。本来のキーは読み取りのみです。</li>
+<li>localStorageは本番と同じオリジンへの複製を行いません。JSON内の全キー・値が文字列であること、キー数、値の内容と容量を読み取り検査します。実際のlocalStorage復元試験は別オリジン環境で行う必要があります。</li>
 <li>失敗時も、作成済みのテスト領域は削除ボタンで片付けられます。</li>
 <li>このページは本番DB・本番localStorage・Cookie・GitHub Actions・ショートカットを変更しません。</li>
 <li>テスト領域は自動削除しません。削除ボタンを押した場合のみ、今回作成した領域を削除します。</li>
@@ -57,9 +57,8 @@ table{width:100%;border-collapse:collapse;font-size:.88rem}th,td{text-align:left
 (()=>{'use strict';
 const $=id=>document.getElementById(id);
 const PREFIX='tomotaYomu_restore_test_';
-const LS_PREFIX='__tomotayomu_restore_test__';
 let parsedBackup=null,sourceDatabases=[],sourceLocalStorage=null;
-let createdDBs=[],createdKeys=[],testToken=null,busy=false;
+let createdDBs=[],testToken=null,busy=false;
 function stable(v){
  if(Array.isArray(v))return '['+v.map(stable).join(',')+']';
  if(v&&typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}';
@@ -176,21 +175,14 @@ function readStore(db,storeName){
   tx.onabort=()=>reject(tx.error||Error(storeName+' 読み取り中断'));
  });
 }
-async function writeLocalStorage(data){
+function inspectLocalStoragePayload(data){
+ const rows=[];let totalChars=0;
  for(const [key,value] of Object.entries(data)){
-  const testKey=LS_PREFIX+testToken+'__'+key;
-  if(localStorage.getItem(testKey)!==null)throw Error('同名のテスト用localStorageキーが既に存在します。');
-  localStorage.setItem(testKey,value);createdKeys.push(testKey);
+  if(typeof key!=='string'||typeof value!=='string')throw Error('localStorageのキーまたは値が文字列ではありません：'+key);
+  totalChars+=key.length+value.length;
+  rows.push([key,'JSON内に保存済み','値 '+value.length.toLocaleString()+' 文字']);
  }
-}
-async function verifyLocalStorage(data){
- const rows=[];
- for(const [key,value] of Object.entries(data)){
-  const testKey=LS_PREFIX+testToken+'__'+key,actual=localStorage.getItem(testKey);
-  if(actual!==value)throw Error('localStorageの照合に失敗しました：'+key);
-  rows.push([key,'一致']);
- }
- return rows;
+ return {rows,totalChars,bytes:totalChars*2};
 }
 $('restoreBtn').addEventListener('click',async()=>{
  if(!parsedBackup||busy||createdDBs.length||createdKeys.length)return;
@@ -203,10 +195,6 @@ $('restoreBtn').addEventListener('click',async()=>{
   const known=await indexedDB.databases(),knownNames=new Set(known.map(x=>x.name));
   const planned=sourceDatabases.map(db=>PREFIX+testToken+'__'+db.name);
   if(planned.some(name=>knownNames.has(name)))throw Error('同名のテストDBが既に存在します。上書きしません。');
-  for(const name of Object.keys(sourceLocalStorage)){
-   const testKey=LS_PREFIX+testToken+'__'+name;
-   if(localStorage.getItem(testKey)!==null)throw Error('同名のテスト用localStorageキーが既に存在します。');
-  }
   let dbIndex=0;
   for(const source of sourceDatabases){
    const testName=planned[dbIndex++];
@@ -243,28 +231,27 @@ $('restoreBtn').addEventListener('click',async()=>{
     }
    }finally{db.close()}
   }
-  $('restoreStatus').textContent='localStorageのテスト用キーを復元・照合しています…';
-  await writeLocalStorage(sourceLocalStorage);
-  const lsRows=await verifyLocalStorage(sourceLocalStorage);
-  $('verifyStatus').textContent='成功：全IndexedDB・全ストア・全レコード・全インデックス、およびlocalStorageの全キー・値が一致しました。\\nテスト識別子：'+testToken+'\\n本番領域への変更：なし';
+  $('restoreStatus').textContent='localStorageのJSON内データを読み取り検査しています…';
+  const lsCheck=inspectLocalStoragePayload(sourceLocalStorage);
+  $('verifyStatus').textContent='成功：全IndexedDB・全ストア・全レコード・全インデックスの復元・照合が完了しました。\\nlocalStorage：JSON内の全'+lsCheck.rows.length+'キー・値を読み取り検査しました（実ストレージへの複製なし）。\\nデータ量概算：約'+(lsCheck.bytes/1024).toFixed(1)+' KB\\nテスト識別子：'+testToken+'\\n本番領域への変更：なし';
   $('verifyStatus').className='status good';
   const result=document.createElement('div');
   result.appendChild(makeTable(['テストDB','ストア','レコード','照合'],dbRows));
-  const lsTitle=document.createElement('p');lsTitle.textContent='localStorage：'+lsRows.length+'キーすべて一致';result.appendChild(lsTitle);
+  const lsTitle=document.createElement('p');lsTitle.textContent='localStorage：'+lsCheck.rows.length+'キーをJSON内で確認。実ストレージへの復元は未実施。';result.appendChild(lsTitle);
   $('verifyResult').replaceChildren(result);
-  $('restoreStatus').textContent='復元・全件照合が完了しました。テスト領域は保持しています。';
+  $('restoreStatus').textContent='IndexedDBの復元・全件照合が完了しました。localStorageはJSON内検査のみ完了。テストDBを保持しています。';
   $('deleteBtn').hidden=false;
  }catch(e){
   if(currentDB){try{currentDB.close()}catch(_){}}
   $('restoreStatus').textContent='復元テスト失敗：'+(e.message||String(e));
-  $('verifyStatus').textContent='テスト領域が一部作成されている可能性があります。\\n作成済みDB：'+createdDBs.length+'個／localStorageキー：'+createdKeys.length+'個\\nテスト識別子：'+testToken;
+  $('verifyStatus').textContent='テスト領域が一部作成されている可能性があります。\\n作成済みDB：'+createdDBs.length+'個\\nテスト識別子：'+testToken;
   $('verifyStatus').className='status bad';
   if(createdDBs.length||createdKeys.length)$('deleteBtn').hidden=false;
  }finally{busy=false;$('restoreBtn').disabled=true}
 });
 $('deleteBtn').addEventListener('click',async()=>{
- if((!createdDBs.length&&!createdKeys.length)||!testToken||busy)return;
- if(!confirm('今回このページが作成したテストDBとテスト用localStorageキーだけを削除します。\\n本番データは削除しません。続けますか？'))return;
+ if(!createdDBs.length||!testToken||busy)return;
+ if(!confirm('今回このページが作成したテストDBだけを削除します。\\n本番データは削除しません。続けますか？'))return;
  busy=true;$('deleteBtn').disabled=true;
  const errors=[];
  for(const name of createdDBs.slice()){
@@ -276,15 +263,11 @@ $('deleteBtn').addEventListener('click',async()=>{
    createdDBs=createdDBs.filter(x=>x!==name);
   }catch(e){errors.push(e.message||String(e))}
  }
- for(const key of createdKeys.slice()){
-  try{localStorage.removeItem(key);createdKeys=createdKeys.filter(x=>x!==key)}
-  catch(e){errors.push(key+'：'+(e.message||String(e)))}
- }
  if(errors.length){
-  $('verifyStatus').textContent='一部を削除できませんでした。\\n'+errors.join('\\n')+'\\n残り：DB '+createdDBs.length+'個／キー '+createdKeys.length+'個';
+  $('verifyStatus').textContent='一部を削除できませんでした。\\n'+errors.join('\\n')+'\\n残り：DB '+createdDBs.length+'個';
   $('verifyStatus').className='status bad';$('deleteBtn').hidden=false;
  }else{
-  $('verifyStatus').textContent='今回作成したテストDB '+createdDBs.length+'個、localStorageキー '+createdKeys.length+'個を削除しました。';
+  $('verifyStatus').textContent='今回作成したテストDB '+createdDBs.length+'個を削除しました。';
   $('verifyStatus').className='status good';$('verifyResult').replaceChildren();$('deleteBtn').hidden=true;
   createdDBs=[];createdKeys=[];testToken=null;
   $('restoreStatus').textContent='テスト領域を削除しました。別のテストを行う場合は、バックアップを再検査してください。';
