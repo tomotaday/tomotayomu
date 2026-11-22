@@ -99,3 +99,22 @@ API応答診断、R18 API応答診断、最新話更新日取得、更新日デ�
 5. 失敗した場合は表示メッセージを記録し、連続再試行せず原因を確認する。
 
 **コード反映済みだが、実機動作は未確認。実機確認完了と扱わないこと。**
+
+
+## 7. 未読作品が🆙棚に出ない不具合の修正（2026-11-23）
+
+### 原因・修正内容
+- 旧判定は `current != null && total > 0 && current < total`。bookmark=nullの完全未読作品は先頭条件で除外されていた。
+- `isUnreadWork(n,totalEpisodes)` を追加。
+  - bookmark=null：未読
+  - しおり位置が総話数未満：未読
+  - 最終話まで読了：対象外
+  - 短編のbookmark="R"：読了として対象外
+- カードの🆙表示と更新棚抽出の両方を共通関数へ統一。
+
+### 安全性・コード
+- index.htmlのみ変更。DB・bookmark・shelfId・localStorage・更新候補保存形式は変更なし。
+- commit：`48df9b2e41ff3726ba4838bab044b434278c41a5`
+- GitHubから再取得したJavaScript全script要素：2件とも構文チェックOK。
+- **実機確認はまだ。** GitHub Pagesを再読み込みして、①未読で更新候補あり・本棚所属の作品が🆙棚に出る、②途中まで読んだ作品も出る、③読了作品は出ない、の3点を確認する。
+- 詳細は [data-migration-log.md](data-migration-log.md) の「未読作品が更新棚から除外される判定不具合を修正」を参照。
