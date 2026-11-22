@@ -123,6 +123,7 @@
 - [note登録・更新・復旧ガイド](guides/note_magazine_guide.html)
 - [カクヨム登録・目次取得の技術記録](kakuyomu-toc-registration-investigation.html)
 - [ともたよむ20：資料室整備・DB整理／復元計画](tomotayomu20-records-and-handover.md)
+- [復旧用URL保全記録：6作品](recovery-urls-six-works.md)
 
 このページを資料室の入口とし、次スレッドへの引継ぎは本ページと各正本を参照して作成する。
 
