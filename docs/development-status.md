@@ -381,3 +381,4 @@
 - 次工程：検索除外38件（特に旧カード形式3件）の情報保持監査 → なろう3,695件の修正版JSON作成・全件検証 → 読み取り専用マージプレビュー。
 - 本番works更新・IndexedDB/localStorage・Shortcut・GitHub Actionsの変更は未実施。明示承認前に本番書き込みを行わない。
 - 詳細：[データ統合・参照先移行記録](data-migration-log.md) の「2026-11-22：統合works 3,700件の整理方針・移行優先順位の確認」。
+- 今回の経緯・次スレッドへの引継ぎ：[ともたよむ27 記録・次工程引継書](tomotayomu27-records-and-handover.md)。
