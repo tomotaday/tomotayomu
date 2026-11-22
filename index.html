@@ -1359,7 +1359,7 @@ async function auditNarouLastPublishedAt(){
 async function diagnoseNarouApiResponse(){
   const btn=document.getElementById("apiProbeBtn"),box=document.getElementById("apiProbeResult"),status=document.getElementById("apiStatus");
   if(btn)btn.disabled=true;
-  if(box){box.hidden=false;box.textContent="通常APIの応答を1作品だけ確認中…（IndexedDB読み取りのみ・保存なし）";}
+  if(box){box.hidden=false;box.textContent="通常APIの総話数を1作品だけ確認中…（IndexedDB読み取りのみ・保存なし）";}
   try{
     const db=await openExistingWorksDB();
     let rows;
@@ -1374,7 +1374,7 @@ async function diagnoseNarouApiResponse(){
     const target=rows.find(w=>w?.site==="narou"&&w?.siteData?.isR18!==true&&/^N[0-9A-Z]+$/i.test(String(w.workId||"").trim()));
     if(!target)throw new Error("診断に使える通常作品が見つかりません");
     const ncode=String(target.workId).trim().toUpperCase();
-    const url=API_URL+"?ncode="+encodeURIComponent(ncode)+"&of=n-gl&lim=1";
+    const url=API_URL+"?ncode="+encodeURIComponent(ncode)+"&of=n-ga&lim=1";
     const data=await jsonp(url);
     const describe=(item)=>{
       if(item===null)return {type:"null"};
@@ -1384,11 +1384,12 @@ async function diagnoseNarouApiResponse(){
         type:"object",
         keys:Object.keys(item),
         allcount:Object.prototype.hasOwnProperty.call(item,"allcount")?item.allcount:"(なし)",
-        ncode:Object.prototype.hasOwnProperty.call(item,"ncode")?item.ncode:"(なし)"
+        ncode:Object.prototype.hasOwnProperty.call(item,"ncode")?item.ncode:"(なし)",
+        general_all_no:Object.prototype.hasOwnProperty.call(item,"general_all_no")?item.general_all_no:"(なし)"
       };
     };
     const report=[
-      "【なろう通常API・応答診断】",
+      "【なろう通常API・総話数応答診断】",
       "診断対象Nコード："+ncode,
       "応答全体の型："+(Array.isArray(data)?"Array":typeof data),
       "応答件数："+(Array.isArray(data)?data.length:"配列ではない"),
@@ -1398,7 +1399,7 @@ async function diagnoseNarouApiResponse(){
       "※IndexedDBは読み取りのみ。作品データの保存・変更は行っていません。"
     ];
     if(box)box.textContent=report.join("\n");
-    if(status)status.textContent="通常API応答診断完了（読み取り専用）";
+    if(status)status.textContent="通常API総話数応答診断完了（読み取り専用）";
   }catch(e){
     console.error("なろうAPI応答診断失敗",e);
     if(box)box.textContent="API応答診断失敗："+e.message+"\n※IndexedDBへの保存・変更は行っていません。";
