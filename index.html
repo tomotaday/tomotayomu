@@ -118,6 +118,7 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 <button id="updateBtn" type="button">🔄 本棚更新</button>
 <button id="apiSupplementBtn" type="button">📅 最新話更新日を取得</button>
 <button id="dateAuditBtn" type="button">🔍 更新日データ診断</button>
+<button id="r18AuditBtn" type="button">🔍 R18判定診断</button>
 <button id="copyAuthorJsonBtn" type="button">① JSONコピー</button>
 <button id="launchAuthorAtomBtn" type="button">② Atom更新</button>
 <button id="reverseOrderBtn" type="button">🔃 順序反転</button>
@@ -148,6 +149,7 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 </script>
 <div id="apiStatus">本棚情報未反映</div>
 <div id="dateAuditResult" hidden style="border:1px solid #999;border-radius:10px;padding:10px;margin:10px 0;white-space:pre-wrap;overflow-wrap:anywhere"></div>
+<div id="r18AuditResult" hidden style="border:1px solid #999;border-radius:10px;padding:10px;margin:10px 0;white-space:pre-wrap;overflow-wrap:anywhere"></div>
 <div id="noteReceiveStatus" hidden style="border:1px solid #8caa9b;border-radius:10px;background:#f1f8f4;padding:10px;margin:10px 0;overflow-wrap:anywhere"></div>
 <details class="searchDetails">
 <summary>🔎 検索</summary>
@@ -1219,6 +1221,60 @@ function classifyStoredDate(value){
   const normalized=raw.replace(/年|月/g,"-").replace(/日/g,"").replace(/[/.]/g,"-").replace(/\s+/,"T");
   return Number.isFinite(Date.parse(normalized))?"valid":"invalid";
 }
+async function auditNarouR18Flag(){
+  const btn=document.getElementById("r18AuditBtn"),box=document.getElementById("r18AuditResult");
+  if(btn)btn.disabled=true;
+  if(box){box.hidden=false;box.textContent="新worksのR18判定を読み取り中…（データ変更なし）";}
+  try{
+    const db=await openExistingWorksDB();
+    let rows;
+    try{
+      rows=await new Promise((resolve,reject)=>{
+        const tx=db.transaction("works","readonly"),req=tx.objectStore("works").getAll();
+        req.onsuccess=()=>resolve(req.result||[]);
+        req.onerror=()=>reject(req.error||new Error("新works読込失敗"));
+        tx.onerror=()=>reject(tx.error||new Error("新works読込トランザクション失敗"));
+      });
+    }finally{db.close()}
+    const narou=rows.filter(w=>w?.site==="narou");
+    const counts={true:0,false:0,missing:0,other:0};
+    const examples={missing:[],other:[]};
+    const describe=v=>{
+      if(v===undefined)return "<undefined>";
+      if(v===null)return "<null>";
+      if(typeof v==="string")return JSON.stringify(v);
+      try{return JSON.stringify(v)}catch(e){return String(v)}
+    };
+    for(const w of narou){
+      const has=!!w.siteData&&Object.prototype.hasOwnProperty.call(w.siteData,"isR18");
+      const v=w.siteData?.isR18;
+      if(!has){counts.missing++;if(examples.missing.length<10)examples.missing.push(String(w.workId||w.id||"(IDなし)")+" : "+describe(v));}
+      else if(v===true)counts.true++;
+      else if(v===false)counts.false++;
+      else{counts.other++;if(examples.other.length<10)examples.other.push(String(w.workId||w.id||"(IDなし)")+" : "+describe(v)+" ["+typeof v+"]");}
+    }
+    const lines=[
+      "【なろう作品・R18判定項目診断】",
+      "なろう作品総数："+narou.length.toLocaleString("ja-JP"),
+      "isR18 === true："+counts.true.toLocaleString("ja-JP")+"（R18 APIへ振り分け）",
+      "isR18 === false："+counts.false.toLocaleString("ja-JP")+"（通常APIへ振り分け）",
+      "項目なし："+counts.missing.toLocaleString("ja-JP"),
+      "true/false以外："+counts.other.toLocaleString("ja-JP"),
+      "",
+      "【項目なしの例】",
+      ...(examples.missing.length?examples.missing:["該当なし"]),
+      "",
+      "【true/false以外の例】",
+      ...(examples.other.length?examples.other:["該当なし"]),
+      "",
+      "※読み取り専用診断。IndexedDBへの書き込みは行っていません。"
+    ];
+    if(box)box.textContent=lines.join("\n");
+  }catch(e){
+    console.error("R18判定診断失敗",e);
+    if(box)box.textContent="R18判定診断失敗："+e.message;
+  }finally{if(btn)btn.disabled=false}
+}
 async function auditNarouLastPublishedAt(){
   const btn=document.getElementById("dateAuditBtn"),box=document.getElementById("dateAuditResult"),status=document.getElementById("apiStatus");
   if(btn)btn.disabled=true;
@@ -1528,6 +1584,7 @@ document.addEventListener("click",e=>{
 document.getElementById("updateBtn").addEventListener("click",updateInfo);
 document.getElementById("apiSupplementBtn").addEventListener("click",supplementNarouWorksFromApi);
 document.getElementById("dateAuditBtn").addEventListener("click",auditNarouLastPublishedAt);
+document.getElementById("r18AuditBtn").addEventListener("click",auditNarouR18Flag);
 document.getElementById("reverseOrderBtn")?.addEventListener("click",()=>{workOrderReversed=!workOrderReversed;buildShelfFolders();});
 document.getElementById("copyAuthorJsonBtn")?.addEventListener("click",async()=>{
   const btn=document.getElementById("copyAuthorJsonBtn");
