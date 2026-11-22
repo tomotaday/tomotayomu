@@ -970,11 +970,7 @@ async function refreshNarouWorkFromApi(card){
           reject(new Error("既存bookmarkが不正なため保存を中止しました"));
           return;
         }
-        if(Number.isInteger(nextRecord.bookmark)&&nextRecord.bookmark>nextRecord.episodeCount){
-          try{tx.abort()}catch(e){}
-          reject(new Error("しおり位置が最新総話数を超えているため保存を中止しました"));
-          return;
-        }
+        // bookmarkは読書位置として既存値をそのまま保護する。APIの総話数との大小では更新を止めない。
         store.put(nextRecord);
       };
       req.onerror=()=>{try{tx.abort()}catch(e){};reject(req.error||new Error("作品データの読込に失敗しました"))};
