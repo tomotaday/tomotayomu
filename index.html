@@ -1175,7 +1175,8 @@ async function updateInfo(){
   try{
     const oldBaseline=getGlobalBaseline();
     const newBaseline=new Date().toISOString();
-    const start=Math.floor(new Date(oldBaseline).getTime()/1000);
+    const oldTime=new Date(oldBaseline).getTime();
+    const start=Math.floor(oldTime/1000);
     const end=Math.floor(new Date(newBaseline).getTime()/1000);
     if(!Number.isFinite(start)||!Number.isFinite(end))throw new Error("基準日の日時が不正です");
     status.textContent="更新候補を確認中…";
@@ -1183,21 +1184,65 @@ async function updateInfo(){
     r18.forEach(w=>w.__r18=true);
     const rows=[...normal,...r18];
     const cards=getCardsByNcode(), candidates=getUpdateCandidates(), latest=getLatestWorks();
-    let reflected=0;
+    const pending=[];
+    const seen=new Set();
     rows.forEach(w=>{
-      const n=String(w.ncode||"").toUpperCase(), c=cards[n];
-      if(!c)return;
-      const lastup=w.general_lastup||"";
-      if(lastup&&new Date(lastup.replace(" ","T")).getTime()>new Date(oldBaseline).getTime()){
-        const saved=slimWork(w);
-        latest[n]=saved;
-        updateCard(c,saved);
-        if(String(c.dataset.shelfId||"").trim()!==""){
-          candidates[n]=lastup;
-        }else{
-          delete candidates[n];
-        }
-        reflected++;
+      const n=String(w.ncode||"").toUpperCase();
+      const lastup=String(w.general_lastup||"");
+      const stamp=lastup?new Date(lastup.replace(" ","T")).getTime():NaN;
+      if(!n||seen.has(n)||!Number.isFinite(stamp)||stamp<=oldTime)return;
+      seen.add(n);
+      pending.push({n,api:w,lastup,saved:slimWork(w)});
+    });
+    const db=await openExistingWorksDB();
+    let reflected=0;
+    const reflectedRows=[];
+    try{
+      await new Promise((resolve,reject)=>{
+        const tx=db.transaction("works","readwrite"),store=tx.objectStore("works");
+        const get=store.getAll();
+        get.onsuccess=()=>{
+          const byNcode=new Map((get.result||[])
+            .filter(v=>v.site==="narou")
+            .map(v=>[String(v.workId||"").toUpperCase(),v]));
+          pending.forEach(item=>{
+            const record=byNcode.get(item.n);
+            if(!record)return;
+            const api=item.api;
+            const next={
+              ...record,
+              title:api.title||record.title,
+              synopsis:api.story||record.synopsis||"",
+              lastPublishedAt:item.lastup,
+              episodeCount:api.general_all_no??record.episodeCount,
+              siteData:{
+                ...(record.siteData||{}),
+                end:api.end??record.siteData?.end,
+                keyword:api.keyword??record.siteData?.keyword,
+                genre:api.genre??record.siteData?.genre,
+                userid:api.userid??record.siteData?.userid,
+                noveltype:api.noveltype??record.siteData?.noveltype,
+                isstop:api.isstop??record.siteData?.isstop
+              }
+            };
+            store.put(next);
+            reflectedRows.push({n: item.n,record:next,lastup:item.lastup,saved:item.saved});
+            reflected++;
+          });
+        };
+        get.onerror=()=>{try{tx.abort()}catch(e){};reject(get.error||new Error("新worksの更新対象を読み込めません"))};
+        tx.oncomplete=resolve;
+        tx.onerror=()=>reject(tx.error||new Error("新worksへの更新情報保存に失敗しました"));
+        tx.onabort=()=>reject(tx.error||new Error("新worksへの更新情報保存を中止しました"));
+      });
+    }finally{db.close()}
+    reflectedRows.forEach(item=>{
+      latest[item.n]=item.saved;
+      const card=cards[item.n];
+      if(card){
+        updateCard(card,item.record);
+        if(String(item.record.shelfId||"").trim()!=="")candidates[item.n]=item.lastup;
+        else delete candidates[item.n];
       }
     });
     saveLatestWorks(latest);
@@ -1209,7 +1254,7 @@ async function updateInfo(){
     buildShelfFolders();
     bookshelfRendered=true;
     renderGlobalBaseline();
-    status.textContent="";
+    status.textContent="本棚更新完了："+reflected+"作品を新worksへ反映しました。";
   }catch(e){
     console.error(e);
     status.textContent="更新確認に失敗しました："+e.message;
