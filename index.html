@@ -486,7 +486,7 @@ async function buildV3CardsFromIndexedDB(){
     card.dataset.authorId=String(w.authorId||"");
     card.dataset.current="";
 
-    card.innerHTML='<div class="meta"><span class="newMark" hidden>🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> '+shelf+'</div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="searchExcludedMark" hidden title="検索除外に設定中">🚫</span><span class="siteBadge siteBadge-narou">なろう</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから　📖 未読 / —話</a><button type="button" class="shortStoryReadToggle" hidden>未読</button></div><details class="managementDetails"><summary>詳細を開く</summary><div class="managementBody"><div class="ncode">Nコード：'+n+'</div><button type="button" class="moveShelfBtn">本棚を移動</button><button type="button" class="searchExcludedToggle">🔎 検索除外にする</button><button type="button" class="deleteWorkBtn">削除</button></div></details></article>';
+    card.innerHTML='<div class="meta"><span class="newMark" hidden>🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> '+shelf+'</div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="searchExcludedMark" hidden title="検索除外に設定中">🚫</span><span class="siteBadge siteBadge-narou">なろう</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから　📖 未読 / —話</a><button type="button" class="shortStoryReadToggle" hidden>未読</button></div><details class="managementDetails"><summary>詳細を開く</summary><div class="managementBody"><div class="ncode">Nコード：'+n+'</div><button type="button" class="moveShelfBtn">本棚を移動</button><button type="button" class="narouApiRefreshBtn">🔄 API更新</button><span class="narouApiRefreshStatus" role="status" aria-live="polite"></span><button type="button" class="searchExcludedToggle">🔎 検索除外にする</button><button type="button" class="deleteWorkBtn">削除</button></div></details></article>';
     card.querySelector("h2").textContent=w.title||"";
     card.querySelector(".authorName").textContent=writer;
     updateCard(card,w);
@@ -885,6 +885,120 @@ function renderResumeLink(card,current,total,workUrl,isShortStory){
     resumeLink.href=current>0 ? workUrl+String(current)+"/" : workUrl;
   }
 }
+async function refreshNarouWorkFromApi(card){
+  const n=String(card?.dataset?.ncode||"").trim().toUpperCase();
+  if(!/^N[0-9A-Z]+$/.test(n))throw new Error("Nコードを確認できません");
+  const statusNodes=[...document.querySelectorAll("#shelf .card, #shelfSections .card, #searchResults .card")]
+    .filter(x=>String(x.dataset.ncode||"").toUpperCase()===n)
+    .map(x=>x.querySelector(".narouApiRefreshStatus")).filter(Boolean);
+  const buttons=[...document.querySelectorAll("#shelf .card, #shelfSections .card, #searchResults .card")]
+    .filter(x=>String(x.dataset.ncode||"").toUpperCase()===n)
+    .map(x=>x.querySelector(".narouApiRefreshBtn")).filter(Boolean);
+  const say=message=>statusNodes.forEach(x=>x.textContent=message);
+  buttons.forEach(x=>{x.disabled=true;x.textContent="取得中…"});
+  say("APIから最新情報を取得しています…");
+  let db;
+  try{
+    const isR18=card.dataset.r18==="1";
+    const apiBase=isR18?R18_API_URL:API_URL;
+    const result=await jsonp(apiBase+"?ncode="+encodeURIComponent(n)+"&lim=1");
+    if(!Array.isArray(result)||!result.length||!result[0]||!result[0].ncode)
+      throw new Error("APIに作品が見つかりませんでした");
+    const raw=result[0],returned=String(raw.ncode).trim().toUpperCase();
+    if(returned!==n)throw new Error("APIのNコードが一致しません");
+    if(typeof raw.title!=="string"||!raw.title.trim())throw new Error("作品タイトルが取得できません");
+    if(typeof raw.story!=="string"||!Number.isInteger(Number(raw.general_all_no))||Number(raw.general_all_no)<1)
+      throw new Error("作品情報の必須項目が不正です");
+    if(!isR18&&(!Number.isInteger(Number(raw.userid))||Number(raw.userid)<1))
+      throw new Error("作者IDが取得できません");
+    const novelType=Number(raw.novel_type),end=Number(raw.end);
+    let status;
+    if(novelType===2&&end===0)status="短編";
+    else if(novelType===1&&end===0)status="完結";
+    else if(novelType===1&&end===1)status="連載中";
+    else throw new Error("作品状態を判定できないため保存しません（novel_type/end："+novelType+"/"+end+"）");
+    const toDate=value=>{
+      if(typeof value!=="string"||!/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})(?::\d{2})?$/.test(value))
+        throw new Error("API日時の形式が不正です："+value);
+      const [date,time]=value.split(" "),[y,m,d]=date.split("-"),[h,min]=time.split(":");
+      const check=new Date(Number(y),Number(m)-1,Number(d),Number(h),Number(min));
+      if(check.getFullYear()!==Number(y)||check.getMonth()!==Number(m)-1||check.getDate()!==Number(d)||Number(h)>23||Number(min)>59)
+        throw new Error("API日時が実在しません："+value);
+      return y+"/"+m+"/"+d+" "+h+":"+min;
+    };
+    const firstup=toDate(raw.general_firstup),lastup=toDate(raw.general_lastup);
+    const keywords=typeof raw.keyword==="string"?raw.keyword.trim().split(/\s+/u).filter(Boolean):[];
+    const genreFields=["biggenre","genre","nocgenre","isr15","isbl","isgl","iszankoku","istensei","istenni"];
+    const genres=genreFields.filter(k=>Object.prototype.hasOwnProperty.call(raw,k)&&raw[k]!==null&&raw[k]!=="")
+      .map(source=>({source,value:raw[source]}));
+    db=await openExistingWorksDB();
+    const saved=await new Promise((resolve,reject)=>{
+      const tx=db.transaction("works","readwrite"),store=tx.objectStore("works");
+      const req=store.get("narou:"+n);
+      let nextRecord=null;
+      req.onsuccess=()=>{
+        const existing=req.result;
+        if(!existing||existing.site!=="narou"||String(existing.workId||"").toUpperCase()!==n){
+          try{tx.abort()}catch(e){}
+          reject(new Error("新worksに対象作品がないか、識別情報が一致しません"));
+          return;
+        }
+        nextRecord=structuredClone(existing);
+        Object.assign(nextRecord,{
+          title:raw.title,synopsis:raw.story,authorName:raw.writer,
+          authorId:isR18?(existing.authorId??null):raw.userid,
+          status,episodeCount:Number(raw.general_all_no),
+          publishedAt:firstup,lastPublishedAt:lastup,keywords,genres,
+          url:"https://"+(isR18?"novel18.syosetu.com":"ncode.syosetu.com")+"/"+n.toLowerCase()+"/"
+        });
+        const siteData=nextRecord.siteData&&typeof nextRecord.siteData==="object"?structuredClone(nextRecord.siteData):{};
+        Object.assign(siteData,{
+          noveltype:novelType,end,keyword:typeof raw.keyword==="string"?raw.keyword:"",
+          genre:raw.genre??null,biggenre:raw.biggenre??null,nocgenre:raw.nocgenre??null,
+          isstop:raw.isstop??0,novelupdated_at:raw.novelupdated_at??"",
+          api_fetched_at:new Date().toISOString(),userid_source:raw.userid??0,
+          authorType:isR18?"r18":"normal",isR18
+        });
+        for(const key of ["isr15","isbl","isgl","iszankoku","istensei","istenni"])
+          if(Object.prototype.hasOwnProperty.call(raw,key))siteData[key]=raw[key];
+        nextRecord.siteData=siteData;
+        if(!(nextRecord.bookmark===null||nextRecord.bookmark===undefined||nextRecord.bookmark==="R"||
+          (Number.isInteger(nextRecord.bookmark)&&nextRecord.bookmark>0))){
+          try{tx.abort()}catch(e){}
+          reject(new Error("既存bookmarkが不正なため保存を中止しました"));
+          return;
+        }
+        if(Number.isInteger(nextRecord.bookmark)&&nextRecord.bookmark>nextRecord.episodeCount){
+          try{tx.abort()}catch(e){}
+          reject(new Error("しおり位置が最新総話数を超えているため保存を中止しました"));
+          return;
+        }
+        store.put(nextRecord);
+      };
+      req.onerror=()=>{try{tx.abort()}catch(e){};reject(req.error||new Error("作品データの読込に失敗しました"))};
+      tx.oncomplete=()=>resolve(nextRecord);
+      tx.onerror=()=>reject(tx.error||new Error("新worksへの保存に失敗しました"));
+      tx.onabort=()=>reject(tx.error||new Error("保存処理を中止しました"));
+    });
+    const cardsNow=[...document.querySelectorAll("#shelf .card, #shelfSections .card, #searchResults .card")]
+      .filter(x=>String(x.dataset.ncode||"").toUpperCase()===n);
+    cardsNow.forEach(x=>updateCard(x,saved));
+    say("✅ 最新情報に更新しました（"+saved.episodeCount+"話）");
+  }catch(error){
+    say("⚠️ 更新できませんでした："+(error.message||String(error)));
+    throw error;
+  }finally{
+    if(db)db.close();
+    buttons.forEach(x=>{x.disabled=false;x.textContent="🔄 API更新"});
+  }
+}
+document.addEventListener("click",event=>{
+  const button=event.target.closest(".narouApiRefreshBtn");
+  if(!button)return;
+  const card=button.closest(".card");
+  if(!card)return;
+  refreshNarouWorkFromApi(card).catch(error=>console.warn("Narou API refresh:",error));
+});
 function updateCard(card,w){
   const n=String(w.workId||card.dataset.ncode||"").toUpperCase();
   const isR18=isR18Work(w);
