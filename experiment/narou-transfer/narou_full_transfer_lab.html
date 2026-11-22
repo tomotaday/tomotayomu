@@ -281,14 +281,20 @@ function createCard(w){
   actions.append(workUrl);
   const total=Number(w.episodeCount||0),position=bookmarkPosition(w.bookmark),isShort=String(w.siteData?.noveltype??"").trim()==="2";
   if(isShort){
-    const button=document.createElement("button");button.type="button";button.disabled=true;
-    const isRead=w.bookmark==="R";button.textContent=isRead?"読了":"未読";
-    button.className="shortStoryReadToggle "+(isRead?"isRead":"isUnread");
+    const button=document.createElement("button");button.type="button";
+    let isRead=w.bookmark==="R";
+    const paintReadState=()=>{
+      button.textContent=isRead?"読了":"未読";
+      button.className="shortStoryReadToggle "+(isRead?"isRead":"isUnread");
+      button.setAttribute("aria-pressed",isRead?"true":"false");
+    };
+    paintReadState();
+    button.addEventListener("click",()=>{isRead=!isRead;paintReadState();});
     actions.append(button);
   }else{
     const resume=document.createElement("a");resume.target="_blank";resume.rel="noopener noreferrer";
     resume.href=position!==null&&position>0?w.url+position+"/":w.url;
-    resume.textContent=position===null?"続き📖📝記録なし / "+(total||"—")+"話":"続き📖"+position+"/"+(total||"—")+"話";
+    resume.textContent=position===null?"続き📖未読/"+(total||"—")+"話":"続き📖"+position+"/"+(total||"—")+"話";
     if(w.siteData?.isR18===true)resume.textContent+="　®️";
     actions.append(resume);
   }
