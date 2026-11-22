@@ -1374,7 +1374,7 @@ async function diagnoseNarouApiResponse(){
     const target=rows.find(w=>w?.site==="narou"&&w?.siteData?.isR18!==true&&/^N[0-9A-Z]+$/i.test(String(w.workId||"").trim()));
     if(!target)throw new Error("診断に使える通常作品が見つかりません");
     const ncode=String(target.workId).trim().toUpperCase();
-    const url=API_URL+"?ncode="+encodeURIComponent(ncode)+"&of=ncode-gl&lim=1";
+    const url=API_URL+"?ncode="+encodeURIComponent(ncode)+"&of=n-gl&lim=1";
     const data=await jsonp(url);
     const describe=(item)=>{
       if(item===null)return {type:"null"};
@@ -1447,7 +1447,7 @@ async function supplementNarouWorksFromApi(){
       for(let i=0;i<codes.length;i+=80){
         const part=codes.slice(i,i+80);
         status.textContent=label+" API取得中… "+Math.min(i+80,codes.length)+"/"+codes.length;
-        const url=base+"?ncode="+part.join("-")+"&of=ncode-gl&lim=500";
+        const url=base+"?ncode="+part.join("-")+"&of=n-gl&lim=500";
         const data=await jsonp(url);
         if(!Array.isArray(data))throw new Error(label+" APIの応答形式が不正です");
         // なろうAPIは先頭要素に allcount（取得件数）を返し、その後に作品データを返す。
