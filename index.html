@@ -1303,87 +1303,107 @@ async function supplementNarouWorksFromApi(){
   if(btn)btn.disabled=true;
   try{
     status.textContent="新worksのなろう作品を読み込み中…";
-    const db=await openExistingWorksDB();
-    let rows;
+    const readDb=await openExistingWorksDB();
+    let snapshot;
     try{
-      rows=await new Promise((resolve,reject)=>{
-        const tx=db.transaction("works","readonly"),req=tx.objectStore("works").getAll();
+      snapshot=await new Promise((resolve,reject)=>{
+        const tx=readDb.transaction("works","readonly"),req=tx.objectStore("works").getAll();
         req.onsuccess=()=>resolve(req.result||[]);
         req.onerror=()=>reject(req.error||new Error("新works読込失敗"));
         tx.onerror=()=>reject(tx.error||new Error("新works読込トランザクション失敗"));
       });
-    }finally{db.close()}
-    const narou=rows.filter(w=>w.site==="narou"&&String(w.workId||"").trim());
+    }finally{readDb.close()}
+
+    const narou=snapshot.filter(w=>w?.site==="narou");
     if(!narou.length)throw new Error("新worksに補完対象のなろう作品がありません");
-    const normal=narou.filter(w=>w.siteData?.isR18!==true);
-    const r18=narou.filter(w=>w.siteData?.isR18===true);
-    const apiRows=[];
-    const fetchGroup=async(group,base,label)=>{
-      const codes=[...new Set(group.map(w=>String(w.workId).trim().toLowerCase()))];
+    const groups=new Map();
+    for(const record of narou){
+      const n=String(record.workId||"").trim().toUpperCase();
+      if(!/^N[0-9A-Z]+$/.test(n))throw new Error("Nコードが不正な作品があります："+String(record.workId||"(空欄)"));
+      if(!groups.has(n))groups.set(n,[]);
+      groups.get(n).push(record);
+    }
+    const duplicates=[...groups].filter(([,items])=>items.length!==1).map(([n])=>n);
+    if(duplicates.length)throw new Error("Nコード重複があるため安全停止しました："+duplicates.slice(0,10).join("、"));
+
+    const normal=[],r18=[];
+    for(const [n,items] of groups){
+      (items[0].siteData?.isR18===true?r18:normal).push(n.toLowerCase());
+    }
+    const apiByNcode=new Map();
+    const fetchGroup=async(codes,base,label)=>{
       for(let i=0;i<codes.length;i+=80){
-        status.textContent=label+" API取得中… "+Math.min(i+80,codes.length)+"/"+codes.length;
         const part=codes.slice(i,i+80);
-        const url=base+"?ncode="+part.join("-")+"&of=n-t-s-gl-ga-e-nt-i-k-g-bg&lim=500";
+        status.textContent=label+" API取得中… "+Math.min(i+80,codes.length)+"/"+codes.length;
+        const url=base+"?ncode="+part.join("-")+"&of=ncode-gl&lim=500";
         const data=await jsonp(url);
         if(!Array.isArray(data))throw new Error(label+" APIの応答形式が不正です");
-        apiRows.push(...data.filter(x=>x&&x.ncode));
+        const requested=new Set(part.map(x=>x.toUpperCase()));
+        for(const api of data){
+          const n=String(api?.ncode||"").trim().toUpperCase();
+          if(!n||!requested.has(n))throw new Error(label+" APIから要求外のNコードが返りました："+(n||"(空欄)"));
+          if(apiByNcode.has(n))throw new Error("API応答にNコード重複があります："+n);
+          apiByNcode.set(n,api);
+        }
       }
     };
     await fetchGroup(normal,API_URL,"通常作品");
     await fetchGroup(r18,R18_API_URL,"R18作品");
-    const byNcode=new Map();
-    apiRows.forEach(api=>byNcode.set(String(api.ncode||"").toUpperCase(),api));
-    let matched=0,missing=0,changed=0;
-    const updated=[];
+
+    const updates=[];
+    let missing=0,invalidDate=0;
+    for(const [n,items] of groups){
+      const api=apiByNcode.get(n);
+      if(!api){missing++;continue;}
+      const raw=String(api.general_lastup||"").trim();
+      const match=raw.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::\d{2})?$/);
+      if(!match){invalidDate++;continue;}
+      const [,y,mo,d,hh,mm]=match;
+      const check=new Date(Date.UTC(Number(y),Number(mo)-1,Number(d),Number(hh),Number(mm)));
+      if(check.getUTCFullYear()!==Number(y)||check.getUTCMonth()!==Number(mo)-1||check.getUTCDate()!==Number(d)||Number(hh)>23||Number(mm)>59){
+        invalidDate++;continue;
+      }
+      updates.push({id:items[0].id,ncode:n,lastPublishedAt:y+"/"+mo+"/"+d+" "+hh+":"+mm});
+    }
+    if(!updates.length)throw new Error("保存可能な最新話更新日が1件もありません。DBは変更していません。");
+    if(invalidDate)throw new Error("APIの最新話更新日を解釈できない作品が"+invalidDate+"件あります。安全のためDBは変更していません。");
+
+    status.textContent="API照合完了。新worksへ"+updates.length+"件の最新話更新日を保存中…";
     const writeDb=await openExistingWorksDB();
+    let changed=0;
     try{
       await new Promise((resolve,reject)=>{
         const tx=writeDb.transaction("works","readwrite"),store=tx.objectStore("works");
         const get=store.getAll();
         get.onsuccess=()=>{
-          const current=(get.result||[]).filter(w=>w.site==="narou");
-          current.forEach(record=>{
-            const n=String(record.workId||"").toUpperCase(),api=byNcode.get(n);
-            if(!api){missing++;return}
-            matched++;
-            const lastup=String(api.general_lastup||"").trim();
-            const count=Number(api.general_all_no);
-            const siteData={...(record.siteData||{})};
-            if(api.end!==undefined&&api.end!==null)siteData.end=api.end;
-            if(api.noveltype!==undefined&&api.noveltype!==null)siteData.noveltype=api.noveltype;
-            else if(api.novel_type!==undefined&&api.novel_type!==null)siteData.noveltype=api.novel_type;
-            if(api.isstop!==undefined&&api.isstop!==null)siteData.isstop=api.isstop;
-            if(api.keyword!==undefined&&api.keyword!==null)siteData.keyword=api.keyword;
-            if(api.genre!==undefined&&api.genre!==null)siteData.genre=api.genre;
-            if(api.biggenre!==undefined&&api.biggenre!==null)siteData.biggenre=api.biggenre;
-            const next={
-              ...record,
-              title:String(api.title||"").trim()||record.title,
-              synopsis:String(api.story||"").trim()||record.synopsis,
-              lastPublishedAt:lastup||record.lastPublishedAt,
-              episodeCount:Number.isFinite(count)&&count>=0?count:record.episodeCount,
-              siteData
-            };
-            store.put(next);
-            updated.push(next);
+          const currentById=new Map((get.result||[]).map(w=>[String(w.id),w]));
+          for(const item of updates){
+            const record=currentById.get(String(item.id));
+            if(!record||record.site!=="narou"||String(record.workId||"").toUpperCase()!==item.ncode){
+              tx.abort();
+              reject(new Error("保存直前の作品データが読み込み時と一致しません："+item.ncode));
+              return;
+            }
+            store.put({...record,lastPublishedAt:item.lastPublishedAt});
             changed++;
-          });
+          }
         };
-        get.onerror=()=>{try{tx.abort()}catch(e){};reject(get.error||new Error("新works更新対象の読込失敗"))};
+        get.onerror=()=>{try{tx.abort()}catch(e){};reject(get.error||new Error("保存対象の再読込失敗"))};
         tx.oncomplete=resolve;
-        tx.onerror=()=>reject(tx.error||new Error("API補完データの保存失敗"));
-        tx.onabort=()=>reject(tx.error||new Error("API補完データの保存中止"));
+        tx.onerror=()=>reject(tx.error||new Error("lastPublishedAt保存失敗"));
+        tx.onabort=()=>reject(tx.error||new Error("lastPublishedAt保存を中止しました"));
       });
     }finally{writeDb.close()}
+
     await buildV3CardsFromIndexedDB();
     await loadBookmarksFromWorksDB();
     prepareBookmarkCards();
     buildUpdateView();
     buildShelfFolders();
-    status.textContent="API全件補完完了："+changed+"作品を新worksへ保存（API照合 "+matched+"件／未取得 "+missing+"件）。しおり・本棚情報は保持しました。";
+    status.textContent="API最新話更新日保存完了："+changed+"作品（API未取得 "+missing+"件）。他の作品情報・本棚・しおりは変更していません。";
   }catch(e){
-    console.error("なろうAPI全件補完失敗",e);
-    status.textContent="API全件補完に失敗しました："+e.message+"（取得失敗分の既存データは維持）";
+    console.error("なろうAPI最新話更新日取得失敗",e);
+    status.textContent="API最新話更新日取得に失敗しました："+e.message+"（保存処理前の失敗では既存データを変更していません）";
   }finally{if(btn)btn.disabled=false}
 }
 async function moveWorkToShelf(ncode,newShelfId){
