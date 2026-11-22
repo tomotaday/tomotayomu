@@ -787,3 +787,37 @@ iPhoneのファイル一覧で、用途ごとにまとまり、その中で日�
 - 次は現行INDEX・DB構成・保存先インベントリを照合し、作品カードの参照先と関連する読み書き経路を記録する。その後、バックアップ対象・形式・復元方法を確定する。
 - 本番移行の実施は、参照先調査・バックアップ・復元可能性の確認後に行う。旧DBの削除は、移行後の運用確認が終わるまで行わない。
 
+
+
+## 2026-11-22：全保存領域の棚卸し・本番バックアップ準備
+
+### 目的・安全境界
+- 新works本番移行に先立ち、現行の保存領域を読み取り専用で棚卸しし、全体バックアップを取得できる状態にする。
+- 対象ページ：`tools/diagnostic/storage_inventory.html`。棚卸し・バックアップ作成用であり、通常の本体画面や作品データを更新するページではない。
+- 今回の棚卸しは読み取り専用。IndexedDBのレコード・スキーマおよびlocalStorageのキー・値を読み取った。DB作成・更新・削除、localStorage書き込みは行っていない。
+- バックアップJSONの実ファイル取得・内容検証は、この記録時点では未完了。棚卸し結果をバックアップ成功と扱わない。
+
+### 2026-11-22 12:15:25 JST 棚卸し結果（ユーザー実機報告）
+- IndexedDB：5/5データベースを検出、エラー0、合計14,422レコード。
+  - `tomotaYomuWorksDB` v2：`shelves` 15件（keyPath `shelf_id`）、`works` 3,705件（keyPath `id`）。
+  - `tomotaYomuDB` v1：`authors` 2,412件、`reading_position` 414件、`shelf_names` 14件、`shelf_placement` 3,596件、`works_cache` 3,596件。各ストアのkeyPathは棚卸し画面の報告値を参照。
+  - `tomotaYomuAtomDB` v1：`entries` 640件、`meta` 2件。
+  - `tomotaMemoDB` v1：`items` 25件。
+  - `tomotaYomu_rebuild` v1：`candidates` 3件。
+- localStorage：51キー、概算合計5,129.5 KB。最大項目は `tomotaYomu_v214_works_master` 約2,547,836 bytes、`tomotaYomu_rebuilt_master_20261003_part1` 約1,299,140 bytes、`tomotaYomu_diagnostic_fullcheck_v1` 約343,898 bytes。
+- 上記は棚卸し画面の報告値。IndexedDBの総バイト数・最終バックアップJSONのサイズを実測した値ではない。
+- `sessionStorage` は現行バックアップ形式の対象外。
+
+### バックアップ方式・注意点
+- バックアップページは既知のIndexedDB名に加え、`indexedDB.databases()` で列挙したDBも対象にする。既存DBを開いてreadonlyで各ストアのレコード・スキーマを読み取り、localStorage全キー・値をJSONへまとめる。
+- DBが存在せず、open時に新規作成・upgradeが必要となる場合は開かずに中止する設計。通常の取得処理で本番DBを新規作成しない。
+- JSON化・検査・Blob生成の過程で大きなデータを複数回メモリに保持する可能性がある。localStorageだけで約5MBあり、IndexedDBも14,422レコードあるため、iPhoneではメモリ不足・タブ終了の可能性を考慮する。IndexedDBのバイト数と最終JSONサイズは未測定。
+- 失敗・クラッシュ時に同じ操作を何度も繰り返さない。画面のエラー・状況を確認してから、分割出力等の安全な方式を検討する。元データはreadonlyであり、エクスポート失敗によって元データを変更する処理ではない。
+- ダウンロード開始表示だけではFilesへの保存完了とみなさない。実ファイルの存在・ファイル名・JSON内容を確認して初めてバックアップ取得済みとする。
+- 取得後は形式 `tomotayomu-storage-backup` / `formatVersion: 3`、origin、IndexedDB 5 DBのストア構成・全件数、localStorage 51キー等を実ファイルから検証する。件数が棚卸し値と一致することを確認する。復元テストは別工程とし、本番領域へ復元しない。
+
+### 関連コード・記録
+- バックアップ作成・棚卸しページ：`tools/diagnostic/storage_inventory.html`
+- 復元テストページ：`tools/diagnostic/restore_test.html`（専用の検証領域を使用。本番DBへ復元しない）
+- 操作・過去実績・復元方針：`docs/guides/backup_restore_guide.html`
+- この時点で、今回の全保存領域バックアップJSONは未取得・未検証。2026-11-08の旧DBバックアップ／復元実績とは別の作業である。
