@@ -828,6 +828,11 @@ function bookmarkPositionFor(n){
   const key=String(n).toUpperCase();
   return Object.prototype.hasOwnProperty.call(worksBookmarkMap,key)?bookmarkPosition(worksBookmarkMap[key]):null;
 }
+function isUnreadWork(n,totalEpisodes){
+  const current=bookmarkPositionFor(n),total=Number(totalEpisodes||0);
+  // しおりなし（null）は未読。しおりありの場合は最終話まで読んでいなければ未読。
+  return current===null || (total>0 && current<total);
+}
 function setBookmark(n,episode){
   const key=String(n).toUpperCase(),value=Number(episode);
   const card=[...document.querySelectorAll("#shelf .card")].find(el=>String(el.dataset.ncode||"").toUpperCase()===key);
@@ -1022,9 +1027,9 @@ function updateCard(card,w){
 }
 function applyCardState(card){
   if(card.dataset.noteId)return;
-  const n=String(card.dataset.ncode||"").toUpperCase(), candidates=getUpdateCandidates(), candidate=candidates[n], current=bookmarkPositionFor(n), total=Number(card.dataset.totalEpisodes||0);
+  const n=String(card.dataset.ncode||"").toUpperCase(), candidates=getUpdateCandidates(), candidate=candidates[n];
   const isShelfRegistered=String(card.dataset.shelfId||"").trim()!=="";
-  const unread=current!=null && total>0 && current<total;
+  const unread=isUnreadWork(n,card.dataset.totalEpisodes);
   const mark=card.querySelector(".newMark");
   if(mark)mark.hidden=!isShelfRegistered || !(!!candidate && unread);
 }
@@ -1212,8 +1217,8 @@ function buildUpdateView(){
   cards.forEach(card=>{
     if(card.dataset.noteId)return;
     applyCardState(card);
-    const n=String(card.dataset.ncode||"").toUpperCase(), candidate=candidates[n], current=bookmarkPositionFor(n), total=Number(card.dataset.totalEpisodes||0);
-    const unread=current!=null && total>0 && current<total;
+    const n=String(card.dataset.ncode||"").toUpperCase(), candidate=candidates[n];
+    const unread=isUnreadWork(n,card.dataset.totalEpisodes);
     const isShelfRegistered=String(card.dataset.shelfId||"").trim()!=="";
     if(candidate&&unread&&isShelfRegistered)updates.push(card);
   });
