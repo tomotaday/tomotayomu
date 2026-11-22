@@ -89,8 +89,7 @@ async function run(){
   if(missingExcluded.length)fail(errors,"検索除外作品がバックアップworksに見つかりません："+missingExcluded.join(", "));
   const translatorNotInBase=[...transferByNcode.keys()].filter(n=>!baseByNcode.has(n));
   if(translatorNotInBase.length)fail(errors,"Translator作品がバックアップにありません："+translatorNotInBase.join(", "));
-  const retainedNarou=[...baseByNcode.keys()].filter(n=>!transferByNcode.has(n)&&!excludedSet.has(n));
-  if(retainedNarou.length)fail(errors,"移行対象外のなろう作品が想定外に残ります："+retainedNarou.length+"件（削除確認済み5件以外の可能性）");
+  // Translatorにも検索除外一覧にもない作品は、APIで削除確認済みの5件として取り込まない。
   const removedConfirmed=[...baseByNcode.keys()].filter(n=>!transferByNcode.has(n)&&!excludedSet.has(n));
   if(removedConfirmed.length!==5)fail(errors,"削除確認済みとして除外される件数が5件ではありません："+removedConfirmed.length);
   const merged=[];
