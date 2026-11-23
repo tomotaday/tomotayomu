@@ -513,3 +513,15 @@
 - **完全削除は使用禁止（検証待ち）：** JSONバックアップの端末保存完了をコード側で保証できず、works削除後にAtom DB整理が失敗する部分失敗リスクも残る。バックアップと復旧手順を実証するまで実行しない。
 - 作者管理ページの「登録作品数0件作者抽出」は独立タスクとして未実装。
 - 詳細仕様・コミット一覧は [data-migration-log.md](data-migration-log.md) と [tomotayomu30-records-and-handover.md](tomotayomu30-records-and-handover.md) を参照。
+
+
+## 2026-11-23 物理削除の安全性改善（実機検証前）
+
+- 物理削除コードを再点検し、バックアップに作品本体・同一NコードのAtom作品entry・該当localStorage補助情報を含めるよう変更。
+- バックアップダウンロード後に利用者へ保存確認を求め、未確認なら削除を中止する。
+- Atom作品entry（feedType="novel" の同一Nコード）の削除を先に行い、works削除失敗時はAtom entryを復元する処理を追加。
+- works削除直前の対象再確認を強化。localStorage整理失敗時は警告表示。
+- 最新 index.html のJavaScriptブロック2本は構文検査PASS。
+- **物理削除はまだ使用禁止。** iPhone実機でのバックアップ保存確認、削除・ロールバック・復元試験は未実施。
+- 利用者による論理削除→ごみばこ→元の棚への復元の実機確認は完了。
+- 詳細は data-migration-log.md の「2026-11-23 物理削除の安全性再点検・改善」を参照。
