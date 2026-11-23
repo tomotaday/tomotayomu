@@ -1438,3 +1438,27 @@ iPhoneのファイル一覧で、用途ごとにまとまり、その中で日�
 - 物理削除は再開指示があるまで触らない。ボタンがコード上に残っていても押さない。
 - 作者管理ページの「登録作品数0件の作者を抽出」は別タスクであり、今回のごみばこ実装には含まれない。
 - 本番IndexedDB、localStorage、Atom DB、GitHub Actions、Shortcut連携を壊さない。旧works DBを参照・コピーしない。
+
+## 2026-11-23 作品登録ページの新works正本項目保存を修正
+
+### 発見した問題
+- iPhoneでなろう作品を登録したところ、作品カードの最新話更新日・状態・総話数が空欄または状態不明になった。
+- API自体は作品情報を取得していたが、register.htmlの保存処理がAPI生データをsiteData.legacyFieldsに格納するだけで、新works正本の表示項目へ変換していなかった。
+- 作品カードが参照する正本項目は、episodeCount、lastPublishedAt、status、およびsiteData.noveltype/end。
+
+### 修正内容
+- register.htmlの新規登録レコードに episodeCount、publishedAt、lastPublishedAt、status、url、synopsis を保存。
+- siteDataへ noveltype、end、isR18、sourceUrl を保存。
+- 状態判定は全件API取込の変換ルールと統一：noveltype=2/end=0は短編、noveltype=1/end=0は完結、noveltype=1/end=1は連載中。それ以外は登録を中止。
+- 総話数は1以上の整数であることを検証。
+- 初回掲載日時・最新話更新日時はAPI日時形式と実在日時を検証し、不正なら登録を中止。
+- 既存の本棚登録先選択、重複登録防止、しおり初期値などは変更しない。
+
+### GitHub・検証
+- 対象：register.html
+- 修正前blob：888e8611f0bccca70768420f959e2505dcf5b63e
+- 修正commit：6fd34d3fb96e7fc70761da050cd2b6c169a3e792
+- 修正後blob：3e9d608d89f5607e1624cd04875ca5c53682c3f7
+- GitHubから再取得し、JavaScript構文検査PASS。
+- **iPhone実機での再登録テストは未実施。** 今回すでに登録された作品の既存レコードは自動修正されない。該当作品は作品カードのAPI更新で正本項目を補完する。
+
