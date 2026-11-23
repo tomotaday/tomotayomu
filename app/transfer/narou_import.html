@@ -78,6 +78,8 @@ function formatApiDate(v,key){
 function convertApiRow(row,existing,exportedAt){
  const raw=row.raw,ncode=String(row.ncode||"").toUpperCase(),isR18=row.apiSource==="r18";
  if(!raw||String(raw.ncode||"").toUpperCase()!==ncode)fail(ncode+"：API生データのNコード不一致");
+ // ごみばこ作品は隔離状態を維持し、APIデータで上書きしない。
+ if(existing?.deletedAt)return clone(existing);
  if(typeof raw.title!=="string"||!raw.title.trim())fail(ncode+"：titleなし");
  if(typeof raw.story!=="string")fail(ncode+"：storyが文字列ではありません");
  if(!Number.isInteger(raw.general_all_no)||raw.general_all_no<1)fail(ncode+"：general_all_noが不正です");
@@ -148,11 +150,12 @@ async function prepare(data){
  try{
   const byId=new Map(opened.records.map(w=>[w.id,w]));
   const writes=found.map(r=>convertApiRow(r,byId.get("narou:"+String(r.ncode).toUpperCase())||null,data.exportedAt));
-  const update=writes.filter(w=>byId.has(w.id)).length,add=writes.length-update;
-  plan={writes,update,add,existingCount:opened.records.length,normal,r18};
+  const trashed=writes.filter(w=>byId.get(w.id)?.deletedAt).length;
+  const update=writes.filter(w=>byId.has(w.id)&&!byId.get(w.id)?.deletedAt).length,add=writes.length-update-trashed;
+  plan={writes,update,add,trashed,existingCount:opened.records.length,normal,r18};
   $("total").textContent=writes.length.toLocaleString("ja-JP");$("update").textContent=update.toLocaleString("ja-JP");$("add").textContent=add.toLocaleString("ja-JP");$("errors").textContent="0";
   $("preview").className="status ok";
-  $("preview").textContent="検証成功\nAPI取得成功："+writes.length+"件（通常 "+normal+" / R18 "+r18+"）\n新works現在："+opened.records.length+"件\n既存更新："+update+"件\n新規追加："+add+"件\n既存のshelfId・bookmark・作者かな等は維持します。";
+  $("preview").textContent="検証成功\nAPI取得成功："+writes.length+"件（通常 "+normal+" / R18 "+r18+"）\n新works現在："+opened.records.length+"件\n既存更新："+update+"件\n新規追加："+add+"件\nごみばこ隔離のため更新対象外："+trashed+"件\n既存のshelfId・bookmark・作者かな等は維持します。";
   $("commit").disabled=false;
  }finally{opened.db.close()}
 }
@@ -172,7 +175,7 @@ $("commit").addEventListener("click",async()=>{
   for(const w of plan.writes)store.put(w);
   await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||Error("書き込み失敗"));tx.onabort=()=>reject(tx.error||Error("transaction中止"))});
   $("preview").className="status ok";
-  $("preview").textContent="新worksへの反映が完了しました。\nAPI作品："+plan.writes.length+"件\n既存更新："+plan.update+"件\n新規追加："+plan.add+"件\nDB："+DB_NAME+" / works\nshelves・localStorageは変更していません。";
+  $("preview").textContent="新worksへの反映が完了しました。\nAPI作品："+plan.writes.length+"件\n既存更新："+plan.update+"件\n新規追加："+plan.add+"件\nごみばこ隔離のため更新対象外："+plan.trashed+"件\nDB："+DB_NAME+" / works\nshelves・localStorageは変更していません。";
   $("commit").textContent="反映完了";
  }catch(err){$("preview").className="status bad";$("preview").textContent="書き込み失敗：\n"+(err.message||String(err));$("commit").disabled=false}
  finally{if(db)db.close()}
