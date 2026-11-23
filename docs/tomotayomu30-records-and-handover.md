@@ -319,3 +319,11 @@ API応答診断、R18 API応答診断、最新話更新日取得、更新日デ�
 - register.htmlを修正し、全件API取込と同じ状態判定・日付形式検証を行ってから正本項目へ保存する。
 - 修正commit：6fd34d3fb96e7fc70761da050cd2b6c169a3e792。GitHub再取得・JavaScript構文検査PASS。
 - 実機再登録テストは次工程。既に登録済みの作品データはこの修正だけでは書き換わらない。既存作品の補完には個別API更新を利用する。
+
+## 14. 2026-11-23 検索除外作品の変更登録ページ修復
+- 検索除外作品カードは変更せず、編集ページ app/register/search_excluded_edit.html のみ修正。
+- 原因：fill()関数が途中で破損し、init()と連結してJavaScript構文エラーを発生させていた。
+- 新works正本のepisodeCount、publishedAt、lastPublishedAt、status、siteData.noveltype/endを参照・保存するよう統一。
+- 最新話更新日はupdatedAtではなくlastPublishedAtへ保存。
+- 元レコードを維持した更新方式でshelfId、bookmark、読書位置等を保持。ごみばこ内作品は編集不可。
+- commit：234b0a9c4ce82f08f35d30e18d81d3b3d06b5fe3。GitHub再取得・構文検査PASS。iPhone実機確認待ち。
