@@ -574,3 +574,11 @@
 - index.htmlの検索除外一覧は、通常作品カード（新works正本のlastPublishedAt/status/episodeCountで描画済み）を複製して表示する方針を明示。検索除外専用の別データ参照は設けない。
 - titleおよび画面見出しを v4.0.2【2026/11/23】へ更新。
 - commit：de27e95599c8671eb760f57cfe498d0ab6cee570。GitHub再取得・JavaScript構文検査2ブロックともPASS。iPhone実機確認待ち。
+
+## 2026-11-23 検索除外作品の新規登録ページを正本形式へ統一
+- app/register/work_add.html の保存処理を修正。
+- 正本項目 status、episodeCount、publishedAt、lastPublishedAt、url、synopsis を保存し、siteDataにnoveltype/end/isR18/sourceUrlを保持。
+- 状態・総話数・掲載日時を検証してから保存。日時形式は通常作品の正本に合わせ YYYY/MM/DD HH:mm。
+- shelfId、bookmark、作者管理情報を維持し、重複Nコード拒否・検索除外登録・開示設定確認は維持。
+- commit：23e24df0a6d62da90f909e204e679ce93a6d8327。GitHub再取得・JavaScript構文検査PASS。
+- iPhone実機でのショートカット受け渡し・新規登録・カード表示は未確認。
