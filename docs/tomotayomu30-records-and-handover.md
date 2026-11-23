@@ -311,3 +311,11 @@ API応答診断、R18 API応答診断、最新話更新日取得、更新日デ�
 ### 参照先
 - 詳細な経緯・データ仕様・コミット・安全上の理由：[data-migration-log.md](data-migration-log.md)
 - 現在の全体進捗：[development-status.md](development-status.md)
+
+## 13. 2026-11-23 なろう作品登録時の正本メタデータ保存修正
+
+- 実機登録で最新話更新日・状態・総話数が作品カードに表示されない問題を確認。
+- 原因：register.htmlがAPI生データをlegacyFieldsへ格納するだけで、正本のepisodeCount／lastPublishedAt／status／siteData.noveltype／siteData.endへ変換していなかった。
+- register.htmlを修正し、全件API取込と同じ状態判定・日付形式検証を行ってから正本項目へ保存する。
+- 修正commit：6fd34d3fb96e7fc70761da050cd2b6c169a3e792。GitHub再取得・JavaScript構文検査PASS。
+- 実機再登録テストは次工程。既に登録済みの作品データはこの修正だけでは書き換わらない。既存作品の補完には個別API更新を利用する。
