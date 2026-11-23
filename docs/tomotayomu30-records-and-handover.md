@@ -341,3 +341,11 @@ API応答診断、R18 API応答診断、最新話更新日取得、更新日デ�
 - shelfId、bookmark、作者管理情報を維持。重複Nコード拒否・検索除外フラグ保存・開示設定確認は継続。
 - commit：23e24df0a6d62da90f909e204e679ce93a6d8327。GitHub再取得・JavaScript構文検査PASS。
 - iPhone実機でのショートカット受信から登録・カード表示までの確認待ち。
+
+## 17. 2026-11-23 検索除外登録フォームの日付形式対応
+- 新規登録・変更登録とも、日本語表記「YYYY年 MM月DD日 HH時mm分」を受け付ける。
+- 新works正本へは作品カード用「YYYY/MM/DD HH:mm」形式に変換して保存。
+- 日付の実在性・時分を検証。不正日付は保存不可。
+- 両ページの構文検査PASS、例示日付の変換テストPASS。iPhone実機確認待ち。
+- work_add.html commit：a5e72d5c1f620e8de59ac86d6cfd68dc5c6ac407。
+- search_excluded_edit.html最終commit：efdaafd9f517a7ae1e5864a52433a46f49d093b3。
