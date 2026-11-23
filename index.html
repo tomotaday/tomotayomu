@@ -848,6 +848,7 @@ function setBookmark(n,episode){
     req.onsuccess=()=>{
       const record=req.result;
       if(!record){tx.abort();reject(new Error("新DBに作品がありません："+key));return}
+      if(record.deletedAt){tx.abort();reject(new Error("ごみばこ作品のしおりは変更できません"));return}
       record.bookmark=nextBookmark;
       store.put(record);
     };
@@ -2045,6 +2046,7 @@ async function importPublishedAuthorFeeds(sourceLabel="Atom"){
   const db=await openAtomDB(),oldEntries=await atomAll(db,"entries"),oldById=new Map(oldEntries.map(e=>[e.entryId,e]));
   const authorRows=await readAtomAuthors(),authorMap=new Map(authorRows.map(a=>[atomAuthorKey(a),a]));
   const cutoff=Date.now()-7*24*60*60*1000,pending=new Map(),addedIds=new Set(),keptIds=new Set();
+  const worksDb=await openExistingWorksDB();let trashedNcodes=new Set();try{const trashedRows=await new Promise((resolve,reject)=>{const tx=worksDb.transaction("works","readonly"),req=tx.objectStore("works").getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error||new Error("ごみばこ作品の照合失敗"));tx.onerror=()=>reject(tx.error||new Error("ごみばこ作品の照合失敗"))});trashedNcodes=new Set(trashedRows.filter(w=>w.site==="narou"&&w.deletedAt).map(w=>String(w.workId||"").toUpperCase()))}finally{worksDb.close()}
   let skippedOld=0;
   for(const a of snapshot.authors){
    const author=authorMap.get((a.author_type==="r18"?"r18":"normal")+":"+String(a.author_id||""));
@@ -2053,8 +2055,10 @@ async function importPublishedAuthorFeeds(sourceLabel="Atom"){
     if(!title)continue;
     const timestamp=Date.parse(updated);
     if(!Number.isFinite(timestamp)||timestamp<cutoff){skippedOld++;continue}
+    const workNcode=(url.match(/(N[0-9A-Z]{4,})/i)||[])[1]?.toUpperCase()||"";
+    if(feedType==="novel"&&workNcode&&trashedNcodes.has(workNcode))continue;
     const entryId=[feedType,String(a.author_id),String(item.id||url||title),updated].join("|"),previous=oldById.get(entryId)||pending.get(entryId);
-    const row={entryId,authorId:String(a.author_id),authorName:String(author?.authorName||a.author_id),authorType:a.author_type==="r18"?"r18":"normal",feedType,workNcode:(url.match(/(N[0-9A-Z]{4,})/i)||[])[1]?.toUpperCase()||"",title,url,updated,summary:"",read:!!previous?.read,storedAt:previous?.storedAt||new Date().toISOString()};
+    const row={entryId,authorId:String(a.author_id),authorName:String(author?.authorName||a.author_id),authorType:a.author_type==="r18"?"r18":"normal",feedType,workNcode,title,url,updated,summary:"",read:!!previous?.read,storedAt:previous?.storedAt||new Date().toISOString()};
     pending.set(entryId,row);oldById.set(entryId,row);
     if(previous){if(!addedIds.has(entryId))keptIds.add(entryId)}else addedIds.add(entryId);
    }
