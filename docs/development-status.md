@@ -591,3 +591,8 @@
 - work_add.html commit：a5e72d5c1f620e8de59ac86d6cfd68dc5c6ac407。
 - search_excluded_edit.html 最終commit：efdaafd9f517a7ae1e5864a52433a46f49d093b3。
 - iPhone実機確認待ち。
+
+## 2026-11-23 R18作者ID対応
+- 変更登録でR18作者ID（例：X1471BH）を数字限定で拒否する不具合を修正。
+- 作者IDを英数字等の文字列として保持し、数値変換せず保存。
+- commit：a68b711e6d2014c702d48d5adf53503aa9e8c718。構文検査PASS。実機確認待ち。
