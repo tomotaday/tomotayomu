@@ -1210,7 +1210,7 @@ function buildShelfFolders(){
   cancel.addEventListener("click",()=>overlay.remove());
   save.addEventListener("click",()=>{
    const nextIds=checks.filter(input=>input.checked).map(input=>input.value);
-   try{localStorage.setItem(parentConfigKey,JSON.stringify({version:1,readShelfIds:nextIds}));readParentIds=new Set(nextIds);renderReadParentChildren();overlay.remove();}
+   try{localStorage.setItem(parentConfigKey,JSON.stringify({version:1,readShelfIds:nextIds}));readParentIds=new Set(nextIds);overlay.remove();buildShelfFolders();}
    catch(e){alert("設定を保存できませんでした。端末の保存領域を確認してください。");}
   });
   actions.append(cancel,save);dialog.append(heading,help,list,tools,actions);overlay.appendChild(dialog);document.body.appendChild(overlay);
