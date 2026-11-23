@@ -1963,7 +1963,7 @@ async function permanentlyDeleteNarouWork(ncode){
 
   const atomDb=await openAtomDB();let atomRows;
   try{atomRows=await atomAll(atomDb,"entries")}finally{atomDb.close()}
-  const relatedAtom=atomRows.filter(e=>String(e.workNcode||"").toUpperCase()===n);
+  const relatedAtom=atomRows.filter(e=>e.feedType==="novel"&&String(e.workNcode||"").toUpperCase()===n);
   const candidates=getUpdateCandidates(),excluded=getSearchExcludedNcodes(),history=loadJSON(READING_HISTORY_KEY,[]);
   const backup={
     schema:"tomotayomu-trash-delete-backup-v2",
