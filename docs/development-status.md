@@ -582,3 +582,12 @@
 - shelfId、bookmark、作者管理情報を維持し、重複Nコード拒否・検索除外登録・開示設定確認は維持。
 - commit：23e24df0a6d62da90f909e204e679ce93a6d8327。GitHub再取得・JavaScript構文検査PASS。
 - iPhone実機でのショートカット受け渡し・新規登録・カード表示は未確認。
+
+## 2026-11-23 検索除外登録フォームの日付形式対応
+- 新規登録・変更登録の両方で「2015年 07月12日 12時39分」形式を受け付ける。
+- 新works正本のpublishedAt／lastPublishedAtへ「YYYY/MM/DD HH:mm」形式で正規化して保存。
+- 実在日付・時分を検証し、不正な日付は保存しない。
+- GitHub再取得後、両ページのJavaScript構文検査PASS。日本語表記の変換テストPASS。
+- work_add.html commit：a5e72d5c1f620e8de59ac86d6cfd68dc5c6ac407。
+- search_excluded_edit.html 最終commit：efdaafd9f517a7ae1e5864a52433a46f49d093b3。
+- iPhone実機確認待ち。
