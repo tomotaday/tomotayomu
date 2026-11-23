@@ -636,3 +636,9 @@
 - API日時検証の正規表現の二重エスケープを修正。
 - commit：1ca7daa72536db0f0394f64bd5a9fa387f2698da。
 - GitHub再取得確認済み。iPhone実機での登録確認待ち。
+
+## 2026-11-23 R18作品URL形式の追加対応
+- R18作品URL `novel18.syosetu.com/novelview/infotop/ncode/{Nコード}/` に対応。
+- 既存の `novel18.syosetu.com/{Nコード}/` 形式も維持。
+- URL解析のローカルテストPASS。iPhone実機での再確認待ち。
+- commit：51382cdf3d13cbd14e55ac25551f5425987721cf。
