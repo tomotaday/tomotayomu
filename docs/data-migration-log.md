@@ -1612,3 +1612,11 @@ iPhoneのファイル一覧で、用途ごとにまとまり、その中で日�
 - R18の許可ホスト検証は維持。Nコード抽出のローカルテストで今回のURLと従来形式の両方が `n6278mz` として取得できることを確認。
 - commit：51382cdf3d13cbd14e55ac25551f5425987721cf。
 - iPhone実機での再確認待ち。
+
+## 2026-11-23 全年齢・R18の作品本体/作品情報URLを共通対応
+- URL受け取りの正式方針として、作品本体ページと作品情報ページのどちらから共有しても登録できるようにする。
+- register.html の許可ホストに `syosetu.com` を追加。全年齢作品情報ページ `/novelview/infotop/ncode/{Nコード}/` に対応。
+- 既存対応の全年齢作品本体 `ncode.syosetu.com/{Nコード}/`、R18作品本体 `novel18.syosetu.com/{Nコード}/`、R18作品情報 `novel18.syosetu.com/novelview/infotop/ncode/{Nコード}/` と合わせて4形式を認識。
+- 4形式すべてから `N6278MZ` を抽出するローカルパターンテストPASS。
+- register.html commit：05712f7208fe57d8cd2d91ee891d2a5d0254b7b3。
+- iPhone実機での4形式登録テストは未実施。
