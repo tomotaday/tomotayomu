@@ -1462,3 +1462,27 @@ iPhoneのファイル一覧で、用途ごとにまとまり、その中で日�
 - GitHubから再取得し、JavaScript構文検査PASS。
 - **iPhone実機での再登録テストは未実施。** 今回すでに登録された作品の既存レコードは自動修正されない。該当作品は作品カードのAPI更新で正本項目を補完する。
 
+
+## 2026-11-23 検索除外作品・変更登録ページを新works正本項目へ統一
+
+### 発見経緯
+- 検索除外作品カードに最新話更新日が表示されず、利用者が変更登録ページから補完しようとしたところ、既存情報が画面に読み込まれなかった。
+- 調査対象：app/register/search_excluded_edit.html。作品カード側は変更していない。
+- GitHub上の変更登録ページで fill() 関数が途中で切断され、その位置に init() が連結していた。JavaScript構文検査も失敗し、ページのスクリプト全体が実行されない状態だった。
+- 旧コードは最新話更新日を w.updatedAt から読み込んでいたが、新works正本は lastPublishedAt。
+
+### 修正内容
+- fill() 関数を復元し、登録済みworksレコードから各入力欄へ情報を表示する。
+- 読込元を新works正本へ統一：episodeCount、publishedAt、lastPublishedAt、status、siteData.noveltype/end。
+- 最新話更新日の保存先を lastPublishedAt に統一。updatedAtへは書き込まない。
+- 保存時は元レコードをspreadして必要項目のみ更新し、shelfId、bookmark、読書位置、その他既存フィールドを保持する。
+- ごみばこ内（deletedAtあり）の作品は編集・保存を拒否する。
+- 検索除外作品カード側は今回変更していない。
+
+### GitHub・検証
+- 対象：app/register/search_excluded_edit.html
+- 修正前blob：4b607abf829fc6814026a0113e28fe8227e6218e
+- 修正commit：234b0a9c4ce82f08f35d30e18d81d3b3d06b5fe3
+- 修正後blob：e07bdf9b9fddbcd138a01311bb3eace5952f0a7b
+- GitHub再取得後のJavaScript構文検査：PASS。
+- iPhone実機での読み込み・保存テストは未実施。利用者による実機確認が必要。
