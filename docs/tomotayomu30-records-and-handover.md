@@ -397,3 +397,10 @@ API応答診断、R18 API応答診断、最新話更新日取得、更新日デ�
 - `register.html` の抽出処理を拡張し、`/novelview/infotop/ncode/{Nコード}/` と従来の `/{Nコード}/` の両方を許可。
 - ローカル抽出テストで `n6278mz` を取得できることを確認。iPhone実機テスト待ち。
 - commit：51382cdf3d13cbd14e55ac25551f5425987721cf。
+
+## 26. 2026-11-23 作品本体/作品情報URLの両対応
+- 正式仕様：全年齢・R18ともに、作品本体ページと作品情報ページのどちらのURLからでも新規登録できるようにする。
+- 全年齢作品情報ページのホスト `syosetu.com` を許可リストへ追加。
+- 対応する4形式：`ncode.syosetu.com/{Nコード}/`、`syosetu.com/novelview/infotop/ncode/{Nコード}/`、`novel18.syosetu.com/{Nコード}/`、`novel18.syosetu.com/novelview/infotop/ncode/{Nコード}/`。
+- 4形式のNコード抽出パターンテストPASS。実機登録確認待ち。
+- register.html commit：05712f7208fe57d8cd2d91ee891d2a5d0254b7b3。
