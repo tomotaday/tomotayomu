@@ -1520,3 +1520,23 @@ iPhoneのファイル一覧で、用途ごとにまとまり、その中で日�
 - 修正後blob：0855684ead4f051762077cb4a612bfb04b36dfdf
 - GitHub再取得後のJavaScript構文検査：PASS。
 - **iPhone実機でのショートカット受け渡し・新規登録・カード表示は未確認。** 実機テストでメタデータ読み込みと正本項目の保存を確認する。
+
+## 2026-11-23 検索除外登録フォームの日付入力形式を拡張
+
+### 利用者要望
+- なろう作品情報から取り込まれる日付「2015年 07月12日 12時39分」のような日本語表記を、そのまま新規登録・変更登録フォームで受け付けたい。
+- 新works正本へ保存する際は、作品カード用の「YYYY/MM/DD HH:mm」形式へ変換する。
+
+### 対応
+- app/register/work_add.html：日本語日付表記を解析し、正本のpublishedAt／lastPublishedAtへ YYYY/MM/DD HH:mm で保存。先の修正で発生していた日付検証正規表現の二重エスケープも修正。
+- app/register/search_excluded_edit.html：フォーム表示時に日本語表記を正規化し、保存時も日本語表記または既存のYYYY/MM/DD HH:mm表記を検証・正規化してから正本へ保存。
+- 日付の実在性、時・分の範囲を検証。不正日付は保存しない。
+
+### 検証
+- 両ページともGitHub再取得後のJavaScript構文検査PASS。
+- 実データ例で変換テストPASS：
+  - 2015年 07月12日 12時39分 → 2015/07/12 12:39
+  - 2016年 05月03日 15時02分 → 2016/05/03 15:02
+- 実機での保存・カード表示は未確認。
+- work_add.html commit：a5e72d5c1f620e8de59ac86d6cfd68dc5c6ac407（blob 78e1af24a3d69f084f46b58f60eac24a881cc35d）
+- search_excluded_edit.html 最終修正commit：efdaafd9f517a7ae1e5864a52433a46f49d093b3（blob 2ed106b47e1319fcbb762f41328478926c1dfa4d）
