@@ -550,3 +550,13 @@
 - 論理削除・復元・ごみばこ並べ替えの確認済み状態を維持する。
 - 物理削除には着手しない。作者管理ページの「登録作品数0件作者抽出」は独立タスクとして扱う。
 - 詳細なデータ構造、対象外条件、コミット、残課題は [data-migration-log.md](data-migration-log.md) の「2026-11-23 最終区切り」を参照。
+
+## 2026-11-23：なろう作品登録時のAPI項目保存を修正
+
+- iPhone実機登録で、作品カードの最新話更新日・状態・総話数が反映されないことを確認。
+- 原因はregister.htmlがAPI応答をsiteData.legacyFieldsへ格納するだけで、正本項目のepisodeCount、lastPublishedAt、status、siteData.noveltype/endを保存していなかったこと。
+- register.htmlを修正し、全件API取込と同じ状態判定・日時検証ルールで正本項目を保存するようにした。
+- 追加保存項目：episodeCount、publishedAt、lastPublishedAt、status、url、synopsis。siteData：noveltype、end、isR18、sourceUrl。
+- 総話数・状態・掲載日時の検証に失敗した場合は新規登録を中止する。
+- GitHub commit：6fd34d3fb96e7fc70761da050cd2b6c169a3e792。GitHub再取得・JavaScript構文検査PASS。
+- **未確認：** 修正後register.htmlを使ったiPhone実機の新規登録。既に登録済みの作品は自動修正されないため、必要に応じて個別API更新で補完する。
