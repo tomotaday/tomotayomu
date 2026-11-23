@@ -4,7 +4,7 @@
 <body><main><a href="../../index.html">← ともたよむ本棚へ戻る</a><h1>✏️ 変更登録</h1><p class="note">作品カードから引き継いだNコードの登録済みデータを読み込み、修正内容を本棚の作品情報に保存します。棚の配置と読書位置は維持します。</p>
 <p class="note">使い方：本棚の「🚫検索除外」一覧を開き、対象作品の「✏️ 内容を編集」からこの画面を開いてください。作品ごとのNコードを使って登録済み情報を読み込みます。</p>
 <section class="card"><div id="ncode" class="ncode">Nコードを読み込み中…</div>
-<label for="title">作品タイトル</label><input id="title" autocomplete="off"><label for="writer">作者名</label><input id="writer" autocomplete="off"><label for="authorId">作者ID（通常：数字／R18：英数字）</label><input id="authorId" autocomplete="off" autocapitalize="characters"><label for="sourceUrl">取得元URL（変更不可）</label><input id="sourceUrl" autocomplete="url" readonly aria-readonly="true" class="readonly-url"><small class="note">作品を特定するURLです。確認・コピーはできますが、変更できません。</small><label for="story">あらすじ</label><textarea id="story" rows="5"></textarea><label for="statusValue">作品状態（連載中・完結・短編）</label><input id="statusValue"><label for="episodeCount">エピソード数</label><input id="episodeCount" inputmode="numeric"><label for="genreText">ジャンル</label><input id="genreText"><label for="publishedAt">掲載日時（YYYY/MM/DD HH:mm）</label><input id="publishedAt" placeholder="2023/09/01 14:05"><label for="latestAt">最新掲載日時（YYYY/MM/DD HH:mm）</label><input id="latestAt" placeholder="2023/09/01 14:14"><label for="characterCount">文字数</label><input id="characterCount" inputmode="numeric"><label for="disclosure">開示設定</label><input id="disclosure"><button id="save" class="primary" type="button">変更を保存</button><a class="button" href="../../index.html">本棚へ戻る</a><div id="status" role="status">登録済みデータを読み込んでいます…</div></section></main>
+<label for="title">作品タイトル</label><input id="title" autocomplete="off"><label for="writer">作者名</label><input id="writer" autocomplete="off"><label for="authorId">作者ID（通常：数字／R18：英数字）</label><input id="authorId" autocomplete="off" autocapitalize="characters"><label for="sourceUrl">取得元URL（変更不可）</label><input id="sourceUrl" autocomplete="url" readonly aria-readonly="true" class="readonly-url"><small class="note">作品を特定するURLです。確認・コピーはできますが、変更できません。</small><label for="story">あらすじ</label><textarea id="story" rows="5"></textarea><label for="statusValue">作品状態（連載中・完結・短編）</label><input id="statusValue"><label for="episodeCount">エピソード数</label><input id="episodeCount" inputmode="numeric"><label for="genreText">ジャンル</label><input id="genreText"><label for="publishedAt">掲載日時（YYYY/MM/DD HH:mm）</label><input id="publishedAt" placeholder="2023/09/01 14:05"><label for="latestAt">最新掲載日時（YYYY/MM/DD HH:mm）</label><input id="latestAt" placeholder="2023/09/01 14:14"><label for="disclosure">開示設定</label><input id="disclosure"><button id="save" class="primary" type="button">変更を保存</button><a class="button" href="../../index.html">本棚へ戻る</a><div id="status" role="status">登録済みデータを読み込んでいます…</div></section></main>
 <script>
 "use strict";
 const DB_NAME="tomotaYomuWorksDB",ncode=(new URLSearchParams(location.search).get("ncode")||"").trim().toUpperCase(),el=id=>document.getElementById(id);let original=null;
@@ -40,7 +40,6 @@ function legacyOf(w){
   general_all_no:w.episodeCount??"",
   general_firstup:w.publishedAt||legacy.general_firstup||"",
   general_lastup:w.lastPublishedAt||legacy.general_lastup||"",
-  character_count:legacy.character_count??"",
   genre_text:legacy.genre_text||"",
   disclosure:legacy.disclosure||"",
   end:w.siteData?.end,
@@ -60,7 +59,6 @@ function fill(w){
  el("genreText").value=v.genre_text;
  el("publishedAt").value=dateValue(w.publishedAt||v.general_firstup);
  el("latestAt").value=dateValue(w.lastPublishedAt||v.general_lastup);
- el("characterCount").value=v.character_count==null?"":String(v.character_count);
  el("disclosure").value=v.disclosure;
 }
 async function init(){
@@ -114,7 +112,6 @@ el("save").addEventListener("click",async()=>{
   const published=canonicalDateValue(el("publishedAt").value,"掲載日時");
   const latest=canonicalDateValue(el("latestAt").value,"最新掲載日時");
   const episodeCount=count("episodeCount","話数");
-  const characterCount=count("characterCount","文字数");
   const end=status.includes("完結")?0:1;
   const noveltype=status.includes("短編")?2:1;
   const sourceUrl=original.url||el("sourceUrl").value.trim();
@@ -123,11 +120,12 @@ el("save").addEventListener("click",async()=>{
    title,writer:el("writer").value.trim(),userid:authorId||0,
    source_url:sourceUrl,story:el("story").value,
    general_all_no:episodeCount,episode_count:episodeCount,
-   character_count:characterCount,general_firstup:published,
+general_firstup:published,
    general_lastup:latest,latest_episode_at:latest,novelupdated_at:latest,
    genre_text:el("genreText").value.trim(),disclosure:el("disclosure").value.trim(),
    end,noveltype
   };
+  delete legacy.character_count;
   const updated={
    ...original,
    title,
