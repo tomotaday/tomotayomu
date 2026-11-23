@@ -615,3 +615,9 @@
 - work_add.html commit：47b7d707cd1c90fbedb3a82fa809a1dceae63246。
 - search_excluded_edit.html commit：4ba863fcd1252688bfaa0fefc62557abfc69dfe3。
 - iPhone実機確認待ち。
+
+## 2026-11-23 作者管理ページに診断表示を追加
+- 作者登録エラーが後続処理で上書きされて読めない問題に対応。独立した診断パネルにエラー詳細を保持。
+- API取得件数・メタ情報、新works作品数、Nコード照合数、本棚未登録数、作品種別不一致数、既存紐付け数、失敗段階を表示。
+- API取得・照合・保存の失敗を区別。構文検査PASS。
+- commit：e5f45bd518a4bd24e717296fdb62a2928f514a30。実機確認待ち。
