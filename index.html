@@ -1251,7 +1251,7 @@ function buildShelfFolders(){
  const parentKey="system:read-parent";
  const defaults=["system:search","system:authors","system:works","system:note","system:kakuyomu","system:tomota-memo","system:search-excluded",...shelves.map(x=>readParentIds.has(x.id)?parentKey:"custom:"+x.id),"system:all","system:history","system:trash","system:unknown-shelf","system:unclassified","system:management"];
  let saved=[];try{saved=JSON.parse(localStorage.getItem("tomotaYomu_mixed_shelf_order_v1")||"[]");if(!Array.isArray(saved))saved=[]}catch(e){saved=[]}
- const normalizedSaved=[];saved.forEach(k=>{const key=String(k||"");const normalized=key.startsWith("custom:")&&readParentIds.has(key.slice(7))?parentKey:key;if(nodes.has(normalized)&&!normalizedSaved.includes(normalized))normalizedSaved.push(normalized);});
+ const normalizedSaved=[];saved.forEach(k=>{const key=String(k||"");if(key.startsWith("custom:")&&readParentIds.has(key.slice(7)))return;if(nodes.has(key)&&!normalizedSaved.includes(key))normalizedSaved.push(key);});
  const order=[...normalizedSaved,...defaults.filter(k=>nodes.has(k)&&!normalizedSaved.includes(k))],seen=new Set();
  order.forEach(k=>{const node=nodes.get(k);if(node&&!seen.has(k)){root.appendChild(node);seen.add(k)}});nodes.forEach((node,k)=>{if(node&&!seen.has(k)){root.appendChild(node);seen.add(k)}});
  root.querySelectorAll("details[data-shelf-key]").forEach(node=>{if(openKeys.has(node.dataset.shelfKey))node.open=true;});
