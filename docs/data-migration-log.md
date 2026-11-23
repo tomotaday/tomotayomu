@@ -1495,3 +1495,28 @@ iPhoneのファイル一覧で、用途ごとにまとまり、その中で日�
 - 表示バージョンを v4.0.2【2026/11/23】へ更新（titleと画面見出し）。
 - index.html commit：de27e95599c8671eb760f57cfe498d0ab6cee570。GitHub再取得後、2つのJavaScript scriptブロックの構文検査PASS。
 - 実機確認はこれから。検索除外作品カード表示をiPhoneで確認すること。
+
+## 2026-11-23 検索除外作品・新規登録ページを新works正本形式へ修正
+
+### 背景
+- 新規登録ショートカットから開く app/register/work_add.html の保存処理が旧形式中心で、通常作品カードが参照する正本項目を保存していなかった。
+- 検索除外作品も通常作品と同じworks正本項目・表示ルールを使用する方針に統一する。
+
+### 修正内容
+- 新規登録レコードへ正本項目 status、episodeCount、publishedAt、lastPublishedAt、url、synopsis を保存。
+- siteDataへ noveltype、end、isR18、sourceUrl を保存。
+- API互換のlegacyFieldsは従来どおり補助データとして保持。
+- 作品状態は短編・完結・連載中のいずれかに限定し、noveltype/endを対応付ける。
+- 総話数は1以上の整数を必須とする。
+- 掲載日時・最新話更新日時は日付の実在性を検証し、正本と同じ YYYY/MM/DD HH:mm 形式で保存する。
+- shelfId、bookmark、作者管理情報など既存の保護対象を維持。新規登録では登録先棚を従来どおり使用。
+- 重複Nコード拒否、検索除外localStorage登録、開示設定確認、メタデータ入力方式は維持。
+- 旧readingフィールドは新規レコードへ追加しない。
+
+### GitHub・検証
+- 対象：app/register/work_add.html
+- 修正前blob：03b9593476bf27d72fb53f1114130f3f333ef914
+- 修正commit：23e24df0a6d62da90f909e204e679ce93a6d8327
+- 修正後blob：0855684ead4f051762077cb4a612bfb04b36dfdf
+- GitHub再取得後のJavaScript構文検査：PASS。
+- **iPhone実機でのショートカット受け渡し・新規登録・カード表示は未確認。** 実機テストでメタデータ読み込みと正本項目の保存を確認する。
