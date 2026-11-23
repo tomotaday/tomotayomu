@@ -97,11 +97,15 @@ el("save").addEventListener("click",async()=>{
   if(!original)throw new Error("登録済みデータがありません");
   const authorId=el("authorId").value.trim();
   if(authorId&&!/^[A-Za-z0-9_-]+$/.test(authorId))throw new Error("作者IDは英数字で入力してください");
-  const count=id=>{
-   const v=el(id).value.trim();
-   if(!v)return 0;
-   if(!/^\d+$/.test(v))throw new Error("話数・文字数は数字で入力してください");
-   return Number(v);
+  const count=(id,label)=>{
+   const raw=el(id).value.trim();
+   if(!raw)return 0;
+   // 表示上の桁区切り・単位（例：280,362文字）を除去して数値化する。
+   const v=raw.replace(/,/g,"").replace(/\s*(?:文字|字|話)$/,"").trim();
+   if(!/^\d+$/.test(v))throw new Error(label+"は数字で入力してください");
+   const n=Number(v);
+   if(!Number.isSafeInteger(n))throw new Error(label+"が大きすぎます");
+   return n;
   };
   const title=el("title").value.trim();
   if(!title)throw new Error("作品タイトルを入力してください");
@@ -109,8 +113,8 @@ el("save").addEventListener("click",async()=>{
   if(!status)throw new Error("作品状態を入力してください");
   const published=canonicalDateValue(el("publishedAt").value,"掲載日時");
   const latest=canonicalDateValue(el("latestAt").value,"最新掲載日時");
-  const episodeCount=count("episodeCount");
-  const characterCount=count("characterCount");
+  const episodeCount=count("episodeCount","話数");
+  const characterCount=count("characterCount","文字数");
   const end=status.includes("完結")?0:1;
   const noveltype=status.includes("短編")?2:1;
   const sourceUrl=original.url||el("sourceUrl").value.trim();
