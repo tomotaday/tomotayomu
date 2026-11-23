@@ -372,3 +372,8 @@ API応答診断、R18 API応答診断、最新話更新日取得、更新日デ�
 - work_add.html commit：47b7d707cd1c90fbedb3a82fa809a1dceae63246。
 - search_excluded_edit.html commit：4ba863fcd1252688bfaa0fefc62557abfc69dfe3。
 - 実機確認待ち。
+
+## 22. 2026-11-23 作者登録診断パネル
+- author.html に独立した診断パネルを設置。作者登録失敗の内容がふりがな取得等で上書きされず残る。
+- API件数・メタ情報、新works件数、Nコード照合数、本棚未登録数、種別不一致数、既存紐付け数、失敗段階を表示。
+- commit：e5f45bd518a4bd24e717296fdb62a2928f514a30。構文検査PASS。iPhone実機確認待ち。
