@@ -560,3 +560,11 @@
 - 総話数・状態・掲載日時の検証に失敗した場合は新規登録を中止する。
 - GitHub commit：6fd34d3fb96e7fc70761da050cd2b6c169a3e792。GitHub再取得・JavaScript構文検査PASS。
 - **未確認：** 修正後register.htmlを使ったiPhone実機の新規登録。既に登録済みの作品は自動修正されないため、必要に応じて個別API更新で補完する。
+
+## 2026-11-23 検索除外作品・変更登録ページ修復
+- 検索除外作品カード自体は今回変更していない。
+- 変更登録ページのfill()関数が破損しており、JavaScript構文エラーで登録済み情報を読み込めない状態を確認。
+- fill()を復元し、episodeCount、publishedAt、lastPublishedAt、status、siteData.noveltype/endを新works正本から参照するよう修正。
+- 最新話更新日の保存先もlastPublishedAtへ統一。棚所属、bookmark、読書位置などは元レコードを維持。
+- ごみばこ内作品の編集を拒否。
+- commit：234b0a9c4ce82f08f35d30e18d81d3b3d06b5fe3。GitHub再取得・JavaScript構文検査PASS。iPhone実機確認は未実施。
