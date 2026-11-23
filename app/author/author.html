@@ -33,6 +33,7 @@ summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;
 </div>
 
 <div id="notice" class="notice">作者ページURLを受け取ると、全年齢・R18を自動判定して登録します。</div>
+<div id="authorDiagnostic" class="card" style="display:none;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.55" aria-live="polite"></div>
 <div class="stat summaryStat">
 <div class="badge">作者ID付き作品：<span id="linkedCount">--</span></div>
 <div class="badge">登録作者：<span id="authorCount">--</span></div>
@@ -82,14 +83,19 @@ function jsonp(url){
   });
 }
 async function fetchAuthor(info){
-  if(info.type==="r18"){
-    const api="https://api.syosetu.com/novel18api/api/?out=jsonp&of=n-t-w-gl-ga-nt-e&xid="+encodeURIComponent(info.id)+"&lim=500";
-    const data=await jsonp(api);
-    return Array.isArray(data)?data.filter((x,i)=>i>0&&x&&x.ncode):[];
-  }
-  const api="https://api.syosetu.com/novelapi/api/?out=jsonp&of=n-t-w-gl-ga-nt-e-u&userid="+encodeURIComponent(info.id)+"&lim=500";
+  const api=info.type==="r18"
+    ?"https://api.syosetu.com/novel18api/api/?out=jsonp&of=n-t-w-gl-ga-nt-e&xid="+encodeURIComponent(info.id)+"&lim=500"
+    :"https://api.syosetu.com/novelapi/api/?out=jsonp&of=n-t-w-gl-ga-nt-e-u&userid="+encodeURIComponent(info.id)+"&lim=500";
   const data=await jsonp(api);
-  return Array.isArray(data)?data.filter((x,i)=>i>0&&x&&x.ncode):[];
+  if(!Array.isArray(data))throw new Error("API応答が配列ではありません。");
+  const meta=data[0]&&typeof data[0]==="object"?data[0]:{};
+  const works=data.filter((x,i)=>i>0&&x&&x.ncode);
+  return {works,meta,api};
+}
+function showAuthorDiagnostic(title,lines){
+  const box=document.getElementById("authorDiagnostic");
+  box.style.display="block";
+  box.textContent=title+"\\n"+lines.join("\\n");
 }
 function openDB(){
  return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME);r.onupgradeneeded=()=>{r.transaction.abort();reject(new Error("新DBが未作成です"))};r.onsuccess=()=>{const db=r.result;if(db.version!==2||!db.objectStoreNames.contains("works")||!db.objectStoreNames.contains("shelves")){db.close();reject(new Error("新DB構造が想定外です"));return}resolve(db)};r.onerror=()=>reject(r.error||new Error("新DBを開けません"))});
@@ -251,39 +257,63 @@ async function saveAuthorToIndexedDB(info,apiWorks,hits,authorName){
  db.close();
 }
 async function processAuthor(authorUrl){
-  const info=parseAuthor(authorUrl);
-  if(!info)throw new Error("作者ページURLを判定できませんでした。全年齢は mypage.syosetu.com、R18は xmypage.syosetu.com の作者ページを渡してください。");
-  const apiWorks=await fetchAuthor(info);
-  if(!apiWorks.length)throw new Error("作者APIから作品を取得できませんでした。");
-  const {works}=await readIndexed();
-  const wm=new Map(works.map(w=>[ncode(w.ncode),w]));
+  const diag=[];
+  let info;
+  try{info=parseAuthor(authorUrl)}catch(e){throw Object.assign(new Error("作者URLの解析に失敗："+e.message),{diagnostic:["段階：URL判定","受信URL："+authorUrl]})}
+  if(!info)throw Object.assign(new Error("作者ページURLを判定できません。"),{diagnostic:["段階：URL判定","受信URL："+authorUrl,"全年齢は mypage.syosetu.com、R18は xmypage.syosetu.com の形式が必要です。"]});
+  diag.push("作者種別："+(info.type==="r18"?"R18":"全年齢"),"作者ID："+info.id,"段階：作者API取得");
+  let result;
+  try{result=await fetchAuthor(info)}catch(e){throw Object.assign(new Error("作者APIの取得に失敗："+e.message),{diagnostic:[...diag,"API：取得失敗","確認：通信状態・API応答・JSONP読込制限"]})}
+  const apiWorks=result.works;
+  diag.push("API取得件数："+apiWorks.length+"件","API応答メタ情報："+JSON.stringify(result.meta||{}));
+  if(!apiWorks.length)throw Object.assign(new Error("作者APIから作品が0件でした。"),{diagnostic:[...diag,"判定：APIは応答したが作品データなし"]});
+  if(info.type==="normal"){
+    const bad=apiWorks.find(w=>String(w.userid??"")!==String(info.id));
+    if(bad)throw Object.assign(new Error("作者APIのuseridが受信URLと一致しません。保存を中止しました。"),{diagnostic:[...diag,"判定：API応答のuserid不一致","API側userid："+String(bad.userid??"(なし)") ]});
+  }
+  diag.push("段階：新works読込");
+  let works;
+  try{({works}=await readIndexed())}catch(e){throw Object.assign(new Error("新worksの読込に失敗："+e.message),{diagnostic:diag})}
+  const narouWorks=works.filter(w=>w&&w.site==="narou");
+  diag.push("新works内のなろう作品："+narouWorks.length+"件");
+  const wm=new Map(narouWorks.map(w=>[ncode(w.ncode),w]));
   const hits=[],seen=new Set();
+  let alreadyLinked=0,typeMismatch=0,notInShelf=0;
+  const unmatched=[];
   apiWorks.forEach(w=>{
     const n=ncode(w.ncode);if(!n||seen.has(n))return;seen.add(n);
     const mw=wm.get(n);
-    if(mw&&((info.type==="r18"&&mw.__r18===true)||(info.type==="normal"&&mw.__r18!==true)))hits.push(n);
+    if(!mw){notInShelf++;if(unmatched.length<8)unmatched.push(n);return;}
+    const correctType=(info.type==="r18"&&mw.__r18===true)||(info.type==="normal"&&mw.__r18!==true);
+    if(!correctType){typeMismatch++;if(unmatched.length<8)unmatched.push(n+"（作品種別不一致）");return;}
+    if(String(mw.authorId||"").trim()===String(info.id))alreadyLinked++;
+    hits.push(n);
   });
-  if(!hits.length)throw new Error("本棚マスターと照合できる"+(info.type==="r18"?"R18":"全年齢")+"作品がありません。");
-  if(info.type==="normal"){
-    const bad=apiWorks.find(w=>String(w.userid??"")!==String(info.id));
-    if(bad)throw new Error("作者APIのuseridが受信URLと一致しません。保存を中止しました。");
-  }
+  diag.push("Nコード照合："+hits.length+"件","本棚に存在しない："+notInShelf+"件","全年齢/R18種別不一致："+typeMismatch+"件","既に同じ作者ID："+alreadyLinked+"件");
+  if(unmatched.length)diag.push("照合できなかったNコード例："+unmatched.join("、"));
+  if(!hits.length)throw Object.assign(new Error("新worksと照合できる作品がありません。"),{diagnostic:[...diag,"考えられる原因：作品が本棚に未登録／API取得結果に含まれない／作品種別の判定不一致"]});
   const authorName=String(apiWorks.find(w=>w.writer)?.writer||"");
-  await saveAuthorToIndexedDB(info,apiWorks,hits,authorName);
-  return {info,authorName,apiCount:apiWorks.length,hitCount:hits.length,added:hits.length};
+  diag.push("段階：新worksへ作者情報を保存","保存対象："+hits.length+"件");
+  try{await saveAuthorToIndexedDB(info,apiWorks,hits,authorName)}catch(e){throw Object.assign(new Error("作者情報の保存に失敗："+e.message),{diagnostic:diag})}
+  diag.push("結果：保存成功");
+  return {info,authorName,apiCount:apiWorks.length,hitCount:hits.length,added:hits.length,diagnostic:diag};
 }
 async function handleIncoming(){
   const params=new URLSearchParams(location.search),authorUrl=params.get("authorurl");
   if(!authorUrl)return;
   const notice=document.getElementById("notice");
-  notice.textContent="作者URLを受信しました。作者種別を判定してAPIを確認中…";
+  notice.textContent="作者URLを受信しました。診断情報を表示します…";
   try{
     const r=await processAuthor(authorUrl);
-    notice.textContent="✅ 作者登録完了｜"+r.authorName+"｜"+r.info.id+"｜"+(r.info.type==="r18"?"R18":"全年齢")+"｜作者API "+r.apiCount+"作品｜本棚照合 "+r.hitCount+"作品｜今回の新規紐付け "+r.added+"作品";
+    notice.textContent="✅ 作者登録完了｜"+r.authorName+"｜"+r.info.id+"｜"+(r.info.type==="r18"?"R18":"全年齢")+"｜API "+r.apiCount+"作品｜照合 "+r.hitCount+"作品";
+    showAuthorDiagnostic("作者登録の診断結果",r.diagnostic);
     history.replaceState({},document.title,location.pathname);await render();
     const nextSection=document.getElementById(r.info.type==="r18"?"r18Section":"normalSection");
     setTimeout(()=>nextSection?.scrollIntoView({behavior:"smooth",block:"start"}),120);
-  }catch(e){notice.textContent="⚠️ 作者登録失敗｜"+e.message+"｜データは変更していません。"}
+  }catch(e){
+    notice.textContent="⚠️ 作者登録失敗｜"+e.message+"｜作者情報の保存は完了していません。";
+    showAuthorDiagnostic("作者登録の失敗内容",e.diagnostic||["詳細："+e.message,"エラー種別："+(e.name||"Error")]);
+  }
 }
 function formatJapanDateTime(value){
   if(!value)return "不明";
