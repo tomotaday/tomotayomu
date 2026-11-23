@@ -1563,3 +1563,20 @@ iPhoneのファイル一覧で、用途ごとにまとまり、その中で日�
 - 修正：正規表現を /^\d+$/ に修正。掲載日時検証の正規表現も同じ二重エスケープがないか確認し、該当箇所を修正。
 - GitHub commit：e229a23d9ce4980298cbd3d9a984a54164106993。再取得後JavaScript構文検査PASS。数値関数の実行テストで54・280362を正しく数値化。
 - 日付関数の単体実行テストは抽出範囲の都合で未完了。実機での新規登録保存・カード表示は未確認。
+
+## 2026-11-23 検索除外作品の文字数項目を登録・変更画面から廃止
+### 変更登録ページの参照元調査
+- app/register/search_excluded_edit.html は IndexedDB tomotaYomuWorksDB v2 の works ストアから対象作品（narou:Nコード）を取得。
+- 文字数だけは正本項目ではなく、worksレコード内の siteData.legacyFields.character_count を参照していた。
+- このため、過去データにlegacyFields.character_countが残っている作品では変更登録画面に文字数が表示されていた。
+### 決定・修正
+- 新works正本に文字数項目はない。文字数は作品登録・変更登録とも不要とする。
+- app/register/work_add.html：文字数入力欄、受信メタデータ項目、文字数検証、保存データへのcharacter_countを除去。
+- app/register/search_excluded_edit.html：文字数入力欄、legacyFieldsからの読込、文字数検証・保存を除去。変更保存時には既存legacyFields.character_countも削除。
+- 総話数episodeCountは引き続き正本項目として維持。
+### 検証
+- 両ページGitHub再取得後のJavaScript構文検査PASS。
+- 文字数UI・参照・保存コードの残存なしを確認。
+- work_add.html commit：47b7d707cd1c90fbedb3a82fa809a1dceae63246。
+- search_excluded_edit.html commit：4ba863fcd1252688bfaa0fefc62557abfc69dfe3。
+- iPhone実機での新規登録・変更登録は未確認。
