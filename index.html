@@ -1952,9 +1952,33 @@ async function autoImportNoteMagazineFromShortcut(){
 }
 window.addEventListener("load",()=>{autoImportNoteMagazineFromShortcut().catch(error=>{console.error(error);const status=document.getElementById("apiStatus");if(status)status.textContent="note目次の自動登録／更新に失敗しました："+error.message})});
 
+async function permanentlyDeleteNarouWork(ncode){
+  const n=String(ncode||"").toUpperCase();
+  if(!/^N[0-9A-Z]+$/.test(n))throw new Error("Nコード不正");
+  const db=await openExistingWorksDB();
+  let work;
+  try{work=await new Promise((resolve,reject)=>{const tx=db.transaction("works","readonly"),req=tx.objectStore("works").get("narou:"+n);req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error("作品読込失敗"))})}finally{db.close()}
+  if(!work||work.site!=="narou"||String(work.workId||"").toUpperCase()!==n||!work.deletedAt)throw new Error("ゴミ箱内の対象作品を一意に確認できません");
+  const atomDb=await openAtomDB();let atomRows;
+  try{atomRows=await atomAll(atomDb,"entries")}finally{atomDb.close()}
+  const relatedAtom=atomRows.filter(e=>String(e.workNcode||"").toUpperCase()===n);
+  const backup={schema:"tomotayomu-trash-delete-backup-v1",createdAt:new Date().toISOString(),work,relatedAtom};
+  const blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="tomotayomu-trash-"+n+"-"+new Date().toISOString().replace(/[:.]/g,"-")+".json";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
+  const writeDb=await openExistingWorksDB();
+  try{await new Promise((resolve,reject)=>{const tx=writeDb.transaction("works","readwrite"),store=tx.objectStore("works"),req=store.get("narou:"+n);req.onsuccess=()=>{const current=req.result;if(!current||current.site!=="narou"||!current.deletedAt||String(current.workId||"").toUpperCase()!==n){tx.abort();reject(new Error("削除直前の再確認に失敗しました"));return}store.delete("narou:"+n)};req.onerror=()=>{tx.abort();reject(req.error||new Error("削除直前の読込失敗"))};tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("works削除失敗"));tx.onabort=()=>reject(tx.error||new Error("works削除を中止"))})}finally{writeDb.close()}
+  const atomWriteDb=await openAtomDB();
+  try{await new Promise((resolve,reject)=>{const tx=atomWriteDb.transaction("entries","readwrite"),store=tx.objectStore("entries");relatedAtom.forEach(e=>store.delete(e.entryId));tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("Atom作品entry整理失敗"));tx.onabort=()=>reject(tx.error||new Error("Atom整理を中止"))})}finally{atomWriteDb.close()}
+  const candidates=getUpdateCandidates();delete candidates[n];saveUpdateCandidates(candidates);
+  const excluded=getSearchExcludedNcodes();excluded.delete(n);localStorage.setItem(SEARCH_EXCLUDED_KEY,JSON.stringify([...excluded]));
+  saveJSON(READING_HISTORY_KEY,loadJSON(READING_HISTORY_KEY,[]).filter(item=>!(item.site==="narou"&&String(item.workId||item.ncode||"").toUpperCase()===n)));
+  return {atomRemoved:relatedAtom.length};
+}
 document.addEventListener("click",async e=>{
   const deleteNarou=e.target.closest(".deleteWorkBtn");
   if(deleteNarou){const card=deleteNarou.closest(".card"),n=String(card?.dataset?.ncode||"").toUpperCase();if(!/^N[0-9A-Z]+$/.test(n))return;if(!confirm("「"+(card.querySelector("h2")?.textContent||n)+"」をごみばこへ移動しますか？\\n作品データとしおりは保持され、更新対象から除外されます。"))return;const db=await openExistingWorksDB();try{await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite"),st=tx.objectStore("works"),req=st.get("narou:"+n);req.onsuccess=()=>{const w=req.result;if(!w||w.site!=="narou"||String(w.workId||"").toUpperCase()!==n){tx.abort();reject(new Error("対象作品を一意に確認できません"));return}if(w.deletedAt){tx.abort();reject(new Error("すでにごみばこにあります"));return}w.previousShelfId=String(w.shelfId||"");w.shelfId="";w.deletedAt=new Date().toISOString();st.put(w)};req.onerror=()=>{tx.abort();reject(req.error||new Error("作品読込失敗"))};tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("ごみばこへの移動失敗"));tx.onabort=()=>reject(tx.error||new Error("ごみばこへの移動を中止"))})}finally{db.close()}await buildV3CardsFromIndexedDB();await loadBookmarksFromWorksDB();prepareBookmarkCards();buildUpdateView();buildShelfFolders();document.getElementById("apiStatus").textContent="作品をゴミ箱へ移動しました。";return;}
+  const permanent=e.target.closest(".trashPermanentDeleteBtn");
+  if(permanent){const row=permanent.closest(".trashWorkCard"),n=String(row?.dataset?.ncode||"").toUpperCase();if(!n)return;if(!confirm("【完全削除】\\nこの作品を新worksから物理削除します。元に戻せません。先に作品データと関連Atom作品entryのバックアップJSONを保存します。続行しますか？"))return;if(!confirm("最終確認： "+n+" を完全削除します。よろしいですか？"))return;permanent.disabled=true;try{const result=await permanentlyDeleteNarouWork(n);await buildV3CardsFromIndexedDB();await loadBookmarksFromWorksDB();prepareBookmarkCards();buildUpdateView();buildShelfFolders();document.getElementById("apiStatus").textContent="完全削除しました。バックアップJSONを保存しました。Atom作品entry "+result.atomRemoved+"件を整理しました。";}catch(error){permanent.disabled=false;alert("完全削除に失敗しました："+error.message)}return;}
   const restoreNarou=e.target.closest(".trashRestoreBtn");
   if(restoreNarou){const row=restoreNarou.closest(".trashWorkCard"),n=String(row?.dataset?.ncode||"").toUpperCase();if(!n)return;const db=await openExistingWorksDB();try{await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite"),st=tx.objectStore("works"),req=st.get("narou:"+n);req.onsuccess=()=>{const w=req.result;if(!w||w.site!=="narou"||!w.deletedAt||String(w.workId||"").toUpperCase()!==n){tx.abort();reject(new Error("ごみばこ内の対象作品を確認できません"));return}w.shelfId=String(w.previousShelfId||"");delete w.previousShelfId;delete w.deletedAt;st.put(w)};req.onerror=()=>{tx.abort();reject(req.error||new Error("作品読込失敗"))};tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("復元失敗"));tx.onabort=()=>reject(tx.error||new Error("復元を中止"))})}finally{db.close()}await buildV3CardsFromIndexedDB();await loadBookmarksFromWorksDB();prepareBookmarkCards();buildUpdateView();buildShelfFolders();document.getElementById("apiStatus").textContent="作品を元の本棚へ復元しました。";return;}
   const deleteKakuyomu=e.target.closest(".deleteKakuyomuBtn");
