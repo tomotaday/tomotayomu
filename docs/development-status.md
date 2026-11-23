@@ -606,3 +606,12 @@
 - 新規登録で数字のみを入力しても拒否される不具合を修正。原因は数値検証正規表現の二重エスケープ。
 - /^\d+$/ に修正。GitHub commit：e229a23d9ce4980298cbd3d9a984a54164106993。
 - 構文検査PASS、数値関数テストPASS（54・280362）。実機での登録確認待ち。
+
+## 2026-11-23 検索除外登録・変更登録から文字数を廃止
+- 変更登録ページは新DB IndexedDBのworksレコードを参照。ただし文字数だけはsiteData.legacyFields.character_countから読み込んでいたため、過去の値がフォームに表示されていた。
+- 新works正本に文字数項目はないため、新規登録・変更登録の両方から文字数入力・読込・検証・保存を削除。
+- 変更登録保存時には既存legacyFields.character_countも削除。episodeCountは維持。
+- 両ページの構文検査PASS、文字数関連コードの残存なし。
+- work_add.html commit：47b7d707cd1c90fbedb3a82fa809a1dceae63246。
+- search_excluded_edit.html commit：4ba863fcd1252688bfaa0fefc62557abfc69dfe3。
+- iPhone実機確認待ち。
