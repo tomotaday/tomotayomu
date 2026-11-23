@@ -48,8 +48,8 @@ summary{cursor:pointer}
 .noteWorkCard .noteIndexBookmarkMark{position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:12px}
 
 
-.readParentShelf>summary{display:inline-block;width:calc(100% - 54px);vertical-align:middle}
-.readParentSettings{display:inline-block;vertical-align:middle;width:42px;height:38px;padding:4px;font-size:20px}
+.readParentShelf>summary{display:flex;align-items:center;gap:8px}
+.readParentSettings{margin-left:auto;flex:0 0 42px;width:42px;height:38px;padding:4px;font-size:20px}
 .readParentGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;padding:8px}
 .readParentGrid>.folderDetails{margin:0;min-width:0}
 .readParentGrid>.folderDetails>summary{padding:8px 4px;text-align:center;font-size:clamp(11px,3.2vw,14px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1180,13 +1180,15 @@ function buildShelfFolders(){
   const d=document.createElement("details");d.className="folderDetails";d.dataset.shelfKey="custom:"+x.id;const sm=document.createElement("summary");sm.textContent=x.name+" "+members.length;const wrap=document.createElement("div");wrap.className="folderCards";d.addEventListener("toggle",()=>{if(!d.open||wrap.dataset.loaded==="1")return;wrap.dataset.loaded="1";if(!members.length){const empty=document.createElement("div");empty.className="searchHint";empty.textContent="0";wrap.appendChild(empty);return}members.forEach(card=>wrap.appendChild(card.cloneNode(true)));syncSearchExcludedButtons()});d.append(sm,wrap);childNodes.set(x.id,d);if(!readParentIds.has(x.id))customNodes.push(d);
  }
  const readParent=document.createElement("details");readParent.className="folderDetails readParentShelf";readParent.dataset.shelfKey="system:read-parent";
- const readParentSummary=document.createElement("summary");readParentSummary.textContent="📚 読了作品 "+readParentIds.size+"棚";
+ const readParentSummary=document.createElement("summary");
+ const readParentLabel=document.createElement("span");readParentLabel.textContent="📚 読了作品 "+readParentIds.size+"棚";
  const readParentSettings=document.createElement("button");readParentSettings.type="button";readParentSettings.className="readParentSettings";readParentSettings.textContent="⚙️";readParentSettings.setAttribute("aria-label","読了作品にまとめる小棚を設定");
+ readParentSummary.append(readParentLabel,readParentSettings);
  const readParentGrid=document.createElement("div");readParentGrid.className="readParentGrid";
  function renderReadParentChildren(){
   readParentGrid.replaceChildren();
   const selected=shelves.filter(x=>readParentIds.has(x.id));
-  readParentSummary.textContent="📚 読了作品 "+selected.length+"棚";
+  readParentLabel.textContent="📚 読了作品 "+selected.length+"棚";
   if(!selected.length){const empty=document.createElement("div");empty.className="readParentEmpty";empty.textContent="まとめる小棚が選択されていません。⚙️から設定できます。";readParentGrid.appendChild(empty);return;}
   selected.forEach(x=>{const child=childNodes.get(x.id);if(child)readParentGrid.appendChild(child);});
  }
@@ -1216,8 +1218,8 @@ function buildShelfFolders(){
   actions.append(cancel,save);dialog.append(heading,help,list,tools,actions);overlay.appendChild(dialog);document.body.appendChild(overlay);
   overlay.addEventListener("click",event=>{if(event.target===overlay)overlay.remove();});
  }
- readParentSettings.addEventListener("click",openReadParentSettings);
- readParent.append(readParentSummary,readParentSettings,readParentGrid);
+ readParentSettings.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();openReadParentSettings();});
+ readParent.append(readParentSummary,readParentGrid);
  renderReadParentChildren();
  unknownShelfCards.sort(compareWorkDate);
  const unknownShelf=document.createElement("details");unknownShelf.className="folderDetails";unknownShelf.dataset.shelfKey="system:unknown-shelf";const uns=document.createElement("summary");uns.textContent="⚠️ 本棚不明 "+unknownShelfCards.length;const unw=document.createElement("div");unw.className="folderCards";unknownShelf.addEventListener("toggle",()=>{if(!unknownShelf.open||unw.dataset.loaded==="1")return;unw.dataset.loaded="1";unknownShelfCards.forEach(card=>unw.appendChild(card.cloneNode(true)));syncSearchExcludedButtons()});unknownShelf.append(uns,unw);
