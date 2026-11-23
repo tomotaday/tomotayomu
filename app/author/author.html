@@ -74,9 +74,9 @@ function normalizeAuthorUrl(value){
 }
 function parseAuthor(url){
   const s=normalizeAuthorUrl(url);
-  let m=s.match(/(?:https?:\\/\\/)?(?:www\\.)?xmypage\\.syosetu\\.com\\/(x[a-z0-9]+)\\/?(?:[?#].*)?$/i);
+  let m=s.match(/(?:https?:\/\/)?(?:www\.)?xmypage\.syosetu\.com\/(x[a-z0-9]+)\/?(?:[?#].*)?$/i);
   if(m)return {type:"r18",id:m[1].toUpperCase(),url:s};
-  m=s.match(/(?:https?:\\/\\/)?(?:www\\.)?mypage\\.syosetu\\.com\\/(\\d+)\\/?(?:[?#].*)?$/i);
+  m=s.match(/(?:https?:\/\/)?(?:www\.)?mypage\.syosetu\.com\/(\d+)\/?(?:[?#].*)?$/i);
   if(m)return {type:"normal",id:m[1],url:s};
   return null;
 }
