@@ -1960,20 +1960,97 @@ async function permanentlyDeleteNarouWork(ncode){
   let work;
   try{work=await new Promise((resolve,reject)=>{const tx=db.transaction("works","readonly"),req=tx.objectStore("works").get("narou:"+n);req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error("作品読込失敗"))})}finally{db.close()}
   if(!work||work.site!=="narou"||String(work.workId||"").toUpperCase()!==n||!work.deletedAt)throw new Error("ごみばこ内の対象作品を一意に確認できません");
+
   const atomDb=await openAtomDB();let atomRows;
   try{atomRows=await atomAll(atomDb,"entries")}finally{atomDb.close()}
   const relatedAtom=atomRows.filter(e=>String(e.workNcode||"").toUpperCase()===n);
-  const backup={schema:"tomotayomu-trash-delete-backup-v1",createdAt:new Date().toISOString(),work,relatedAtom};
+  const candidates=getUpdateCandidates(),excluded=getSearchExcludedNcodes(),history=loadJSON(READING_HISTORY_KEY,[]);
+  const backup={
+    schema:"tomotayomu-trash-delete-backup-v2",
+    createdAt:new Date().toISOString(),
+    work,
+    relatedAtom,
+    localStorage:{
+      updateCandidate:Object.prototype.hasOwnProperty.call(candidates,n)?candidates[n]:null,
+      searchExcluded:excluded.has(n),
+      readingHistory:history.filter(item=>item.site==="narou"&&String(item.workId||item.ncode||"").toUpperCase()===n)
+    }
+  };
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json"});
-  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="tomotayomu-trash-"+n+"-"+new Date().toISOString().replace(/[:.]/g,"-")+".json";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
-  const writeDb=await openExistingWorksDB();
-  try{await new Promise((resolve,reject)=>{const tx=writeDb.transaction("works","readwrite"),store=tx.objectStore("works"),req=store.get("narou:"+n);req.onsuccess=()=>{const current=req.result;if(!current||current.site!=="narou"||!current.deletedAt||String(current.workId||"").toUpperCase()!==n){tx.abort();reject(new Error("削除直前の再確認に失敗しました"));return}store.delete("narou:"+n)};req.onerror=()=>{tx.abort();reject(req.error||new Error("削除直前の読込失敗"))};tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("works削除失敗"));tx.onabort=()=>reject(tx.error||new Error("works削除を中止"))})}finally{writeDb.close()}
+  const url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download="tomotayomu-trash-"+n+"-"+new Date().toISOString().replace(/[:.]/g,"-")+".json";
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+  if(!confirm("バックアップJSONのダウンロードを開始しました。ファイルが端末に保存されたことを確認しましたか？\n\n「OK」なら削除処理へ進みます。「キャンセル」なら何も削除しません。")){
+    throw new Error("バックアップ保存の確認が得られなかったため、削除を中止しました");
+  }
+
+  // Atomを先に整理し、works削除が失敗した場合はAtom entryを復元する。
+  let atomRemoved=0;
   const atomWriteDb=await openAtomDB();
-  try{await new Promise((resolve,reject)=>{const tx=atomWriteDb.transaction("entries","readwrite"),store=tx.objectStore("entries");relatedAtom.forEach(e=>store.delete(e.entryId));tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("Atom作品entry整理失敗"));tx.onabort=()=>reject(tx.error||new Error("Atom整理を中止"))})}finally{atomWriteDb.close()}
-  const candidates=getUpdateCandidates();delete candidates[n];saveUpdateCandidates(candidates);
-  const excluded=getSearchExcludedNcodes();excluded.delete(n);localStorage.setItem(SEARCH_EXCLUDED_KEY,JSON.stringify([...excluded]));
-  saveJSON(READING_HISTORY_KEY,loadJSON(READING_HISTORY_KEY,[]).filter(item=>!(item.site==="narou"&&String(item.workId||item.ncode||"").toUpperCase()===n)));
-  return {atomRemoved:relatedAtom.length};
+  try{
+    await new Promise((resolve,reject)=>{
+      const tx=atomWriteDb.transaction("entries","readwrite"),store=tx.objectStore("entries");
+      let failed=false;
+      for(const snapshot of relatedAtom){
+        const req=store.get(snapshot.entryId);
+        req.onsuccess=()=>{
+          if(failed)return;
+          const current=req.result;
+          if(!current||JSON.stringify(current)!==JSON.stringify(snapshot)){
+            failed=true;tx.abort();reject(new Error("Atom作品entryが事前確認時から変化しています。削除を中止しました"));return;
+          }
+          store.delete(snapshot.entryId);atomRemoved++;
+        };
+        req.onerror=()=>{if(!failed){failed=true;tx.abort();reject(req.error||new Error("Atom entry確認失敗"))}};
+      }
+      tx.oncomplete=resolve;
+      tx.onerror=()=>{if(!failed)reject(tx.error||new Error("Atom作品entry整理失敗"))};
+      tx.onabort=()=>{if(!failed)reject(tx.error||new Error("Atom作品entry整理を中止"))};
+    });
+  }finally{atomWriteDb.close()}
+
+  try{
+    const writeDb=await openExistingWorksDB();
+    try{
+      await new Promise((resolve,reject)=>{
+        const tx=writeDb.transaction("works","readwrite"),store=tx.objectStore("works"),req=store.get("narou:"+n);
+        req.onsuccess=()=>{
+          const current=req.result;
+          if(!current||current.site!=="narou"||!current.deletedAt||String(current.workId||"").toUpperCase()!==n||current.deletedAt!==work.deletedAt){
+            tx.abort();reject(new Error("削除直前の再確認に失敗しました。作品は削除していません"));return;
+          }
+          store.delete("narou:"+n);
+        };
+        req.onerror=()=>{tx.abort();reject(req.error||new Error("削除直前の読込失敗"))};
+        tx.oncomplete=resolve;
+        tx.onerror=()=>reject(tx.error||new Error("works削除失敗"));
+        tx.onabort=()=>reject(tx.error||new Error("works削除を中止"));
+      });
+    }finally{writeDb.close()}
+  }catch(error){
+    // worksが残っている場合、先に削除したAtom entryをバックアップ内容から戻す。
+    if(relatedAtom.length){
+      const rollbackDb=await openAtomDB();
+      try{
+        await new Promise((resolve,reject)=>{
+          const tx=rollbackDb.transaction("entries","readwrite"),store=tx.objectStore("entries");
+          relatedAtom.forEach(row=>store.put(row));
+          tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("Atom entry復旧失敗"));tx.onabort=()=>reject(tx.error||new Error("Atom entry復旧中止"));
+        });
+      }finally{rollbackDb.close()}
+    }
+    throw error;
+  }
+
+  // DB削除完了後に、Nコードに紐づく補助情報を整理する。
+  let cleanupWarning="";
+  try{
+    const nextCandidates=getUpdateCandidates();delete nextCandidates[n];saveUpdateCandidates(nextCandidates);
+    const nextExcluded=getSearchExcludedNcodes();nextExcluded.delete(n);localStorage.setItem(SEARCH_EXCLUDED_KEY,JSON.stringify([...nextExcluded]));
+    saveJSON(READING_HISTORY_KEY,loadJSON(READING_HISTORY_KEY,[]).filter(item=>!(item.site==="narou"&&String(item.workId||item.ncode||"").toUpperCase()===n)));
+  }catch(error){cleanupWarning="作品本体とAtom entryは削除済みですが、localStorage補助情報の整理に失敗しました："+error.message}
+  return {atomRemoved,cleanupWarning};
 }
 document.addEventListener("click",async e=>{
   const deleteNarou=e.target.closest(".deleteWorkBtn");
