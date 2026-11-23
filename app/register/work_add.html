@@ -265,7 +265,7 @@ async function saveManualWork(){
   if(!disclosure)throw new Error("開示設定が未確認です。作品情報ページで確認してください。");
   if(!disclosure.includes("検索除外中"))throw new Error("「検索除外中」と確認できないため登録できません。作品情報ページを確認してください。");
   if(!/^https?:\/\/(ncode|novel18)\.syosetu\.com\/novelview\/infotop\/ncode\//i.test(rawUrl))throw new Error("取得元の作品情報ページURLを確認してください。");
-  const num=id=>{const v=String(document.getElementById(id).value||"").trim().replace(/,/g,"");if(!v)return 0;if(!/^\\d+$/.test(v))throw new Error("話数・文字数は数字で入力してください。");return Number(v)};
+  const num=id=>{const v=String(document.getElementById(id).value||"").trim().replace(/,/g,"");if(!v)return 0;if(!/^\d+$/.test(v))throw new Error("話数・文字数は数字で入力してください。");return Number(v)};
   const statusInput=String(document.getElementById("manualStatusValue").value||"").trim();
   const status=statusInput.includes("短編")?"短編":statusInput.includes("完結")?"完結":statusInput.includes("連載中")?"連載中":"";
   if(!status)throw new Error("作品状態は「短編」「完結」「連載中」のいずれかで入力してください。");
