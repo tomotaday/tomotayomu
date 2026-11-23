@@ -568,3 +568,9 @@
 - 最新話更新日の保存先もlastPublishedAtへ統一。棚所属、bookmark、読書位置などは元レコードを維持。
 - ごみばこ内作品の編集を拒否。
 - commit：234b0a9c4ce82f08f35d30e18d81d3b3d06b5fe3。GitHub再取得・JavaScript構文検査PASS。iPhone実機確認は未実施。
+
+## 2026-11-23 v4.0.2：検索除外作品カードの参照ルール明確化
+- 検索除外作品は更新方式が手動であるだけで、作品データ構造・参照先・表示ルールは通常作品と共通にする。
+- index.htmlの検索除外一覧は、通常作品カード（新works正本のlastPublishedAt/status/episodeCountで描画済み）を複製して表示する方針を明示。検索除外専用の別データ参照は設けない。
+- titleおよび画面見出しを v4.0.2【2026/11/23】へ更新。
+- commit：de27e95599c8671eb760f57cfe498d0ab6cee570。GitHub再取得・JavaScript構文検査2ブロックともPASS。iPhone実機確認待ち。
