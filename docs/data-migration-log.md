@@ -1605,3 +1605,10 @@ iPhoneのファイル一覧で、用途ごとにまとまり、その中で日�
 - 併せてAPI日時検証の正規表現にあった二重エスケープを修正。
 - register.html commit：1ca7daa72536db0f0394f64bd5a9fa387f2698da。
 - GitHub再取得で更新内容を確認。iPhone実機での全年齢/R18登録テストは未実施。
+
+## 2026-11-23 R18作品情報ページURLへの対応
+- 実機で共有されたURL `https://novel18.syosetu.com/novelview/infotop/ncode/n6278mz/` が、従来のNコード抽出パターンに一致しないことを確認。
+- `register.html` のURL解析を拡張し、従来の `/n6278mz/` に加え `/novelview/infotop/ncode/n6278mz/` も認識する。
+- R18の許可ホスト検証は維持。Nコード抽出のローカルテストで今回のURLと従来形式の両方が `n6278mz` として取得できることを確認。
+- commit：51382cdf3d13cbd14e55ac25551f5425987721cf。
+- iPhone実機での再確認待ち。
