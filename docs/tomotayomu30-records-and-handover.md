@@ -391,3 +391,9 @@ API応答診断、R18 API応答診断、最新話更新日取得、更新日デ�
 - API日時検証の正規表現にあった二重エスケープを修正。
 - register.html commit：1ca7daa72536db0f0394f64bd5a9fa387f2698da。
 - GitHub再取得確認済み。iPhone実機で全年齢/R18の登録テストはこれから。
+
+## 25. 2026-11-23 R18作品情報ページURL対応
+- R18共有URL `https://novel18.syosetu.com/novelview/infotop/ncode/n6278mz/` がNコード抽出に失敗する原因は、URLパス形式が従来想定と異なるため。
+- `register.html` の抽出処理を拡張し、`/novelview/infotop/ncode/{Nコード}/` と従来の `/{Nコード}/` の両方を許可。
+- ローカル抽出テストで `n6278mz` を取得できることを確認。iPhone実機テスト待ち。
+- commit：51382cdf3d13cbd14e55ac25551f5425987721cf。
