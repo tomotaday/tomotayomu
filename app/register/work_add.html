@@ -139,7 +139,7 @@ function normalizeNarouDate(raw){
 }
 function canonicalDate(raw,label){
  const normalized=normalizeNarouDate(raw);
- const m=String(normalized||"").match(/^(\\d{4})-(\\d{2})-(\\d{2}) (\\d{2}):(\\d{2}):(\\d{2})$/);
+ const m=String(normalized||"").match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
  if(!m)throw new Error(label+"を正しい日時で入力してください。");
  const [,y,mo,d,h,mi,se]=m,dt=new Date(Number(y),Number(mo)-1,Number(d),Number(h),Number(mi),Number(se));
  if(dt.getFullYear()!==Number(y)||dt.getMonth()!==Number(mo)-1||dt.getDate()!==Number(d)||Number(h)>23||Number(mi)>59||Number(se)>59)throw new Error(label+"が正しい日時ではありません。");
