@@ -108,7 +108,21 @@ async function saveWork(work,rawUrl,manualAuthorId=""){
   const shelves=await readAll(db,"shelves"),shelf=shelves.find(v=>v?.work_add_target===true)||null;
   const ncode=String(work.ncode||"").toUpperCase(),id="narou:"+ncode,isR18=apiUrlFor(rawUrl,ncode)===R18_API_URL,rows=await readAll(db,"works"),existing=rows.find(v=>v.id===id),writer=String(work.writer||"").trim();
   const candidates=[...new Set(rows.filter(v=>v.site==="narou"&&v.authorId&&((v.authorType==="r18")===isR18)&&String(v.authorName||"").trim()===writer).map(v=>String(v.authorId).trim()).filter(Boolean))],matchedAuthorId=candidates.length===1?candidates[0]:"",matched=matchedAuthorId?rows.find(v=>v.site==="narou"&&String(v.authorId)===matchedAuthorId&&((v.authorType==="r18")===isR18))||{}:{};
-  const saved={...(existing||{}),id,site:"narou",workId:ncode,title:String(work.title||existing?.title||""),authorName:writer||existing?.authorName||"",authorId:String(manualAuthorId||matchedAuthorId||existing?.authorId||""),authorType:isR18?"r18":"normal",authorUrl:existing?.authorUrl||matched.authorUrl||"",authorManageName:existing?.authorManageName||matched.authorManageName||"",authorKana:existing?.authorKana||matched.authorKana||"",authorKanaChecked:Boolean(existing?.authorKanaChecked||matched.authorKanaChecked),shelfId:existing?String(existing.shelfId||""):String(shelf?.shelf_id||""),reading:existing?.reading||{position:null,isRead:null},bookmark:existing?.bookmark??null,siteData:{...(existing?.siteData||{}),isR18,sourceUrl:rawUrl,legacyFields:{...(existing?.siteData?.legacyFields||{}),...work}}};
+  const saved={...(existing||{}),id,site:"narou",workId:ncode,
+   title:String(work.title||""),authorName:writer,
+   authorId:String(manualAuthorId||matchedAuthorId||existing?.authorId||""),
+   authorType:isR18?"r18":"normal",
+   authorUrl:existing?.authorUrl||matched.authorUrl||"",
+   authorManageName:existing?.authorManageName||matched.authorManageName||"",
+   authorKana:existing?.authorKana||matched.authorKana||"",
+   authorKanaChecked:Boolean(existing?.authorKanaChecked||matched.authorKanaChecked),
+   shelfId:existing?String(existing.shelfId||""):String(shelf?.shelf_id||""),
+   bookmark:existing?.bookmark??null,
+   url:rawUrl,synopsis:String(work.story||""),
+   status:work.status,episodeCount:work.episodeCount,
+   publishedAt:work.publishedAt,lastPublishedAt:work.lastPublishedAt,
+   siteData:{...(existing?.siteData||{}),isR18,noveltype:work.noveltype,end:work.end,sourceUrl:rawUrl,
+    legacyFields:{...(existing?.siteData?.legacyFields||{}),...work}}};
   await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite");tx.objectStore("works").put(saved);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存失敗"));tx.onabort=()=>reject(tx.error||new Error("保存中止"))});
   return {shelfName:existing?(existing.shelfId?String(shelves.find(v=>String(v.shelf_id)===String(existing.shelfId))?.shelf_name||"既存の棚"):"未分類"):(shelf?.shelf_name||"未分類"),existing:!!existing,work:saved,authorId:matchedAuthorId};
  }finally{db.close()}
@@ -122,6 +136,14 @@ function normalizeNarouDate(raw){
  m=s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
  if(m)return m[1]+"-"+String(Number(m[2])).padStart(2,"0")+"-"+String(Number(m[3])).padStart(2,"0")+" "+String(Number(m[4]||0)).padStart(2,"0")+":"+String(Number(m[5]||0)).padStart(2,"0")+":"+String(Number(m[6]||0)).padStart(2,"0");
  return s;
+}
+function canonicalDate(raw,label){
+ const normalized=normalizeNarouDate(raw);
+ const m=String(normalized||"").match(/^(\\d{4})-(\\d{2})-(\\d{2}) (\\d{2}):(\\d{2}):(\\d{2})$/);
+ if(!m)throw new Error(label+"を正しい日時で入力してください。");
+ const [,y,mo,d,h,mi,se]=m,dt=new Date(Number(y),Number(mo)-1,Number(d),Number(h),Number(mi),Number(se));
+ if(dt.getFullYear()!==Number(y)||dt.getMonth()!==Number(mo)-1||dt.getDate()!==Number(d)||Number(h)>23||Number(mi)>59||Number(se)>59)throw new Error(label+"が正しい日時ではありません。");
+ return y+"/"+mo+"/"+d+" "+h+":"+mi;
 }
 function setMetadataCheck(text,cls=""){const e=document.getElementById("metadataCheck");e.textContent=text;e.className="status "+cls}
 function normalizeNcode(raw){const m=String(raw||"").toUpperCase().match(/N[0-9]{1,}[A-Z]{1,5}/);return m?m[0]:""}
@@ -243,15 +265,18 @@ async function saveManualWork(){
   if(!disclosure)throw new Error("開示設定が未確認です。作品情報ページで確認してください。");
   if(!disclosure.includes("検索除外中"))throw new Error("「検索除外中」と確認できないため登録できません。作品情報ページを確認してください。");
   if(!/^https?:\/\/(ncode|novel18)\.syosetu\.com\/novelview\/infotop\/ncode\//i.test(rawUrl))throw new Error("取得元の作品情報ページURLを確認してください。");
-  const num=id=>{const v=String(document.getElementById(id).value||"").trim().replace(/,/g,"");const m=v.match(/\d+/);return m?Number(m[0]):0};
-  const status=String(document.getElementById("manualStatusValue").value||"").trim();
-  const published=normalizeNarouDate(document.getElementById("manualPublishedAt").value);
-  const latest=normalizeNarouDate(document.getElementById("manualLatestAt").value);
+  const num=id=>{const v=String(document.getElementById(id).value||"").trim().replace(/,/g,"");if(!v)return 0;if(!/^\\d+$/.test(v))throw new Error("話数・文字数は数字で入力してください。");return Number(v)};
+  const statusInput=String(document.getElementById("manualStatusValue").value||"").trim();
+  const status=statusInput.includes("短編")?"短編":statusInput.includes("完結")?"完結":statusInput.includes("連載中")?"連載中":"";
+  if(!status)throw new Error("作品状態は「短編」「完結」「連載中」のいずれかで入力してください。");
+  const published=canonicalDate(document.getElementById("manualPublishedAt").value,"掲載日時");
+  const latest=canonicalDate(document.getElementById("manualLatestAt").value,"最新話更新日時");
   const genreText=String(document.getElementById("manualGenre").value||"").trim();
   const episodeCount=num("manualEpisodeCount");
-  // index.html の setStatus() に合わせ、end=0 は完結、end=1 は連載中。
-  const end= status.includes("完結") ? 0 : 1;
-  const work={ncode,title,writer,story,keyword:"",general_all_no:episodeCount,general_lastup:latest,general_firstup:published,end,noveltype:status.includes("短編")?2:1,isstop:0,userid:authorIdRaw?authorIdRaw:0,genre:0,genre_text:genreText,novelupdated_at:latest,episode_count:episodeCount,character_count:num("manualCharacterCount"),published_at:published,latest_episode_at:latest,disclosure,__r18:rawUrl.toLowerCase().includes("novel18.syosetu.com")};
+  if(!Number.isInteger(episodeCount)||episodeCount<1)throw new Error("エピソード数は1以上の整数で入力してください。");
+  const characterCount=num("manualCharacterCount");
+  const end=status==="完結"?0:1,noveltype=status==="短編"?2:1;
+  const work={ncode,title,writer,story,keyword:"",general_all_no:episodeCount,general_lastup:latest,general_firstup:published,end,noveltype,isstop:0,userid:authorIdRaw?authorIdRaw:0,genre:0,genre_text:genreText,novelupdated_at:latest,episode_count:episodeCount,character_count:characterCount,published_at:published,latest_episode_at:latest,disclosure,__r18:rawUrl.toLowerCase().includes("novel18.syosetu.com"),status,episodeCount,publishedAt:published,lastPublishedAt:latest};
   setManualStatus("作品情報を保存中…");
   const r=await saveWork(work,rawUrl,authorIdRaw);
   const excluded=new Set(JSON.parse(localStorage.getItem(SEARCH_EXCLUDED_KEY)||"[]"));excluded.add(ncode);localStorage.setItem(SEARCH_EXCLUDED_KEY,JSON.stringify([...excluded]));
