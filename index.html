@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#f6f3ed" name="theme-color"/>
-<title>ともたよむ v4.0.1【2026/11/23】ごみばこ設置</title>
+<title>ともたよむ v4.0.2【2026/11/23】ごみばこ設置</title>
 <style>
 :root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195;--shelf-card:#fff;--shelf-ink:#252525;--shelf-line:#ddd;--topbtn-bg:#fffdf9;--topbtn-ink:#252525;--topbtn-line:#c9c0b4;--work-card-line:#aaa195}
 *{box-sizing:border-box}
@@ -112,7 +112,7 @@ body[data-theme="autumn"]{--bg:#f5eee4;--card:#fffaf2;--ink:#3a2b21;--muted:#806
 
 
 <main>
-<h1 style="font-size:18px;margin:0 0 8px;white-space:nowrap;font-size:clamp(15px,4.4vw,18px)">ともたよむ v4.0.1【2026/11/23】</h1><p style="font-size:14px;margin:0 0 8px;color:var(--muted)">ごみばこ設置</p>
+<h1 style="font-size:18px;margin:0 0 8px;white-space:nowrap;font-size:clamp(15px,4.4vw,18px)">ともたよむ v4.0.2【2026/11/23】</h1><p style="font-size:14px;margin:0 0 8px;color:var(--muted)">ごみばこ設置</p>
 
 <div class="top-update-actions">
 <button id="updateBtn" type="button">🔄 本棚更新</button>
@@ -1155,7 +1155,7 @@ function buildShelfFolders(){
  noteShelf.append(nts,ntw);
  const excludedSet=getSearchExcludedNcodes(),excludedCards=cards.filter(card=>!card.dataset.noteId&&excludedSet.has(String(card.dataset.ncode||"").toUpperCase())).sort(compareWorkDate);
  const excluded=document.createElement("details");excluded.id="search-excluded";excluded.className="folderDetails";excluded.dataset.shelfKey="system:search-excluded";const exs=document.createElement("summary");exs.textContent="🚫 検索除外 "+excludedCards.length;const exw=document.createElement("div");exw.className="folderCards";
- excluded.addEventListener("toggle",()=>{if(!excluded.open||exw.dataset.loaded==="1")return;exw.dataset.loaded="1";if(!excludedCards.length){const empty=document.createElement("div");empty.className="searchHint";empty.textContent="検索除外に設定された作品はありません。";exw.appendChild(empty);return}excludedCards.forEach(card=>{const clone=card.cloneNode(true);const editButton=document.createElement("button");editButton.type="button";editButton.className="searchExcludedEditButton";editButton.textContent="✏️ 内容を編集";editButton.style.cssText="display:inline-block;margin:8px 0 0;padding:0;border:0;border-radius:0;background:transparent;color:inherit;font:inherit;text-decoration:underline;text-underline-offset:3px;text-decoration-color:#aaa";editButton.addEventListener("click",()=>{const code=String(card.dataset.ncode||"").toUpperCase();if(!code){alert("Nコードを取得できませんでした。");return;}location.href="https://tomotaday.github.io/tomotayomu/app/register/search_excluded_edit.html?ncode="+encodeURIComponent(code);});const actions=clone.querySelector(".actions");if(actions)actions.insertAdjacentElement("afterend",editButton);else clone.appendChild(editButton);exw.appendChild(clone)});syncSearchExcludedButtons()});excluded.append(exs,exw);
+ excluded.addEventListener("toggle",()=>{if(!excluded.open||exw.dataset.loaded==="1")return;exw.dataset.loaded="1";if(!excludedCards.length){const empty=document.createElement("div");empty.className="searchHint";empty.textContent="検索除外に設定された作品はありません。";exw.appendChild(empty);return}excludedCards.forEach(card=>{/* 検索除外カードは独自データを再構成せず、通常作品カード（新works正本のlastPublishedAt/status/episodeCountで描画済み）をそのまま複製して表示する。 */const clone=card.cloneNode(true);const editButton=document.createElement("button");editButton.type="button";editButton.className="searchExcludedEditButton";editButton.textContent="✏️ 内容を編集";editButton.style.cssText="display:inline-block;margin:8px 0 0;padding:0;border:0;border-radius:0;background:transparent;color:inherit;font:inherit;text-decoration:underline;text-underline-offset:3px;text-decoration-color:#aaa";editButton.addEventListener("click",()=>{const code=String(card.dataset.ncode||"").toUpperCase();if(!code){alert("Nコードを取得できませんでした。");return;}location.href="https://tomotaday.github.io/tomotayomu/app/register/search_excluded_edit.html?ncode="+encodeURIComponent(code);});const actions=clone.querySelector(".actions");if(actions)actions.insertAdjacentElement("afterend",editButton);else clone.appendChild(editButton);exw.appendChild(clone)});syncSearchExcludedButtons()});excluded.append(exs,exw);
  const history=renderReadingHistoryShelf(root,historyCards);
   const trash=document.createElement("details");trash.className="folderDetails";trash.dataset.shelfKey="system:trash";
   const trashSummary=document.createElement("summary");trashSummary.textContent="🗑️ごみばこ "+trashWorksCache.length;
