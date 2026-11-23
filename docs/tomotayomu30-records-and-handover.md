@@ -364,3 +364,11 @@ API応答診断、R18 API応答診断、最新話更新日取得、更新日デ�
 - work_add.html の数値検証正規表現が二重エスケープされていた問題を修正。
 - /^\d+$/ に修正。commit：e229a23d9ce4980298cbd3d9a984a54164106993。
 - 構文検査PASS、数値関数テストPASS。iPhone実機登録確認待ち。
+
+## 21. 2026-11-23 文字数項目の廃止
+- 新works正本に文字数項目はない。変更登録はIndexedDB新DB worksを参照し、文字数のみsiteData.legacyFields.character_countから表示していた。
+- 新規登録・変更登録から文字数入力、読込、検証、保存を削除。変更保存時はlegacyFields.character_countも削除。
+- 総話数episodeCountは維持。両ページ構文検査PASS。
+- work_add.html commit：47b7d707cd1c90fbedb3a82fa809a1dceae63246。
+- search_excluded_edit.html commit：4ba863fcd1252688bfaa0fefc62557abfc69dfe3。
+- 実機確認待ち。
