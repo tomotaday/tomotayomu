@@ -11,7 +11,21 @@ const DB_NAME="tomotaYomuWorksDB",ncode=(new URLSearchParams(location.search).ge
 function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME);r.onupgradeneeded=()=>{r.transaction.abort();reject(new Error("新DBが未作成です"))};r.onsuccess=()=>{const db=r.result;if(db.version!==2||!db.objectStoreNames.contains("works")){db.close();reject(new Error("新DB構造が想定外です"));return}resolve(db)};r.onerror=()=>reject(r.error||new Error("新DBを開けません"))})}
 function getRow(db,key){return new Promise((resolve,reject)=>{const r=db.transaction("works","readonly").objectStore("works").get("narou:"+key);r.onsuccess=()=>resolve(r.result||null);r.onerror=()=>reject(r.error||new Error("作品読込失敗"))})}
 function statusText(w){if(Number(w.noveltype)===2)return "短編";if(Number(w.end)===0)return "完結";return "連載中";}
-function dateValue(v){if(!v)return "";const s=String(v).trim(),m=s.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})(?:\s+(\d{1,2}):(\d{2}))?/);return m?m[1]+"/"+m[2].padStart(2,"0")+"/"+m[3].padStart(2,"0")+(m[4]?" "+m[4].padStart(2,"0")+":"+m[5]:""):s;}
+function dateValue(v){
+ const s=String(v||"").trim();if(!s)return "";
+ let m=s.match(/^(\\d{4})\\s*年\\s*(\\d{1,2})\\s*月\\s*(\\d{1,2})\\s*日(?:\\s*(\\d{1,2})\\s*時\\s*(\\d{1,2})\\s*分)?$/);
+ if(!m)m=s.match(/^(\\d{4})[/-](\\d{1,2})[/-](\\d{1,2})(?:[ T](\\d{1,2}):(\\d{2})(?::\\d{2})?)?$/);
+ if(!m)return s;
+ const y=m[1],mo=m[2].padStart(2,"0"),d=m[3].padStart(2,"0"),h=String(m[4]||"00").padStart(2,"0"),mi=String(m[5]||"00").padStart(2,"0");
+ const dt=new Date(Number(y),Number(mo)-1,Number(d),Number(h),Number(mi));
+ if(dt.getFullYear()!==Number(y)||dt.getMonth()!==Number(mo)-1||dt.getDate()!==Number(d)||Number(h)>23||Number(mi)>59)throw new Error("日付が正しくありません："+s);
+ return y+"/"+mo+"/"+d+" "+h+":"+mi;
+}
+function canonicalDateValue(v,label){
+ const normalized=dateValue(v);
+ if(!/^\\d{4}\\/\\d{2}\\/\\d{2} \\d{2}:\\d{2}$/.test(normalized))throw new Error(label+"を「YYYY/MM/DD HH:mm」または「YYYY年 MM月DD日 HH時mm分」で入力してください。");
+ return normalized;
+}
 function setStatus(s){el("status").textContent=s;}
 function legacyOf(w){
  const legacy=w.siteData?.legacyFields||{};
@@ -93,8 +107,8 @@ el("save").addEventListener("click",async()=>{
   if(!title)throw new Error("作品タイトルを入力してください");
   const status=el("statusValue").value.trim();
   if(!status)throw new Error("作品状態を入力してください");
-  const published=el("publishedAt").value.trim();
-  const latest=el("latestAt").value.trim();
+  const published=canonicalDateValue(el("publishedAt").value,"掲載日時");
+  const latest=canonicalDateValue(el("latestAt").value,"最新掲載日時");
   const episodeCount=count("episodeCount");
   const characterCount=count("characterCount");
   const end=status.includes("完結")?0:1;
