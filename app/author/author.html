@@ -66,7 +66,7 @@ function ncode(v){return String(v||"").trim().toUpperCase();}
 function normalizeAuthorUrl(value){
   let s=String(value??"").trim();
   for(let i=0;i<3;i++){
-    if(/^(https?:\\/\\/)?(?:www\\.)?(?:x?mypage)\\.syosetu\\.com\\//i.test(s))break;
+    if(/^(https?:\/\/)?(?:www\.)?(?:x?mypage)\.syosetu\.com\//i.test(s))break;
     if(!/%[0-9a-f]{2}/i.test(s))break;
     try{const decoded=decodeURIComponent(s);if(decoded===s)break;s=decoded.trim()}catch(e){break}
   }
@@ -79,11 +79,11 @@ function parseAuthor(url){
   const host=parsed.hostname.toLowerCase();
   const path=parsed.pathname;
   if(host==="xmypage.syosetu.com"){
-    const m=path.match(/^\\/(x[a-z0-9]+)\\/?$/i);
+    const m=path.match(/^\/(x[a-z0-9]+)\/?$/i);
     if(m)return {type:"r18",id:m[1].toUpperCase(),url:parsed.href};
   }
   if(host==="mypage.syosetu.com"||host==="www.mypage.syosetu.com"){
-    const m=path.match(/^\\/(\\d+)\\/?$/);
+    const m=path.match(/^\/(\d+)\/?$/);
     if(m)return {type:"normal",id:m[1],url:parsed.href};
   }
   return null;
