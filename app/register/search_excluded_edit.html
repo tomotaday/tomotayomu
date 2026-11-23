@@ -13,8 +13,132 @@ function getRow(db,key){return new Promise((resolve,reject)=>{const r=db.transac
 function statusText(w){if(Number(w.noveltype)===2)return "短編";if(Number(w.end)===0)return "完結";return "連載中";}
 function dateValue(v){if(!v)return "";const s=String(v).trim(),m=s.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})(?:\s+(\d{1,2}):(\d{2}))?/);return m?m[1]+"/"+m[2].padStart(2,"0")+"/"+m[3].padStart(2,"0")+(m[4]?" "+m[4].padStart(2,"0")+":"+m[5]:""):s;}
 function setStatus(s){el("status").textContent=s;}
-function legacyOf(w){return {...(w.siteData?.legacyFields||{}),ncode:String(w.workId||ncode),title:w.title||"",writer:w.authorName||"",userid:w.authorId||"",source_url:w.url||"",story:w.synopsis||"",general_all_no:w.episodeCount??"",general_firstup:w.siteData?.legacyFields?.general_firstup||"",general_lastup:w.updatedAt||"",character_count:w.siteData?.legacyFields?.character_count??"",genre_text:w.siteData?.legacyFields?.genre_text||"",disclosure:w.siteData?.legacyFields?.disclosure||"",end:w.siteData?.end??(w.status==="完結"?0:1),noveltype:w.siteData?.noveltype??1,__r18:w.siteData?.isR18===true||w.siteData?.legacyFields?.__r18===true}}
-function fill(w){const v=legacyOf(w);el("title").value=v.title;el("writeasync function init(){if(!/^N\\d+[A-Z]+$/.test(ncode)){el("ncode").textContent="Nコード未指定";el("save").disabled=true;setStatus("作品カードから「内容を編集」を開いてください。");return}el("ncode").textContent="Nコード："+ncode;try{const db=await openDB();try{original=await getRow(db,ncode)}finally{db.close()}if(!original){el("save").disabled=true;setStatus("新DBに登録済み作品が見つかりません。");return}fill(original);setStatus("新DBの登録済みデータを読み込みました。修正して保存できます。")}catch(e){el("save").disabled=true;setStatus("読み込み失敗："+e.message)}}
-el("save").addEventListener("click",async()=>{const btn=el("save");btn.disabled=true;let db;try{if(!original)throw new Error("登録済みデータがありません");const authorId=el("authorId").value.trim();if(authorId&&!/^\\d+$/.test(authorId))throw new Error("作者IDは数字のみで入力してください");const count=id=>{const v=el(id).value.trim();if(!v)return 0;if(!/^\\d+$/.test(v))throw new Error("話数・文字数は数字で入力してください");return Number(v)};const title=el("title").value.trim();if(!title)throw new Error("作品タイトルを入力してください");const status=el("statusValue").value.trim(),published=el("publishedAt").value.trim(),latest=el("latestAt").value.trim(),episodeCount=count("episodeCount"),characterCount=count("characterCount");const legacy={...legacyOf(original),title,writer:el("writer").value.trim(),userid:authorId?Number(authorId):0,source_url:original.url||el("sourceUrl").value.trim(),story:el("story").value,general_all_no:episodeCount,episode_count:episodeCount,character_count:characterCount,general_firstup:published,general_lastup:latest,latest_episode_at:latest,novelupdated_at:latest,genre_text:el("genreText").value.trim(),disclosure:el("disclosure").value.trim(),end:status.includes("完結")?0:1,noveltype:status.includes("短編")?2:1};const updated={...original,title,authorName:legacy.writer,authorId:authorId?Number(authorId):"",url:legacy.source_url,synopsis:legacy.story,episodeCount,updatedAt:latest,status:status.includes("完結")?"完結":"連載中",siteData:{...(original.siteData||{}),end:legacy.end,noveltype:legacy.noveltype,isR18:legacy.__r18,legacyFields:legacy}};db=await openDB();await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite");tx.objectStore("works").put(updated);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存失敗"));tx.onabort=()=>reject(tx.error||new Error("保存中止"))});original=updated;setStatus("新DBへ保存しました。棚所属と読書位置は維持されています。本棚へ戻ると作品カードに反映されます。")}catch(e){setStatus("保存できませんでした："+e.message)}finally{if(db)db.close();btn.disabled=false}});
+function legacyOf(w){
+ const legacy=w.siteData?.legacyFields||{};
+ return {
+  ...legacy,
+  ncode:String(w.workId||ncode),
+  title:w.title||"",
+  writer:w.authorName||"",
+  userid:w.authorId??"",
+  source_url:w.url||"",
+  story:w.synopsis||"",
+  general_all_no:w.episodeCount??"",
+  general_firstup:w.publishedAt||legacy.general_firstup||"",
+  general_lastup:w.lastPublishedAt||legacy.general_lastup||"",
+  character_count:legacy.character_count??"",
+  genre_text:legacy.genre_text||"",
+  disclosure:legacy.disclosure||"",
+  end:w.siteData?.end,
+  noveltype:w.siteData?.noveltype,
+  __r18:w.siteData?.isR18===true||legacy.__r18===true
+ };
+}
+function fill(w){
+ const v=legacyOf(w);
+ el("title").value=v.title;
+ el("writer").value=v.writer;
+ el("authorId").value=v.userid==null?"":String(v.userid);
+ el("sourceUrl").value=v.source_url;
+ el("story").value=v.story;
+ el("statusValue").value=String(w.status||"");
+ el("episodeCount").value=v.general_all_no==null?"":String(v.general_all_no);
+ el("genreText").value=v.genre_text;
+ el("publishedAt").value=dateValue(w.publishedAt||v.general_firstup);
+ el("latestAt").value=dateValue(w.lastPublishedAt||v.general_lastup);
+ el("characterCount").value=v.character_count==null?"":String(v.character_count);
+ el("disclosure").value=v.disclosure;
+}
+async function init(){
+ if(!/^N\d+[A-Z]+$/.test(ncode)){
+  el("ncode").textContent="Nコード未指定";
+  el("save").disabled=true;
+  setStatus("作品カードから「内容を編集」を開いてください。");
+  return;
+ }
+ el("ncode").textContent="Nコード："+ncode;
+ try{
+  const db=await openDB();
+  try{original=await getRow(db,ncode)}finally{db.close()}
+  if(!original){
+   el("save").disabled=true;
+   setStatus("新DBに登録済み作品が見つかりません。");
+   return;
+  }
+  if(original.deletedAt){
+   el("save").disabled=true;
+   setStatus("ごみばこ内の作品は変更登録できません。先に本棚へ復元してください。");
+   return;
+  }
+  fill(original);
+  setStatus("新DBの登録済みデータを読み込みました。修正して保存できます。");
+ }catch(e){
+  el("save").disabled=true;
+  setStatus("読み込み失敗："+e.message);
+ }
+}
+el("save").addEventListener("click",async()=>{
+ const btn=el("save");btn.disabled=true;let db;
+ try{
+  if(!original)throw new Error("登録済みデータがありません");
+  const authorId=el("authorId").value.trim();
+  if(authorId&&!/^\d+$/.test(authorId))throw new Error("作者IDは数字のみで入力してください");
+  const count=id=>{
+   const v=el(id).value.trim();
+   if(!v)return 0;
+   if(!/^\d+$/.test(v))throw new Error("話数・文字数は数字で入力してください");
+   return Number(v);
+  };
+  const title=el("title").value.trim();
+  if(!title)throw new Error("作品タイトルを入力してください");
+  const status=el("statusValue").value.trim();
+  if(!status)throw new Error("作品状態を入力してください");
+  const published=el("publishedAt").value.trim();
+  const latest=el("latestAt").value.trim();
+  const episodeCount=count("episodeCount");
+  const characterCount=count("characterCount");
+  const end=status.includes("完結")?0:1;
+  const noveltype=status.includes("短編")?2:1;
+  const sourceUrl=original.url||el("sourceUrl").value.trim();
+  const legacy={
+   ...legacyOf(original),
+   title,writer:el("writer").value.trim(),userid:authorId?Number(authorId):0,
+   source_url:sourceUrl,story:el("story").value,
+   general_all_no:episodeCount,episode_count:episodeCount,
+   character_count:characterCount,general_firstup:published,
+   general_lastup:latest,latest_episode_at:latest,novelupdated_at:latest,
+   genre_text:el("genreText").value.trim(),disclosure:el("disclosure").value.trim(),
+   end,noveltype
+  };
+  const updated={
+   ...original,
+   title,
+   authorName:legacy.writer,
+   authorId:authorId?Number(authorId):"",
+   url:sourceUrl,
+   synopsis:legacy.story,
+   episodeCount,
+   publishedAt:published,
+   lastPublishedAt:latest,
+   status:status.includes("短編")?"短編":status.includes("完結")?"完結":"連載中",
+   siteData:{...(original.siteData||{}),end,noveltype,legacyFields:legacy}
+  };
+  db=await openDB();
+  await new Promise((resolve,reject)=>{
+   const tx=db.transaction("works","readwrite");
+   tx.objectStore("works").put(updated);
+   tx.oncomplete=resolve;
+   tx.onerror=()=>reject(tx.error||new Error("保存失敗"));
+   tx.onabort=()=>reject(tx.error||new Error("保存中止"));
+  });
+  original=updated;
+  setStatus("新DBへ保存しました。棚所属・bookmark・読書位置は維持されています。本棚へ戻ると作品カードに反映されます。");
+ }catch(e){
+  setStatus("保存できませんでした："+e.message);
+ }finally{
+  if(db)db.close();
+  btn.disabled=false;
+ }
+});
 init();
 </script></body></html>
