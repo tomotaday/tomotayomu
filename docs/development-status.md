@@ -667,3 +667,5 @@
 - 作品データ、棚ID、shelfId、IndexedDB、更新・読了判定、集計処理は変更しない。既存の棚順設定キーも変更しない。
 - JavaScript構文検査2ブロックPASS。iPhone実機確認は未実施。
 - 実験室記録：[読了作品の親棚（表示専用コンテナ）](experiment-lab/2026-11-24-read-parent-container.md)。
+
+- 追加修正：親棚が折りたたまれている状態でも歯車設定を開けるよう配置を調整。最終 index.html commit：`d2f9ae209611b59d8dea87e2b36393e8ab88ae69`。JavaScript構文検査2ブロックPASS。
