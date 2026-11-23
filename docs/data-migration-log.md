@@ -1596,3 +1596,12 @@ iPhoneのファイル一覧で、用途ごとにまとまり、その中で日�
 - URL判定失敗時は受信URL・正規化後URL・期待形式・API未呼出しであることを診断欄に残す。
 - GitHub commit：895a1b7d7f6a3c06a9ef870866ff45507a8fcabb。再取得後JavaScript構文検査PASS。通常URL・1回/2回エンコードURL・R18 URLの4パターンの判定テストPASS。
 - iPhone実機での作者登録/API取得は未確認。
+
+
+## 2026-11-23 新規作品登録のURL受け取り対応
+- register.html の受け取り項目をNコードから作品URLへ変更。URLクエリ `?url=` を受け取り、自動でNコードを抽出して従来のAPI取得・新works登録処理へ渡す。
+- 対応ホストは全年齢 `ncode.syosetu.com` とR18 `novel18.syosetu.com`。不明なホストや不正なパスはNコードとして受理しない。
+- 旧 `?ncode=` / `?code=` も後方互換として維持。
+- 併せてAPI日時検証の正規表現にあった二重エスケープを修正。
+- register.html commit：1ca7daa72536db0f0394f64bd5a9fa387f2698da。
+- GitHub再取得で更新内容を確認。iPhone実機での全年齢/R18登録テストは未実施。
