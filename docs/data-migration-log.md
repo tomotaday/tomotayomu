@@ -1540,3 +1540,10 @@ iPhoneのファイル一覧で、用途ごとにまとまり、その中で日�
 - 実機での保存・カード表示は未確認。
 - work_add.html commit：a5e72d5c1f620e8de59ac86d6cfd68dc5c6ac407（blob 78e1af24a3d69f084f46b58f60eac24a881cc35d）
 - search_excluded_edit.html 最終修正commit：efdaafd9f517a7ae1e5864a52433a46f49d093b3（blob 2ed106b47e1319fcbb762f41328478926c1dfa4d）
+
+## 2026-11-23 R18作品の作者ID形式に対応
+- 変更登録ページで作者IDを数字限定にしていたため、R18作品の英数字ID（例：X1471BH）が保存できない問題を修正。
+- app/register/search_excluded_edit.html の入力欄を通常/R18共通表記に変更し、数字・英字・ハイフン・アンダースコアを許可。
+- 作者IDは数値変換せず文字列のまま、works.authorId と legacyFields.userid に保存。先頭文字や英字を失わない。
+- GitHub commit：a68b711e6d2014c702d48d5adf53503aa9e8c718。再取得後のJavaScript構文検査PASS。
+- iPhone実機での保存・作者管理連携確認は未実施。
