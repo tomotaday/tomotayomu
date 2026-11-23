@@ -42,7 +42,8 @@ function returnToShelf(result){const url=new URL("index.html",location.href);url
 function jsonp(url){return new Promise((resolve,reject)=>{const cb="tomotaRegisterV2_"+Date.now()+"_"+Math.random().toString(36).slice(2),script=document.createElement("script");let done=false;const cleanup=()=>{if(done)return;done=true;clearTimeout(timer);try{delete window[cb]}catch(e){}script.remove()};const timer=setTimeout(()=>{cleanup();reject(new Error("timeout"))},20000);window[cb]=data=>{cleanup();resolve(data)};script.onerror=()=>{cleanup();reject(new Error("load error"))};script.src=url+"&callback="+cb;document.body.appendChild(script)});}
 function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME);r.onupgradeneeded=()=>{r.transaction.abort();reject(new Error("新DBが未作成です"))};r.onsuccess=()=>{const db=r.result;if(db.version!==2||!db.objectStoreNames.contains("works")||!db.objectStoreNames.contains("shelves")){db.close();reject(new Error("新DB構造が想定外です"));return}resolve(db)};r.onerror=()=>reject(r.error||new Error("新DBを開けません"))})}
 function readAll(db,name){return new Promise((resolve,reject)=>{const out=[],r=db.transaction(name,"readonly").objectStore(name).openCursor();r.onsuccess=()=>{const c=r.result;if(c){out.push(c.value);c.continue()}else resolve(out)};r.onerror=()=>reject(r.error||new Error(name+"の読込失敗"))})}
-function statusText(w){if(Number(w.noveltype)===2)return "短編";if(Number(w.end)===0)return "完結";if(Number(w.end)===1)return "連載中";return "不明";}
+function statusText(w){const noveltype=Number(w.noveltype),end=Number(w.end);if(noveltype===2&&end===0)return "短編";if(noveltype===1&&end===0)return "完結";if(noveltype===1&&end===1)return "連載中";return "不明";}
+function formatApiDate(value,key){if(typeof value!=="string"||!/^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}(?::\\d{2})?$/.test(value))throw new Error(key+"のAPI日時形式が不正です："+String(value));const [date,time]=value.split(" "),[y,m,d]=date.split("-"),[hh,mm]=time.split(":");const check=new Date(Number(y),Number(m)-1,Number(d),Number(hh),Number(mm));if(check.getFullYear()!==Number(y)||check.getMonth()!==Number(m)-1||check.getDate()!==Number(d)||Number(hh)>23||Number(mm)>59)throw new Error(key+"の日時が不正です："+value);return y+"/"+m+"/"+d+" "+hh+":"+mm;}
 const GENRES={"0":"未選択","101":"異世界〔恋愛〕","102":"現実世界〔恋愛〕","201":"ハイファンタジー〔ファンタジー〕","202":"ローファンタジー〔ファンタジー〕","301":"純文学〔文芸〕","302":"ヒューマンドラマ〔文芸〕","303":"歴史〔文芸〕","304":"推理〔文芸〕","305":"ホラー〔文芸〕","306":"アクション〔文芸〕","307":"コメディー〔文芸〕","401":"VRゲーム〔SF〕","402":"宇宙〔SF〕","403":"空想科学〔SF〕","404":"パニック〔SF〕","9901":"童話〔その他〕","9902":"詩〔その他〕","9903":"エッセイ〔その他〕","9904":"リプレイ〔その他〕","9999":"その他〔その他〕","9801":"ノンジャンル〔ノンジャンル〕"};
 function showWork(w){const fields=[["Nコード",w.ncode],["作品タイトル",w.title],["作者名",w.writer],["あらすじ",w.story],["作品状態",statusText(w)],["エピソード数",w.general_all_no],["初回掲載日時",w.general_firstup],["最新掲載日時",w.general_lastup],["文字数",w.length==null?null:Number(w.length).toLocaleString("ja-JP")+" 字"],["ジャンル",GENRES[String(w.genre)]||"未対応・未設定"]];const box=$("result");box.replaceChildren();box.hidden=false;for(const [label,value] of fields){const row=document.createElement("div");row.className="row";const k=document.createElement("div");k.className="key";k.textContent=label;const v=document.createElement("div");v.className="value";v.textContent=value==null||value===""?"（取得データなし）":String(value);row.append(k,v);box.append(row);}}
 async function loadShelves(){const db=await openDB();try{shelfRows=await readAll(db,"shelves")}finally{db.close()}const target=shelfRows.find(x=>x&&x.work_add_target===true);return target||{shelf_id:"",shelf_name:"未分類",unclassified:true}}
@@ -57,13 +58,22 @@ async function saveToTarget(target){
    const existing=await new Promise((resolve,reject)=>{const req=db.transaction("works","readonly").objectStore("works").get(id);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error||new Error("既存作品の確認に失敗しました"))});
    if(existing){setSaveStatus("この作品はすでに新DBに登録されています。既存データは変更していません。");return "exists"}
    const novelHost=fetchedR18?"novel18.syosetu.com":"ncode.syosetu.com";
+   const noveltype=Number(fetchedWork.noveltype),end=Number(fetchedWork.end),status=statusText(fetchedWork);
+   const episodeCount=Number(fetchedWork.general_all_no);
+   if(!Number.isInteger(episodeCount)||episodeCount<1)throw new Error("総話数が正しく取得できませんでした");
+   if(status==="不明")throw new Error("作品状態を判定できません（noveltype/end："+noveltype+"/"+end+"）");
+   const publishedAt=formatApiDate(fetchedWork.general_firstup,"初回掲載日時");
+   const lastPublishedAt=formatApiDate(fetchedWork.general_lastup,"最新話更新日時");
+   const sourceUrl="https://"+novelHost+"/"+fetchedWork.ncode.toLowerCase()+"/";
    const record={
     id,site:"narou",workId:fetchedWork.ncode,title:fetchedWork.title||"",authorName:fetchedWork.writer||"",
     authorId:fetchedWork.userid?String(fetchedWork.userid):"",authorType:fetchedR18?"r18":"normal",
     authorUrl:fetchedWork.userid?"https://"+novelHost+"/"+String(fetchedWork.userid)+"/":"",
     shelfId:target.unclassified?"":String(target.shelf_id||""),
-    reading:{position:null,isRead:null},bookmark:null,
-    siteData:{isR18:fetchedR18,sourceUrl:"https://"+novelHost+"/"+fetchedWork.ncode+"/",legacyFields:{...fetchedWork}}
+    status,episodeCount,publishedAt,lastPublishedAt,
+    url:sourceUrl,synopsis:fetchedWork.story||"",
+    bookmark:null,
+    siteData:{isR18:fetchedR18,noveltype,end,sourceUrl,legacyFields:{...fetchedWork}}
    };
    await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite");tx.objectStore("works").add(record);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存に失敗しました"));tx.onabort=()=>reject(tx.error||new Error("保存が中止されました"))});
    setSaveStatus("新DBへ自動登録しました："+String(target.shelf_name||"指定本棚")+"。","ok");return "ok";
