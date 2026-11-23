@@ -349,3 +349,8 @@ API応答診断、R18 API応答診断、最新話更新日取得、更新日デ�
 - 両ページの構文検査PASS、例示日付の変換テストPASS。iPhone実機確認待ち。
 - work_add.html commit：a5e72d5c1f620e8de59ac86d6cfd68dc5c6ac407。
 - search_excluded_edit.html最終commit：efdaafd9f517a7ae1e5864a52433a46f49d093b3。
+
+## 18. 2026-11-23 R18作者ID形式対応
+- 変更登録ページでR18作者IDの英数字形式（例：X1471BH）を許可。
+- works.authorId／legacyFields.useridとも文字列で保存し、Number変換しない。
+- commit：a68b711e6d2014c702d48d5adf53503aa9e8c718。構文検査PASS。実機確認待ち。
