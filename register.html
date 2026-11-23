@@ -36,7 +36,7 @@ const R18_API_URL="https://api.syosetu.com/novel18api/api/";
 const $=id=>document.getElementById(id);
 let fetchedWork=null, fetchedR18=false, shelfRows=[], saveBusy=false;
 function normalizeNcode(raw){const m=String(raw||"").trim().match(/N[0-9]{1,}[A-Z]{1,5}/i);return m?m[0].toUpperCase():"";}
-function extractNcode(raw){const value=String(raw||"").trim();if(/^N[0-9]{1,}[A-Z]{1,5}$/i.test(value))return normalizeNcode(value);let u;try{u=new URL(value)}catch(e){return ""}const host=u.hostname.toLowerCase();if(!["ncode.syosetu.com","novel18.syosetu.com"].includes(host))return "";const m=u.pathname.match(/^\/(?:novelview\/infotop\/ncode\/)?(n[0-9]{1,}[a-z]{1,5})(?:\/|$)/i);return m?normalizeNcode(m[1]):"";}
+function extractNcode(raw){const value=String(raw||"").trim();if(/^N[0-9]{1,}[A-Z]{1,5}$/i.test(value))return normalizeNcode(value);let u;try{u=new URL(value)}catch(e){return ""}const host=u.hostname.toLowerCase();if(!["ncode.syosetu.com","novel18.syosetu.com","syosetu.com"].includes(host))return "";const m=u.pathname.match(/^\/(?:novelview\/infotop\/ncode\/)?(n[0-9]{1,}[a-z]{1,5})(?:\/|$)/i);return m?normalizeNcode(m[1]):"";}
 function setStatus(text,cls=""){$("status").className="status "+cls;$("status").textContent=text;}
 function setSaveStatus(text,cls=""){$("saveStatus").className="status "+cls;$("saveStatus").textContent=text;}
 function returnToShelf(result){const url=new URL("index.html",location.href);url.searchParams.set("registration",result);location.replace(url.href);}
