@@ -47,7 +47,6 @@ label{display:block;font-weight:700;margin:12px 0 4px}input,textarea{display:blo
 <label for="manualGenre">ジャンル（将来用）</label><input id="manualGenre" placeholder="ジャンル">
 <label for="manualPublishedAt">掲載日時</label><input id="manualPublishedAt" placeholder="掲載日時">
 <label for="manualLatestAt">最新掲載日時</label><input id="manualLatestAt" placeholder="最新掲載日時">
-<label for="manualCharacterCount">文字数</label><input id="manualCharacterCount" inputmode="numeric" placeholder="文字数">
 <label for="manualDisclosure">開示設定</label><input id="manualDisclosure" placeholder="検索除外中 など">
 <button id="manualSave" type="button">新しい作品として登録</button>
 <div id="manualStatus" class="status" aria-live="polite"></div>
@@ -154,7 +153,7 @@ function applyMetadata(data){
   ["source_url","manualUrl","取得元URL"],["synopsis","manualSynopsis","あらすじ"],["status","manualStatusValue","作品状態"],
   ["general_all_no","manualEpisodeCount","エピソード数"],["genre","manualGenre","ジャンル"],
   ["general_firstup","manualPublishedAt","掲載日時"],["general_lastup","manualLatestAt","最新掲載日時"],
-  ["character_count","manualCharacterCount","文字数"],["disclosure","manualDisclosure","開示設定"]
+  ["disclosure","manualDisclosure","開示設定"]
  ];
  for(const [key,id] of fields){
   const value=data[key];
@@ -274,9 +273,8 @@ async function saveManualWork(){
   const genreText=String(document.getElementById("manualGenre").value||"").trim();
   const episodeCount=num("manualEpisodeCount");
   if(!Number.isInteger(episodeCount)||episodeCount<1)throw new Error("エピソード数は1以上の整数で入力してください。");
-  const characterCount=num("manualCharacterCount");
   const end=status==="完結"?0:1,noveltype=status==="短編"?2:1;
-  const work={ncode,title,writer,story,keyword:"",general_all_no:episodeCount,general_lastup:latest,general_firstup:published,end,noveltype,isstop:0,userid:authorIdRaw?authorIdRaw:0,genre:0,genre_text:genreText,novelupdated_at:latest,episode_count:episodeCount,character_count:characterCount,published_at:published,latest_episode_at:latest,disclosure,__r18:rawUrl.toLowerCase().includes("novel18.syosetu.com"),status,episodeCount,publishedAt:published,lastPublishedAt:latest};
+  const work={ncode,title,writer,story,keyword:"",general_all_no:episodeCount,general_lastup:latest,general_firstup:published,end,noveltype,isstop:0,userid:authorIdRaw?authorIdRaw:0,genre:0,genre_text:genreText,novelupdated_at:latest,episode_count:episodeCount,published_at:published,latest_episode_at:latest,disclosure,__r18:rawUrl.toLowerCase().includes("novel18.syosetu.com"),status,episodeCount,publishedAt:published,lastPublishedAt:latest};
   setManualStatus("作品情報を保存中…");
   const r=await saveWork(work,rawUrl,authorIdRaw);
   const excluded=new Set(JSON.parse(localStorage.getItem(SEARCH_EXCLUDED_KEY)||"[]"));excluded.add(ncode);localStorage.setItem(SEARCH_EXCLUDED_KEY,JSON.stringify([...excluded]));
