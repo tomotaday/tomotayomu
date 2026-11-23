@@ -1588,3 +1588,11 @@ iPhoneのファイル一覧で、用途ごとにまとまり、その中で日�
 - API取得失敗・0件・新works読込失敗・照合0件・保存失敗を区別して表示。API取得や照合に失敗した場合は作者情報を保存しない。
 - author.html commit：e5f45bd518a4bd24e717296fdb62a2928f514a30。GitHub再取得後JavaScript構文検査PASS。
 - iPhone実機でのエラー再現・診断内容の確認はこれから。
+
+## 2026-11-23 作者ページURL判定の受け渡し対策
+- 全年齢作者ページ（例：https://mypage.syosetu.com/637685/）で「作者ページURLを判定できません」となったため、ショートカットからの受け渡し値を診断・正規化する処理を追加。
+- URLが通常形式・1回エンコード・2回エンコードのいずれでも、最大3回まで安全にdecodeURIComponentを試してから判定。
+- 全年齢mypage.syosetu.com/数字/、R18 xmypage.syosetu.com/x英数字/の両方を判定する。
+- URL判定失敗時は受信URL・正規化後URL・期待形式・API未呼出しであることを診断欄に残す。
+- GitHub commit：895a1b7d7f6a3c06a9ef870866ff45507a8fcabb。再取得後JavaScript構文検査PASS。通常URL・1回/2回エンコードURL・R18 URLの4パターンの判定テストPASS。
+- iPhone実機での作者登録/API取得は未確認。
