@@ -404,3 +404,45 @@ API応答診断、R18 API応答診断、最新話更新日取得、更新日デ�
 - 対応する4形式：`ncode.syosetu.com/{Nコード}/`、`syosetu.com/novelview/infotop/ncode/{Nコード}/`、`novel18.syosetu.com/{Nコード}/`、`novel18.syosetu.com/novelview/infotop/ncode/{Nコード}/`。
 - 4形式のNコード抽出パターンテストPASS。実機登録確認待ち。
 - register.html commit：05712f7208fe57d8cd2d91ee891d2a5d0254b7b3。
+
+
+## 2026-11-23 なろう通常作品の新規登録ショートカット動線
+
+### 確定したショートカット構成
+添付スクリーンショット（iPhoneショートカット）で、次の構成を確認。
+
+1. **共有シートからアプリ、その他18個を受け取る**
+   - 共有入力がない場合は「続ける」。
+2. **ショートカットの入力をURLエンコード**
+3. **テキストを作成**
+   - 固定部分：`https://tomotaday.github.io/tomotayomu/register.html?url=`
+   - 末尾へURLエンコード済みのショートカット入力を差し込む。
+4. **テキストを開く**
+
+### 動線の意味
+- これは **なろう通常作品の新規登録用** の動線。
+- 共有元は作品本体ページでも作品情報ページでもよい。
+- ショートカット側でNコードを正規表現抽出しない。URLをエンコードしてregister.htmlへ渡す。
+- register.html側がURLのホスト・パスを検証してNコードを抽出し、API取得・新works正本への登録を行う。
+- 旧方式の `?ncode=` / `?code=` は互換用に残す。
+
+### 対応URL形式
+- 通常作品本体：`ncode.syosetu.com/{Nコード}/`
+- 通常作品情報：`syosetu.com/novelview/infotop/ncode/{Nコード}/`
+- R18作品本体：`novel18.syosetu.com/{Nコード}/`
+- R18作品情報：`novel18.syosetu.com/novelview/infotop/ncode/{Nコード}/`
+
+### 関連コミット
+- `register.html` URL受け取り：`1ca7daa72536db0f0394f64bd5a9fa387f2698da`
+- 作品情報URL形式対応：`51382cdf3d13cbd14e55ac25551f5425987721cf`
+- 通常作品情報URLホスト対応：`05712f7208fe57d8cd2d91ee891d2a5d0254b7b3`
+- 正本メタデータ保存修正：`6fd34d3fb96e7fc70761da050cd2b6c169a3e792`
+
+### 確認状況・次の確認
+- ショートカットの構成はスクリーンショットで確認済み。
+- 4形式のURLからNコードを抽出するローカルテストは合格。
+- **通常作品のURLを共有シートから渡し、API取得→新works保存→作品カード表示まで通すiPhone実機テストは未確認。**
+- テスト時は作品本体URLと作品情報URLを別々に試し、URL解析・API取得・保存・カード表示のどの段階まで進んだかを区別して記録する。
+- 本番IndexedDBの既存作品データ、棚、bookmarkは保護する。旧works DBからの参照・コピーはしない。
+
+詳細は [data-migration-log.md](data-migration-log.md) を参照。
