@@ -327,3 +327,9 @@ API応答診断、R18 API応答診断、最新話更新日取得、更新日デ�
 - 最新話更新日はupdatedAtではなくlastPublishedAtへ保存。
 - 元レコードを維持した更新方式でshelfId、bookmark、読書位置等を保持。ごみばこ内作品は編集不可。
 - commit：234b0a9c4ce82f08f35d30e18d81d3b3d06b5fe3。GitHub再取得・構文検査PASS。iPhone実機確認待ち。
+
+## 15. 2026-11-23 v4.0.2：検索除外作品の正本参照統一
+- 検索除外作品は手動更新だが、通常作品と同じ新works正本項目・表示ルールを使用する。
+- index.htmlの検索除外一覧は、通常作品カードとして正本項目（lastPublishedAt／status／episodeCount）から描画済みのカードを複製する。検索除外専用の旧データ参照・別表示処理を作らない方針を明示。
+- バージョン表示を v4.0.2【2026/11/23】に更新。
+- commit：de27e95599c8671eb760f57cfe498d0ab6cee570。GitHub再取得後のJavaScript構文検査PASS（2ブロック）。iPhone実機確認待ち。
