@@ -333,3 +333,11 @@ API応答診断、R18 API応答診断、最新話更新日取得、更新日デ�
 - index.htmlの検索除外一覧は、通常作品カードとして正本項目（lastPublishedAt／status／episodeCount）から描画済みのカードを複製する。検索除外専用の旧データ参照・別表示処理を作らない方針を明示。
 - バージョン表示を v4.0.2【2026/11/23】に更新。
 - commit：de27e95599c8671eb760f57cfe498d0ab6cee570。GitHub再取得後のJavaScript構文検査PASS（2ブロック）。iPhone実機確認待ち。
+
+## 16. 2026-11-23 検索除外作品・新規登録ページの正本形式対応
+- app/register/work_add.html の保存処理を新works正本へ統一。
+- 正本項目：status、episodeCount、publishedAt、lastPublishedAt、url、synopsis。siteData：noveltype、end、isR18、sourceUrl。
+- 状態・総話数・日付の入力検証を追加。掲載日時と最新話更新日時は YYYY/MM/DD HH:mm で保存。
+- shelfId、bookmark、作者管理情報を維持。重複Nコード拒否・検索除外フラグ保存・開示設定確認は継続。
+- commit：23e24df0a6d62da90f909e204e679ce93a6d8327。GitHub再取得・JavaScript構文検査PASS。
+- iPhone実機でのショートカット受信から登録・カード表示までの確認待ち。
