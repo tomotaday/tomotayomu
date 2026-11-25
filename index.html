@@ -1182,21 +1182,21 @@ function buildShelfFolders(){
  }
  const readParent=document.createElement("details");readParent.className="folderDetails readParentShelf";readParent.dataset.shelfKey="system:read-parent";
  const readParentSummary=document.createElement("summary");
- const readParentLabel=document.createElement("span");readParentLabel.textContent="📚 読了作品 "+readParentIds.size+"棚";
+ const readParentLabel=document.createElement("span");readParentLabel.textContent="✔️読了作品 "+readParentIds.size+"棚";
  const readParentSettings=document.createElement("button");readParentSettings.type="button";readParentSettings.className="readParentSettings";readParentSettings.textContent="⚙️";readParentSettings.setAttribute("aria-label","読了作品にまとめる小棚を設定");
  readParentSummary.append(readParentLabel,readParentSettings);
  const readParentGrid=document.createElement("div");readParentGrid.className="readParentGrid";
  function renderReadParentChildren(){
   readParentGrid.replaceChildren();
   const selected=shelves.filter(x=>readParentIds.has(x.id));
-  readParentLabel.textContent="📚 読了作品 "+selected.length+"棚";
+  readParentLabel.textContent="✔️読了作品 "+selected.length+"棚";
   if(!selected.length){const empty=document.createElement("div");empty.className="readParentEmpty";empty.textContent="まとめる小棚が選択されていません。⚙️から設定できます。";readParentGrid.appendChild(empty);return;}
   selected.forEach(x=>{const child=childNodes.get(x.id);if(child)readParentGrid.appendChild(child);});
  }
  function openReadParentSettings(){
   const overlay=document.createElement("div");overlay.className="readParentOverlay";
   const dialog=document.createElement("section");dialog.className="readParentDialog";dialog.setAttribute("role","dialog");dialog.setAttribute("aria-modal","true");dialog.setAttribute("aria-label","読了作品の設定");
-  const heading=document.createElement("h2");heading.textContent="📚 読了作品の設定";
+  const heading=document.createElement("h2");heading.textContent="✔️読了作品の設定";
   const help=document.createElement("p");help.className="readParentHelp";help.textContent="「読了作品」にまとめて表示する小棚を選んでください。ここでの設定は表示だけに反映され、作品データ・棚ID・判定・集計には影響しません。";
   const list=document.createElement("div");list.className="readParentCheckList";
   const checks=[];
