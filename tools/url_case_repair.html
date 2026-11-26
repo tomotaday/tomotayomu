@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f6f3ed">
-<title>ともたよむ｜作品URL小文字化チェック</title>
+<title>ともたよむ｜作品URL修復チェック</title>
 <style>
 :root{color-scheme:light;--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#666;--line:#b9b0a5}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,sans-serif;line-height:1.55}
@@ -17,16 +17,16 @@ small{color:var(--muted)}code{overflow-wrap:anywhere}
 </head>
 <body>
 <main>
-<h1>🔎 作品URLのNコード小文字化チェック</h1>
-<p>新works正本DBを読み取り、なろう作品の保存URL（url）に大文字のNコードが含まれるものだけを探します。最初の検査ではデータを書き換えません。</p>
+<h1>🔎 作品URLの正規化チェック</h1>
+<p>新works正本DBを読み取り、通常・R18、検索除外・通常登録を問わず、なろう作品の旧形式URLを探します。url と siteData.sourceUrl の両方を検査します。最初の検査ではデータを書き換えません。</p>
 <div class="panel">
 <strong>安全のための手順</strong>
-<p>① 読み取り検査 → ② 対象一覧とバックアップJSONを保存 → ③ ともたが確認 → ④ 修正ボタンで対象の url だけを書き換えます。</p>
-<p><small>作品データ・しおり・棚・作者情報・siteData.sourceUrl など、url以外の項目には触れません。</small></p>
+<p>① 全作品を読み取り検査 → ② 対象一覧とバックアップJSONを保存 → ③ ともたが確認 → ④ 修正ボタンで url と siteData.sourceUrl の旧形式URLだけを正規URLに置き換えます。</p>
+<p><small>作品タイトル・作者・しおり・棚・その他の項目には触れません。URL以外のデータは変更しません。</small></p>
 </div>
 <button id="scan">① URLを検査する</button>
 <button id="backup" disabled>② 対象データをバックアップ</button>
-<button id="repair" class="danger" disabled>③ 表示された対象のURLを小文字化</button>
+<button id="repair" class="danger" disabled>③ 表示された対象URLを正規化</button>
 <div class="panel" id="status">検査待ちです。</div>
 <div id="results"></div>
 </main>
@@ -35,14 +35,28 @@ small{color:var(--muted)}code{overflow-wrap:anywhere}
 const DB_NAME="tomotaYomuWorksDB",DB_VERSION=2;
 let candidates=[],scannedCount=0;
 function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME);req.onupgradeneeded=()=>{req.transaction.abort();reject(new Error("DB更新が必要な状態のため、安全のため停止しました。"))};req.onsuccess=()=>{const db=req.result;if(db.version!==DB_VERSION||!db.objectStoreNames.contains("works")){db.close();reject(new Error("新works DBの構造が想定外です。"))}else resolve(db)};req.onerror=()=>reject(req.error||new Error("DBを開けません"));req.onblocked=()=>reject(new Error("DBが別画面で使用中です。ほかのともたよむ画面を閉じて再試行してください。"))})}
-function lowerNcodeUrl(raw){return String(raw||"").replace(/\/(N[0-9]+[A-Z]{1,5})(?=\/|$|[?#])/g,(_,code)=>"/"+code.toLowerCase())}
-function hasUpperNcode(raw){return lowerNcodeUrl(raw)!==String(raw||"")}
+function canonicalWorkUrl(raw){
+ const value=String(raw||"").trim();
+ try{
+  const u=new URL(value);
+  if(!/^https?:$/.test(u.protocol)||!/(^|\\.)((ncode|novel18)\\.syosetu\\.com)$/i.test(u.hostname))return null;
+  const m=u.pathname.match(/^\\/novelview\\/infotop\\/ncode\\/(N[0-9]+[A-Z]{1,5})\\/?$/i);
+  if(!m)return null;
+  return u.origin+"/"+m[1].toLowerCase()+"/";
+ }catch(_){return null}
+}
+function getUrlChanges(work){
+ const changes=[];
+ const fields=[["url",work.url],["siteData.sourceUrl",work.siteData&&work.siteData.sourceUrl]];
+ for(const [field,value] of fields){const next=canonicalWorkUrl(value);if(next&&next!==value)changes.push({field,oldUrl:value,newUrl:next})}
+ return changes;
+}
 function readWorks(db){return new Promise((resolve,reject)=>{const tx=db.transaction("works","readonly"),req=tx.objectStore("works").getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error||new Error("作品データを読み込めません"));tx.onerror=()=>reject(tx.error||new Error("読込トランザクション失敗"))})}
 function setStatus(s){document.getElementById("status").textContent=s}
-function render(){const root=document.getElementById("results");root.replaceChildren();if(!candidates.length){root.textContent="大文字Nコードを含む保存URLは見つかりませんでした。";return}for(const c of candidates){const div=document.createElement("div");div.className="item";const title=document.createElement("strong");title.textContent=(c.work.title||"（タイトルなし）")+" ／ "+(c.work.workId||c.work.id||"ID不明");const old=document.createElement("div");old.className="old";old.textContent="現在："+c.oldUrl;const next=document.createElement("div");next.className="new";next.textContent="修正後："+c.newUrl;div.append(title,old,next);root.append(div)}}
-document.getElementById("scan").addEventListener("click",async()=>{const scan=document.getElementById("scan");scan.disabled=true;document.getElementById("backup").disabled=true;document.getElementById("repair").disabled=true;try{const db=await openDB();let rows;try{rows=await readWorks(db)}finally{db.close()}scannedCount=rows.length;candidates=rows.filter(w=>w&&w.site==="narou"&&typeof w.url==="string"&&hasUpperNcode(w.url)).map(w=>({id:w.id,work:w,oldUrl:w.url,newUrl:lowerNcodeUrl(w.url)}));setStatus("検査完了\nDB：tomotaYomuWorksDB v2 / works\n確認した全レコード："+scannedCount.toLocaleString("ja-JP")+"件\n対象（なろう作品のurl内に大文字Nコード）："+candidates.length+"件\n\nこの段階ではDBを書き換えていません。対象一覧を確認してください。");render();document.getElementById("backup").disabled=!candidates.length;document.getElementById("repair").disabled=!candidates.length}catch(e){setStatus("検査できませんでした：\n"+e.message)}finally{scan.disabled=false}});
-document.getElementById("backup").addEventListener("click",()=>{if(!candidates.length)return;const payload={purpose:"tomotayomu-url-case-backup",created_at:new Date().toISOString(),db:DB_NAME,db_version:DB_VERSION,record_count:candidates.length,records:candidates.map(c=>({id:c.id,workId:c.work.workId,title:c.work.title,original_url:c.oldUrl,corrected_url:c.newUrl,full_record:c.work}))};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="tomotayomu-url-case-backup-"+new Date().toISOString().replace(/[:.]/g,"-")+".json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);setStatus("バックアップJSONの保存を開始しました。ファイルが保存されたことを確認してから、修正ボタンを押してください。")});
-document.getElementById("repair").addEventListener("click",async()=>{if(!candidates.length)return;if(!confirm("バックアップを保存済みですか？\n\n"+candidates.length+"件の作品について、保存URL（url）内のNコード部分だけを小文字化します。実行しますか？"))return;const btn=document.getElementById("repair");btn.disabled=true;try{const db=await openDB();let updated=0;try{await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite"),store=tx.objectStore("works");for(const c of candidates){const req=store.get(c.id);req.onsuccess=()=>{const current=req.result;if(!current||current.site!=="narou"||current.url!==c.oldUrl)return;current.url=c.newUrl;store.put(current);updated++};req.onerror=()=>{try{tx.abort()}catch(_){}reject(req.error||new Error("対象作品の再取得に失敗"))}}tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("更新に失敗しました"));tx.onabort=()=>reject(tx.error||new Error("更新を中止しました"))})}finally{db.close()}setStatus("修正処理が完了しました。\n更新件数："+updated+"件\n\n念のため、もう一度「① URLを検査する」を押して、対象0件になることを確認してください。");candidates=[];render();document.getElementById("backup").disabled=true;document.getElementById("repair").disabled=true}catch(e){setStatus("修正処理でエラー：\n"+e.message+"\nDBの状態を再検査してください。")}finally{btn.disabled=false}});
+function render(){const root=document.getElementById("results");root.replaceChildren();if(!candidates.length){root.textContent="修正が必要な旧形式URLは見つかりませんでした。";return}for(const c of candidates){const div=document.createElement("div");div.className="item";const title=document.createElement("strong");title.textContent=(c.work.title||"（タイトルなし）")+" ／ "+(c.work.workId||c.work.id||"ID不明");div.append(title);for(const change of c.changes){const old=document.createElement("div");old.className="old";old.textContent=change.field+" 現在："+change.oldUrl;const next=document.createElement("div");next.className="new";next.textContent=change.field+" 修正後："+change.newUrl;div.append(old,next)}root.append(div)}}
+document.getElementById("scan").addEventListener("click",async()=>{const scan=document.getElementById("scan");scan.disabled=true;document.getElementById("backup").disabled=true;document.getElementById("repair").disabled=true;try{const db=await openDB();let rows;try{rows=await readWorks(db)}finally{db.close()}scannedCount=rows.length;candidates=rows.filter(w=>w&&w.site==="narou").map(w=>({id:w.id,work:w,changes:getUrlChanges(w)})).filter(c=>c.changes.length>0);setStatus("検査完了\nDB：tomotaYomuWorksDB v2 / works\n確認した全レコード："+scannedCount.toLocaleString("ja-JP")+"件\n対象（旧形式URLを含む作品）："+candidates.length+"件\n\nこの段階ではDBを書き換えていません。対象一覧を確認してください。");render();document.getElementById("backup").disabled=!candidates.length;document.getElementById("repair").disabled=!candidates.length}catch(e){setStatus("検査できませんでした：\n"+e.message)}finally{scan.disabled=false}});
+document.getElementById("backup").addEventListener("click",()=>{if(!candidates.length)return;const payload={purpose:"tomotayomu-url-case-backup",created_at:new Date().toISOString(),db:DB_NAME,db_version:DB_VERSION,record_count:candidates.length,records:candidates.map(c=>({id:c.id,workId:c.work.workId,title:c.work.title,url_changes:c.changes,full_record:c.work}))};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="tomotayomu-url-case-backup-"+new Date().toISOString().replace(/[:.]/g,"-")+".json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);setStatus("バックアップJSONの保存を開始しました。ファイルが保存されたことを確認してから、修正ボタンを押してください。")});
+document.getElementById("repair").addEventListener("click",async()=>{if(!candidates.length)return;if(!confirm("バックアップを保存済みですか？\n\n"+candidates.length+"件の作品について、url と siteData.sourceUrl に含まれる旧形式URLだけを正規URLに置き換えます。実行しますか？"))return;const btn=document.getElementById("repair");btn.disabled=true;try{const db=await openDB();let updated=0;try{await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite"),store=tx.objectStore("works");for(const c of candidates){const req=store.get(c.id);req.onsuccess=()=>{const current=req.result;if(!current||current.site!=="narou")return;let changed=false;for(const change of c.changes){if(change.field==="url"&&current.url===change.oldUrl){current.url=change.newUrl;changed=true}else if(change.field==="siteData.sourceUrl"&&current.siteData&&current.siteData.sourceUrl===change.oldUrl){current.siteData.sourceUrl=change.newUrl;changed=true}}if(changed){store.put(current);updated++}};req.onerror=()=>{try{tx.abort()}catch(_){}reject(req.error||new Error("対象作品の再取得に失敗"))}}tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("更新に失敗しました"));tx.onabort=()=>reject(tx.error||new Error("更新を中止しました"))})}finally{db.close()}setStatus("修正処理が完了しました。\n更新した作品数："+updated+"件\n\n念のため、もう一度「① URLを検査する」を押して、対象0件になることを確認してください。");candidates=[];render();document.getElementById("backup").disabled=true;document.getElementById("repair").disabled=true}catch(e){setStatus("修正処理でエラー：\n"+e.message+"\nDBの状態を再検査してください。")}finally{btn.disabled=false}});
 </script>
 </body>
 </html>
