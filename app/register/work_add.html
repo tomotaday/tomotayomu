@@ -128,6 +128,15 @@ async function saveWork(work,rawUrl,manualAuthorId=""){
 }
 
 function setManualStatus(text,cls=""){const e=document.getElementById("manualStatus");e.textContent=text;e.className="status "+cls}
+function canonicalNarouWorkUrl(raw){
+ try{
+  const u=new URL(String(raw||"").trim());
+  if(!/^https?:$/.test(u.protocol)||!["ncode.syosetu.com","novel18.syosetu.com"].includes(u.hostname.toLowerCase()))return "";
+  let m=u.pathname.match(/^\/novelview\/infotop\/ncode\/(N[0-9]+[A-Z]{1,5})\/?$/i);
+  if(!m)m=u.pathname.match(/^\/(N[0-9]+[A-Z]{1,5})\/?$/i);
+  return m?u.origin+"/"+m[1].toLowerCase()+"/":"";
+ }catch(e){return ""}
+}
 function normalizeNarouDate(raw){
  const s=String(raw||"").trim();
  let m=s.match(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日(?:\s*(\d{1,2})\s*時\s*(\d{1,2})\s*分(?:\s*(\d{1,2})\s*秒)?)?/);
@@ -231,7 +240,7 @@ function parsePlainMetadata(raw){
  if(!data.source_url&&data.ncode){
   const site=String(data.site||"").toLowerCase(),status=String(data.status||"").toLowerCase();
   const r18=/novel18|ムーンライト|ノクターン|ミッドナイト|r18/.test(site+" "+status);
-  data.source_url=(r18?"https://novel18.syosetu.com/":"https://ncode.syosetu.com/")+"novelview/infotop/ncode/"+String(data.ncode).toUpperCase()+"/";
+  data.source_url=(r18?"https://novel18.syosetu.com/":"https://ncode.syosetu.com/")+String(data.ncode).toLowerCase()+"/";
  }
  return data;
 }
@@ -263,8 +272,8 @@ async function saveManualWork(){
   if(!title)throw new Error("作品タイトルを入力してください。");
   if(!disclosure)throw new Error("開示設定が未確認です。作品情報ページで確認してください。");
   if(!disclosure.includes("検索除外中"))throw new Error("「検索除外中」と確認できないため登録できません。作品情報ページを確認してください。");
-  if(!/^https?:\/\/(ncode|novel18)\.syosetu\.com\/novelview\/infotop\/ncode\//i.test(rawUrl))throw new Error("取得元の作品情報ページURLを確認してください。");
-  const sourceUrl=rawUrl.replace(/(\/novelview\/infotop\/ncode\/)([^/?#]+)/i,(_,prefix,code)=>prefix+code.toLowerCase());
+  const sourceUrl=canonicalNarouWorkUrl(rawUrl);
+  if(!sourceUrl)throw new Error("取得元のなろう作品URLを確認してください。作品URLまたは作品情報ページURLを入力してください。");
   const num=id=>{const v=String(document.getElementById(id).value||"").trim().replace(/,/g,"");if(!v)return 0;if(!/^\d+$/.test(v))throw new Error("話数・文字数は数字で入力してください。");return Number(v)};
   const statusInput=String(document.getElementById("manualStatusValue").value||"").trim();
   const status=statusInput.includes("短編")?"短編":statusInput.includes("完結")?"完結":statusInput.includes("連載中")?"連載中":"";
