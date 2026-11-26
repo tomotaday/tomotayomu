@@ -63,8 +63,12 @@ def fetch_feed(author_id, kind, url, old_feed=None):
         try:
             status, body, response_headers = send(headers)
         except HTTPError as exc:
+            detail = exc.read(2000).decode("utf-8", errors="replace").strip()
             return {"kind": kind, "ok": False, "http_status": exc.code,
                     "entry_count": None, "entries": [], "error": f"HTTP {exc.code}",
+                    "error_detail": detail or None,
+                    "response_content_type": exc.headers.get("Content-Type"),
+                    "response_server": exc.headers.get("Server"),
                     "etag": old_feed.get("etag"), "last_modified": old_feed.get("last_modified")}
 
         if status == 304:
@@ -87,8 +91,12 @@ def fetch_feed(author_id, kind, url, old_feed=None):
                 "last_modified": response_headers.get("Last-Modified"),
                 "error": None, "not_modified": False}
     except HTTPError as exc:
+        detail = exc.read(2000).decode("utf-8", errors="replace").strip()
         return {"kind": kind, "ok": False, "http_status": exc.code,
                 "entry_count": None, "entries": [], "error": f"HTTP {exc.code}",
+                "error_detail": detail or None,
+                "response_content_type": exc.headers.get("Content-Type"),
+                "response_server": exc.headers.get("Server"),
                 "etag": old_feed.get("etag"), "last_modified": old_feed.get("last_modified")}
     except (URLError, TimeoutError, ET.ParseError, OSError) as exc:
         return {"kind": kind, "ok": False, "http_status": None,
