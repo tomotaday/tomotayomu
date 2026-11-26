@@ -39,7 +39,7 @@ function canonicalWorkUrl(raw){
  const value=String(raw||"").trim();
  try{
   const u=new URL(value);
-  if(!/^https?:$/.test(u.protocol)||!/(^|\\.)((ncode|novel18)\\.syosetu\\.com)$/i.test(u.hostname))return null;
+  if(!/^https?:$/.test(u.protocol)||!/(^|\.)((ncode|novel18)\.syosetu\.com)$/i.test(u.hostname))return null;
   const m=u.pathname.match(/^\\/novelview\\/infotop\\/ncode\\/(N[0-9]+[A-Z]{1,5})\\/?$/i);
   if(!m)return null;
   return u.origin+"/"+m[1].toLowerCase()+"/";
