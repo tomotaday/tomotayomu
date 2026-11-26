@@ -264,6 +264,7 @@ async function saveManualWork(){
   if(!disclosure)throw new Error("開示設定が未確認です。作品情報ページで確認してください。");
   if(!disclosure.includes("検索除外中"))throw new Error("「検索除外中」と確認できないため登録できません。作品情報ページを確認してください。");
   if(!/^https?:\/\/(ncode|novel18)\.syosetu\.com\/novelview\/infotop\/ncode\//i.test(rawUrl))throw new Error("取得元の作品情報ページURLを確認してください。");
+  const sourceUrl=rawUrl.replace(/(\/novelview\/infotop\/ncode\/)([^/?#]+)/i,(_,prefix,code)=>prefix+code.toLowerCase());
   const num=id=>{const v=String(document.getElementById(id).value||"").trim().replace(/,/g,"");if(!v)return 0;if(!/^\d+$/.test(v))throw new Error("話数・文字数は数字で入力してください。");return Number(v)};
   const statusInput=String(document.getElementById("manualStatusValue").value||"").trim();
   const status=statusInput.includes("短編")?"短編":statusInput.includes("完結")?"完結":statusInput.includes("連載中")?"連載中":"";
@@ -274,9 +275,9 @@ async function saveManualWork(){
   const episodeCount=num("manualEpisodeCount");
   if(!Number.isInteger(episodeCount)||episodeCount<1)throw new Error("エピソード数は1以上の整数で入力してください。");
   const end=status==="完結"?0:1,noveltype=status==="短編"?2:1;
-  const work={ncode,title,writer,story,keyword:"",general_all_no:episodeCount,general_lastup:latest,general_firstup:published,end,noveltype,isstop:0,userid:authorIdRaw?authorIdRaw:0,genre:0,genre_text:genreText,novelupdated_at:latest,episode_count:episodeCount,published_at:published,latest_episode_at:latest,disclosure,__r18:rawUrl.toLowerCase().includes("novel18.syosetu.com"),status,episodeCount,publishedAt:published,lastPublishedAt:latest};
+  const work={ncode,title,writer,story,keyword:"",general_all_no:episodeCount,general_lastup:latest,general_firstup:published,end,noveltype,isstop:0,userid:authorIdRaw?authorIdRaw:0,genre:0,genre_text:genreText,novelupdated_at:latest,episode_count:episodeCount,published_at:published,latest_episode_at:latest,disclosure,__r18:sourceUrl.toLowerCase().includes("novel18.syosetu.com"),status,episodeCount,publishedAt:published,lastPublishedAt:latest};
   setManualStatus("作品情報を保存中…");
-  const r=await saveWork(work,rawUrl,authorIdRaw);
+  const r=await saveWork(work,sourceUrl,authorIdRaw);
   const excluded=new Set(JSON.parse(localStorage.getItem(SEARCH_EXCLUDED_KEY)||"[]"));excluded.add(ncode);localStorage.setItem(SEARCH_EXCLUDED_KEY,JSON.stringify([...excluded]));
   setManualStatus("✅ メタデータを保存しました。\n保存先："+r.shelfName+"\nNコード："+ncode+"\n"+(authorIdRaw?"作者ID："+authorIdRaw+" を保存しました。\n":"")+(r.existing?"既存の棚配置を維持しました。":"作品情報を保存しました。"),"ok");
  }catch(e){console.error(e);setManualStatus("⚠️ 登録できませんでした："+e.message,"error")}finally{btn.disabled=false}
