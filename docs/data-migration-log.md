@@ -1708,3 +1708,23 @@ iPhoneのファイル一覧で、用途ごとにまとまり、その中で日�
 - 既存データはユーザー端末で修復済みとの報告あり。
 - 必要であれば、修復ページで再スキャンし、旧形式URLの残存件数を読み取り専用で確認する。
 - 修復ページの再実行や追加変更は、バックアップ状況と対象件数を確認してから行う。
+
+
+## 2026-11-27：registeredAt新規登録時自動付与
+- 既存全作品への一括付与（ともた実行・件数一致確認済み）に続き、今後の新規登録時に登録日時を自動保存する処理を整備。
+- 新規登録時は `registeredAt: new Date().toISOString()` と `registeredAtType: "actual"` を保存する。
+- 既存作品の再登録・更新では、既存の `registeredAt` / `registeredAtType` を維持する。
+- 対象：
+  - `register.html`：なろう通常/R18の新規API登録
+  - `app/register/work_add.html`：検索除外作品等の手動登録（新規時のみ付与。既存更新時は保持）
+  - `app/kakuyomu/kakuyomu_write.html`：カクヨム新規登録
+  - `note_magazine_add.html`：noteマガジン新規登録（既存マガジンの目次等更新時は保持）
+- 重要な保持修正：`index.html` のnote・カクヨム canonical変換で `registeredAt` / `registeredAtType` を読み取り・再保存するよう対応。これらを通じた作品再保存で登録日時が欠落しないようにした。
+- 関連commit：
+  - `82eae0845fc2494da5683b8d3d4a5a4f031eaeea`（手動なろう登録）
+  - `952ec7a26e0b4e7fabb6a87b9635d3b7a40dbc73`（なろうAPI登録）
+  - `c85ad1912b20b189d60f9e62d5c3cd5419fdc7c4`（カクヨム登録）
+  - `6a5dced21f862d2480e5af762c175cadd599c3e9`（note登録）
+  - `1bcce4bde5258be72aecd507e5b8d4e9733c05ec`（note・カクヨム変換時の保持）
+- 日時文字列はISO 8601のUTC表記（末尾Z）。JST表示時は9時間加算して表示する。同じ時点を表す標準形式であり、登録時刻の意味はJSTでの実行時刻と一致する。
+- GitHub Pages反映後の各登録経路でのiPhone実機新規登録テストは未実施。実作品を新規登録する前に、可能ならテスト作品または登録前後のDB診断で `actual` の付与と既存日時保持を確認する。
