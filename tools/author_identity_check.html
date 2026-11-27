@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f6f3ed">
+<title>作者識別情報チェック｜ともたよむ</title>
+<style>
+:root{color-scheme:light dark}body{font-family:system-ui,-apple-system,sans-serif;max-width:820px;margin:0 auto;padding:18px;line-height:1.65}h1{font-size:1.35rem}section{border:1px solid #8886;border-radius:14px;padding:14px;margin:14px 0}.muted{opacity:.75;font-size:.9rem}.count{font-size:1.35rem;font-weight:700}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.stat{padding:10px;border:1px solid #8885;border-radius:10px}.stat small{display:block;opacity:.7}button{font:inherit;padding:10px 14px;border:0;border-radius:9px;background:#287a55;color:white;font-weight:700;width:100%}button:disabled{opacity:.5}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.86rem}table{width:100%;border-collapse:collapse;font-size:.88rem}th,td{text-align:left;padding:7px;border-bottom:1px solid #8885;vertical-align:top;overflow-wrap:anywhere}th{position:sticky;top:0;background:Canvas} .scroll{overflow:auto;max-height:520px}.ok{color:#29965c}.warn{color:#c98a24}
+</style>
+</head>
+<body>
+<h1>🔎 作者識別情報チェック</h1>
+<p>正本DB <code>tomotaYomuWorksDB</code> version 2 の <code>works</code> を<strong>読み取り専用</strong>で調べます。追加・変更・削除・補完処理は一切行いません。</p>
+<section>
+ <p class="muted">調査対象：note・カクヨム。なろう作品は今回の集計対象外です。</p>
+ <button id="run">作者識別情報を調べる</button>
+ <p id="status" role="status" class="muted">確認待ちです。</p>
+</section>
+<div id="results"></div>
+<script>
+"use strict";
+const DB_NAME="tomotaYomuWorksDB",DB_VERSION=2;
+const $=id=>document.getElementById(id);
+function openDb(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME);req.onupgradeneeded=()=>{req.transaction.abort();reject(new Error("DBの更新が必要なため停止しました。安全のため中止しました。"))};req.onsuccess=()=>{const db=req.result;if(db.version!==DB_VERSION||!db.objectStoreNames.contains("works")){db.close();reject(new Error("DB構造が想定外です（version 2 / works が必要）"));return}resolve(db)};req.onerror=()=>reject(req.error||new Error("DBを開けません"));req.onblocked=()=>reject(new Error("DBが別タブで使用中です"))})}
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function str(v){return String(v??"").trim()}
+function noteIdFromUrl(value){try{const u=new URL(value);if(u.hostname!=="note.com")return "";const m=u.pathname.match(/^\/([a-zA-Z0-9_-]+)\//);return m?m[1]:""}catch{return ""}}
+function classify(rows,site){
+ const selected=rows.filter(w=>w.site===site);
+ const details=selected.map(w=>{
+  const legacy=w.siteData?.legacyFields||{};
+  const direct=str(w.authorId),legacyId=str(legacy.authorId),handle=str(legacy.authorHandle);
+  const urlId=site==="note"?noteIdFromUrl(w.url||legacy.url||w.siteData?.sourceUrl||""):"";
+  const effective=direct||legacyId||(site==="kakuyomu"?handle:"")||(site==="note"?urlId:"");
+  let source="なし";
+  if(direct)source="正本.authorId";
+  else if(legacyId)source="legacyFields.authorId";
+  else if(site==="kakuyomu"&&handle)source="legacyFields.authorHandle";
+  else if(site==="note"&&urlId)source="note URLのユーザー名";
+  return {id:str(w.id),title:str(w.title),author:str(w.authorName),direct,legacyId,handle,urlId,effective,source};
+ });
+ const count=fn=>details.filter(fn).length;
+ const ids=new Set(details.filter(x=>x.effective).map(x=>x.effective));
+ return {site,details,total:details.length,direct:count(x=>!!x.direct),legacyId:count(x=>!!x.legacyId),handle:count(x=>!!x.handle),urlId:count(x=>!!x.urlId),effective:count(x=>!!x.effective),missing:count(x=>!x.effective),unique:ids.size};
+}
+function renderGroup(g,label){
+ const missing=g.details.filter(x=>!x.effective);
+ const sources=["正本.authorId","legacyFields.authorId",g.site==="kakuyomu"?"legacyFields.authorHandle":"note URLのユーザー名","なし"];
+ const sourceRows=sources.map(s=>({s,n:g.details.filter(x=>x.source===s).length})).filter(x=>x.n);
+ const sample=g.details.filter(x=>x.effective).slice(0,12);
+ return `<section><h2>${label}</h2><div class="grid">
+ <div class="stat"><small>作品数</small><div class="count">${g.total.toLocaleString("ja-JP")}</div></div>
+ <div class="stat"><small>識別子あり（候補含む）</small><div class="count">${g.effective.toLocaleString("ja-JP")}</div></div>
+ <div class="stat"><small>識別子なし</small><div class="count ${g.missing?"warn":"ok"}">${g.missing.toLocaleString("ja-JP")}</div></div>
+ <div class="stat"><small>候補IDの種類数</small><div class="count">${g.unique.toLocaleString("ja-JP")}</div></div>
+ </div><h3>識別情報の出所</h3><ul>${sourceRows.map(x=>`<li>${esc(x.s)}：${x.n}件</li>`).join("")}</ul>
+ <p class="muted">項目別件数：正本.authorId ${g.direct}件 ／ legacyFields.authorId ${g.legacyId}件 ／ legacyFields.authorHandle ${g.handle}件 ／ URL由来ユーザー名 ${g.urlId}件</p>
+ <h3>識別子の確認例（最大12作品）</h3><div class="scroll"><table><thead><tr><th>作品</th><th>作者名</th><th>識別子候補</th><th>出所</th></tr></thead><tbody>${sample.map(x=>`<tr><td>${esc(x.title||x.id)}</td><td>${esc(x.author)}</td><td>${esc(x.effective)}</td><td>${esc(x.source)}</td></tr>`).join("")||"<tr><td colspan='4'>該当なし</td></tr>"}</tbody></table></div>
+ <h3>識別子なしの作品（最大30件）</h3><div class="scroll"><table><thead><tr><th>作品</th><th>作者名</th><th>作品ID</th></tr></thead><tbody>${missing.slice(0,30).map(x=>`<tr><td>${esc(x.title)}</td><td>${esc(x.author)}</td><td>${esc(x.id)}</td></tr>`).join("")||"<tr><td colspan='3'>なし</td></tr>"}</tbody></table></div>
+ ${missing.length>30?"<p class='muted'>※未登録作品は先頭30件のみ表示しています。</p>":""}</section>`;
+}
+async function run(){
+ const button=$("run");button.disabled=true;$("status").textContent="正本DBを読み取り中…";$("results").innerHTML="";
+ let db;
+ try{
+  db=await openDb();
+  const rows=await new Promise((resolve,reject)=>{const tx=db.transaction("works","readonly"),req=tx.objectStore("works").getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error||new Error("読み取りに失敗しました"))});
+  const note=classify(rows,"note"),kakuyomu=classify(rows,"kakuyomu");
+  $("status").textContent="読み取り完了："+rows.length.toLocaleString("ja-JP")+"件を確認。DBへの書き込みは行っていません。";
+  $("results").innerHTML=renderGroup(note,"📝 note") + renderGroup(kakuyomu,"📘 カクヨム") + `<section><h2>判定について</h2><p>「識別子あり（候補含む）」は、正本.authorId、legacyFields.authorId、カクヨムのlegacyFields.authorHandle、noteの作品URLから取得したユーザー名のいずれかがある件数です。</p><p>URL由来のnoteユーザー名やカクヨムの作者ハンドルは、作者本人を一意に識別できるかの最終保証ではありません。作者別グループに採用する前に、重複・表記の整合性を確認してください。</p><p>このページは読み取り専用です。修復・保存・削除は一切しません。</p></section>`;
+ }catch(e){$("status").textContent="確認できませんでした："+e.message}
+ finally{if(db)db.close();button.disabled=false}
+}
+$("run").addEventListener("click",run);
+</script>
+</body></html>
