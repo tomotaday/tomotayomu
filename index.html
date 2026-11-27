@@ -1277,6 +1277,7 @@ function buildShelfFolders(){
   }).map(x=>x.card);
  };
  const renderAllWorks=()=>{
+  directionSelect.disabled=sortSelect.value==="authorGroups";
   aw.replaceChildren();
   if(sortSelect.value==="authorGroups"){
    const groups=new Map();
