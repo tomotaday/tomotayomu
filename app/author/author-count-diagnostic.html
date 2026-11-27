@@ -8,12 +8,12 @@
 body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;line-height:1.65;margin:0;padding:20px;color:#222;background:#f7f8fa}
 main{max-width:760px;margin:auto;background:white;border-radius:16px;padding:20px}
 h1{font-size:22px}button{font-size:17px;padding:14px 20px;border:0;border-radius:10px;background:#176b35;color:white}
-pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f1f3f5;padding:14px;border-radius:10px}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f1f3f5;padding:14px;border-radius:10px;font-size:13px}
 .note{color:#555;font-size:14px}
 </style>
 </head>
 <body><main>
-<h1>🔎 作者数診断（読み取り専用）</h1>
+<h1>🔎 作者数診断（読み取り専用・詳細版）</h1>
 <p>tomotaYomuWorksDB v2 の works を読み取り専用で集計します。作品データの追加・変更・削除は行いません。</p>
 <button id="run">診断を実行</button>
 <p id="status" class="note">ボタンを押してください。</p>
@@ -32,36 +32,60 @@ document.getElementById("run").addEventListener("click",async()=>{
   db=await openDB();const all=await readAll(db);db.close();db=null;
   const narou=all.filter(w=>w&&w.site==="narou");
   const withId=narou.filter(w=>String(w.authorId??"").trim());
-  const noNcode=withId.filter(w=>!ncode(w.workId||w.ncode||"").replace(/^NAROU:/,""));
-  const unique=(arr,keyFn)=>new Set(arr.map(keyFn).filter(Boolean)).size;
   const authorKey=w=>String(w.authorId??"").trim();
   const typeKey=w=>(w.authorType==="r18"?"r18":"normal")+":"+authorKey(w);
-  const missingIdNoSpace=withId.filter(w=>String(w.authorId??"")!==String(w.authorId??"").trim());
-  const missingType=withId.filter(w=>!["normal","r18"].includes(w.authorType));
-  const idsNoNcode=[...new Set(noNcode.map(authorKey))].sort();
-  const keysNoNcode=[...new Set(noNcode.map(typeKey))].sort();
-  const authorIdCount=unique(withId,authorKey);
-  const typedCount=unique(withId,typeKey);
-  const jsonLikeCount=typedCount;
+  const rawType=w=>w.authorType===undefined?"(undefined)":w.authorType===null?"(null)":String(w.authorType)===""?"(empty)":String(w.authorType);
+  const unique=(arr,keyFn)=>new Set(arr.map(keyFn).filter(Boolean)).size;
+  const ids=new Map();
+  for(const w of withId){
+   const id=authorKey(w),bucket=ids.get(id)||{types:new Set(),raw:new Set(),samples:[]};
+   bucket.types.add(w.authorType==="r18"?"r18":"normal");
+   bucket.raw.add(rawType(w));
+   if(bucket.samples.length<4)bucket.samples.push({
+    ncode:w.workId||w.ncode||"(Nコード不明)",
+    authorType:rawType(w),
+    siteDataIsR18:w.siteData?.isR18===true,
+    legacyR18:w.legacy?.__r18===true
+   });
+   ids.set(id,bucket);
+  }
+  const mixed=[...ids.entries()].filter(([,v])=>v.types.size>1).sort((a,b)=>a[0].localeCompare(b[0]));
+  const rawCounts=new Map();
+  for(const w of withId){const k=rawType(w);rawCounts.set(k,(rawCounts.get(k)||0)+1)}
+  const rawLines=[...rawCounts.entries()].sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+"："+v+"作品");
+  const flags={
+   siteDataTrue:withId.filter(w=>w.siteData?.isR18===true).length,
+   siteDataFalse:withId.filter(w=>w.siteData?.isR18===false).length,
+   legacyTrue:withId.filter(w=>w.legacy?.__r18===true).length,
+   legacyFalse:withId.filter(w=>w.legacy?.__r18===false).length
+  };
+  const mixedLines=mixed.map(([id,v])=>{
+   const types=[...v.types].sort().join(" / ");
+   const raw=[...v.raw].sort().join(", ");
+   return "作者ID："+id+"\n  JSON判定種別："+types+"\n  生のauthorType："+raw+"\n  作品例："+v.samples.map(s=>s.ncode+" [type="+s.authorType+", siteData.isR18="+s.siteDataIsR18+", legacy.__r18="+s.legacyR18+"]").join(" ; ");
+  });
   const result=[
-   "【候補①：作者IDあり・Nコードなし】",
+   "【全体の比較】",
    "なろう作品総数："+narou.length,
    "作者IDあり作品数："+withId.length,
-   "作者IDあり・Nコードなし作品数："+noNcode.length,
-   "該当レコードの作者ID重複なし："+idsNoNcode.length,
-   "該当レコードの種別＋作者ID重複なし："+keysNoNcode.length,
+   "作者IDのみの重複なし："+unique(withId,authorKey),
+   "種別＋作者IDの重複なし："+unique(withId,typeKey),
+   "差分："+(unique(withId,typeKey)-unique(withId,authorKey)),
    "",
-   "【全体の比較】",
-   "作者IDのみの重複なし："+authorIdCount,
-   "種別＋作者IDの重複なし："+typedCount,
-   "JSON出力ロジック相当："+jsonLikeCount,
+   "【生のauthorType内訳：作品数】",
+   ...rawLines,
    "",
-   "【追加の観察】",
-   "authorId前後空白ありレコード："+missingIdNoSpace.length,
-   "authorTypeがnormal/r18以外のレコード："+missingType.length,
+   "【R18判定フラグ内訳：作品数】",
+   "siteData.isR18 === true："+flags.siteDataTrue,
+   "siteData.isR18 === false："+flags.siteDataFalse,
+   "legacy.__r18 === true："+flags.legacyTrue,
+   "legacy.__r18 === false："+flags.legacyFalse,
    "",
-   "【Nコードなし該当の作者キー】",
-   ...(keysNoNcode.length?keysNoNcode:["なし"])
+   "【同じ作者IDに normal/r18 の両方が現れるケース】",
+   "該当作者ID数："+mixed.length,
+   ...(mixedLines.length?mixedLines:["該当なし"]),
+   "",
+   "※JSON判定種別は現在のJSON出力と同じく、authorTypeが厳密に'r18'ならr18、それ以外はnormalとして集計。"
   ];
   out.textContent=result.join("\n");
   status.textContent="診断完了。読み取り専用で集計しました。";
