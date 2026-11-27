@@ -13,17 +13,19 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f1f3f5;padding:14px;
 </style>
 </head>
 <body><main>
-<h1>🔎 作者数診断（読み取り専用・詳細版）</h1>
+<h1>🔎 作者数診断（読み取り専用・項目比較版）</h1>
 <p>tomotaYomuWorksDB v2 の works を読み取り専用で集計します。作品データの追加・変更・削除は行いません。</p>
+<p class="note">比較する項目：w.authorType ／ w.siteData.authorType ／ w.siteData.isR18</p>
 <button id="run">診断を実行</button>
 <p id="status" class="note">ボタンを押してください。</p>
 <pre id="result">診断結果はここに表示されます。</pre>
 </main>
 <script>
 const DB_NAME="tomotaYomuWorksDB";
-const ncode=v=>String(v||"").trim().toUpperCase();
 function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME);r.onupgradeneeded=()=>{r.transaction.abort();reject(new Error("DB version mismatch; aborted"))};r.onsuccess=()=>{const db=r.result;if(db.version!==2||!db.objectStoreNames.contains("works")){db.close();reject(new Error("DB version/store mismatch"));return}resolve(db)};r.onerror=()=>reject(r.error||new Error("DB open failed"))})}
 function readAll(db){return new Promise((resolve,reject)=>{const st=db.transaction("works","readonly").objectStore("works"),out=[],r=st.openCursor();r.onsuccess=()=>{const c=r.result;if(c){out.push(c.value);c.continue()}else resolve(out)};r.onerror=()=>reject(r.error||new Error("cursor failed"))})}
+const raw=v=>v===undefined?"(undefined)":v===null?"(null)":v===""?"(empty)":String(v);
+const inc=(map,key)=>map.set(key,(map.get(key)||0)+1);
 document.getElementById("run").addEventListener("click",async()=>{
  const status=document.getElementById("status"),out=document.getElementById("result");
  status.textContent="読み取り中…";out.textContent="";
@@ -32,63 +34,56 @@ document.getElementById("run").addEventListener("click",async()=>{
   db=await openDB();const all=await readAll(db);db.close();db=null;
   const narou=all.filter(w=>w&&w.site==="narou");
   const withId=narou.filter(w=>String(w.authorId??"").trim());
-  const authorKey=w=>String(w.authorId??"").trim();
-  const typeKey=w=>(w.authorType==="r18"?"r18":"normal")+":"+authorKey(w);
-  const rawType=w=>w.authorType===undefined?"(undefined)":w.authorType===null?"(null)":String(w.authorType)===""?"(empty)":String(w.authorType);
-  const unique=(arr,keyFn)=>new Set(arr.map(keyFn).filter(Boolean)).size;
-  const ids=new Map();
+  const topCounts=new Map(),nestedCounts=new Map(),flagCounts=new Map(),comboCounts=new Map();
+  const authors=new Map();
   for(const w of withId){
-   const id=authorKey(w),bucket=ids.get(id)||{types:new Set(),raw:new Set(),samples:[]};
-   bucket.types.add(w.authorType==="r18"?"r18":"normal");
-   bucket.raw.add(rawType(w));
-   if(bucket.samples.length<4)bucket.samples.push({
-    ncode:w.workId||w.ncode||"(Nコード不明)",
-    authorType:rawType(w),
-    siteDataIsR18:w.siteData?.isR18===true,
-    legacyR18:w.legacy?.__r18===true
-   });
-   ids.set(id,bucket);
+   const top=raw(w.authorType),nested=raw(w.siteData?.authorType);
+   const flag=w.siteData?.isR18===true?"true":w.siteData?.isR18===false?"false":"(missing/other)";
+   inc(topCounts,top);inc(nestedCounts,nested);inc(flagCounts,flag);
+   inc(comboCounts,"top="+top+" | siteData="+nested+" | isR18="+flag);
+   const id=String(w.authorId).trim();
+   const a=authors.get(id)||{top:new Set(),nested:new Set(),flags:new Set(),samples:[]};
+   a.top.add(top);a.nested.add(nested);a.flags.add(flag);
+   if(a.samples.length<3)a.samples.push({code:w.workId||w.ncode||"(Nコード不明)",top,nested,flag});
+   authors.set(id,a);
   }
-  const mixed=[...ids.entries()].filter(([,v])=>v.types.size>1).sort((a,b)=>a[0].localeCompare(b[0]));
-  const rawCounts=new Map();
-  for(const w of withId){const k=rawType(w);rawCounts.set(k,(rawCounts.get(k)||0)+1)}
-  const rawLines=[...rawCounts.entries()].sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+"："+v+"作品");
-  const flags={
-   siteDataTrue:withId.filter(w=>w.siteData?.isR18===true).length,
-   siteDataFalse:withId.filter(w=>w.siteData?.isR18===false).length,
-   legacyTrue:withId.filter(w=>w.legacy?.__r18===true).length,
-   legacyFalse:withId.filter(w=>w.legacy?.__r18===false).length
-  };
-  const mixedLines=mixed.map(([id,v])=>{
-   const types=[...v.types].sort().join(" / ");
-   const raw=[...v.raw].sort().join(", ");
-   return "作者ID："+id+"\n  JSON判定種別："+types+"\n  生のauthorType："+raw+"\n  作品例："+v.samples.map(s=>s.ncode+" [type="+s.authorType+", siteData.isR18="+s.siteDataIsR18+", legacy.__r18="+s.legacyR18+"]").join(" ; ");
-  });
-  const result=[
-   "【全体の比較】",
+  const unique=(arr,fn)=>new Set(arr.map(fn)).size;
+  const jsonType=w=>w.authorType==="r18"?"r18":"normal";
+  const jsonKeys=new Set(withId.map(w=>jsonType(w)+":"+String(w.authorId).trim()));
+  const idsWithMultipleTopTypes=[...authors].filter(([,a])=>a.top.has("r18")&&[...a.top].some(x=>x!=="r18"));
+  const mixedLines=idsWithMultipleTopTypes.map(([id,a])=>"作者ID："+id+
+   "\n  top-level authorType："+[...a.top].join(", ")+
+   "\n  siteData.authorType："+[...a.nested].join(", ")+
+   "\n  siteData.isR18："+[...a.flags].join(", ")+
+   "\n  作品例："+a.samples.map(s=>s.code+" [top="+s.top+", nested="+s.nested+", isR18="+s.flag+"]").join(" ; "));
+  const lines=[
+   "【全体】",
    "なろう作品総数："+narou.length,
    "作者IDあり作品数："+withId.length,
-   "作者IDのみの重複なし："+unique(withId,authorKey),
-   "種別＋作者IDの重複なし："+unique(withId,typeKey),
-   "差分："+(unique(withId,typeKey)-unique(withId,authorKey)),
+   "作者IDの重複なし："+authors.size,
+   "現在のJSON判定（top-level authorTypeのみ）の種別＋作者ID数："+jsonKeys.size,
+   "差："+(jsonKeys.size-authors.size),
    "",
-   "【生のauthorType内訳：作品数】",
-   ...rawLines,
+   "【w.authorType：作品数】",
+   ...[...topCounts].sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+"："+v),
    "",
-   "【R18判定フラグ内訳：作品数】",
-   "siteData.isR18 === true："+flags.siteDataTrue,
-   "siteData.isR18 === false："+flags.siteDataFalse,
-   "legacy.__r18 === true："+flags.legacyTrue,
-   "legacy.__r18 === false："+flags.legacyFalse,
+   "【w.siteData.authorType：作品数】",
+   ...[...nestedCounts].sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+"："+v),
    "",
-   "【同じ作者IDに normal/r18 の両方が現れるケース】",
-   "該当作者ID数："+mixed.length,
+   "【w.siteData.isR18：作品数】",
+   ...[...flagCounts].sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+"："+v),
+   "",
+   "【3項目の組み合わせ：作品数】",
+   ...[...comboCounts].sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+"："+v),
+   "",
+   "【同一作者ID内で top-level authorType が normal/r18 に分かれる作者】",
+   "該当作者ID数："+idsWithMultipleTopTypes.length,
    ...(mixedLines.length?mixedLines:["該当なし"]),
    "",
-   "※JSON判定種別は現在のJSON出力と同じく、authorTypeが厳密に'r18'ならr18、それ以外はnormalとして集計。"
+   "※このページは旧DBを開きません。また legacy / legacyFields の項目は参照していません。",
+   "※JSON判定は現行 author.html と同じく、w.authorType === 'r18' の場合だけ r18、それ以外は normal として数えています。"
   ];
-  out.textContent=result.join("\n");
-  status.textContent="診断完了。読み取り専用で集計しました。";
+  out.textContent=lines.join("\n");status.textContent="診断完了。読み取り専用で集計しました。";
  }catch(e){if(db)db.close();status.textContent="診断失敗："+e.message}
 });
 </script></body></html>
