@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>登録日時一括付与｜ともたよむ</title>
+<style>
+:root{color-scheme:light dark}body{font-family:system-ui,-apple-system,sans-serif;max-width:760px;margin:0 auto;padding:20px;line-height:1.65}h1{font-size:1.35rem}section{border:1px solid #8886;border-radius:14px;padding:16px;margin:16px 0}.muted{opacity:.75;font-size:.92rem}.count{font-size:1.5rem;font-weight:700}.danger{color:#c55}button{font:inherit;border:0;border-radius:10px;padding:12px 16px;background:#287a55;color:white;font-weight:700;width:100%;margin:8px 0}button:disabled{opacity:.45}button.secondary{background:#555}pre{white-space:pre-wrap;overflow-wrap:anywhere}#status{white-space:pre-wrap}
+</style>
+</head>
+<body>
+<h1>🐢 ともたよむ｜登録日時一括付与</h1>
+<p>正本DB <code>tomotaYomuWorksDB</code> の <code>works</code> ストアにある<strong>全レコード</strong>が対象です。なろう・カクヨム・note、ごみばこ内の作品も含みます。</p>
+<section>
+<h2>① 対象件数の確認</h2>
+<div id="dbStatus" class="muted">DBを確認しています…</div>
+<div class="count" id="total">— 件</div>
+<p class="muted" id="breakdown"></p>
+<button id="refresh" class="secondary">件数を再確認</button>
+</section>
+<section>
+<h2>② 一括付与</h2>
+<p>実行時点の日時を全レコードに同じ値で設定します。</p>
+<pre>registeredAt: 実行日時（JST）
+registeredAtType: "migration"</pre>
+<p class="danger">注意：既存の registeredAt がある作品も含め、全レコードの2項目を今回の日時で上書きします。ほかの項目は変更しません。</p>
+<button id="run" disabled>全作品に一括付与する</button>
+<div id="status" role="status"></div>
+</section>
+<section>
+<h2>③ 実行後の確認</h2>
+<div id="result" class="muted">まだ実行していません。</div>
+</section>
+<script>
+"use strict";
+const DB_NAME="tomotaYomuWorksDB",DB_VERSION=2;
+const $=id=>document.getElementById(id);
+let latestCount=0, busy=false;
+function openDb(){
+ return new Promise((resolve,reject)=>{
+  const req=indexedDB.open(DB_NAME);
+  req.onupgradeneeded=()=>{req.transaction.abort();reject(new Error("DBの更新が必要なため停止しました"))};
+  req.onsuccess=()=>{const db=req.result;if(db.version!==DB_VERSION||!db.objectStoreNames.contains("works")){db.close();reject(new Error("DB構造が想定外です（version 2 / works が必要）"));return}resolve(db)};
+  req.onerror=()=>reject(req.error||new Error("DBを開けません"));
+  req.onblocked=()=>reject(new Error("DBが別タブで使用中です"));
+ });
+}
+async function inspect(){
+ $("run").disabled=true;$("dbStatus").textContent="正本DBを確認中…";
+ const db=await openDb();
+ try{
+  const rows=await new Promise((resolve,reject)=>{const tx=db.transaction("works","readonly"),req=tx.objectStore("works").getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error)});
+  latestCount=rows.length;
+  const groups={narou:0,kakuyomu:0,note:0,other:0,trash:0};
+  rows.forEach(w=>{if(w.deletedAt)groups.trash++;if(w.site==="narou")groups.narou++;else if(w.site==="kakuyomu")groups.kakuyomu++;else if(w.site==="note")groups.note++;else groups.other++});
+  $("total").textContent=rows.length.toLocaleString("ja-JP")+" 件";
+  $("breakdown").textContent="なろう "+groups.narou+" ／ カクヨム "+groups.kakuyomu+" ／ note "+groups.note+" ／ その他 "+groups.other+" ／ ごみばこ "+groups.trash+"（ごみばこは各サイト件数に含まれます）";
+  $("dbStatus").textContent="正本DBの読み込みに成功しました。";
+  $("run").disabled=busy||rows.length===0;
+ }finally{db.close()}
+}
+function downloadBackup(rows,stamp){
+ const blob=new Blob([JSON.stringify({schema:"tomotayomu-registeredAt-backup-v1",createdAt:stamp,recordCount:rows.length,works:rows},null,2)],{type:"application/json"});
+ const url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download="tomotayomu-works-before-registeredAt-"+stamp.replace(/[:.]/g,"-")+".json";a.click();
+ setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+async function run(){
+ if(busy)return;
+ if(!confirm("ごみばこを含む全 "+latestCount+" 件の registeredAt / registeredAtType を、今回の実行日時で上書きします。続けますか？"))return;
+ busy=true;$("run").disabled=true;$("refresh").disabled=true;$("status").textContent="正本DBを開いています…";
+ let db;
+ try{
+  db=await openDb();
+  const rows=await new Promise((resolve,reject)=>{const tx=db.transaction("works","readonly"),req=tx.objectStore("works").getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error)});
+  if(rows.length!==latestCount)throw new Error("件数が事前確認時から変わっています。安全のため中止しました。再確認してください。");
+  const stamp=new Date().toISOString();
+  downloadBackup(rows,stamp);
+  $("status").textContent="バックアップJSONを作成しました。全件を保存中…";
+  await new Promise((resolve,reject)=>{
+   const tx=db.transaction("works","readwrite"),store=tx.objectStore("works");
+   rows.forEach(w=>store.put({...w,registeredAt:stamp,registeredAtType:"migration"}));
+   tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存に失敗しました"));tx.onabort=()=>reject(tx.error||new Error("保存が中止されました"));
+  });
+  const check=await new Promise((resolve,reject)=>{const tx=db.transaction("works","readonly"),req=tx.objectStore("works").getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error)});
+  const ok=check.filter(w=>w.registeredAt===stamp&&w.registeredAtType==="migration").length;
+  if(ok!==check.length)throw new Error("保存後検証で不一致があります："+ok+" / "+check.length);
+  $("status").textContent="一括付与が完了しました。";
+  $("result").textContent="付与日時："+stamp+"\n対象："+check.length+" 件\n一致確認："+ok+" 件\nバックアップJSONをダウンロードしました。";
+ }catch(e){$("status").textContent="処理を中止／失敗しました： "+e.message}
+ finally{if(db)db.close();busy=false;$("refresh").disabled=false;try{await inspect()}catch(e){$("dbStatus").textContent="再確認失敗："+e.message}}
+}
+$("refresh").addEventListener("click",()=>inspect().catch(e=>$("dbStatus").textContent=e.message));
+$("run").addEventListener("click",run);
+inspect().catch(e=>{$("dbStatus").textContent="確認失敗："+e.message;$("total").textContent="—";$("run").disabled=true});
+</script>
+</body></html>
