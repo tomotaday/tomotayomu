@@ -117,6 +117,7 @@ async function saveWork(work,rawUrl,manualAuthorId=""){
    authorKanaChecked:Boolean(existing?.authorKanaChecked||matched.authorKanaChecked),
    shelfId:existing?String(existing.shelfId||""):String(shelf?.shelf_id||""),
    bookmark:existing?.bookmark??null,
+   ...(existing?{}:{registeredAt:new Date().toISOString(),registeredAtType:"actual"}),
    url:rawUrl,synopsis:String(work.story||""),
    status:work.status,episodeCount:work.episodeCount,
    publishedAt:work.publishedAt,lastPublishedAt:work.lastPublishedAt,
