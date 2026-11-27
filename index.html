@@ -39,6 +39,16 @@ summary{cursor:pointer}
 .hidden{display:none!important}
 .searchDetails{margin:8px 0 10px;background:var(--shelf-card);color:var(--shelf-ink);border:1px solid var(--shelf-line);border-radius:11px;overflow:hidden}.searchDetails>summary{list-style:none;cursor:pointer;font-size:18px;font-weight:700;padding:9px 12px}.searchDetails>summary::-webkit-details-marker{display:none}.searchDetails>summary::before{content:"▸ ";font-size:18px}.searchDetails[open]>summary::before{content:"▾ ";font-size:18px}.searchDetails[open]>summary{border-bottom:1px solid var(--shelf-line)}.searchBody{padding:9px 12px}.searchInput{width:100%;padding:9px 10px;border:1px solid var(--shelf-line);border-radius:8px;background:var(--card);color:var(--ink);font-size:15px}.searchHint{font-size:12px;color:var(--muted);margin-top:6px}.searchResults{margin-top:8px}.searchResults .card{margin:10px 0}.searchCount{font-size:13px;color:var(--muted);margin-top:8px}body[data-font-size="small"] .bookshelfDetails>summary,body[data-font-size="small"] .updateDetails>summary,body[data-font-size="small"] .folderDetails>summary,body[data-font-size="small"] .managementSettingsDetails>summary,body[data-font-size="small"] .searchDetails>summary,body[data-font-size="small"] #authorFeedTitle{font-size:16px}body[data-font-size="small"] .folderTitle{font-size:15px}body[data-font-size="small"] h2{font-size:13px}body[data-font-size="small"] .meta,body[data-font-size="small"] .author,body[data-font-size="small"] .ncode,body[data-font-size="small"] details,body[data-font-size="small"] .actions{font-size:11px}body[data-font-size="large"] .bookshelfDetails>summary,body[data-font-size="large"] .updateDetails>summary,body[data-font-size="large"] .folderDetails>summary,body[data-font-size="large"] .managementSettingsDetails>summary,body[data-font-size="large"] .searchDetails>summary,body[data-font-size="large"] #authorFeedTitle{font-size:24px}body[data-font-size="large"] .folderTitle{font-size:19px}body[data-font-size="large"] h2{font-size:17px}body[data-font-size="large"] .meta,body[data-font-size="large"] .author,body[data-font-size="large"] .ncode,body[data-font-size="large"] details,body[data-font-size="large"] .actions{font-size:14px}
 
+/* 全作品棚専用の並び替えUI */
+.allWorksSortBar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:9px 10px;border-bottom:1px solid var(--shelf-line)}
+.allWorksSortLabel{display:flex;align-items:center;gap:7px;flex:1;min-width:150px;font-size:13px;color:var(--muted)}
+.allWorksSortBar select{max-width:100%;min-width:0;padding:8px 9px;border:1px solid var(--shelf-line);border-radius:8px;background:var(--card);color:var(--ink);font:inherit;font-size:14px}
+.allWorksSortLabel select{flex:1}
+.allWorksDirectionSelect{flex:0 1 145px}
+.allWorksAuthorGroup{margin:10px 0 16px;padding:9px;border:1px solid var(--shelf-line);border-radius:11px;background:var(--card)}
+.allWorksAuthorHeading{margin:0 0 8px;padding:3px 2px 8px;border-bottom:1px solid var(--shelf-line);font-size:16px;overflow-wrap:anywhere}
+.allWorksAuthorGroup>.card{margin:9px 0}
+@media(max-width:380px){.allWorksSortBar{gap:6px}.allWorksSortLabel{flex-basis:100%}.allWorksDirectionSelect{flex:1}}
 /* note目次は作品カード内に収め、初期状態は折りたたむ */
 .noteWorkCard .noteIndexDetails{margin:8px 0;min-width:0;max-width:100%}
 .noteWorkCard .noteIndexDetails>summary{cursor:pointer;padding:7px 9px;border:1px solid var(--work-card-line);border-radius:8px;overflow-wrap:anywhere}
@@ -529,6 +539,7 @@ async function buildV3CardsFromIndexedDB(){
     card.dataset.shelfId=String(item.shelfId||"");
     card.dataset.shelf=String(sm.get(String(item.shelfId||""))?.shelf_name||"");
     card.dataset.authorName=String(item.author||"");
+    card.dataset.authorId=String(item.authorId||"");
     card.dataset.current="";
     card.innerHTML='<div class="meta"><span class="noteLastUpdated">—</span> ｜ <span class="noteStatus"></span><span class="noteShelfSeparator"> ｜ </span><span class="noteShelfMark"></span></div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="siteBadge siteBadge-note" aria-label="noteマガジン">note</span></div><details class="noteSynopsisDetails"><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続き 📖 位置を確認中…</a></div><details class="managementDetails"><summary>詳細を開く</summary><div class="managementBody"><details class="noteIndexDetails"><summary>目次（読み込み前）</summary><div class="noteIndexList" aria-live="polite"></div></details><div class="ncode noteIdLabel"></div><button type="button" class="moveShelfBtn">本棚を移動</button><label style="display:block;width:100%">作品状態<input class="noteStatusInput" type="text" placeholder="完結 / 連載中 / 短編" style="display:block;width:100%;margin-top:5px;padding:8px;border:1px solid #aaa195;border-radius:8px;background:var(--card);color:var(--ink)"></label><label style="display:block;width:100%;margin-top:8px">あらすじ<textarea class="noteSynopsisInput" rows="5" placeholder="あらすじを入力・貼り付け" style="display:block;width:100%;box-sizing:border-box;margin-top:5px;padding:8px;border:1px solid #aaa195;border-radius:8px;background:var(--card);color:var(--ink)"></textarea></label><button type="button" class="saveNoteInfo">作品情報を保存</button><label class="noteBookmarkLabel" style="width:100%;margin-top:8px">しおりURL<input class="noteBookmarkInput" type="url" inputmode="url" placeholder="https://note.com/..." style="display:block;width:100%;margin-top:5px;padding:8px;border:1px solid #aaa195;border-radius:8px;background:var(--card);color:var(--ink)"></label><button type="button" class="saveNoteBookmark">しおりを保存</button></div></details>';
     card.querySelector("h2").textContent=String(item.title||"");
@@ -559,6 +570,7 @@ async function buildV3CardsFromIndexedDB(){
     card.dataset.shelfId=String(item.shelfId||"");
     card.dataset.shelf=String(sm.get(String(item.shelfId||""))?.shelf_name||"");
     card.dataset.authorName=String(item.author||"");
+    card.dataset.authorId=String(item.authorId||"");
     card.dataset.current="";
     card.dataset.lastUpdated=String(item.updatedAt||"");
     card.innerHTML='<div class="meta"><span class="kakuyomuLastUpdated">—</span> ｜ <span class="kakuyomuStatus"></span><span class="kakuyomuShelfSeparator"> ｜ </span><span class="kakuyomuShelfMark"></span></div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="siteBadge siteBadge-kakuyomu">カクヨム</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="kakuyomuResumeLink" rel="noopener" target="_blank">続き📖記録なし</a><a class="kakuyomuEditLink">内容を編集</a></div><details class="managementDetails"><summary>詳細を開く</summary><div class="managementBody"><div class="ncode kakuyomuIdLabel"></div><button type="button" class="moveShelfBtn">本棚を移動</button><button type="button" class="deleteKakuyomuBtn">削除</button></div></details>';
@@ -1230,7 +1242,69 @@ function buildShelfFolders(){
  const unknownShelf=document.createElement("details");unknownShelf.className="folderDetails";unknownShelf.dataset.shelfKey="system:unknown-shelf";const uns=document.createElement("summary");uns.textContent="⚠️ 本棚不明 "+unknownShelfCards.length;const unw=document.createElement("div");unw.className="folderCards";unknownShelf.addEventListener("toggle",()=>{if(!unknownShelf.open||unw.dataset.loaded==="1")return;unw.dataset.loaded="1";unknownShelfCards.forEach(card=>unw.appendChild(card.cloneNode(true)));syncSearchExcludedButtons()});unknownShelf.append(uns,unw);
  unclassified.sort(compareWorkDate);
  const ud=document.createElement("details");ud.className="folderDetails";ud.dataset.shelfKey="system:unclassified";const us=document.createElement("summary");us.textContent="未分類 "+unclassified.length;const uw=document.createElement("div");uw.className="folderCards";ud.addEventListener("toggle",()=>{if(!ud.open||uw.dataset.loaded==="1")return;uw.dataset.loaded="1";if(!unclassified.length){const empty=document.createElement("div");empty.className="searchHint";empty.textContent="0";uw.appendChild(empty);return}unclassified.forEach(card=>uw.appendChild(card.cloneNode(true)));syncSearchExcludedButtons()});ud.append(us,uw);
- const all=document.createElement("details");all.className="folderDetails";all.dataset.shelfKey="system:all";const als=document.createElement("summary");als.textContent="📚 全作品 "+cards.length;const aw=document.createElement("div");aw.className="folderCards";all.addEventListener("toggle",()=>{if(!all.open||aw.dataset.loaded==="1")return;aw.dataset.loaded="1";cards.slice().sort(compareWorkDate).forEach(card=>aw.appendChild(card.cloneNode(true)));syncSearchExcludedButtons()});all.append(als,aw);
+ const all=document.createElement("details");all.className="folderDetails";all.dataset.shelfKey="system:all";
+ const als=document.createElement("summary");als.textContent="📚 全作品 "+cards.length;
+ const sortBar=document.createElement("div");sortBar.className="allWorksSortBar";
+ const sortLabel=document.createElement("label");sortLabel.className="allWorksSortLabel";sortLabel.textContent="並び替え";
+ const sortSelect=document.createElement("select");sortSelect.className="allWorksSortSelect";sortSelect.setAttribute("aria-label","全作品棚の並び替え");
+ [["lastUpdated","最終更新日"],["title","作品タイトル"],["authorName","作者名"],["totalEpisodes","総話数"],["bookmark","しおり位置"],["authorGroups","作者別"]].forEach(([value,label])=>{const option=document.createElement("option");option.value=value;option.textContent=label;sortSelect.appendChild(option)});
+ const directionSelect=document.createElement("select");directionSelect.className="allWorksDirectionSelect";directionSelect.setAttribute("aria-label","並び順");
+ [["desc","新しい順／大きい順"],["asc","古い順／小さい順"]].forEach(([value,label])=>{const option=document.createElement("option");option.value=value;option.textContent=label;directionSelect.appendChild(option)});
+ sortLabel.appendChild(sortSelect);sortBar.append(sortLabel,directionSelect);
+ const aw=document.createElement("div");aw.className="folderCards";
+ const compareText=(a,b)=>String(a).localeCompare(String(b),"ja",{numeric:true,sensitivity:"base"});
+ const getDate=card=>{const raw=String(card.dataset.lastUpdated||"").trim();if(!raw)return null;const parsed=Date.parse(raw.replace(/[/.]/g,"-").replace(/\\s+/g,"T"));return Number.isFinite(parsed)?parsed:null};
+ const getNumber=value=>{const raw=String(value??"").trim();if(!raw)return null;const n=raw==="R"?1:Number(raw);return Number.isFinite(n)&&n>=0?n:null};
+ const cardTitle=card=>String(card.querySelector("h2")?.textContent||"").trim();
+ const cardAuthor=card=>String(card.dataset.authorName||card.querySelector(".authorName")?.textContent||"").trim();
+ const sortCards=(items,field,direction)=>{
+  const sign=direction==="asc"?1:-1;
+  return items.map((card,index)=>({card,index})).sort((a,b)=>{
+   const value=card=>{
+    if(field==="lastUpdated")return getDate(card);
+    if(field==="title")return cardTitle(card)||null;
+    if(field==="authorName")return cardAuthor(card)||null;
+    if(field==="totalEpisodes")return getNumber(card.dataset.totalEpisodes);
+    if(field==="bookmark")return getNumber(card.dataset.current);
+    return null;
+   };
+   const av=value(a.card),bv=value(b.card);
+   if(av==null&&bv==null)return a.index-b.index;
+   if(av==null)return 1;
+   if(bv==null)return -1;
+   const cmp=typeof av==="number"&&typeof bv==="number"?av-bv:compareText(av,bv);
+   return cmp===0?a.index-b.index:cmp*sign;
+  }).map(x=>x.card);
+ };
+ const renderAllWorks=()=>{
+  aw.replaceChildren();
+  if(sortSelect.value==="authorGroups"){
+   const groups=new Map();
+   cards.forEach((card,index)=>{
+    const site=card.dataset.ncode?"narou":card.dataset.noteId?"note":card.dataset.kakuyomuId?"kakuyomu":"unknown";
+    const authorId=String(card.dataset.authorId||"").trim();
+    const key=authorId?site+":"+authorId:"__individual__:"+index;
+    if(!groups.has(key))groups.set(key,{name:cardAuthor(card)||"作者不明",items:[],firstIndex:index});
+    groups.get(key).items.push(card);
+   });
+   const ordered=[...groups.values()].sort((a,b)=>compareText(a.name,b.name)||a.firstIndex-b.firstIndex);
+   ordered.forEach(group=>{
+    const section=document.createElement("section");section.className="allWorksAuthorGroup";
+    const heading=document.createElement("h3");heading.className="allWorksAuthorHeading";heading.textContent=group.name+"（"+group.items.length+"作品）";
+    section.appendChild(heading);
+    sortCards(group.items,"lastUpdated","desc").forEach(card=>section.appendChild(card.cloneNode(true)));
+    aw.appendChild(section);
+   });
+  }else{
+   sortCards(cards,sortSelect.value,directionSelect.value==="asc"?"asc":"desc").forEach(card=>aw.appendChild(card.cloneNode(true)));
+  }
+  aw.dataset.loaded="1";
+  syncSearchExcludedButtons();
+ };
+ sortSelect.addEventListener("change",()=>{if(aw.dataset.loaded==="1")renderAllWorks();});
+ directionSelect.addEventListener("change",()=>{if(aw.dataset.loaded==="1"&&sortSelect.value!=="authorGroups")renderAllWorks();});
+ all.addEventListener("toggle",()=>{if(!all.open||aw.dataset.loaded==="1")return;renderAllWorks()});
+ all.append(als,sortBar,aw);
  const kakuyomuCards=cards.filter(card=>!!card.dataset.kakuyomuId).sort(compareWorkDate);
  const kakuyomuShelf=document.createElement("details");kakuyomuShelf.className="folderDetails";kakuyomuShelf.dataset.shelfKey="system:kakuyomu";const kks=document.createElement("summary");kks.textContent="📘 カクヨム "+kakuyomuCards.length;const kkw=document.createElement("div");kkw.className="folderCards";kakuyomuShelf.addEventListener("toggle",()=>{if(!kakuyomuShelf.open||kkw.dataset.loaded==="1")return;kkw.dataset.loaded="1";if(!kakuyomuCards.length){const empty=document.createElement("div");empty.className="searchHint";empty.textContent="カクヨム作品はありません。";kkw.appendChild(empty)}else kakuyomuCards.forEach(card=>kkw.appendChild(card.cloneNode(true)));syncSearchExcludedButtons()});kakuyomuShelf.append(kks,kkw);
  const noteCards=cards.filter(card=>!!card.dataset.noteId).sort(compareWorkDate);
