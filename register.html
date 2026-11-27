@@ -72,6 +72,7 @@ async function saveToTarget(target){
     authorUrl:fetchedWork.userid?"https://"+novelHost+"/"+String(fetchedWork.userid)+"/":"",
     shelfId:target.unclassified?"":String(target.shelf_id||""),
     status,episodeCount,publishedAt,lastPublishedAt,
+    registeredAt:new Date().toISOString(),registeredAtType:"actual",
     url:sourceUrl,synopsis:fetchedWork.story||"",
     bookmark:null,
     siteData:{isR18:fetchedR18,noveltype,end,sourceUrl,legacyFields:{...fetchedWork}}
