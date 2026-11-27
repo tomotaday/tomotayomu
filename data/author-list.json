@@ -2,7 +2,7 @@
   "schema_version": 1,
   "source": "tomotaYomuDB.authors",
   "exported_at": "2026-11-24T12:08:20.725Z",
-  "author_count": 1260,
+  "author_count": 1259,
   "authors": [
     {
       "author_id": "11772",
@@ -2746,10 +2746,6 @@
     },
     {
       "author_id": "X2597R",
-      "author_type": "r18"
-    },
-    {
-      "author_id": "X2602BO",
       "author_type": "r18"
     },
     {
