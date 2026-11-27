@@ -34,7 +34,8 @@ document.getElementById("run").addEventListener("click",async()=>{
   db=await openDB();const all=await readAll(db);db.close();db=null;
   const narou=all.filter(w=>w&&w.site==="narou");
   const withId=narou.filter(w=>String(w.authorId??"").trim());
-  const missingTopRows=withId.filter(w=>w.authorType===undefined||w.authorType===null||w.authorType==="");
+  const targetAuthorIds=new Set(["X0608X","X4056B","X1917N","X3937BH"]);
+  const missingTopRows=withId.filter(w=>targetAuthorIds.has(String(w.authorId).trim())&&(w.authorType===undefined||w.authorType===null||w.authorType===""));
   const topCounts=new Map(),nestedCounts=new Map(),flagCounts=new Map(),comboCounts=new Map();
   const authors=new Map();
   for(const w of withId){
@@ -61,9 +62,12 @@ document.getElementById("run").addEventListener("click",async()=>{
    String(i+1).padStart(4,"0"),
    "Nコード="+String(w.workId||w.ncode||w.id||"(不明)"),
    "タイトル="+String(w.title||"(タイトルなし)"),
+   "作者名="+String(w.authorName||w.writer||"(不明)"),
    "作者ID="+String(w.authorId||"(なし)"),
    "siteData.authorType="+raw(w.siteData?.authorType),
-   "siteData.isR18="+(w.siteData?.isR18===true?"true":w.siteData?.isR18===false?"false":raw(w.siteData?.isR18))
+   "siteData.isR18="+(w.siteData?.isR18===true?"true":w.siteData?.isR18===false?"false":raw(w.siteData?.isR18)),
+   "episodeCount="+raw(w.episodeCount),
+   "recordKeys="+Object.keys(w).sort().join(",")
   ].join(" | ")).join("\\n");
   const lines=[
    "【全体】",
@@ -72,7 +76,7 @@ document.getElementById("run").addEventListener("click",async()=>{
    "作者IDの重複なし："+authors.size,
    "現在のJSON判定（top-level authorTypeのみ）の種別＋作者ID数："+jsonKeys.size,
    "差："+(jsonKeys.size-authors.size),
-   "top-level authorType が未設定（undefined/null/空文字）の作品数："+missingTopRows.length,
+   "対象4作者のうち top-level authorType が未設定の作品数："+missingTopRows.length,
    "",
    "【w.authorType：作品数】",
    ...[...topCounts].sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+"："+v),
