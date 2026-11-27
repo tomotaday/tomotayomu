@@ -34,6 +34,7 @@ document.getElementById("run").addEventListener("click",async()=>{
   db=await openDB();const all=await readAll(db);db.close();db=null;
   const narou=all.filter(w=>w&&w.site==="narou");
   const withId=narou.filter(w=>String(w.authorId??"").trim());
+  const missingTopRows=withId.filter(w=>w.authorType===undefined||w.authorType===null||w.authorType==="");
   const topCounts=new Map(),nestedCounts=new Map(),flagCounts=new Map(),comboCounts=new Map();
   const authors=new Map();
   for(const w of withId){
@@ -56,6 +57,14 @@ document.getElementById("run").addEventListener("click",async()=>{
    "\n  siteData.authorType："+[...a.nested].join(", ")+
    "\n  siteData.isR18："+[...a.flags].join(", ")+
    "\n  作品例："+a.samples.map(s=>s.code+" [top="+s.top+", nested="+s.nested+", isR18="+s.flag+"]").join(" ; "));
+  const missingRowsText=missingTopRows.map((w,i)=>[
+   String(i+1).padStart(4,"0"),
+   "Nコード="+String(w.workId||w.ncode||w.id||"(不明)"),
+   "タイトル="+String(w.title||"(タイトルなし)"),
+   "作者ID="+String(w.authorId||"(なし)"),
+   "siteData.authorType="+raw(w.siteData?.authorType),
+   "siteData.isR18="+(w.siteData?.isR18===true?"true":w.siteData?.isR18===false?"false":raw(w.siteData?.isR18))
+  ].join(" | ")).join("\\n");
   const lines=[
    "【全体】",
    "なろう作品総数："+narou.length,
@@ -63,6 +72,7 @@ document.getElementById("run").addEventListener("click",async()=>{
    "作者IDの重複なし："+authors.size,
    "現在のJSON判定（top-level authorTypeのみ）の種別＋作者ID数："+jsonKeys.size,
    "差："+(jsonKeys.size-authors.size),
+   "top-level authorType が未設定（undefined/null/空文字）の作品数："+missingTopRows.length,
    "",
    "【w.authorType：作品数】",
    ...[...topCounts].sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+"："+v),
@@ -72,6 +82,10 @@ document.getElementById("run").addEventListener("click",async()=>{
    "",
    "【w.siteData.isR18：作品数】",
    ...[...flagCounts].sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+"："+v),
+   "",
+   "【top-level authorType 未設定作品の一覧】",
+   "全"+missingTopRows.length+"作品。各作品のNコード・タイトル・作者ID・siteData内の分類を表示。",
+   missingRowsText,
    "",
    "【3項目の組み合わせ：作品数】",
    ...[...comboCounts].sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+"："+v),
