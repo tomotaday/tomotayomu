@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ｜作者数診断</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;line-height:1.65;margin:0;padding:20px;color:#222;background:#f7f8fa}
+main{max-width:760px;margin:auto;background:white;border-radius:16px;padding:20px}
+h1{font-size:22px}button{font-size:17px;padding:14px 20px;border:0;border-radius:10px;background:#176b35;color:white}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f1f3f5;padding:14px;border-radius:10px}
+.note{color:#555;font-size:14px}
+</style>
+</head>
+<body><main>
+<h1>🔎 作者数診断（読み取り専用）</h1>
+<p>tomotaYomuWorksDB v2 の works を読み取り専用で集計します。作品データの追加・変更・削除は行いません。</p>
+<button id="run">診断を実行</button>
+<p id="status" class="note">ボタンを押してください。</p>
+<pre id="result">診断結果はここに表示されます。</pre>
+</main>
+<script>
+const DB_NAME="tomotaYomuWorksDB";
+const ncode=v=>String(v||"").trim().toUpperCase();
+function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME);r.onupgradeneeded=()=>{r.transaction.abort();reject(new Error("DB version mismatch; aborted"))};r.onsuccess=()=>{const db=r.result;if(db.version!==2||!db.objectStoreNames.contains("works")){db.close();reject(new Error("DB version/store mismatch"));return}resolve(db)};r.onerror=()=>reject(r.error||new Error("DB open failed"))})}
+function readAll(db){return new Promise((resolve,reject)=>{const st=db.transaction("works","readonly").objectStore("works"),out=[],r=st.openCursor();r.onsuccess=()=>{const c=r.result;if(c){out.push(c.value);c.continue()}else resolve(out)};r.onerror=()=>reject(r.error||new Error("cursor failed"))})}
+document.getElementById("run").addEventListener("click",async()=>{
+ const status=document.getElementById("status"),out=document.getElementById("result");
+ status.textContent="読み取り中…";out.textContent="";
+ let db;
+ try{
+  db=await openDB();const all=await readAll(db);db.close();db=null;
+  const narou=all.filter(w=>w&&w.site==="narou");
+  const withId=narou.filter(w=>String(w.authorId??"").trim());
+  const noNcode=withId.filter(w=>!ncode(w.workId||w.ncode||"").replace(/^NAROU:/,""));
+  const unique=(arr,keyFn)=>new Set(arr.map(keyFn).filter(Boolean)).size;
+  const authorKey=w=>String(w.authorId??"").trim();
+  const typeKey=w=>(w.authorType==="r18"?"r18":"normal")+":"+authorKey(w);
+  const missingIdNoSpace=withId.filter(w=>String(w.authorId??"")!==String(w.authorId??"").trim());
+  const missingType=withId.filter(w=>!["normal","r18"].includes(w.authorType));
+  const idsNoNcode=[...new Set(noNcode.map(authorKey))].sort();
+  const keysNoNcode=[...new Set(noNcode.map(typeKey))].sort();
+  const authorIdCount=unique(withId,authorKey);
+  const typedCount=unique(withId,typeKey);
+  const jsonLikeCount=typedCount;
+  const result=[
+   "【候補①：作者IDあり・Nコードなし】",
+   "なろう作品総数："+narou.length,
+   "作者IDあり作品数："+withId.length,
+   "作者IDあり・Nコードなし作品数："+noNcode.length,
+   "該当レコードの作者ID重複なし："+idsNoNcode.length,
+   "該当レコードの種別＋作者ID重複なし："+keysNoNcode.length,
+   "",
+   "【全体の比較】",
+   "作者IDのみの重複なし："+authorIdCount,
+   "種別＋作者IDの重複なし："+typedCount,
+   "JSON出力ロジック相当："+jsonLikeCount,
+   "",
+   "【追加の観察】",
+   "authorId前後空白ありレコード："+missingIdNoSpace.length,
+   "authorTypeがnormal/r18以外のレコード："+missingType.length,
+   "",
+   "【Nコードなし該当の作者キー】",
+   ...(keysNoNcode.length?keysNoNcode:["なし"])
+  ];
+  out.textContent=result.join("\n");
+  status.textContent="診断完了。読み取り専用で集計しました。";
+ }catch(e){if(db)db.close();status.textContent="診断失敗："+e.message}
+});
+</script></body></html>
