@@ -256,6 +256,8 @@ function itemFromCanonical(w){
  const item={
   ...merged,
   id:rawId,
+  registeredAt:w.registeredAt||"",
+  registeredAtType:w.registeredAtType||"",
   title:w.title||merged.title||"",
   author:w.authorName||merged.author||merged.authorName||"",
   authorId:w.authorId||merged.authorId||"",
@@ -281,7 +283,9 @@ function itemToCanonical(item,site){
  const bookmark=site==="note"?{url:String(item.bookmarkUrl||""),episodeId:""}:
   {url:String(item.bookmarkEpisodeUrl||""),episodeId:String(item.bookmarkEpisodeId||""),position:Number(item.bookmarkEpisode)||0};
  return {
-  id:canonicalId,site,workId:id,title:String(item.title||""),
+  id:canonicalId,site,workId:id,
+  registeredAt:String(item.registeredAt||""),registeredAtType:String(item.registeredAtType||""),
+  title:String(item.title||""),
   authorName:String(item.author||item.authorName||""),authorId:String(item.authorId||""),
   shelfId:String(item.shelfId||""),url:String(item.url||""),
   updatedAt:String(item.updatedAt||""),lastPublishedAt:String(item.lastPublishedAt||""),
