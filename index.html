@@ -1253,7 +1253,7 @@ function buildShelfFolders(){
  sortLabel.appendChild(sortSelect);sortBar.append(sortLabel,directionSelect);
  const aw=document.createElement("div");aw.className="folderCards";
  const compareText=(a,b)=>String(a).localeCompare(String(b),"ja",{numeric:true,sensitivity:"base"});
- const getDate=card=>{const raw=String(card.dataset.lastUpdated||"").trim();if(!raw)return null;const parsed=Date.parse(raw.replace(/[/.]/g,"-").replace(/\\s+/g,"T"));return Number.isFinite(parsed)?parsed:null};
+ const getDate=card=>{const raw=String(card.dataset.lastUpdated||"").trim();if(!raw)return null;const parsed=Date.parse(raw.replace(/[/.]/g,"-").replace(/\s+/g,"T"));return Number.isFinite(parsed)?parsed:null};
  const getNumber=value=>{const raw=String(value??"").trim();if(!raw)return null;const n=raw==="R"?1:Number(raw);return Number.isFinite(n)&&n>=0?n:null};
  const cardTitle=card=>String(card.querySelector("h2")?.textContent||"").trim();
  const cardAuthor=card=>String(card.dataset.authorName||card.querySelector(".authorName")?.textContent||"").trim();
