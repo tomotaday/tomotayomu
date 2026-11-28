@@ -26,6 +26,7 @@
 <script>
 "use strict";
 const DB_NAME="tomotaYomuWorksDB";
+const SEARCH_EXCLUDED_KEY="tomotaYomu_search_excluded_ncodes_v1";
 let report=null;
 const has=(o,k)=>Object.prototype.hasOwnProperty.call(o||{},k);
 const code=w=>String(w?.workId||w?.ncode||w?.id||"").replace(/^narou:/i,"").trim().toUpperCase();
@@ -34,8 +35,20 @@ const keys=o=>o&&typeof o==="object"?Object.keys(o).sort():[];
 function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,2);r.onupgradeneeded=()=>{try{r.transaction.abort()}catch{}reject(new Error("DBが存在しないかversion 2ではありません。安全のため停止しました。"))};r.onsuccess=()=>{const db=r.result;if(db.version!==2||!db.objectStoreNames.contains("works")){db.close();reject(new Error("DB構造が想定外です。"));return}resolve(db)};r.onerror=()=>reject(r.error||new Error("DBを開けません"));r.onblocked=()=>reject(new Error("DBが別タブで使用中です"))})}
 function readAll(db){return new Promise((resolve,reject)=>{const tx=db.transaction("works","readonly"),req=tx.objectStore("works").getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error||new Error("works読込失敗"));tx.onerror=()=>reject(tx.error||new Error("readonly transaction失敗"))})}
 function distribution(rows,get){const m=new Map();for(const w of rows){const v=raw(get(w));m.set(v,(m.get(v)||0)+1)}return Object.fromEntries([...m].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],"ja")))}
-function makeReport(all){
+function readSearchExcluded(){
+ const rawValue=localStorage.getItem(SEARCH_EXCLUDED_KEY);
+ const parsed=rawValue===null?[]:JSON.parse(rawValue);
+ if(!Array.isArray(parsed))throw new Error("検索除外リストの保存形式が配列ではありません。安全のため監査を中止しました。");
+ return new Set(parsed.map(v=>String(v).trim().toUpperCase()).filter(v=>/^N[0-9A-Z]+$/.test(v)));
+}
+function makeReport(all,excludedSet){
  const narou=all.filter(w=>w&&w.site==="narou");
+ const activeNarou=narou.filter(w=>!w.deletedAt);
+ const narouCodes=new Set(narou.map(code).filter(Boolean));
+ const activeCodes=new Set(activeNarou.map(code).filter(Boolean));
+ const matchedExcluded=[...excludedSet].filter(n=>narouCodes.has(n)).sort();
+ const activeExcluded=[...excludedSet].filter(n=>activeCodes.has(n)).sort();
+ const orphanExcluded=[...excludedSet].filter(n=>!narouCodes.has(n)).sort();
  const withId=narou.filter(w=>String(w.authorId??"").trim()!=="");
  const authors=new Map();
  for(const w of withId){const id=String(w.authorId).trim();if(!authors.has(id))authors.set(id,[]);authors.get(id).push(w)}
@@ -53,12 +66,12 @@ function makeReport(all){
  const records=narou.map(w=>({
   id:has(w,"id")?w.id:null,workId:has(w,"workId")?w.workId:null,ncode:code(w),
   deletedAt:has(w,"deletedAt")?w.deletedAt:null,
-  searchExcluded:has(w,"searchExcluded")?w.searchExcluded:null,
+  isSearchExcluded:excludedSet.has(code(w)),
   title:has(w,"title")?w.title:null,
   authorName:has(w,"authorName")?w.authorName:null,
   authorId:has(w,"authorId")?w.authorId:null,
   authorType:has(w,"authorType")?w.authorType:null,
-  fieldPresence:{authorName:has(w,"authorName"),authorId:has(w,"authorId"),authorType:has(w,"authorType"),authorUrl:has(w,"authorUrl"),authorManageName:has(w,"authorManageName"),authorKana:has(w,"authorKana"),authorKanaFirst:has(w,"authorKanaFirst"),authorKanaChecked:has(w,"authorKanaChecked"),siteData:has(w,"siteData"),siteDataIsR18:has(w.siteData,"isR18"),searchExcluded:has(w,"searchExcluded")},
+  fieldPresence:{authorName:has(w,"authorName"),authorId:has(w,"authorId"),authorType:has(w,"authorType"),authorUrl:has(w,"authorUrl"),authorManageName:has(w,"authorManageName"),authorKana:has(w,"authorKana"),authorKanaFirst:has(w,"authorKanaFirst"),authorKanaChecked:has(w,"authorKanaChecked"),siteData:has(w,"siteData"),siteDataIsR18:has(w.siteData,"isR18"),isSearchExcluded:true},
   authorUrl:has(w,"authorUrl")?w.authorUrl:null,
   authorManageName:has(w,"authorManageName")?w.authorManageName:null,
   authorKana:has(w,"authorKana")?w.authorKana:null,
@@ -83,12 +96,13 @@ function makeReport(all){
   audit:"author_pre_aggregation_readonly_v1",
   createdAt:new Date().toISOString(),
   database:{name:DB_NAME,version:2,store:"works",transaction:"readonly"},
-  scope:{allRecords:all.length,narouRecords:narou.length,narouWithDeletedAt:narou.filter(w=>!!w.deletedAt).length,narouWithoutDeletedAt:narou.filter(w=>!w.deletedAt).length,narouSearchExcluded:narou.filter(w=>w.searchExcluded===true).length,otherSiteRecords:all.length-narou.length},
+  scope:{allRecords:all.length,narouRecords:narou.length,narouWithDeletedAt:narou.filter(w=>!!w.deletedAt).length,narouWithoutDeletedAt:narou.filter(w=>!w.deletedAt).length,narouSearchExcluded:matchedExcluded.length,activeNarouSearchExcluded:activeExcluded.length,otherSiteRecords:all.length-narou.length},
+  searchExcluded:{source:"localStorage",key:SEARCH_EXCLUDED_KEY,storedNcodeCount:excludedSet.size,matchedNarouNcodeCount:matchedExcluded.length,matchedActiveNarouNcodeCount:activeExcluded.length,orphanNcodeCount:orphanExcluded.length,ncodes:matchedExcluded,activeNcodes:activeExcluded,orphanNcodes:orphanExcluded},
   counts:{withAuthorId:withId.length,withoutAuthorId:narou.length-withId.length,uniqueAuthorIds:idOnly.size,currentAuthorJsonKeys:currentJsonKeys.size,currentAuthorJsonKeyRule:"authorType==='r18' ? r18 : normal; unique key = type + ':' + authorId"},
   distributions:{
    authorIdValueType:distribution(narou,w=>w.authorId===null?"null":typeof w.authorId),
    authorType:distribution(narou,w=>w.authorType),
-   searchExcluded:distribution(narou,w=>w.searchExcluded),
+   isSearchExcluded:distribution(narou,w=>excludedSet.has(code(w))),
    siteDataIsR18:distribution(narou,w=>w.siteData?.isR18),
    authorName:distribution(narou,w=>w.authorName),
    siteDataAuthorType:distribution(narou,w=>w.siteData?.authorType),
@@ -105,14 +119,15 @@ $("run").addEventListener("click",async()=>{
  const btn=$("run");btn.disabled=true;$("status").textContent="新worksをreadonlyで読み取り中…";
  let db;
  try{
+  const excludedSet=readSearchExcluded();
   db=await openDB();let all;try{all=await readAll(db)}finally{db.close();db=null}
-  report=makeReport(all);
+  report=makeReport(all,excludedSet);
   const s=report.scope,c=report.counts,x=report.conflicts;
-  $("stats").innerHTML=[["なろう作品",s.narouRecords],["ごみばこ作品",s.narouWithDeletedAt],["作者IDあり",c.withAuthorId],["作者IDなし",c.withoutAuthorId],["作者IDの種類数",c.uniqueAuthorIds],["現行JSONの作者数",c.currentAuthorJsonKeys],["authorType混在ID",x.authorTypeConflictCount],["作者名混在ID",x.authorNameConflictCount],["isR18混在ID",x.isR18ConflictCount],["Nコード重複",x.duplicateNcodeCount]].map(([a,b])=>'<div class="stat"><b>'+b+'</b><span>'+a+'</span></div>').join("");
+  $("stats").innerHTML=[["なろう作品",s.narouRecords],["ごみばこ作品",s.narouWithDeletedAt],["検索除外（DB一致）",s.narouSearchExcluded],["検索除外（現役）",s.activeNarouSearchExcluded],["作者IDあり",c.withAuthorId],["作者IDなし",c.withoutAuthorId],["作者IDの種類数",c.uniqueAuthorIds],["現行JSONの作者数",c.currentAuthorJsonKeys],["authorType混在ID",x.authorTypeConflictCount],["作者名混在ID",x.authorNameConflictCount],["isR18混在ID",x.isR18ConflictCount],["Nコード重複",x.duplicateNcodeCount]].map(([a,b])=>'<div class="stat"><b>'+b+'</b><span>'+a+'</span></div>').join("");
   $("distributions").textContent=JSON.stringify(report.distributions,null,2);
-  $("preview").textContent=JSON.stringify({scope:report.scope,counts:report.counts,conflicts:report.conflicts,authors:report.authors.slice(0,12),recordsSample:report.records.slice(0,5)},null,2)+"\n\n※全件データは「監査JSONを保存」で出力されます。";
+  $("preview").textContent=JSON.stringify({scope:report.scope,searchExcluded:report.searchExcluded,counts:report.counts,conflicts:report.conflicts,authors:report.authors.slice(0,12),recordsSample:report.records.slice(0,5)},null,2)+"\n\n※全件データは「監査JSONを保存」で出力されます。";
   $("summary").hidden=false;$("details").hidden=false;$("download").disabled=false;$("copy").disabled=false;
-  $("status").textContent="監査完了。"+s.narouRecords+"件のなろう作品を抽出しました。\nDBへの書き込み・変更・削除はありません。JSONを保存して、このチャットに添付してください。";
+  $("status").textContent="監査完了。"+s.narouRecords+"件のなろう作品と、現在の検索除外リスト"+report.searchExcluded.storedNcodeCount+"件を照合しました。\n検索除外リストはlocalStorageから読み取りました。DBへの書き込み・変更・削除はありません。JSONを保存して、このチャットに添付してください。";
  }catch(e){if(db)db.close();$("status").textContent="監査停止："+(e.message||String(e))}
  finally{btn.disabled=false}
 });
