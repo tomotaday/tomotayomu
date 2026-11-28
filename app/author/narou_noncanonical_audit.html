@@ -130,9 +130,9 @@ $("run").addEventListener("click",async()=>{
     "旧 characterCount：残存 "+count(list,"characterCount")+"件",
     "旧 reading：残存 "+count(list,"reading")+"件"
    ];
-   return lines.join("\\n");
+   return lines.join("\n");
   };
-  $("counts").textContent="【本棚内・なろう作品】\\n"+summary(active)+"\\n\\n【ごみばこ】\\n対象 "+trash.length+"件（今回は変更対象外）";
+  $("counts").textContent="【本棚内・なろう作品】\n"+summary(active)+"\n\n【ごみばこ】\n対象 "+trash.length+"件（今回は変更対象外）";
   $("status").textContent="検査完了。全 "+found.length+" 件（本棚内 "+active.length+" / ごみばこ "+trash.length+"）。DBへの書き込みはありません。";
   draw();
  }catch(e){$("status").textContent="検査失敗："+e.message+"\nDBへの書き込みはありません。"}
