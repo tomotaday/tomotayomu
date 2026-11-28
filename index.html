@@ -1998,7 +1998,7 @@ document.getElementById("copyAuthorJsonBtn")?.addEventListener("click",async()=>
         tx.onerror=()=>reject(tx.error||new Error("新DB作品読込に失敗しました"));
       });
     }finally{db.close()}
-    const rows=workRows.map(v=>({authorId:v.authorId,authorType:v.siteData?.isR18||v.siteData?.legacyFields?.__r18?"r18":"normal",authorName:v.authorName,writer:v.authorName,authorUrl:v.siteData?.authorUrl||""}));
+    const rows=workRows.map(v=>({authorId:v.authorId,authorType:v.siteData?.isR18===true?"r18":"normal",authorName:v.authorName,writer:v.authorName,authorUrl:v.siteData?.authorUrl||""}));
     const byKey=new Map();
     for(const a of rows){
       if(!a||!String(a.authorId||"").trim())continue;
@@ -2425,7 +2425,7 @@ async function readAtomAuthors(){
     const map=new Map();
     rows.forEach(w=>{
       const id=String(w.authorId||"").trim();if(!id)return;
-      const type=(w.siteData?.isR18===true||w.siteData?.legacyFields?.__r18===true)?"r18":"normal";
+      const type=w.siteData?.isR18===true?"r18":"normal";
       const key=type+":"+id;
       if(!map.has(key))map.set(key,{authorId:id,authorType:type,authorName:w.authorName||id,authorUrl:w.siteData?.authorUrl||""});
     });
