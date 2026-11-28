@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f7f8fa"><title>なろう旧項目・読書位置監査</title>
+<style>
+:root{color-scheme:light}*{box-sizing:border-box}body{margin:0;background:#f5f6f8;color:#20242a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.55}.wrap{max-width:900px;margin:auto;padding:18px 14px 40px}.panel{background:#fff;border:1px solid #e2e5e9;border-radius:14px;padding:16px;margin:12px 0}h1{font-size:21px;margin:0 0 8px}h2{font-size:17px;margin:0 0 10px}.muted{color:#626b76;font-size:13px}.actions{display:flex;gap:8px;flex-wrap:wrap}button{border:0;border-radius:10px;background:#2457a6;color:#fff;padding:12px 15px;font-size:15px;font-weight:600}button.secondary{background:#e9edf3;color:#263243}button:disabled{opacity:.5}.status{white-space:pre-wrap;font-size:14px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.stat{background:#f4f6f9;padding:10px;border-radius:10px}.stat b{display:block;font-size:22px;font-variant-numeric:tabular-nums}.stat span{font-size:12px;color:#626b76}.tablewrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:13px}td,th{padding:8px;border-bottom:1px solid #e8ebef;text-align:left;white-space:nowrap}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;background:#f4f6f9;padding:10px;border-radius:8px;max-height:60vh;overflow:auto}.danger{color:#9b341f}
+</style></head><body><main class="wrap">
+<h1>なろう作品・旧項目の読み取り監査</h1>
+<p class="muted">新works正本DBを読み取り専用で検査します。IndexedDBの更新・削除・保存は一切行いません。</p>
+<div class="panel"><h2>検査開始</h2><p class="muted">本棚と同じブラウザ／オリジンで開いてください。ごみばこ（deletedAtあり）は本棚作品数から分けて集計します。</p><div class="actions"><button id="run">読み取り監査を実行</button><button id="copy" class="secondary" disabled>結果をコピー</button><button id="download" class="secondary" disabled>JSON保存</button></div><p id="status" class="status">未実行</p></div>
+<div id="summary" class="panel" hidden></div><div id="details" class="panel" hidden></div><div class="panel"><h2>安全性</h2><p class="muted">DB名 tomotaYomuWorksDB／バージョン2／worksストアをreadonlyトランザクションで読みます。DBが存在しない・構造が異なる場合は停止します。実行時刻と対象レコードの値を含むレポートを端末内で生成します。</p></div>
+</main>
+<script>
+(()=>{
+"use strict";
+const $=id=>document.getElementById(id);let report=null;
+const has=(o,k)=>Object.prototype.hasOwnProperty.call(o||{},k);
+const typeOf=v=>v===null?"null":Array.isArray(v)?"array":typeof v;
+const state=(o,k)=>!has(o,k)?"なし":o[k]===undefined?"undefined":o[k]===null?"null":o[k]===""?"空文字":typeof o[k]==="number"&&o[k]===0?"ゼロ": "あり("+typeOf(o[k])+")";
+function validDate(v){
+ if(v===null||v===undefined||v==="")return {state:"空",value:v??null};
+ const raw=String(v).trim();
+ let m=raw.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+ if(m){const [y,mo,d,h="0",mi="0",se="0"]=m.slice(1).map((x,i)=>x===undefined?x:Number(x));const dt=new Date(Date.UTC(y,mo-1,d,h,mi,se));const ok=dt.getUTCFullYear()===y&&dt.getUTCMonth()===mo-1&&dt.getUTCDate()===d&&h<=23&&mi<=59&&se<=59;return {state:ok?"形式・日付OK":"不正な日付",value:raw,format:"年月日時分秒"};}
+ const iso=/^\d{4}-\d{2}-\d{2}T/.test(raw);
+ if(iso){const t=Date.parse(raw);if(Number.isFinite(t)){const d=new Date(t);const p=raw.slice(0,10).split("-").map(Number);const ok=d.getUTCFullYear()===p[0]&&d.getUTCMonth()+1===p[1]&&d.getUTCDate()===p[2];return {state:ok?"ISO日時OK":"ISO日付不整合",value:raw};}}
+ return {state:"形式未判定",value:raw};
+}
+function openDb(){return new Promise((resolve,reject)=>{const req=indexedDB.open("tomotaYomuWorksDB");req.onupgradeneeded=()=>{req.transaction.abort();reject(new Error("DB更新が必要と判定されたため、安全停止しました（更新はしていません）。"))};req.onsuccess=()=>{const db=req.result;if(db.version!==2||!db.objectStoreNames.contains("works")){db.close();reject(new Error("DBバージョンまたはworksストアが想定外です。"));return}resolve(db)};req.onerror=()=>reject(req.error||new Error("DBを開けません"));req.onblocked=()=>reject(new Error("DBが別タブで使用中です"));});}
+function readAll(db){return new Promise((resolve,reject)=>{const tx=db.transaction("works","readonly"),req=tx.objectStore("works").getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error||new Error("works読込失敗"));tx.onerror=()=>reject(tx.error||new Error("readonlyトランザクション失敗"));});}
+function summarize(rows,keys){
+ const out={};for(const k of keys){const present=rows.filter(w=>has(w,k));out[k]={present:present.length,absent:rows.length-present.length,types:{}};for(const w of present){const t=state(w,k);out[k].types[t]=(out[k].types[t]||0)+1;}}return out;
+}
+function makeReport(all){
+ const narou=all.filter(w=>w&&w.site==="narou");
+ const shelf=narou.filter(w=>!w.deletedAt);
+ const trash=narou.filter(w=>!!w.deletedAt);
+ const keys=["reading","characterCount","updatedAt","createdAt","publishedAt","lastPublishedAt","registeredAt","bookmark"];
+ const counts=summarize(shelf,keys);
+ const reading=shelf.filter(w=>has(w,"reading"));
+ const char=shelf.filter(w=>has(w,"characterCount"));
+ const updated=shelf.filter(w=>has(w,"updatedAt"));
+ const legacy=shelf.filter(w=>w.siteData&&has(w.siteData,"legacyFields"));
+ const union=[...new Map([...reading,...char,...updated].map(w=>[String(w.id||w.workId),w])).values()];
+ const details=union.map(w=>({
+  id:w.id??null,workId:w.workId??null,ncode:w.workId??(String(w.id||"").startsWith("narou:")?String(w.id).slice(6):null),
+  title:w.title??null,authorName:w.authorName??null,
+  fields:{reading:{state:state(w,"reading"),value:has(w,"reading")?w.reading:null},bookmark:{state:state(w,"bookmark"),value:has(w,"bookmark")?w.bookmark:null},characterCount:{state:state(w,"characterCount"),value:has(w,"characterCount")?w.characterCount:null},updatedAt:{state:state(w,"updatedAt"),value:has(w,"updatedAt")?w.updatedAt:null},createdAt:{state:state(w,"createdAt"),value:has(w,"createdAt")?w.createdAt:null}},
+  dates:{publishedAt:validDate(w.publishedAt),lastPublishedAt:validDate(w.lastPublishedAt),registeredAt:validDate(w.registeredAt)},
+  siteData:{isR18:w.siteData?.isR18??null,noveltype:w.siteData?.noveltype??null,hasLegacyFields:!!(w.siteData&&has(w.siteData,"legacyFields")),legacyFieldKeys:w.siteData?.legacyFields&&typeof w.siteData.legacyFields==="object"?Object.keys(w.siteData.legacyFields):[]}
+ }));
+ const dateCounts={};for(const k of ["publishedAt","lastPublishedAt","registeredAt"]){dateCounts[k]={};for(const w of shelf){const s=validDate(w[k]).state;dateCounts[k][s]=(dateCounts[k][s]||0)+1;}}
+ return {audit:"narou_legacy_fields_readonly_v1",createdAt:new Date().toISOString(),database:{name:"tomotaYomuWorksDB",version:2,store:"works",transaction:"readonly"},scope:{narouAll:narou.length,shelfWithoutDeletedAt:shelf.length,trashWithDeletedAt:trash.length,otherSiteRecords:all.length-narou.length},fieldCounts:counts,siteDataLegacyFields:{present:legacy.length,absent:shelf.length-legacy.length},dateValidation:dateCounts,overlap:{reading:reading.length,characterCount:char.length,updatedAt:updated.length,union:union.length,readingAndCharacterCount:shelf.filter(w=>has(w,"reading")&&has(w,"characterCount")).length,readingAndUpdatedAt:shelf.filter(w=>has(w,"reading")&&has(w,"updatedAt")).length,allThree:shelf.filter(w=>has(w,"reading")&&has(w,"characterCount")&&has(w,"updatedAt")).length},records:details};
+}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function render(r){
+ $("summary").hidden=false;$("details").hidden=false;
+ $("summary").innerHTML="<h2>全体件数</h2><div class=\"grid\">"+[
+ ["なろう全件",r.scope.narouAll],["本棚（削除除外）",r.scope.shelfWithoutDeletedAt],["ごみばこ",r.scope.trashWithDeletedAt],["他サイト",r.scope.otherSiteRecords],
+ ["reading",r.overlap.reading],["characterCount",r.overlap.characterCount],["updatedAt",r.overlap.updatedAt],["3項目の和集合",r.overlap.union]
+ ].map(x=>"<div class=\"stat\"><b>"+x[1]+"</b><span>"+x[0]+"</span></div>").join("")+"</div><h2 style=\"margin-top:16px\">重複状況</h2><p>reading＋characterCount："+r.overlap.readingAndCharacterCount+"件<br>reading＋updatedAt："+r.overlap.readingAndUpdatedAt+"件<br>3項目すべて："+r.overlap.allThree+"件</p><h2>項目別の存在数</h2><div class=\"tablewrap\"><table><tr><th>項目</th><th>存在</th><th>不在</th><th>値の状態</th></tr>"+Object.entries(r.fieldCounts).map(([k,v])=>"<tr><td>"+k+"</td><td>"+v.present+"</td><td>"+v.absent+"</td><td>"+Object.entries(v.types).map(([a,b])=>esc(a)+":"+b).join(" / ")+"</td></tr>").join("")+"</table></div><p class=\"muted\">siteData.legacyFields：存在 "+r.siteDataLegacyFields.present+"件／不在 "+r.siteDataLegacyFields.absent+"件</p>";
+ $("details").innerHTML="<h2>対象レコード（旧項目のいずれかを保持）</h2><p class=\"muted\">Nコード・作品ID・タイトル・reading・bookmark・旧項目の実値・日付検証結果をJSONに含めています。</p><pre>"+esc(JSON.stringify(r.records,null,2))+"</pre>";
+}
+$("run").addEventListener("click",async()=>{const b=$("run");b.disabled=true;$("status").textContent="DBをreadonlyで検査中…";try{const db=await openDb();let rows;try{rows=await readAll(db)}finally{db.close()}report=makeReport(rows);render(report);$("copy").disabled=false;$("download").disabled=false;$("status").textContent="監査完了。DBへの書き込み・削除は行っていません。\n検査日時："+report.createdAt+"\n対象："+report.scope.shelfWithoutDeletedAt+"件";}catch(e){$("status").textContent="監査停止："+e.message;}finally{b.disabled=false;}});
+$("copy").addEventListener("click",async()=>{if(!report)return;try{await navigator.clipboard.writeText(JSON.stringify(report,null,2));$("status").textContent+="\n結果JSONをコピーしました。";}catch(e){$("status").textContent+="\nコピーできません。JSON保存を使ってください。";}});
+$("download").addEventListener("click",()=>{if(!report)return;const blob=new Blob([JSON.stringify(report,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="narou-legacy-audit-"+new Date().toISOString().replace(/[:.]/g,"-")+".json";a.click();URL.revokeObjectURL(url);});
+})();
+</script></body></html>
