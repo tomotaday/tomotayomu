@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>作品登録経路・項目構造診断</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;margin:16px;line-height:1.55;color:#222}
+h1{font-size:1.25rem}button{font-size:1rem;padding:12px 18px;border:0;border-radius:10px;background:#2463eb;color:white}
+.note{background:#f2f5fa;padding:12px;border-radius:10px;font-size:.9rem}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f6f6;padding:12px;border-radius:10px;font-size:12px}
+#status{margin:12px 0}
+</style>
+</head>
+<body>
+<h1>作品登録経路・項目構造診断</h1>
+<p class="note">読み取り専用です。tomotaYomuWorksDB v2 の works と、検索除外NコードのlocalStorageを読み取ります。DB・localStorageへの書き込み、更新、削除は一切行いません。</p>
+<button id="run">診断を実行</button>
+<div id="status"></div>
+<pre id="out">実行ボタンを押してください。</pre>
+<script>
+"use strict";
+const TARGETS = [
+"N0116BR","N0166EW","N0445HS","N0567IC","N0576BK","N0822HU","N0960MX","N1694GC","N1806FV","N2412HO","N2486HT","N2521MZ","N2662DU","N2954IL","N3862BE","N4133FZ","N4639IC","N4713EQ","N5607FX","N5815GQ","N5838GI","N6385HL","N6446K","N6472HK","N6599FO","N6833CP","N7111BG","N7146HX","N7197GT","N8258IG","N8329II","N8472HO","N8780IJ","N9085IA","N9325HM","N9344IO","N9440GK","N9653IJ","N9696HP"
+];
+const EXCLUDED_KEY = "tomotaYomu_search_excluded_ncodes_v1";
+const has=(o,k)=>!!o&&Object.prototype.hasOwnProperty.call(o,k);
+const cleanId=v=>String(v??"").replace(/^narou:/i,"").trim().toUpperCase();
+const val=(o,k)=>has(o,k)?o[k]:"(keyなし)";
+const keys=o=>o&&typeof o==="object"?Object.keys(o).sort():[];
+function readWorks(){
+ return new Promise((resolve,reject)=>{
+  const req=indexedDB.open("tomotaYomuWorksDB",2);
+  req.onerror=()=>reject(req.error||new Error("DBを開けません"));
+  req.onsuccess=()=>{
+   const db=req.result;
+   if(!db.objectStoreNames.contains("works")){db.close();reject(new Error("worksストアがありません"));return;}
+   const tx=db.transaction("works","readonly");
+   const get=tx.objectStore("works").getAll();
+   get.onsuccess=()=>{const rows=get.result||[];db.close();resolve(rows);};
+   get.onerror=()=>{const e=get.error;db.close();reject(e||new Error("works読み取り失敗"));};
+  };
+ });
+}
+document.getElementById("run").addEventListener("click",async()=>{
+ const status=document.getElementById("status"),out=document.getElementById("out");
+ status.textContent="読み取り中…";out.textContent="";
+ try{
+  const all=await readWorks();
+  const raw=localStorage.getItem(EXCLUDED_KEY);
+  let excluded=[];
+  try{const parsed=JSON.parse(raw||"[]");excluded=Array.isArray(parsed)?parsed.map(cleanId):[];}catch{}
+  const excludedSet=new Set(excluded);
+  const rows=all.filter(w=>w.site==="narou"&&!w.deletedAt&&TARGETS.includes(cleanId(w.workId||w.id)))
+   .sort((a,b)=>cleanId(a.workId||a.id).localeCompare(cleanId(b.workId||b.id)));
+  const report={
+   database:"tomotaYomuWorksDB",version:2,
+   works全件:all.length,
+   対象Nコード数:TARGETS.length,
+   DB内で見つかった対象数:rows.length,
+   対象の詳細:rows.map(w=>{
+    const sd=w.siteData||{},lf=sd.legacyFields||{};
+    return {
+     ncode:cleanId(w.workId||w.id),
+     title:val(w,"title"),
+     authorName:val(w,"authorName"),
+     authorId:val(w,"authorId"),
+     top_authorType:val(w,"authorType"),
+     siteData_authorType:val(sd,"authorType"),
+     siteData_isR18:val(sd,"isR18"),
+     registeredAt:val(w,"registeredAt"),
+     registeredAtType:val(w,"registeredAtType"),
+     createdAt:val(w,"createdAt"),
+     updatedAt:val(w,"updatedAt"),
+     publishedAt:val(w,"publishedAt"),
+     lastPublishedAt:val(w,"lastPublishedAt"),
+     reading:val(w,"reading"),
+     characterCount:val(w,"characterCount"),
+     bookmark:val(w,"bookmark"),
+     shelfId:val(w,"shelfId"),
+     status:val(w,"status"),
+     検索除外:excludedSet.has(cleanId(w.workId||w.id)),
+     workの全キー:keys(w),
+     siteDataの全キー:keys(sd),
+     legacyFieldsの全キー:keys(lf)
+    };
+   })
+  };
+  out.textContent=JSON.stringify(report,null,2);
+  status.textContent="診断完了。表示されたJSON全体をコピーして、ししょーに貼ってね。";
+ }catch(e){status.textContent="診断エラー";out.textContent=String(e&&e.stack||e);}
+});
+</script>
+</body>
+</html>
