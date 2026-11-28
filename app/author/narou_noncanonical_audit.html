@@ -103,7 +103,7 @@ $("run").addEventListener("click",async()=>{
   found=narou.map(w=>{
    const sd=w.siteData&&typeof w.siteData==="object"?w.siteData:{};
    const legacy=sd.legacyFields&&typeof sd.legacyFields==="object"?sd.legacyFields:{};
-   return {ncode:String(w.workId||w.id||"(Nコードなし)"),title:String(w.title||"(タイトルなし)"),
+   return {raw:w,ncode:String(w.workId||w.id||"(Nコードなし)"),title:String(w.title||"(タイトルなし)"),
     r18:sd.isR18===true,trash:!!w.deletedAt,
     topExtra:keys(w).filter(k=>!TOP.has(k)).sort(),
     siteExtra:keys(sd).filter(k=>k!=="legacyFields"&&!SITE.has(k)).sort(),
@@ -117,7 +117,7 @@ $("run").addEventListener("click",async()=>{
   $("flagged").textContent=flagged.length.toLocaleString("ja-JP");
   const tally=list=>{const m=new Map();for(const w of list)for(const k of [...w.topExtra.map(x=>"top."+x),...w.siteExtra.map(x=>"siteData."+x),...w.legacyKeys.map(x=>"legacyFields."+x)])m.set(k,(m.get(k)||0)+1);return [...m].sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>k+"："+v+"作品").join("\n")||"検出なし"};
   const present=(w,k)=>w[k]!==undefined&&w[k]!==null&&String(w[k]).trim()!=="";
-  const count=(list,k)=>list.filter(w=>present(w,k)).length;
+  const count=(list,k)=>list.filter(item=>present(item.raw,k)).length;
   const summary=list=>{
    const total=list.length;
    const lines=[
