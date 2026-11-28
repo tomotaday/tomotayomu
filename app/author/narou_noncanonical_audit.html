@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f3ed">
+<title>なろう作品・正規項目外データ検査｜ともたよむ</title>
+<style>
+:root{--bg:#f6f3ed;--paper:#fffdf9;--ink:#252525;--muted:#777;--line:#c9c0b4;--warn:#fff1d6}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.55}
+main{width:min(100%,900px);margin:auto;padding:18px 13px 48px}
+header,.panel{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0}
+h1{font-size:20px;margin:0 0 6px}h2{font-size:16px;margin:0 0 8px}
+.small{font-size:12px;color:var(--muted)}button{font:inherit;padding:9px 13px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.status{white-space:pre-wrap;overflow-wrap:anywhere;background:#f1f2f4;border-radius:8px;padding:10px;font-size:13px;margin-top:8px}
+.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.metric{background:#f1f2f4;border-radius:8px;padding:9px}.metric strong{display:block;font-size:21px}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.filters input{font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;min-width:0;flex:1}
+table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:7px 5px;border-bottom:1px solid #ddd;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{background:#f1eee8;position:sticky;top:0}
+.scroll{max-height:65vh;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.flag{background:var(--warn)}.muted{color:var(--muted)}
+</style>
+</head>
+<body><main>
+<p><a href="../../index.html">← ともたよむ本棚へ戻る</a></p>
+<header>
+<h1>🔎 なろう作品・正規項目外データ検査</h1>
+<p>新works正本DBのなろう作品だけを読み取り、トップ階層と siteData の項目名を検査します。</p>
+<p class="small">対象：tomotaYomuWorksDB / version 2 / works。通常・R18・ごみばこを含みます。Kakuyomu・noteは対象外です。</p>
+<p class="small">このページは readonly transaction のみ使用します。IndexedDBへの追加・更新・削除、localStorageの読み書きは行いません。</p>
+<button id="run" type="button">検査を実行</button>
+<div id="status" class="status">実行ボタンを押してください。</div>
+</header>
+<section class="panel">
+<h2>検査結果</h2>
+<div class="metrics">
+<div class="metric">なろう全作品<strong id="total">—</strong></div>
+<div class="metric">本棚内<strong id="active">—</strong></div>
+<div class="metric">ごみばこ<strong id="trash">—</strong></div>
+<div class="metric">正規項目外あり<strong id="flagged">—</strong></div>
+</div>
+<div id="counts" class="status">未検査</div>
+</section>
+<section class="panel">
+<h2>対象作品一覧</h2>
+<p class="small">「正規項目外」は項目名の検出結果です。削除してよいという判定ではありません。siteData.legacyFields は現行の変更登録画面が参照するため、別枠でキーを表示します。</p>
+<div class="filters"><input id="filter" type="search" placeholder="Nコード・作品名・項目名で絞り込み"><label><input id="trashOnly" type="checkbox"> ごみばこのみ</label></div>
+<div class="scroll"><table><thead><tr><th>Nコード / 作品名</th><th>区分</th><th>正規項目外（トップ階層）</th><th>正規項目外（siteData）</th><th>legacyFields内のキー</th></tr></thead><tbody id="rows"><tr><td colspan="5" class="muted">未検査</td></tr></tbody></table></div>
+</section>
+<script>
+"use strict";
+const DB="tomotaYomuWorksDB",VERSION=2;
+const TOP=new Set([
+ "id","site","workId","registeredAt","registeredAtType",
+ "title","authorName","authorId","authorType","authorUrl","authorManageName",
+ "authorKana","authorKanaFirst","authorKanaChecked",
+ "shelfId","bookmark","url","synopsis","status","episodeCount",
+ "publishedAt","lastPublishedAt","keywords","genres","siteData","deletedAt",
+ "deletedFromShelfId"
+]);
+const SITE=new Set([
+ "isR18","authorType","noveltype","end","keyword","genre","biggenre","nocgenre",
+ "isr15","isbl","isgl","iszankoku","istensei","istenni","isstop",
+ "novelupdated_at","api_fetched_at","userid_source","userid","sourceUrl"
+]);
+let found=[];
+const $=id=>document.getElementById(id);
+function openDb(){return new Promise((resolve,reject)=>{
+ const req=indexedDB.open(DB);
+ req.onupgradeneeded=()=>{req.transaction.abort();reject(Error("DBの新規作成・更新要求が発生したため中止しました"))};
+ req.onsuccess=()=>{const db=req.result;if(db.version!==VERSION||!db.objectStoreNames.contains("works")){db.close();reject(Error("DB version / worksストアが想定外です"));return}resolve(db)};
+ req.onerror=()=>reject(req.error||Error("DBを開けません"));
+});}
+function readAll(db){return new Promise((resolve,reject)=>{
+ const tx=db.transaction("works","readonly"),req=tx.objectStore("works").getAll();
+ req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error||Error("works読込失敗"));
+ tx.onerror=()=>reject(tx.error||Error("readonly transaction失敗"));
+});}
+function keys(v){return v&&typeof v==="object"&&!Array.isArray(v)?Object.keys(v):[]}
+function draw(){
+ const q=$("filter").value.trim().toLocaleLowerCase("ja-JP"),trashOnly=$("trashOnly").checked;
+ const rows=found.filter(w=>{
+  if(trashOnly&&!w.trash)return false;
+  return !q||[w.ncode,w.title,...w.topExtra,...w.siteExtra,...w.legacyKeys].join(" ").toLocaleLowerCase("ja-JP").includes(q);
+ });
+ $("rows").innerHTML="";
+ if(!rows.length){$("rows").innerHTML='<tr><td colspan="5">該当作品なし</td></tr>';return}
+ const frag=document.createDocumentFragment();
+ for(const w of rows){
+  const tr=document.createElement("tr");if(w.topExtra.length||w.siteExtra.length||w.legacyKeys.length)tr.className="flag";
+  const cells=[w.ncode+"\n"+w.title,(w.r18?"R18":"通常")+(w.trash?" / ごみばこ":""),
+   w.topExtra.join(", ")||"—",w.siteExtra.join(", ")||"—",w.legacyKeys.join(", ")||"—"];
+  for(const value of cells){const td=document.createElement("td");td.textContent=value;tr.appendChild(td)}
+  frag.appendChild(tr);
+ }
+ $("rows").appendChild(frag);
+}
+$("run").addEventListener("click",async()=>{
+ $("run").disabled=true;$("status").textContent="新worksを読み取り中…";
+ let db;
+ try{
+  db=await openDb();const all=await readAll(db);
+  const narou=all.filter(w=>w&&w.site==="narou");
+  found=narou.map(w=>{
+   const sd=w.siteData&&typeof w.siteData==="object"?w.siteData:{};
+   const legacy=sd.legacyFields&&typeof sd.legacyFields==="object"?sd.legacyFields:{};
+   return {ncode:String(w.workId||w.id||"(Nコードなし)"),title:String(w.title||"(タイトルなし)"),
+    r18:sd.isR18===true,trash:!!w.deletedAt,
+    topExtra:keys(w).filter(k=>!TOP.has(k)).sort(),
+    siteExtra:keys(sd).filter(k=>k!=="legacyFields"&&!SITE.has(k)).sort(),
+    legacyKeys:keys(legacy).sort()};
+  }).sort((a,b)=>a.ncode.localeCompare(b.ncode));
+  const active=found.filter(w=>!w.trash),trash=found.filter(w=>w.trash);
+  const flagged=found.filter(w=>w.topExtra.length||w.siteExtra.length||w.legacyKeys.length);
+  $("total").textContent=found.length.toLocaleString("ja-JP");
+  $("active").textContent=active.length.toLocaleString("ja-JP");
+  $("trash").textContent=trash.length.toLocaleString("ja-JP");
+  $("flagged").textContent=flagged.length.toLocaleString("ja-JP");
+  const tally=list=>{const m=new Map();for(const w of list)for(const k of [...w.topExtra.map(x=>"top."+x),...w.siteExtra.map(x=>"siteData."+x),...w.legacyKeys.map(x=>"legacyFields."+x)])m.set(k,(m.get(k)||0)+1);return [...m].sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>k+"："+v+"作品").join("\n")||"検出なし"};
+  $("counts").textContent="【本棚内】\n"+tally(active)+"\n\n【ごみばこ】\n"+tally(trash)+"\n\n※ legacyFields は独立集計。正規項目外の削除対象とは断定していません。";
+  $("status").textContent="検査完了。全 "+found.length+" 件（本棚内 "+active.length+" / ごみばこ "+trash.length+"）。DBへの書き込みはありません。";
+  draw();
+ }catch(e){$("status").textContent="検査失敗："+e.message+"\nDBへの書き込みはありません。"}
+ finally{if(db)db.close();$("run").disabled=false}
+});
+$("filter").addEventListener("input",draw);$("trashOnly").addEventListener("change",draw);
+</script>
+</main></body></html>
