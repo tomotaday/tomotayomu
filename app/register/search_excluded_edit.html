@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f6f3ed"><title>ともたよむ｜変更登録</title>
 <style>:root{--bg:#f6f3ed;--card:#fffdf9;--ink:#252525;--muted:#777;--line:#aaa195}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.6}main{width:min(100%,720px);margin:auto;padding:24px 16px 48px}h1{font-size:26px;margin:12px 0 6px}.note{font-size:13px;color:var(--muted);margin-bottom:18px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}label{display:block;font-weight:700;margin:12px 0 4px}input,textarea{display:block;width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}.readonly-url{background:#eeeae3;color:#666;border-color:#c8c0b5}textarea{resize:vertical}button,a.button{display:inline-block;margin:14px 8px 0 0;padding:10px 14px;background:#fffdf9;border:1px solid var(--line);border-radius:8px;color:var(--ink);font:inherit;text-decoration:none}button.primary{font-weight:700;background:#e9e2d6}#status{white-space:pre-wrap;margin-top:14px;font-size:14px}.ncode{font-size:14px;color:var(--muted)}</style></head>
-<body><main><a href="../../index.html">← ともたよむ本棚へ戻る</a><h1>✏️ 変更登録</h1><p class="note">作品カードから引き継いだNコードの登録済みデータを読み込み、修正内容を本棚の作品情報に保存します。棚の配置と読書位置は維持します。</p>
+<body><main><a href="../../index.html">← ともたよむ本棚へ戻る</a><h1>✏️ 変更登録</h1><p class="note">作品カードから引き継いだNコードの登録済みデータを読み込み、修正内容を本棚の作品情報に保存します。棚の配置とbookmarkは維持します。</p>
 <p class="note">使い方：本棚の「🚫検索除外」一覧を開き、対象作品の「✏️ 内容を編集」からこの画面を開いてください。作品ごとのNコードを使って登録済み情報を読み込みます。</p>
 <section class="card"><div id="ncode" class="ncode">Nコードを読み込み中…</div>
 <label for="title">作品タイトル</label><input id="title" autocomplete="off"><label for="writer">作者名</label><input id="writer" autocomplete="off"><label for="authorId">作者ID（通常：数字／R18：英数字）</label><input id="authorId" autocomplete="off" autocapitalize="characters"><label for="sourceUrl">取得元URL（変更不可）</label><input id="sourceUrl" autocomplete="url" readonly aria-readonly="true" class="readonly-url"><small class="note">作品を特定するURLです。確認・コピーはできますが、変更できません。</small><label for="story">あらすじ</label><textarea id="story" rows="5"></textarea><label for="statusValue">作品状態（連載中・完結・短編）</label><input id="statusValue"><label for="episodeCount">エピソード数</label><input id="episodeCount" inputmode="numeric"><label for="genreText">ジャンル</label><input id="genreText"><label for="publishedAt">掲載日時（YYYY/MM/DD HH:mm）</label><input id="publishedAt" placeholder="2023/09/01 14:05"><label for="latestAt">最新掲載日時（YYYY/MM/DD HH:mm）</label><input id="latestAt" placeholder="2023/09/01 14:14"><label for="disclosure">開示設定</label><input id="disclosure"><button id="save" class="primary" type="button">変更を保存</button><a class="button" href="../../index.html">本棚へ戻る</a><div id="status" role="status">登録済みデータを読み込んでいます…</div></section></main>
@@ -27,28 +27,27 @@ function canonicalDateValue(v,label){
  return normalized;
 }
 function setStatus(s){el("status").textContent=s;}
-function legacyOf(w){
- const legacy=w.siteData?.legacyFields||{};
+function canonicalFields(w){
+ const siteData=w.siteData&&typeof w.siteData==="object"?w.siteData:{};
  return {
-  ...legacy,
   ncode:String(w.workId||ncode),
   title:w.title||"",
   writer:w.authorName||"",
   userid:w.authorId??"",
-  source_url:w.url||"",
+  source_url:w.url||siteData.sourceUrl||"",
   story:w.synopsis||"",
   general_all_no:w.episodeCount??"",
-  general_firstup:w.publishedAt||legacy.general_firstup||"",
-  general_lastup:w.lastPublishedAt||legacy.general_lastup||"",
-  genre_text:legacy.genre_text||"",
-  disclosure:legacy.disclosure||"",
-  end:w.siteData?.end,
-  noveltype:w.siteData?.noveltype,
-  __r18:w.siteData?.isR18===true||legacy.__r18===true
+  general_firstup:w.publishedAt||"",
+  general_lastup:w.lastPublishedAt||"",
+  genre_text:siteData.genreText||"",
+  disclosure:siteData.disclosure||"",
+  end:siteData.end,
+  noveltype:siteData.noveltype,
+  __r18:siteData.isR18===true
  };
 }
 function fill(w){
- const v=legacyOf(w);
+ const v=canonicalFields(w);
  el("title").value=v.title;
  el("writer").value=v.writer;
  el("authorId").value=v.userid==null?"":String(v.userid);
@@ -115,29 +114,25 @@ el("save").addEventListener("click",async()=>{
   const end=status.includes("完結")?0:1;
   const noveltype=status.includes("短編")?2:1;
   const sourceUrl=original.url||el("sourceUrl").value.trim();
-  const legacy={
-   ...legacyOf(original),
-   title,writer:el("writer").value.trim(),userid:authorId||0,
-   source_url:sourceUrl,story:el("story").value,
-   general_all_no:episodeCount,episode_count:episodeCount,
-general_firstup:published,
-   general_lastup:latest,latest_episode_at:latest,novelupdated_at:latest,
-   genre_text:el("genreText").value.trim(),disclosure:el("disclosure").value.trim(),
-   end,noveltype
-  };
-  delete legacy.character_count;
   const updated={
    ...original,
    title,
-   authorName:legacy.writer,
+   authorName:el("writer").value.trim(),
    authorId:authorId||"",
    url:sourceUrl,
-   synopsis:legacy.story,
+   synopsis:el("story").value,
    episodeCount,
    publishedAt:published,
    lastPublishedAt:latest,
    status:status.includes("短編")?"短編":status.includes("完結")?"完結":"連載中",
-   siteData:{...(original.siteData||{}),end,noveltype,legacyFields:legacy}
+   siteData:{
+    ...(original.siteData||{}),
+    isR18:original.siteData?.isR18===true,
+    end,noveltype,
+    genreText:el("genreText").value.trim(),
+    disclosure:el("disclosure").value.trim(),
+    sourceUrl
+   }
   };
   db=await openDB();
   await new Promise((resolve,reject)=>{
@@ -148,7 +143,7 @@ general_firstup:published,
    tx.onabort=()=>reject(tx.error||new Error("保存中止"));
   });
   original=updated;
-  setStatus("新DBへ保存しました。棚所属・bookmark・読書位置は維持されています。本棚へ戻ると作品カードに反映されます。");
+  setStatus("新DBへ保存しました。棚所属とbookmarkは維持されています。本棚へ戻ると作品カードに反映されます。");
  }catch(e){
   setStatus("保存できませんでした："+e.message);
  }finally{
