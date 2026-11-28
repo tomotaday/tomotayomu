@@ -102,6 +102,7 @@ function convertApiRow(row,existing,exportedAt){
  };
  for(const key of API_FIELDS)work[key]=clone(api[key]);
  const siteData=work.siteData&&typeof work.siteData==="object"?clone(work.siteData):{};
+ delete siteData.legacyFields;
  Object.assign(siteData,{
   noveltype:novelType,end,keyword:typeof raw.keyword==="string"?raw.keyword:"",
   genre:raw.genre??null,biggenre:raw.biggenre??null,nocgenre:raw.nocgenre??null,
