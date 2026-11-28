@@ -59,7 +59,7 @@ summary{cursor:pointer;font-weight:600;padding:4px 0}.stat{display:flex;gap:8px;
 </div>
 
 <script>
-const VERSION="3.1.0.13";
+const VERSION="3.1.0.14";
 const DB_NAME="tomotaYomuWorksDB";
 function esc(s){return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 function ncode(v){return String(v||"").trim().toUpperCase();}
@@ -111,10 +111,10 @@ function openDB(){
 }
 function readAll(db,name){return new Promise((resolve,reject)=>{const st=db.transaction(name,"readonly").objectStore(name),out=[],r=st.openCursor();r.onsuccess=()=>{const c=r.result;if(c){out.push(c.value);c.continue()}else resolve(out)};r.onerror=()=>reject(r.error||new Error(name+"読込失敗"))})}
 function workCode(w){return ncode(w?.workId||w?.ncode||"").replace(/^NAROU:/,"")}
-function adaptWork(w){const legacy=w.siteData?.legacyFields||{};return {...w,ncode:workCode(w),writer:w.authorName||legacy.writer||"",__r18:w.siteData?.isR18===true||legacy.__r18===true,title:w.title||legacy.title||"",authorType:w.authorType||(w.siteData?.isR18===true?"r18":"normal")}}
-async function getWorksAndAuthors(){const db=await openDB(),raw=await readAll(db,"works"),works=raw.filter(w=>w.site==="narou").map(adaptWork);return {db,works,authors:works.filter(w=>String(w.authorId||"").trim())}}
+function adaptWork(w){const isR18=w.siteData?.isR18===true;return {...w,ncode:workCode(w),writer:w.authorName||"",__r18:isR18,title:w.title||"",authorType:isR18?"r18":"normal"}}
+async function getWorksAndAuthors(){const db=await openDB(),raw=await readAll(db,"works"),works=raw.filter(w=>w.site==="narou"&&!w.deletedAt).map(adaptWork);return {db,works,authors:works.filter(w=>String(w.authorId||"").trim())}}
 async function readIndexed(){return getWorksAndAuthors()}
-async function writeAuthorFields(authorId,patch){const db=await openDB(),raw=await readAll(db,"works"),targets=raw.filter(w=>w.site==="narou"&&String(w.authorId||"").trim()===String(authorId).trim());if(!targets.length){db.close();throw new Error("対象作者の作品紐付けが見つかりません。")}await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite"),st=tx.objectStore("works");targets.forEach(w=>st.put({...w,...patch}));tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("作者情報保存失敗"));tx.onabort=()=>reject(tx.error||new Error("作者情報保存中止"))});db.close()}
+async function writeAuthorFields(authorId,patch){const db=await openDB(),raw=await readAll(db,"works"),targets=raw.filter(w=>w.site==="narou"&&!w.deletedAt&&String(w.authorId||"").trim()===String(authorId).trim());if(!targets.length){db.close();throw new Error("対象作者の作品紐付けが見つかりません。")}await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite"),st=tx.objectStore("works");targets.forEach(w=>st.put({...w,...patch}));tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("作者情報保存失敗"));tx.onabort=()=>reject(tx.error||new Error("作者情報保存中止"))});db.close()}
 async function render(){
   const {works,authors}=await readIndexed();
   const rows=authors.filter(a=>a&&a.ncode);
@@ -230,7 +230,7 @@ function kanaGroup(v){
   return "🔤 読み仮名未登録";
 }
 async function fetchNormalKanas(){
- const db=await openDB(),raw=await readAll(db,"works"),authors=raw.filter(w=>w.site==="narou"&&String(w.authorId||"").trim()&&w.authorType!=="r18");
+ const db=await openDB(),raw=await readAll(db,"works"),authors=raw.filter(w=>w.site==="narou"&&!w.deletedAt&&String(w.authorId||"").trim()&&w.siteData?.isR18!==true);
  const groups=new Map();
  authors.forEach(w=>{const id=String(w.authorId||"").trim();if(!/^\d+$/.test(id))return;if(!groups.has(id))groups.set(id,{id,rows:[],kana:String(w.authorKana||"").trim(),checked:Boolean(w.authorKanaChecked)});const g=groups.get(id);g.rows.push(w);if(!g.kana&&w.authorKana)g.kana=String(w.authorKana).trim();if(w.authorKanaChecked)g.checked=true});
  const targets=[...groups.values()].filter(g=>!g.kana&&!g.checked);
@@ -260,7 +260,7 @@ function renderList(id,arr,linkedSet){
 }
 async function saveAuthorToIndexedDB(info,apiWorks,hits,authorName){
  const db=await openDB(),raw=await readAll(db,"works"),hitSet=new Set(hits);
- const updates=raw.filter(w=>w.site==="narou"&&hitSet.has(workCode(w))).map(w=>({...w,authorId:info.id,authorType:info.type,authorName:authorName||w.authorName||"",authorUrl:String(info.url||""),authorKanaChecked:Boolean(w.authorKanaChecked)}));
+ const updates=raw.filter(w=>w.site==="narou"&&!w.deletedAt&&hitSet.has(workCode(w))).map(w=>({...w,authorId:info.id,authorType:info.type,authorName:authorName||w.authorName||"",authorUrl:String(info.url||""),authorKanaChecked:Boolean(w.authorKanaChecked)}));
  if(!updates.length){db.close();throw new Error("新DBに照合対象作品がありません。")}
  await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite"),st=tx.objectStore("works");updates.forEach(w=>st.put(w));tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("作者情報保存失敗"));tx.onabort=()=>reject(tx.error||new Error("作者情報保存中止"))});
  db.close();
@@ -283,7 +283,7 @@ async function processAuthor(authorUrl){
   diag.push("段階：新works読込");
   let works;
   try{({works}=await readIndexed())}catch(e){throw Object.assign(new Error("新worksの読込に失敗："+e.message),{diagnostic:diag})}
-  const narouWorks=works.filter(w=>w&&w.site==="narou");
+  const narouWorks=works.filter(w=>w&&w.site==="narou"&&!w.deletedAt);
   diag.push("新works内のなろう作品："+narouWorks.length+"件");
   const wm=new Map(narouWorks.map(w=>[ncode(w.ncode),w]));
   const hits=[],seen=new Set();
@@ -353,7 +353,7 @@ async function loadGitHubAuthorCount(){
 async function buildAuthorsJson(){
  const db=await openDB(),rows=await readAll(db,"works");db.close();
  const byKey=new Map();
- for(const a of rows){if(a.site!=="narou"||!String(a.authorId||"").trim())continue;const id=String(a.authorId).trim(),type=a.authorType==="r18"?"r18":"normal";byKey.set(type+":"+id,{author_id:id,author_type:type})}
+ for(const a of rows){if(a.site!=="narou"||a.deletedAt||!String(a.authorId||"").trim())continue;const id=String(a.authorId).trim(),type=a.siteData?.isR18===true?"r18":"normal";byKey.set(type+":"+id,{author_id:id,author_type:type})}
  const authors=[...byKey.values()].sort((a,b)=>a.author_type.localeCompare(b.author_type)||a.author_id.localeCompare(b.author_id,undefined,{numeric:true}));
  if(!authors.length)throw new Error("出力対象の作者が0人です。");
  return {schema_version:1,exported_at:new Date().toISOString(),source:"tomotaYomuWorksDB.works",author_count:authors.length,authors};
