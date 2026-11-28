@@ -112,8 +112,8 @@ el("save").addEventListener("click",async()=>{
   const episodeCount=count("episodeCount","話数");
   const end=status.includes("連載中")?1:0;
   const noveltype=status.includes("短編")?2:1;
-  const genreRaw=el("genreCode").value.trim();
-  if(genreRaw&&!/^\d+$/.test(genreRaw))throw new Error("ジャンルコードは数字で入力してください");
+  const isR18=original.siteData?.isR18===true;
+  const genreRaw=isR18?"":el("genreCode").value.trim();
   const sourceUrl=original.url||el("sourceUrl").value.trim();
   const updated={
    ...original,
