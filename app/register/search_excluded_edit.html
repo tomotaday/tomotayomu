@@ -4,7 +4,7 @@
 <body><main><a href="../../index.html">← ともたよむ本棚へ戻る</a><h1>✏️ 変更登録</h1><p class="note">作品カードから引き継いだNコードの登録済みデータを読み込み、修正内容を本棚の作品情報に保存します。棚の配置とbookmarkは維持します。</p>
 <p class="note">使い方：本棚の「🚫検索除外」一覧を開き、対象作品の「✏️ 内容を編集」からこの画面を開いてください。作品ごとのNコードを使って登録済み情報を読み込みます。</p>
 <section class="card"><div id="ncode" class="ncode">Nコードを読み込み中…</div>
-<label for="title">作品タイトル</label><input id="title" autocomplete="off"><label for="writer">作者名</label><input id="writer" autocomplete="off"><label for="authorId">作者ID（通常：数字／R18：英数字）</label><input id="authorId" autocomplete="off" autocapitalize="characters"><label for="sourceUrl">取得元URL（変更不可）</label><input id="sourceUrl" autocomplete="url" readonly aria-readonly="true" class="readonly-url"><small class="note">作品を特定するURLです。確認・コピーはできますが、変更できません。</small><label for="story">あらすじ</label><textarea id="story" rows="5"></textarea><label for="statusValue">作品状態（連載中・完結・短編）</label><input id="statusValue"><label for="episodeCount">エピソード数</label><input id="episodeCount" inputmode="numeric"><label for="genreText">ジャンル</label><input id="genreText"><label for="publishedAt">掲載日時（YYYY/MM/DD HH:mm）</label><input id="publishedAt" placeholder="2023/09/01 14:05"><label for="latestAt">最新掲載日時（YYYY/MM/DD HH:mm）</label><input id="latestAt" placeholder="2023/09/01 14:14"><label for="disclosure">開示設定</label><input id="disclosure"><button id="save" class="primary" type="button">変更を保存</button><a class="button" href="../../index.html">本棚へ戻る</a><div id="status" role="status">登録済みデータを読み込んでいます…</div></section></main>
+<label for="title">作品タイトル</label><input id="title" autocomplete="off"><label for="writer">作者名</label><input id="writer" autocomplete="off"><label for="authorId">作者ID（通常：数字／R18：英数字）</label><input id="authorId" autocomplete="off" autocapitalize="characters"><label for="sourceUrl">取得元URL（変更不可）</label><input id="sourceUrl" autocomplete="url" readonly aria-readonly="true" class="readonly-url"><small class="note">作品を特定するURLです。確認・コピーはできますが、変更できません。</small><label for="story">あらすじ</label><textarea id="story" rows="5"></textarea><label for="statusValue">作品状態（連載中・完結・短編）</label><input id="statusValue"><label for="episodeCount">エピソード数</label><input id="episodeCount" inputmode="numeric"><label for="genreCode">ジャンルコード</label><input id="genreCode" inputmode="numeric"><label for="publishedAt">掲載日時（YYYY/MM/DD HH:mm）</label><input id="publishedAt" placeholder="2023/09/01 14:05"><label for="latestAt">最新掲載日時（YYYY/MM/DD HH:mm）</label><input id="latestAt" placeholder="2023/09/01 14:14"><button id="save" class="primary" type="button">変更を保存</button><a class="button" href="../../index.html">本棚へ戻る</a><div id="status" role="status">登録済みデータを読み込んでいます…</div></section></main>
 <script>
 "use strict";
 const DB_NAME="tomotaYomuWorksDB",ncode=(new URLSearchParams(location.search).get("ncode")||"").trim().toUpperCase(),el=id=>document.getElementById(id);let original=null;
@@ -39,8 +39,7 @@ function canonicalFields(w){
   general_all_no:w.episodeCount??"",
   general_firstup:w.publishedAt||"",
   general_lastup:w.lastPublishedAt||"",
-  genre_text:siteData.genreText||"",
-  disclosure:siteData.disclosure||"",
+  genre:siteData.genre??"",
   end:siteData.end,
   noveltype:siteData.noveltype,
   __r18:siteData.isR18===true
@@ -53,12 +52,12 @@ function fill(w){
  el("authorId").value=v.userid==null?"":String(v.userid);
  el("sourceUrl").value=v.source_url;
  el("story").value=v.story;
- el("statusValue").value=String(w.status||"");
+ el("statusValue").value=statusText({noveltype:v.noveltype,end:v.end});
  el("episodeCount").value=v.general_all_no==null?"":String(v.general_all_no);
- el("genreText").value=v.genre_text;
+ el("genreCode").value=v.genre==null?"":String(v.genre);
  el("publishedAt").value=dateValue(w.publishedAt||v.general_firstup);
  el("latestAt").value=dateValue(w.lastPublishedAt||v.general_lastup);
- el("disclosure").value=v.disclosure;
+
 }
 async function init(){
  if(!/^N\d+[A-Z]+$/.test(ncode)){
@@ -111,14 +110,17 @@ el("save").addEventListener("click",async()=>{
   const published=canonicalDateValue(el("publishedAt").value,"掲載日時");
   const latest=canonicalDateValue(el("latestAt").value,"最新掲載日時");
   const episodeCount=count("episodeCount","話数");
-  const end=status.includes("完結")?0:1;
+  const end=status.includes("連載中")?1:0;
   const noveltype=status.includes("短編")?2:1;
+  const genreRaw=el("genreCode").value.trim();
+  if(genreRaw&&!/^\d+$/.test(genreRaw))throw new Error("ジャンルコードは数字で入力してください");
   const sourceUrl=original.url||el("sourceUrl").value.trim();
   const updated={
    ...original,
    title,
    authorName:el("writer").value.trim(),
    authorId:authorId||"",
+   bookmark:Object.prototype.hasOwnProperty.call(original,"bookmark")?original.bookmark:null,
    url:sourceUrl,
    synopsis:el("story").value,
    episodeCount,
@@ -129,8 +131,7 @@ el("save").addEventListener("click",async()=>{
     ...(original.siteData||{}),
     isR18:original.siteData?.isR18===true,
     end,noveltype,
-    genreText:el("genreText").value.trim(),
-    disclosure:el("disclosure").value.trim(),
+    genre:genreRaw?Number(genreRaw):null,
     sourceUrl
    }
   };
@@ -142,6 +143,8 @@ el("save").addEventListener("click",async()=>{
    tx.onerror=()=>reject(tx.error||new Error("保存失敗"));
    tx.onabort=()=>reject(tx.error||new Error("保存中止"));
   });
+  if(Array.isArray(updated.genres)){updated.genres=updated.genres.filter(item=>item?.source!=="genre");if(genreRaw)updated.genres.push({source:"genre",value:Number(genreRaw)});}
+  delete updated.siteData.legacyFields;delete updated.siteData.genreText;delete updated.siteData.disclosure;
   original=updated;
   setStatus("新DBへ保存しました。棚所属とbookmarkは維持されています。本棚へ戻ると作品カードに反映されます。");
  }catch(e){
