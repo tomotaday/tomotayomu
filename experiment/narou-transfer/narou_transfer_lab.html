@@ -1425,7 +1425,7 @@ function renderRawWorkCard(work) {
   card.className = "card";
   const ncode = String(work.workId || "").toUpperCase();
   card.dataset.ncode = ncode;
-  card.dataset.r18 = (work.siteData?.isR18 === true || work.siteData?.legacyFields?.__r18 === true) ? "1" : "";
+  card.dataset.r18 = work.siteData?.isR18 === true ? "1" : "";
   card.dataset.noveltype = "";
 
   card.innerHTML = '<div class="meta"><span class="newMark" hidden>🆙 </span><span class="lastUpdated">—</span> ｜ <span class="status">—</span> <span class="shelfId"></span></div><h2></h2><div class="author">作者：<span class="authorName"></span><span class="searchExcludedMark" aria-label="検索除外" hidden>🚫</span><span class="siteBadge siteBadge-narou">なろう</span></div><details><summary>あらすじを読む</summary><p class="synopsis"></p></details><div class="actions"><a class="workLink" rel="noopener" target="_blank">作品を開く</a><a class="resumeLink" rel="noopener" target="_blank">続きから　📖 未読 / —話</a></div>';
