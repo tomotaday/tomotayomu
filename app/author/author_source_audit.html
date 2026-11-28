@@ -94,6 +94,7 @@ function makeReport(all,excludedSet){
  const idOnly=new Set(linked.map(w=>String(w.authorId).trim()));
  return {
   audit:"author_pre_aggregation_readonly_v1",
+  page:{id:"author_source_audit",version:"1.1.0",updatedAt:"2026-11-28"},
   createdAt:new Date().toISOString(),
   database:{name:DB_NAME,version:2,store:"works",transaction:"readonly"},
   scope:{allRecords:all.length,narouRecords:narou.length,narouWithDeletedAt:narou.filter(w=>!!w.deletedAt).length,narouWithoutDeletedAt:narou.filter(w=>!w.deletedAt).length,narouSearchExcluded:matchedExcluded.length,activeNarouSearchExcluded:activeExcluded.length,otherSiteRecords:all.length-narou.length},
