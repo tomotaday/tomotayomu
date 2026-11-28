@@ -137,7 +137,7 @@ async function saveWork(work,rawUrl,manualAuthorId=""){
    siteData:{
     ...(existing?.siteData||{}),isR18,noveltype:work.noveltype,end:work.end,sourceUrl:rawUrl,
     keyword:String(work.keyword||""),genre:work.genre??null,biggenre:work.biggenre??null,nocgenre:work.nocgenre??null,
-    isstop:work.isstop??0,novelupdated_at:work.novelupdated_at||work.lastPublishedAt||"",
+    isstop:work.isstop??0,novelupdated_at:work.novelupdated_at||work.lastPublishedAt||"",userid_source:work.userid??"",
     isr15:work.isr15??null,isbl:work.isbl??null,isgl:work.isgl??null,iszankoku:work.iszankoku??null,istensei:work.istensei??null,istenni:work.istenni??null
    }};
   delete saved.siteData.legacyFields;delete saved.siteData.genreText;delete saved.siteData.disclosure;
@@ -208,7 +208,18 @@ const META_LABELS=[
  {key:"synopsis",labels:["あらすじ","作品あらすじ","synopsis","story"]},
  {key:"status",labels:["作品状態","連載状態","状態","status"]},
  {key:"general_all_no",labels:["エピソード数","全話数","話数","general_all_no","episode_count"]},
- {key:"genre",labels:["ジャンル","genre"]},
+ {key:"keyword",labels:["キーワード","keyword"]},
+ {key:"biggenre",labels:["大ジャンルコード","biggenre"]},
+ {key:"genre",labels:["ジャンルコード","ジャンル","genre"]},
+ {key:"nocgenre",labels:["R18ジャンルコード","nocgenre"]},
+ {key:"isstop",labels:["isstop","長期連載停止フラグ"]},
+ {key:"novelupdated_at",labels:["novelupdated_at","API更新日時"]},
+ {key:"isr15",labels:["isr15","R15フラグ"]},
+ {key:"isbl",labels:["isbl","BLフラグ"]},
+ {key:"isgl",labels:["isgl","GLフラグ"]},
+ {key:"iszankoku",labels:["iszankoku","残酷描写フラグ"]},
+ {key:"istensei",labels:["istensei","転生フラグ"]},
+ {key:"istenni",labels:["istenni","転移フラグ"]},
  {key:"site",labels:["掲載サイト","サイト","site"]},
  {key:"general_firstup",labels:["初回掲載日時","初回掲載日","初回投稿日","掲載日時","掲載日","general_firstup","published_at"]},
  {key:"general_lastup",labels:["最新掲載日時","最新話掲載日時","最終話掲載日時","最終掲載日時","最終掲載日","最新掲載日","general_lastup","latest_episode_at"]},
