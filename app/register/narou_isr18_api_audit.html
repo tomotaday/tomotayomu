@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f3ed">
+<title>なろうR18区分 API照合｜ともたよむ</title>
+<style>
+:root{color-scheme:light;--bg:#f6f3ed;--paper:#fffdf9;--ink:#252525;--muted:#777;--line:#c9c0b4;--accent:#315d9b;--ok:#edf7f0;--bad:#fff0f0;--warn:#fff7df}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.6}
+main{width:min(900px,100%);margin:auto;padding:18px 14px 48px}
+header,.panel{background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:15px;margin:12px 0}
+h1{font-size:21px;margin:0 0 6px}h2{font-size:16px;margin:0 0 8px}
+p{margin:6px 0}.small{font-size:12px;color:var(--muted)}
+button{font:inherit;width:100%;padding:11px;border:1px solid var(--line);border-radius:9px;background:#fff;margin:6px 0;color:var(--ink)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}button:disabled{opacity:.45}
+.status{white-space:pre-wrap;overflow-wrap:anywhere;padding:11px;border-radius:9px;background:#f1f2f4;font-size:13px;margin-top:9px}
+.status.ok{background:var(--ok)}.status.bad{background:var(--bad)}.status.warn{background:var(--warn)}
+.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}
+.metric{background:#f1f2f4;border-radius:8px;padding:9px}.metric strong{display:block;font-size:22px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:8px 5px;border-bottom:1px solid var(--line);text-align:left}th{white-space:nowrap}
+.bad{color:#a22;font-weight:700}.good{color:#176b35;font-weight:700}.muted{color:var(--muted)}
+details{margin:8px 0}summary{cursor:pointer;font-weight:700}
+code{overflow-wrap:anywhere}
+</style>
+</head>
+<body><main>
+<header>
+ <p class="small">READ ONLY / CURRENT API CHECK</p>
+ <h1>なろう作品 R18区分 API照合</h1>
+ <p>新worksに保存されている各作品の <code>siteData.isR18</code> を、現在のなろう公式APIの結果と作品単位で照合します。</p>
+ <p class="small">DBへの書き込みは一切行いません。通常API・R18 APIの両方をNコード指定で照会します。</p>
+</header>
+<section class="panel">
+ <h2>1. 照合を開始</h2>
+ <p class="small">対象：tomotaYomuWorksDB / worksストア / site=narou。ごみばこを含む全レコードを対象にします。検索除外などAPIから見つからない作品は「API未確認」に分けます。</p>
+ <button id="run" class="primary">現在のAPIで全作品を照合する</button>
+ <div id="status" class="status">開始ボタンを押してください。</div>
+</section>
+<section class="panel">
+ <h2>2. 照合結果</h2>
+ <div class="metrics">
+  <div class="metric">DB対象作品<strong id="total">—</strong></div>
+  <div class="metric">APIで区分確認<strong id="verified">—</strong></div>
+  <div class="metric">区分一致<strong id="matched">—</strong></div>
+  <div class="metric">区分不一致<strong id="mismatch">—</strong></div>
+ </div>
+ <table>
+  <thead><tr><th>分類</th><th>DB isR18=false</th><th>DB isR18=true</th><th>合計</th></tr></thead>
+  <tbody id="summary"><tr><td colspan="4" class="muted">未実行</td></tr></tbody>
+ </table>
+ <div id="notes" class="status">API照合後に詳細を表示します。</div>
+</section>
+<section class="panel">
+ <h2>3. 不一致・未確認作品</h2>
+ <div id="details" class="small muted">未実行</div>
+ <button id="download" disabled>照合結果JSONを保存</button>
+</section>
+<section class="panel">
+ <h2>照合上の注意</h2>
+ <ul class="small">
+  <li>通常APIは全年齢作品、R18 APIはR18作品を照会します。</li>
+  <li>APIはNコードをハイフン区切りで複数指定できます。URL長を抑えるため小分けに照会します。</li>
+  <li>両APIで見つからない作品は、検索除外・削除・API反映遅延などの可能性があるため、不一致とは断定しません。</li>
+  <li>API照会は読み取りのみです。IndexedDBのデータは変更しません。</li>
+ </ul>
+</section>
+</main>
+<script>
+"use strict";
+const DB_NAME="tomotaYomuWorksDB",DB_VERSION=2,STORE="works",CHUNK=60;
+const $=id=>document.getElementById(id);
+let resultData=null;
+function openDb(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME);req.onsuccess=()=>{const db=req.result;if(db.version!==DB_VERSION||!db.objectStoreNames.contains(STORE)){db.close();reject(Error("新works DBの構造が想定外です"));return}const tx=db.transaction(STORE,"readonly"),q=tx.objectStore(STORE).getAll();q.onsuccess=()=>resolve({db,rows:q.result||[]});q.onerror=()=>{db.close();reject(q.error||Error("works読込失敗"))};tx.onerror=()=>{db.close();reject(tx.error||Error("DB読込失敗"))}};req.onerror=()=>reject(req.error||Error("DBを開けません"))})}
+function jsonp(url){return new Promise((resolve,reject)=>{const callback="__narouAudit_"+Date.now()+"_"+Math.random().toString(36).slice(2);const script=document.createElement("script");let timer=setTimeout(()=>finish(Error("API応答タイムアウト")),25000);function finish(err,data){clearTimeout(timer);delete window[callback];script.remove();err?reject(err):resolve(data)}window[callback]=data=>finish(null,data);script.onerror=()=>finish(Error("API通信エラー"));script.src=url+"&out=jsonp&callback="+callback;document.head.appendChild(script)})}
+async function queryApi(kind,codes){const base=kind==="r18"?"https://api.syosetu.com/novel18api/api/":"https://api.syosetu.com/novelapi/api/";const url=base+"?ncode="+codes.map(x=>x.toLowerCase()).join("-")+"&of=n";return jsonp(url)}
+async function getAll(kind,codes,onProgress){const found=new Set(),notReturned=[];let completed=0;for(let i=0;i<codes.length;i+=CHUNK){const chunk=codes.slice(i,i+CHUNK);const data=await queryApi(kind,chunk);if(!Array.isArray(data)||!data.length||typeof data[0].allcount!=="number")throw Error((kind==="r18"?"R18":"通常")+" APIの応答形式が不正です");for(const row of data.slice(1)){if(row.ncode)found.add(String(row.ncode).toUpperCase())}for(const code of chunk)if(!found.has(code))notReturned.push(code);completed+=chunk.length;onProgress(completed,codes.length,kind)}return {found,notReturned}}
+function csvSafe(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function render(data){
+ const {rows,normal,r18,matched,mismatches,unverified,counts}=data;
+ $("total").textContent=rows.length.toLocaleString("ja-JP");$("verified").textContent=(normal.found.size+r18.found.size).toLocaleString("ja-JP");$("matched").textContent=matched.length.toLocaleString("ja-JP");$("mismatch").textContent=mismatches.length.toLocaleString("ja-JP");
+ const body=[];
+ for(const [label,list] of [["通常APIで確認",normalRows],["R18 APIで確認",r18Rows],["API未確認",unverified]]){}
+ $("summary").innerHTML=
+  "<tr><th>通常APIで確認</th><td>"+counts.normalFalse+"</td><td>"+counts.normalTrue+"</td><td>"+(counts.normalFalse+counts.normalTrue)+"</td></tr>"+
+  "<tr><th>R18 APIで確認</th><td>"+counts.r18False+"</td><td>"+counts.r18True+"</td><td>"+(counts.r18False+counts.r18True)+"</td></tr>"+
+  "<tr><th>API未確認</th><td>"+counts.unknownFalse+"</td><td>"+counts.unknownTrue+"</td><td>"+(counts.unknownFalse+counts.unknownTrue)+"</td></tr>";
+ $("notes").className="status "+(mismatches.length?"bad":"ok");
+ $("notes").textContent="照合済み："+matched.length+"件 一致 / "+mismatches.length+"件 不一致\n通常APIで確認："+normal.found.size+"件\nR18 APIで確認："+r18.found.size+"件\n両APIとも未確認："+unverified.length+"件\n※APIごとの件数は現在のAPI応答に基づく実測値です。";
+ const section=(title,list)=>"<details open><summary>"+title+"（"+list.length+"件）</summary>"+(list.length?"<ul>"+list.map(x=>"<li><code>"+csvSafe(x.ncode)+"</code> "+csvSafe(x.title||"")+" / authorId:"+csvSafe(x.authorId)+" / isR18:"+String(x.isR18)+"</li>").join("")+"</ul>":"<p class='muted'>該当なし</p>")+"</details>";
+ $("details").innerHTML=section("区分不一致",mismatches)+section("API未確認",unverified);
+ $("download").disabled=false;
+}
+let normalRows=[],r18Rows=[];
+$("run").addEventListener("click",async()=>{
+ $("run").disabled=true;$("download").disabled=true;resultData=null;
+ try{
+  $("status").textContent="新worksを読み込み中…";
+  const opened=await openDb();const rows=opened.rows.filter(w=>w.site==="narou"&&w.workId);opened.db.close();
+  const unique=[...new Map(rows.map(w=>[String(w.workId).toUpperCase(),w])).entries()];
+  const codes=unique.map(([code])=>code);
+  $("status").textContent="通常APIを照会中…";
+  const normal=await getAll("normal",codes,(done,total)=>{$("status").textContent="通常API照会中："+done+"/"+total});
+  $("status").textContent="R18 APIを照会中…";
+  const r18=await getAll("r18",codes,(done,total)=>{$("status").textContent="R18 API照会中："+done+"/"+total});
+  normalRows=rows.filter(w=>normal.found.has(String(w.workId).toUpperCase()));
+  r18Rows=rows.filter(w=>r18.found.has(String(w.workId).toUpperCase()));
+  const normalSet=normal.found,r18Set=r18.found;
+  const mismatches=[],matched=[],unverified=[];
+  for(const w of rows){const code=String(w.workId).toUpperCase(),n=normalSet.has(code),r=r18Set.has(code),flag=w.siteData?.isR18===true;
+   if(n&&r){unverified.push({...w,ncode:code,reason:"両APIで確認"});continue}
+   if(!n&&!r){unverified.push({...w,ncode:code,reason:"両APIで未確認"});continue}
+   const apiR18=r;
+   const item={...w,ncode:code,apiR18};
+   if(flag===apiR18)matched.push(item);else mismatches.push(item);
+  }
+  const counts={normalFalse:normalRows.filter(w=>w.siteData?.isR18!==true).length,normalTrue:normalRows.filter(w=>w.siteData?.isR18===true).length,r18False:r18Rows.filter(w=>w.siteData?.isR18!==true).length,r18True:r18Rows.filter(w=>w.siteData?.isR18===true).length,unknownFalse:unverified.filter(w=>w.siteData?.isR18!==true).length,unknownTrue:unverified.filter(w=>w.siteData?.isR18===true).length};
+  resultData={checkedAt:new Date().toISOString(),dbRecordCount:rows.length,normal:{allcount:normal.found.size,ncodes:[...normal.found]},r18:{allcount:r18.found.size,ncodes:[...r18.found]},matched:matched.map(w=>({ncode:w.ncode,title:w.title,isR18:w.siteData?.isR18})),mismatches:mismatches.map(w=>({ncode:w.ncode,title:w.title,authorId:w.authorId,isR18:w.siteData?.isR18,apiR18:w.apiR18})),unverified:unverified.map(w=>({ncode:w.ncode,title:w.title,authorId:w.authorId,isR18:w.siteData?.isR18,reason:w.reason})),counts};
+  render({rows,normal,r18,matched,mismatches,unverified,counts});
+  $("status").className="status ok";$("status").textContent="照合完了："+new Date().toLocaleString("ja-JP")+"\nDB作品："+rows.length+"件 / 重複Nコード除外後："+codes.length+"件";
+ }catch(e){$("status").className="status bad";$("status").textContent="照合停止：\n"+(e.message||String(e))}
+ finally{$("run").disabled=false}
+});
+$("download").addEventListener("click",()=>{if(!resultData)return;const blob=new Blob([JSON.stringify(resultData,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="narou-isr18-api-audit-"+new Date().toISOString().replace(/[:.]/g,"-")+".json";a.click();URL.revokeObjectURL(a.href)});
+</script>
+</body></html>
