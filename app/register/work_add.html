@@ -54,7 +54,7 @@ label{display:block;font-weight:700;margin:12px 0 4px}input,textarea{display:blo
 </div>
 </main>
 <script>
-const VERSION="3.2.0";
+const VERSION="4.1.1";
 const DB_NAME="tomotaYomuWorksDB";
 const API_URL="https://api.syosetu.com/novelapi/api/";
 const R18_API_URL="https://api.syosetu.com/novel18api/api/";
@@ -116,20 +116,19 @@ async function saveWork(work,rawUrl,manualAuthorId=""){
    authorKana:existing?.authorKana||matched.authorKana||"",
    authorKanaChecked:Boolean(existing?.authorKanaChecked||matched.authorKanaChecked),
    shelfId:existing?String(existing.shelfId||""):String(shelf?.shelf_id||""),
-   bookmark:existing?.bookmark??null,
+   bookmark:existing&&Object.prototype.hasOwnProperty.call(existing,"bookmark")?existing.bookmark:null,
    ...(existing?{}:{registeredAt:new Date().toISOString(),registeredAtType:"actual"}),
    url:rawUrl,synopsis:String(work.story||""),
    status:work.status,episodeCount:work.episodeCount,
    publishedAt:work.publishedAt,lastPublishedAt:work.lastPublishedAt,
+   keywords:Array.isArray(work.keywords)?work.keywords:[],
+   genres:Array.isArray(work.genres)?work.genres:[],
    siteData:{
-    ...(existing?.siteData||{}),
-    isR18,
-    noveltype:work.noveltype,
-    end:work.end,
-    sourceUrl:rawUrl,
-    genreText:String(work.genre_text||""),
-    disclosure:String(work.disclosure||"")
+    ...(existing?.siteData||{}),isR18,noveltype:work.noveltype,end:work.end,sourceUrl:rawUrl,
+    keyword:String(work.keyword||""),genre:work.genre??null,biggenre:work.biggenre??null,nocgenre:work.nocgenre??null,
+    isstop:work.isstop??0,novelupdated_at:work.novelupdated_at||work.lastPublishedAt||""
    }};
+  delete saved.siteData.legacyFields;delete saved.siteData.genreText;delete saved.siteData.disclosure;
   await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite");tx.objectStore("works").put(saved);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存失敗"));tx.onabort=()=>reject(tx.error||new Error("保存中止"))});
   return {shelfName:existing?(existing.shelfId?String(shelves.find(v=>String(v.shelf_id)===String(existing.shelfId))?.shelf_name||"既存の棚"):"未分類"):(shelf?.shelf_name||"未分類"),existing:!!existing,work:saved,authorId:matchedAuthorId};
  }finally{db.close()}
@@ -289,10 +288,11 @@ async function saveManualWork(){
   const published=canonicalDate(document.getElementById("manualPublishedAt").value,"掲載日時");
   const latest=canonicalDate(document.getElementById("manualLatestAt").value,"最新話更新日時");
   const genreText=String(document.getElementById("manualGenre").value||"").trim();
+  if(genreText&&!/^\d+$/.test(genreText))throw new Error("ジャンルコードは数字で入力してください。");
   const episodeCount=num("manualEpisodeCount");
   if(!Number.isInteger(episodeCount)||episodeCount<1)throw new Error("エピソード数は1以上の整数で入力してください。");
   const end=status==="完結"?0:1,noveltype=status==="短編"?2:1;
-  const work={ncode,title,writer,story,keyword:"",general_all_no:episodeCount,general_lastup:latest,general_firstup:published,end,noveltype,isstop:0,userid:authorIdRaw?authorIdRaw:0,genre:0,genre_text:genreText,novelupdated_at:latest,episode_count:episodeCount,published_at:published,latest_episode_at:latest,disclosure,__r18:sourceUrl.toLowerCase().includes("novel18.syosetu.com"),status,episodeCount,publishedAt:published,lastPublishedAt:latest};
+  const work={ncode,title,writer,story,keyword:"",keywords:[],genres:genreText?[{source:"genre",value:Number(genreText)}]:[],general_all_no:episodeCount,general_lastup:latest,general_firstup:published,end,noveltype,isstop:0,userid:authorIdRaw||"",genre:genreText?Number(genreText):null,biggenre:null,nocgenre:null,novelupdated_at:latest,status,episodeCount,publishedAt:published,lastPublishedAt:latest};
   setManualStatus("作品情報を保存中…");
   const r=await saveWork(work,sourceUrl,authorIdRaw);
   const excluded=new Set(JSON.parse(localStorage.getItem(SEARCH_EXCLUDED_KEY)||"[]"));excluded.add(ncode);localStorage.setItem(SEARCH_EXCLUDED_KEY,JSON.stringify([...excluded]));
