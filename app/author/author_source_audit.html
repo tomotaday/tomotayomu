@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f3ed">
+<title>ともたよむ｜作者集計前データ監査</title>
+<style>
+*{box-sizing:border-box}body{margin:0;padding:18px 14px 40px;background:#f6f3ed;color:#252525;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;line-height:1.6}.wrap{max-width:820px;margin:auto}h1{font-size:22px;margin:10px 0}h2{font-size:17px;margin:0 0 9px}.panel{background:#fffdf9;border:1px solid #cfc7bc;border-radius:14px;padding:15px;margin:13px 0}.muted{color:#686868;font-size:13px}.actions{display:flex;gap:9px;flex-wrap:wrap}button{border:0;border-radius:10px;padding:12px 15px;font-size:15px;font-weight:650;background:#246b42;color:white}button.secondary{background:#e9e5df;color:#252525}button:disabled{opacity:.45}.statgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.stat{background:#f2eee8;border-radius:9px;padding:10px}.stat b{display:block;font-size:21px}.stat span{font-size:12px;color:#666}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f2eee8;padding:11px;border-radius:9px;font-size:12px;max-height:50vh;overflow:auto}#status{white-space:pre-wrap}.warn{background:#fff5d8;padding:10px;border-radius:9px}
+</style>
+</head>
+<body><main class="wrap">
+<a href="author.html">← 作者管理ページへ戻る</a>
+<h1>🔎 作者集計前データ監査</h1>
+<p class="muted">作者管理ページが集計する前の、なろう作品データを新worksから読み取り専用で抽出します。</p>
+<section class="panel">
+<h2>安全条件</h2>
+<p>DB：tomotaYomuWorksDB v2 / worksストア / readonly transaction のみ。</p>
+<p class="warn">作品データの追加・変更・削除、作者情報の保存、localStorageの読み書きは行いません。ごみばこ作品も含め、作者管理ページと同じく site="narou" の全レコードを対象にします。</p>
+<div class="actions"><button id="run">① 集計前データを検査</button><button id="download" class="secondary" disabled>② 監査JSONを保存</button><button id="copy" class="secondary" disabled>JSONをコピー</button></div>
+<p id="status" class="muted">実行ボタンを押してください。</p>
+</section>
+<section class="panel" id="summary" hidden><h2>監査サマリー</h2><div class="statgrid" id="stats"></div><h2 style="margin-top:15px">項目別の値の分布</h2><pre id="distributions"></pre></section>
+<section class="panel" id="details" hidden><h2>抽出内容</h2><p class="muted">全なろう作品の作者関連フィールド、siteData内の作者関連項目、項目キー一覧をJSONに含めます。</p><pre id="preview"></pre></section>
+</main>
+<script>
+"use strict";
+const DB_NAME="tomotaYomuWorksDB";
+let report=null;
+const has=(o,k)=>Object.prototype.hasOwnProperty.call(o||{},k);
+const code=w=>String(w?.workId||w?.ncode||w?.id||"").replace(/^narou:/i,"").trim().toUpperCase();
+const raw=v=>v===undefined?"(undefined)":v===null?"(null)":v===""?"(empty)":String(v);
+const keys=o=>o&&typeof o==="object"?Object.keys(o).sort():[];
+function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,2);r.onupgradeneeded=()=>{try{r.transaction.abort()}catch{}reject(new Error("DBが存在しないかversion 2ではありません。安全のため停止しました。"))};r.onsuccess=()=>{const db=r.result;if(db.version!==2||!db.objectStoreNames.contains("works")){db.close();reject(new Error("DB構造が想定外です。"));return}resolve(db)};r.onerror=()=>reject(r.error||new Error("DBを開けません"));r.onblocked=()=>reject(new Error("DBが別タブで使用中です"))})}
+function readAll(db){return new Promise((resolve,reject)=>{const tx=db.transaction("works","readonly"),req=tx.objectStore("works").getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error||new Error("works読込失敗"));tx.onerror=()=>reject(tx.error||new Error("readonly transaction失敗"))})}
+function distribution(rows,get){const m=new Map();for(const w of rows){const v=raw(get(w));m.set(v,(m.get(v)||0)+1)}return Object.fromEntries([...m].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],"ja")))}
+function makeReport(all){
+ const narou=all.filter(w=>w&&w.site==="narou");
+ const withId=narou.filter(w=>String(w.authorId??"").trim()!=="");
+ const authors=new Map();
+ for(const w of withId){const id=String(w.authorId).trim();if(!authors.has(id))authors.set(id,[]);authors.get(id).push(w)}
+ const nameValues=new Map(),typeValues=new Map(),r18Values=new Map();
+ for(const [id,rows] of authors){
+  nameValues.set(id,[...new Set(rows.map(w=>raw(w.authorName)))]);
+  typeValues.set(id,[...new Set(rows.map(w=>raw(w.authorType)))]);
+  r18Values.set(id,[...new Set(rows.map(w=>raw(w.siteData?.isR18)))]);
+ }
+ const duplicateCodes=new Map();
+ for(const w of narou){const n=code(w);if(!n)continue;if(!duplicateCodes.has(n))duplicateCodes.set(n,[]);duplicateCodes.get(n).push(w)}
+ const authorTypeConflict=[...authors].filter(([,rows])=>new Set(rows.map(w=>raw(w.authorType))).size>1).map(([id,rows])=>({authorId:id,authorTypes:[...new Set(rows.map(w=>raw(w.authorType)))],codes:rows.map(code)}));
+ const authorNameConflict=[...authors].filter(([,rows])=>new Set(rows.map(w=>raw(w.authorName))).size>1).map(([id,rows])=>({authorId:id,authorNames:[...new Set(rows.map(w=>raw(w.authorName)))],codes:rows.map(code)}));
+ const isR18Conflict=[...authors].filter(([,rows])=>new Set(rows.map(w=>raw(w.siteData?.isR18))).size>1).map(([id,rows])=>({authorId:id,isR18Values:[...new Set(rows.map(w=>raw(w.siteData?.isR18)))],codes:rows.map(code)}));
+ const records=narou.map(w=>({
+  id:has(w,"id")?w.id:null,workId:has(w,"workId")?w.workId:null,ncode:code(w),
+  deletedAt:has(w,"deletedAt")?w.deletedAt:null,
+  title:has(w,"title")?w.title:null,
+  authorName:has(w,"authorName")?w.authorName:null,
+  authorId:has(w,"authorId")?w.authorId:null,
+  authorType:has(w,"authorType")?w.authorType:null,
+  authorUrl:has(w,"authorUrl")?w.authorUrl:null,
+  authorManageName:has(w,"authorManageName")?w.authorManageName:null,
+  authorKana:has(w,"authorKana")?w.authorKana:null,
+  authorKanaFirst:has(w,"authorKanaFirst")?w.authorKanaFirst:null,
+  authorKanaChecked:has(w,"authorKanaChecked")?w.authorKanaChecked:null,
+  siteData:{
+   keys:keys(w.siteData),
+   isR18:has(w.siteData,"isR18")?w.siteData.isR18:null,
+   authorUrl:has(w.siteData,"authorUrl")?w.siteData.authorUrl:null,
+   authorName:has(w.siteData,"authorName")?w.siteData.authorName:null,
+   authorId:has(w.siteData,"authorId")?w.siteData.authorId:null,
+   authorType:has(w.siteData,"authorType")?w.siteData.authorType:null,
+   legacyFieldsKeys:keys(w.siteData?.legacyFields)
+  },
+  topLevelKeys:keys(w)
+ }));
+ const duplicates=[...duplicateCodes].filter(([,rows])=>rows.length>1).map(([n,rows])=>({ncode:n,count:rows.length,ids:rows.map(w=>w.id??null),authorIds:rows.map(w=>w.authorId??null)}));
+ const linked=withId;
+ const currentJsonKeys=new Set(linked.map(w=>(w.authorType==="r18"?"r18":"normal")+":"+String(w.authorId).trim()));
+ const idOnly=new Set(linked.map(w=>String(w.authorId).trim()));
+ return {
+  audit:"author_pre_aggregation_readonly_v1",
+  createdAt:new Date().toISOString(),
+  database:{name:DB_NAME,version:2,store:"works",transaction:"readonly"},
+  scope:{allRecords:all.length,narouRecords:narou.length,narouWithDeletedAt:narou.filter(w=>!!w.deletedAt).length,narouWithoutDeletedAt:narou.filter(w=>!w.deletedAt).length,otherSiteRecords:all.length-narou.length},
+  counts:{withAuthorId:withId.length,withoutAuthorId:narou.length-withId.length,uniqueAuthorIds:idOnly.size,currentAuthorJsonKeys:currentJsonKeys.size,currentAuthorJsonKeyRule:"authorType==='r18' ? r18 : normal; unique key = type + ':' + authorId"},
+  distributions:{
+   authorIdValueType:distribution(narou,w=>w.authorId===null?"null":typeof w.authorId),
+   authorType:distribution(narou,w=>w.authorType),
+   siteDataIsR18:distribution(narou,w=>w.siteData?.isR18),
+   authorName:distribution(narou,w=>w.authorName),
+   siteDataAuthorType:distribution(narou,w=>w.siteData?.authorType),
+   authorUrl:distribution(narou,w=>w.authorUrl),
+   siteDataAuthorUrl:distribution(narou,w=>w.siteData?.authorUrl)
+  },
+  conflicts:{authorTypeConflictCount:authorTypeConflict.length,authorTypeConflicts:authorTypeConflict,authorNameConflictCount:authorNameConflict.length,authorNameConflicts:authorNameConflict,isR18ConflictCount:isR18Conflict.length,isR18Conflicts:isR18Conflict,duplicateNcodeCount:duplicates.length,duplicateNcodes:duplicates},
+  authors:[...authors].map(([id,rows])=>({authorId:id,workCount:rows.length,authorNames:nameValues.get(id),authorTypes:typeValues.get(id),siteDataIsR18Values:r18Values.get(id),workCodes:rows.map(code).sort()})),
+  records
+ };
+}
+const $=id=>document.getElementById(id);
+$("run").addEventListener("click",async()=>{
+ const btn=$("run");btn.disabled=true;$("status").textContent="新worksをreadonlyで読み取り中…";
+ let db;
+ try{
+  db=await openDB();let all;try{all=await readAll(db)}finally{db.close();db=null}
+  report=makeReport(all);
+  const s=report.scope,c=report.counts,x=report.conflicts;
+  $("stats").innerHTML=[["なろう作品",s.narouRecords],["ごみばこ作品",s.narouWithDeletedAt],["作者IDあり",c.withAuthorId],["作者IDなし",c.withoutAuthorId],["作者IDの種類数",c.uniqueAuthorIds],["現行JSONの作者数",c.currentAuthorJsonKeys],["authorType混在ID",x.authorTypeConflictCount],["作者名混在ID",x.authorNameConflictCount],["isR18混在ID",x.isR18ConflictCount],["Nコード重複",x.duplicateNcodeCount]].map(([a,b])=>'<div class="stat"><b>'+b+'</b><span>'+a+'</span></div>').join("");
+  $("distributions").textContent=JSON.stringify(report.distributions,null,2);
+  $("preview").textContent=JSON.stringify({scope:report.scope,counts:report.counts,conflicts:report.conflicts,authors:report.authors.slice(0,12),recordsSample:report.records.slice(0,5)},null,2)+"\n\n※全件データは「監査JSONを保存」で出力されます。";
+  $("summary").hidden=false;$("details").hidden=false;$("download").disabled=false;$("copy").disabled=false;
+  $("status").textContent="監査完了。"+s.narouRecords+"件のなろう作品を抽出しました。\nDBへの書き込み・変更・削除はありません。JSONを保存して、このチャットに添付してください。";
+ }catch(e){if(db)db.close();$("status").textContent="監査停止："+(e.message||String(e))}
+ finally{btn.disabled=false}
+});
+$("download").addEventListener("click",()=>{if(!report)return;const blob=new Blob([JSON.stringify(report,null,2)+"\n"],{type:"application/json;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="author-pre-aggregation-audit-"+new Date().toISOString().replace(/[:.]/g,"-")+".json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
+$("copy").addEventListener("click",async()=>{if(!report)return;try{await navigator.clipboard.writeText(JSON.stringify(report));$("status").textContent="監査JSONをコピーしました。"}catch(e){$("status").textContent="コピーできませんでした。JSON保存を使ってください。"}});
+</script></body></html>
