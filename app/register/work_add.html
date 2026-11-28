@@ -44,7 +44,18 @@ label{display:block;font-weight:700;margin:12px 0 4px}input,textarea{display:blo
 <label for="manualSynopsis">あらすじ</label><textarea id="manualSynopsis" rows="4" placeholder="あらすじ"></textarea>
 <label for="manualStatusValue">作品状態</label><input id="manualStatusValue" placeholder="連載中・完結済・短編など">
 <label for="manualEpisodeCount">エピソード数</label><input id="manualEpisodeCount" inputmode="numeric" placeholder="エピソード数">
-<label for="manualGenre">ジャンル（将来用）</label><input id="manualGenre" placeholder="ジャンル">
+<label for="manualKeyword">キーワード（空白区切り）</label><input id="manualKeyword">
+<label for="manualBiggenre">大ジャンルコード</label><input id="manualBiggenre" inputmode="numeric">
+<label for="manualGenre">ジャンルコード</label><input id="manualGenre" inputmode="numeric">
+<label for="manualNocgenre">R18ジャンルコード</label><input id="manualNocgenre" inputmode="numeric">
+<label for="manualIsstop">長期連載停止フラグ</label><input id="manualIsstop" inputmode="numeric" value="0">
+<label for="manualNovelupdated">API更新日時</label><input id="manualNovelupdated">
+<label for="manualIsr15">R15フラグ</label><input id="manualIsr15" inputmode="numeric">
+<label for="manualIsbl">BLフラグ</label><input id="manualIsbl" inputmode="numeric">
+<label for="manualIsgl">GLフラグ</label><input id="manualIsgl" inputmode="numeric">
+<label for="manualIszankoku">残酷描写フラグ</label><input id="manualIszankoku" inputmode="numeric">
+<label for="manualIstensei">転生フラグ</label><input id="manualIstensei" inputmode="numeric">
+<label for="manualItenni">転移フラグ</label><input id="manualItenni" inputmode="numeric">
 <label for="manualPublishedAt">掲載日時</label><input id="manualPublishedAt" placeholder="掲載日時">
 <label for="manualLatestAt">最新掲載日時</label><input id="manualLatestAt" placeholder="最新掲載日時">
 <label for="manualDisclosure">開示設定</label><input id="manualDisclosure" placeholder="検索除外中 など">
@@ -126,7 +137,8 @@ async function saveWork(work,rawUrl,manualAuthorId=""){
    siteData:{
     ...(existing?.siteData||{}),isR18,noveltype:work.noveltype,end:work.end,sourceUrl:rawUrl,
     keyword:String(work.keyword||""),genre:work.genre??null,biggenre:work.biggenre??null,nocgenre:work.nocgenre??null,
-    isstop:work.isstop??0,novelupdated_at:work.novelupdated_at||work.lastPublishedAt||""
+    isstop:work.isstop??0,novelupdated_at:work.novelupdated_at||work.lastPublishedAt||"",
+    isr15:work.isr15??null,isbl:work.isbl??null,isgl:work.isgl??null,iszankoku:work.iszankoku??null,istensei:work.istensei??null,istenni:work.istenni??null
    }};
   delete saved.siteData.legacyFields;delete saved.siteData.genreText;delete saved.siteData.disclosure;
   await new Promise((resolve,reject)=>{const tx=db.transaction("works","readwrite");tx.objectStore("works").put(saved);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("保存失敗"));tx.onabort=()=>reject(tx.error||new Error("保存中止"))});
@@ -167,7 +179,7 @@ function applyMetadata(data){
  const fields=[
   ["ncode","manualNcode","Nコード"],["title","manualTitle","作品タイトル"],["author","manualWriter","作者名"],["author_id","manualAuthorId","作者ID"],
   ["source_url","manualUrl","取得元URL"],["synopsis","manualSynopsis","あらすじ"],["status","manualStatusValue","作品状態"],
-  ["general_all_no","manualEpisodeCount","エピソード数"],["genre","manualGenre","ジャンル"],
+  ["general_all_no","manualEpisodeCount","エピソード数"],["keyword","manualKeyword","キーワード"],["biggenre","manualBiggenre","大ジャンルコード"],["genre","manualGenre","ジャンルコード"],["nocgenre","manualNocgenre","R18ジャンルコード"],["isstop","manualIsstop","長期連載停止フラグ"],["novelupdated_at","manualNovelupdated","API更新日時"],["isr15","manualIsr15","R15フラグ"],["isbl","manualIsbl","BLフラグ"],["isgl","manualIsgl","GLフラグ"],["iszankoku","manualIszankoku","残酷描写フラグ"],["istensei","manualIstensei","転生フラグ"],["istenni","manualItenni","転移フラグ"],
   ["general_firstup","manualPublishedAt","掲載日時"],["general_lastup","manualLatestAt","最新掲載日時"],
   ["disclosure","manualDisclosure","開示設定"]
  ];
@@ -292,7 +304,10 @@ async function saveManualWork(){
   const episodeCount=num("manualEpisodeCount");
   if(!Number.isInteger(episodeCount)||episodeCount<1)throw new Error("エピソード数は1以上の整数で入力してください。");
   const end=status==="完結"?0:1,noveltype=status==="短編"?2:1;
-  const work={ncode,title,writer,story,keyword:"",keywords:[],genres:genreText?[{source:"genre",value:Number(genreText)}]:[],general_all_no:episodeCount,general_lastup:latest,general_firstup:published,end,noveltype,isstop:0,userid:authorIdRaw||"",genre:genreText?Number(genreText):null,biggenre:null,nocgenre:null,novelupdated_at:latest,status,episodeCount,publishedAt:published,lastPublishedAt:latest};
+  const numeric=id=>{const value=String(document.getElementById(id).value||"").trim();if(!value)return null;if(!/^\\d+$/.test(value))throw new Error(id+"は整数で入力してください。");return Number(value);};
+  const keyword=String(document.getElementById("manualKeyword").value||"").trim();
+  const work={ncode,title,writer,story,keyword,keywords:keyword.split(/\\s+/u).filter(Boolean),general_all_no:episodeCount,general_lastup:latest,general_firstup:published,end,noveltype,userid:authorIdRaw||"",genre:numeric("manualGenre"),biggenre:numeric("manualBiggenre"),nocgenre:numeric("manualNocgenre"),isstop:numeric("manualIsstop")??0,novelupdated_at:document.getElementById("manualNovelupdated").value.trim()||latest,isr15:numeric("manualIsr15"),isbl:numeric("manualIsbl"),isgl:numeric("manualIsgl"),iszankoku:numeric("manualIszankoku"),istensei:numeric("manualIstensei"),istenni:numeric("manualItenni"),status,episodeCount,publishedAt:published,lastPublishedAt:latest};
+  work.genres=["biggenre","genre","nocgenre","isr15","isbl","isgl","iszankoku","istensei","istenni"].filter(key=>work[key]!==null).map(source=>({source,value:work[source]}));
   setManualStatus("作品情報を保存中…");
   const r=await saveWork(work,sourceUrl,authorIdRaw);
   const excluded=new Set(JSON.parse(localStorage.getItem(SEARCH_EXCLUDED_KEY)||"[]"));excluded.add(ncode);localStorage.setItem(SEARCH_EXCLUDED_KEY,JSON.stringify([...excluded]));
