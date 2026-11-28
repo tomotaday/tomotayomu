@@ -116,7 +116,16 @@ $("run").addEventListener("click",async()=>{
   $("trash").textContent=trash.length.toLocaleString("ja-JP");
   $("flagged").textContent=flagged.length.toLocaleString("ja-JP");
   const tally=list=>{const m=new Map();for(const w of list)for(const k of [...w.topExtra.map(x=>"top."+x),...w.siteExtra.map(x=>"siteData."+x),...w.legacyKeys.map(x=>"legacyFields."+x)])m.set(k,(m.get(k)||0)+1);return [...m].sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>k+"："+v+"作品").join("\n")||"検出なし"};
-  $("counts").textContent="【本棚内】\n"+tally(active)+"\n\n【ごみばこ】\n"+tally(trash)+"\n\n※ legacyFields は独立集計。正規項目外の削除対象とは断定していません。";
+  const present=(w,k)=>w[k]!==undefined&&w[k]!==null&&String(w[k]).trim()!=="";
+  const dateAudit=list=>{
+   const fields=["publishedAt","lastPublishedAt","registeredAt","createdAt","updatedAt","characterCount","reading"];
+   return fields.map(k=>{
+    const yes=list.filter(w=>present(w,k)).length, no=list.length-yes;
+    const missing=list.filter(w=>!present(w,k)).map(w=>w.ncode);
+    return k+"：あり "+yes+" / なし "+no+(missing.length?"（なし： "+missing.join(", ")+"）":"");
+   }).join("\\n");
+  };
+  $("counts").textContent="【本棚内：正規項目外・legacyFields】\n"+tally(active)+"\n\n【ごみばこ：正規項目外・legacyFields】\n"+tally(trash)+"\n\n【日付・旧フィールドの有無：本棚内】\n"+dateAudit(active)+"\n\n【日付・旧フィールドの有無：ごみばこ】\n"+dateAudit(trash)+"\n\n※ publishedAt＝なろう初回掲載日、lastPublishedAt＝最新話更新日、registeredAt＝ともたよむ本棚登録日。legacyFields は削除対象と断定していません。";
   $("status").textContent="検査完了。全 "+found.length+" 件（本棚内 "+active.length+" / ごみばこ "+trash.length+"）。DBへの書き込みはありません。";
   draw();
  }catch(e){$("status").textContent="検査失敗："+e.message+"\nDBへの書き込みはありません。"}
