@@ -54,7 +54,10 @@ function fill(w){
  el("story").value=v.story;
  el("statusValue").value=statusText({noveltype:v.noveltype,end:v.end});
  el("episodeCount").value=v.general_all_no==null?"":String(v.general_all_no);
- const isR18=w.siteData?.isR18===true;\n el("genreCode").disabled=isR18;\n el("genreCode").value=isR18?"":(v.genre==null?"":String(v.genre));\n el("genreNote").textContent=isR18?"R18作品のためジャンル選択は対象外です。既存のジャンル情報には触れません。":"全年齢作品のジャンルを選択できます。空欄のままなら既存値を維持します。";
+ const isR18=w.siteData?.isR18===true;
+ el("genreCode").disabled=isR18;
+ el("genreCode").value=isR18?"":(v.genre==null?"":String(v.genre));
+ el("genreNote").textContent=isR18?"R18作品のためジャンル選択は対象外です。既存のジャンル情報には触れません。":"全年齢作品のジャンルを選択できます。空欄のままなら既存値を維持します。";
  el("publishedAt").value=dateValue(w.publishedAt||v.general_firstup);
  el("latestAt").value=dateValue(w.lastPublishedAt||v.general_lastup);
 
@@ -131,7 +134,7 @@ el("save").addEventListener("click",async()=>{
     ...(original.siteData||{}),
     isR18:original.siteData?.isR18===true,
     end,noveltype,
-    genre:genreRaw?Number(genreRaw):null,
+    ...(genreRaw?{genre:Number(genreRaw)}:{}),
     sourceUrl
    }
   };
