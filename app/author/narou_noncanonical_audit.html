@@ -36,13 +36,13 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:7px 5px;b
 <div class="metric">なろう全作品<strong id="total">—</strong></div>
 <div class="metric">本棚内<strong id="active">—</strong></div>
 <div class="metric">ごみばこ<strong id="trash">—</strong></div>
-<div class="metric">正規項目外あり<strong id="flagged">—</strong></div>
+<div class="metric">旧フィールドあり<strong id="flagged">—</strong></div>
 </div>
 <div id="counts" class="status">未検査</div>
 </section>
 <section class="panel">
 <h2>対象作品一覧</h2>
-<p class="small">「正規項目外」は項目名の検出結果です。削除してよいという判定ではありません。siteData.legacyFields は現行の変更登録画面が参照するため、別枠でキーを表示します。</p>
+<p class="small">今回の集計は本棚内の必要項目だけに絞っています。作品一覧は個別確認用です。データは読み取り専用です。</p>
 <div class="filters"><input id="filter" type="search" placeholder="Nコード・作品名・項目名で絞り込み"><label><input id="trashOnly" type="checkbox"> ごみばこのみ</label></div>
 <div class="scroll"><table><thead><tr><th>Nコード / 作品名</th><th>区分</th><th>正規項目外（トップ階層）</th><th>正規項目外（siteData）</th><th>legacyFields内のキー</th></tr></thead><tbody id="rows"><tr><td colspan="5" class="muted">未検査</td></tr></tbody></table></div>
 </section>
@@ -117,15 +117,22 @@ $("run").addEventListener("click",async()=>{
   $("flagged").textContent=flagged.length.toLocaleString("ja-JP");
   const tally=list=>{const m=new Map();for(const w of list)for(const k of [...w.topExtra.map(x=>"top."+x),...w.siteExtra.map(x=>"siteData."+x),...w.legacyKeys.map(x=>"legacyFields."+x)])m.set(k,(m.get(k)||0)+1);return [...m].sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>k+"："+v+"作品").join("\n")||"検出なし"};
   const present=(w,k)=>w[k]!==undefined&&w[k]!==null&&String(w[k]).trim()!=="";
-  const dateAudit=list=>{
-   const fields=["publishedAt","lastPublishedAt","registeredAt","createdAt","updatedAt","characterCount","reading"];
-   return fields.map(k=>{
-    const yes=list.filter(w=>present(w,k)).length, no=list.length-yes;
-    const missing=list.filter(w=>!present(w,k)).map(w=>w.ncode);
-    return k+"：あり "+yes+" / なし "+no+(missing.length?"（なし： "+missing.join(", ")+"）":"");
-   }).join("\n");
+  const count=(list,k)=>list.filter(w=>present(w,k)).length;
+  const summary=list=>{
+   const total=list.length;
+   const lines=[
+    "対象作品："+total+"件",
+    "初回掲載日 publishedAt：あり "+count(list,"publishedAt")+" / なし "+(total-count(list,"publishedAt")),
+    "最新話更新日 lastPublishedAt：あり "+count(list,"lastPublishedAt")+" / なし "+(total-count(list,"lastPublishedAt")),
+    "本棚登録日 registeredAt：あり "+count(list,"registeredAt")+" / なし "+(total-count(list,"registeredAt")),
+    "旧 createdAt：残存 "+count(list,"createdAt")+"件",
+    "旧 updatedAt：残存 "+count(list,"updatedAt")+"件",
+    "旧 characterCount：残存 "+count(list,"characterCount")+"件",
+    "旧 reading：残存 "+count(list,"reading")+"件"
+   ];
+   return lines.join("\\n");
   };
-  $("counts").textContent="【本棚内：正規項目外・legacyFields】\n"+tally(active)+"\n\n【ごみばこ：正規項目外・legacyFields】\n"+tally(trash)+"\n\n【日付・旧フィールドの有無：本棚内】\n"+dateAudit(active)+"\n\n【日付・旧フィールドの有無：ごみばこ】\n"+dateAudit(trash)+"\n\n※ publishedAt＝なろう初回掲載日、lastPublishedAt＝最新話更新日、registeredAt＝ともたよむ本棚登録日。legacyFields は削除対象と断定していません。";
+  $("counts").textContent="【本棚内・なろう作品】\\n"+summary(active)+"\\n\\n【ごみばこ】\\n対象 "+trash.length+"件（今回は変更対象外）";
   $("status").textContent="検査完了。全 "+found.length+" 件（本棚内 "+active.length+" / ごみばこ "+trash.length+"）。DBへの書き込みはありません。";
   draw();
  }catch(e){$("status").textContent="検査失敗："+e.message+"\nDBへの書き込みはありません。"}
