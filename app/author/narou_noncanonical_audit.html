@@ -123,7 +123,7 @@ $("run").addEventListener("click",async()=>{
     const yes=list.filter(w=>present(w,k)).length, no=list.length-yes;
     const missing=list.filter(w=>!present(w,k)).map(w=>w.ncode);
     return k+"：あり "+yes+" / なし "+no+(missing.length?"（なし： "+missing.join(", ")+"）":"");
-   }).join("\\n");
+   }).join("\n");
   };
   $("counts").textContent="【本棚内：正規項目外・legacyFields】\n"+tally(active)+"\n\n【ごみばこ：正規項目外・legacyFields】\n"+tally(trash)+"\n\n【日付・旧フィールドの有無：本棚内】\n"+dateAudit(active)+"\n\n【日付・旧フィールドの有無：ごみばこ】\n"+dateAudit(trash)+"\n\n※ publishedAt＝なろう初回掲載日、lastPublishedAt＝最新話更新日、registeredAt＝ともたよむ本棚登録日。legacyFields は削除対象と断定していません。";
   $("status").textContent="検査完了。全 "+found.length+" 件（本棚内 "+active.length+" / ごみばこ "+trash.length+"）。DBへの書き込みはありません。";
