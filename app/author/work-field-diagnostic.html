@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ともたよむ｜作品フィールド残存診断</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;line-height:1.65;margin:0;padding:16px;color:#222;background:#f7f8fa}
+main{max-width:820px;margin:auto;background:#fff;border-radius:16px;padding:18px}
+h1{font-size:21px}button{font-size:17px;padding:13px 18px;border:0;border-radius:10px;background:#176b35;color:white}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f1f3f5;padding:14px;border-radius:10px;font-size:13px}
+.note{color:#555;font-size:14px}
+</style>
+</head>
+<body><main>
+<h1>🔎 作品フィールド残存診断</h1>
+<p>tomotaYomuWorksDB v2 の works と、検索除外Nコード一覧を読み取り専用で照合します。</p>
+<p class="note">IndexedDBは readonly transaction のみ。localStorageも読み取りのみ。作品データ・検索除外設定の追加／変更／削除は行いません。</p>
+<button id="run">診断を実行</button>
+<p id="status" class="note">ボタンを押してください。</p>
+<pre id="result">診断結果はここに表示されます。</pre>
+</main>
+<script>
+"use strict";
+const DB_NAME="tomotaYomuWorksDB";
+const EXCLUDED_KEY="tomotaYomu_search_excluded_ncodes_v1";
+const has=(o,k)=>Object.prototype.hasOwnProperty.call(o||{},k);
+function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME);r.onupgradeneeded=()=>{r.transaction.abort();reject(Error("DB version mismatch; upgrade aborted"))};r.onsuccess=()=>{const db=r.result;if(db.version!==2||!db.objectStoreNames.contains("works")){db.close();reject(Error("DB version/store mismatch"));return}resolve(db)};r.onerror=()=>reject(r.error||Error("DB open failed"))})}
+function readWorks(db){return new Promise((resolve,reject)=>{const tx=db.transaction("works","readonly"),req=tx.objectStore("works").getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error||Error("works read failed"));tx.onerror=()=>reject(tx.error||Error("readonly transaction failed"))})}
+function readExcluded(){try{const v=JSON.parse(localStorage.getItem(EXCLUDED_KEY)||"[]");return new Set(Array.isArray(v)?v.map(x=>String(x).trim().toUpperCase()).filter(Boolean):[])}catch(e){throw Error("検索除外localStorageをJSONとして読めません: "+e.message)}}
+function listCodes(rows){return rows.map(w=>String(w.workId||w.id||"").replace(/^narou:/i,"").toUpperCase()).filter(Boolean).sort()}
+document.getElementById("run").addEventListener("click",async()=>{
+ const btn=document.getElementById("run"),status=document.getElementById("status"),out=document.getElementById("result");
+ btn.disabled=true;status.textContent="読み取り専用で集計中…";out.textContent="";
+ let db;
+ try{
+  const excluded=readExcluded();db=await openDB();const all=await readWorks(db);
+  const narou=all.filter(w=>w&&w.site==="narou"),active=narou.filter(w=>!w.deletedAt);
+  const excludedRows=active.filter(w=>excluded.has(String(w.workId||w.id||"").replace(/^narou:/i,"").toUpperCase()));
+  const count=(rows,key)=>rows.filter(w=>has(w,key)).length;
+  const legacyCount=(rows,key)=>rows.filter(w=>has(w.siteData?.legacyFields,key)).length;
+  const readingRows=active.filter(w=>has(w,"reading"));
+  const charRows=active.filter(w=>has(w,"characterCount"));
+  const legacyReading=active.filter(w=>legacyCount([w],"reading")>0);
+  const legacyChar=active.filter(w=>legacyCount([w],"characterCount")>0);
+  const lines=[
+   "DB: "+DB_NAME+" / version 2",
+   "works全件: "+all.length,
+   "なろう作品（ごみばこ含む）: "+narou.length,
+   "なろう有効作品（ごみばこ除外）: "+active.length,
+   "",
+   "【有効ななろう作品のトップレベル項目】",
+   "readingキーあり: "+readingRows.length,
+   "characterCountキーあり: "+charRows.length,
+   "両方あり: "+active.filter(w=>has(w,"reading")&&has(w,"characterCount")).length,
+   "",
+   "【siteData.legacyFields内】",
+   "readingキーあり: "+legacyReading.length,
+   "characterCountキーあり: "+legacyChar.length,
+   "",
+   "【検索除外一覧との照合】",
+   "localStorage内の検索除外Nコード数: "+excluded.size,
+   "有効ななろう作品と一致: "+excludedRows.length,
+   "検索除外作品でreadingキーあり: "+excludedRows.filter(w=>has(w,"reading")).length,
+   "検索除外作品でcharacterCountキーあり: "+excludedRows.filter(w=>has(w,"characterCount")).length,
+   "検索除外作品でlegacyFields.readingあり: "+excludedRows.filter(w=>has(w.siteData?.legacyFields,"reading")).length,
+   "検索除外作品でlegacyFields.characterCountあり: "+excludedRows.filter(w=>has(w.siteData?.legacyFields,"characterCount")).length,
+   "",
+   "【トップレベル項目の残存作品Nコード】",
+   "reading: "+(listCodes(readingRows).join(", ")||"なし"),
+   "",
+   "characterCount: "+(listCodes(charRows).join(", ")||"なし"),
+   "",
+   "【検索除外作品のうちトップレベル項目が残るNコード】",
+   "reading: "+(listCodes(excludedRows.filter(w=>has(w,"reading"))).join(", ")||"なし"),
+   "",
+   "characterCount: "+(listCodes(excludedRows.filter(w=>has(w,"characterCount"))).join(", ")||"なし"),
+   "",
+   "※キーの存在を数えています。値がnullでもキーがあれば「あり」です。",
+   "※この診断はDB・localStorageへ書き込みません。"
+  ];
+  out.textContent=lines.join("\n");status.textContent="診断完了。結果をコピーして共有してください。";
+ }catch(e){status.textContent="診断失敗";out.textContent=e.message||String(e)}
+ finally{if(db)db.close();btn.disabled=false}
+});
+</script>
+</body></html>
